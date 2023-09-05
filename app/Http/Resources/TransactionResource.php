@@ -28,7 +28,6 @@ class TransactionResource extends JsonResource
    */
   public function toArray($request)
   {
-
     $document = [];
     $tag = null;
     $voucher = null;
@@ -58,6 +57,7 @@ class TransactionResource extends JsonResource
       ->with("transmit")
       ->with("cheques.cheques")
       ->with("cheques.account_title")
+      ->with("audit")
       ->with("release")
       ->with("file")
       ->with("reverse")
@@ -299,7 +299,16 @@ class TransactionResource extends JsonResource
         $po_details[$key]["previous_balance"] = $previous_balance;
       } else {
       }
-      $po_details->first()->balance = $po_details->pluck("previous_balance")->sum() - $this->referrence_amount;
+      // $po_details->first()->balance = $po_details->pluck("previous_balance")->sum() - $this->referrence_amount;
+      switch ($transaction->document_id) {
+        case 1:
+          $po_details->first()->balance = $po_details->pluck("previous_balance")->sum() - $this->document_amount;
+          break;
+
+        default:
+          $po_details->first()->balance = $po_details->pluck("previous_balance")->sum() - $this->referrence_amount;
+          break;
+      }
     }
     $transaction = $po_transaction->where("request_id", $this->request_id);
 
@@ -345,6 +354,7 @@ class TransactionResource extends JsonResource
           "date" => $this->document_date,
           "payment_type" => $this->payment_type,
           "amount" => $this->document_amount,
+          "net_amount" => $this->net_amount,
           "release_date" => $this->release_date,
           "batch_no" => $this->batch_no,
           "remarks" => $this->remarks,
@@ -370,6 +380,14 @@ class TransactionResource extends JsonResource
           ],
         ];
         switch ($this->category) {
+          case "additional rental":
+          case "lounge rental":
+          case "stall a rental":
+          case "stall b rental":
+          case "stall c rental":
+          case "stall d rental":
+          case "cusa rental":
+          case "dorm rental":
           case "rental":
             $document["period_covered"] = $this->period_covered;
             $document["prm_multiple_from"] = $this->prm_multiple_from;
@@ -379,6 +397,8 @@ class TransactionResource extends JsonResource
             $document["net_of_amount"] = $this->net_amount;
             $document["cheque_date"] = $this->cheque_date;
             break;
+          case "official store leasing":
+          case "unofficial store leasing":
           case "leasing":
             $document["amortization"] = $this->amortization;
             $document["principal"] = $this->principal;
@@ -540,7 +560,7 @@ class TransactionResource extends JsonResource
               "id" => $this->payroll_category_id,
               "name" => $this->payroll_category,
             ],
-            "control_no" => $this->payroll_control_no
+            "control_no" => $this->payroll_control_no,
           ],
         ];
         break;
@@ -1006,6 +1026,7 @@ class TransactionResource extends JsonResource
         case "lounge rental":
         case "rental":
           $prm_fields = Transaction::where("transaction_id", $this->transaction_id)
+            // ->where("state", "!=", "void")
             ->select([
               "status",
               "period_covered",
@@ -1020,6 +1041,7 @@ class TransactionResource extends JsonResource
         case "unofficial store leasing":
         case "leasing":
           $prm_fields = Transaction::where("transaction_id", $this->transaction_id)
+            // ->where("state", "!=", "void")
             ->select([
               "status",
               "amortization",
@@ -1033,6 +1055,7 @@ class TransactionResource extends JsonResource
           break;
         case "loans":
           $prm_fields = Transaction::where("transaction_id", $this->transaction_id)
+            // ->where("state", "!=", "void")
             ->select(["status", "principal", "interest", "cwt", "net_amount as net_of_amount", "cheque_date"])
             ->get();
           break;
@@ -1109,6 +1132,213 @@ class TransactionResource extends JsonResource
     $transaction_result["approve"] = $approve;
     $transaction_result["transmit"] = $transmit;
     $transaction_result["cheque"] = $cheque_description;
+
+    //Inspect Voucher
+    $receive = $this->receiveVoucher;
+    $inspect = $this->auditVoucher;
+    $reasonVoucher = $this->reasonVoucher;
+    $status = null; // Default value
+    if ($this->statusVoucher) {
+      $status = $this->statusVoucher->status;
+    }
+
+    $inspectValues = [
+      "date_received" => $receive ? ($receive->created_at ?: null) : null,
+      "date_inspected" => $inspect ? ($inspect->created_at ?: null) : null,
+      "status" => $status,
+    ];
+
+    $reasonValues = [
+      "id" => $reasonVoucher ? ($reasonVoucher->reason_id ?: null) : null,
+      "reason" => $reasonVoucher && $reasonVoucher->reason ? $reasonVoucher->reason->reason : null,
+      "remarks" => $reasonVoucher ? ($reasonVoucher->remarks ?: null) : null,
+    ];
+
+    if (
+      array_filter($inspectValues, function ($value) {
+        return $value !== null;
+      }) === []
+    ) {
+      $transaction_result["inspect"] = [];
+    } else {
+      if ($inspectValues) {
+        $transaction_result["inspect"] = [
+          "dates" => [
+            "received" => $inspectValues["date_received"],
+            "inspected" => $inspectValues["date_inspected"],
+          ],
+          "status" => $inspectValues["status"],
+        ];
+
+        if ($reasonValues["id"] !== null || $reasonValues["remarks"] !== null) {
+          $transaction_result["inspect"]["reason"] = [
+            "id" => $reasonValues["id"],
+            "reason" => $reasonValues["reason"],
+            "remarks" => $reasonValues["remarks"],
+          ];
+        } else {
+          $transaction_result["inspect"]["reason"] = null;
+        }
+      } else {
+        $transaction_result["inspect"] = [];
+      }
+    }
+
+    //Audit Cheque
+    $receiveCheque = $this->receive;
+    $auditCheque = $this->audit;
+    $reasonAudit = $this->reasonAudit;
+    $statusAudit = null;
+    if ($this->statusAudit) {
+      $statusAudit = $this->statusAudit->status;
+    }
+
+    $auditValues = [
+      "date_received" => $receiveCheque ? ($receiveCheque->created_at ?: null) : null,
+      "date_audited" => $auditCheque ? ($auditCheque->created_at ?: null) : null,
+      "status" => $statusAudit,
+    ];
+
+    $reasonAuditValues = [
+      "id" => $reasonAudit ? ($reasonAudit->reason_id ?: null) : null,
+      "reason" => $reasonAudit && $reasonAudit->reason ? $reasonAudit->reason->reason : null,
+      "remarks" => $reasonAudit ? ($reasonAudit->remarks ?: null) : null,
+    ];
+
+    if (
+      array_filter($auditValues, function ($value) {
+        return $value !== null;
+      }) === []
+    ) {
+      $transaction_result["audit"] = [];
+    } else {
+      if ($auditValues) {
+        $transaction_result["audit"] = [
+          "dates" => [
+            "received" => $auditValues["date_received"],
+            "audited" => $auditValues["date_audited"],
+          ],
+          "status" => $auditValues["status"],
+        ];
+
+        if ($reasonAuditValues["id"] !== null || $reasonAuditValues["remarks"] !== null) {
+          $transaction_result["audit"]["reason"] = [
+            "id" => $reasonAuditValues["id"],
+            "reason" => $reasonAuditValues["reason"],
+            "remarks" => $reasonAuditValues["remarks"],
+          ];
+        } else {
+          $transaction_result["audit"]["reason"] = null;
+        }
+      } else {
+        $transaction_result["audit"] = [];
+      }
+    }
+
+    //Executive
+    $receiveExecutive = $this->receiveExecutive;
+    $executiveSign = $this->executive;
+    $reasonExecutive = $this->reasonExecutive;
+    $statusExecutive = null;
+    if ($this->statusExecutive) {
+      $statusExecutive = $this->statusExecutive->status;
+    }
+
+    $executiveValues = [
+      "date_received" => $receiveExecutive ? ($receiveExecutive->created_at ?: null) : null,
+      "date_signed" => $executiveSign ? ($executiveSign->created_at ?: null) : null,
+      "status" => $statusExecutive,
+    ];
+
+    // $reasonExecutiveValues = [
+    //   "id" => $reasonExecutive ? ($reasonExecutive->reason_id ?: null) : null,
+    //   "reason" => $reasonExecutive && $reasonExecutive->reason ? $reasonExecutive->reason->reason : null,
+    //   "remarks" => $reasonExecutive ? ($reasonExecutive->remarks ?: null) : null,
+    // ];
+
+    if (
+      array_filter($executiveValues, function ($value) {
+        return $value !== null;
+      }) === []
+    ) {
+      $transaction_result["executive"] = [];
+    } else {
+      if ($executiveValues) {
+        $transaction_result["executive"] = [
+          "dates" => [
+            "received" => $executiveValues["date_received"],
+            "signed" => $executiveValues["date_signed"],
+          ],
+          "status" => $executiveValues["status"],
+        ];
+
+        // if ($reasonExecutiveValues["id"] !== null || $reasonExecutiveValues["remarks"] !== null) {
+        //   $transaction_result["executive"]["reason"] = [
+        //     "id" => $reasonExecutiveValues["id"],
+        //     "reason" => $reasonExecutiveValues["reason"],
+        //     "remarks" => $reasonExecutiveValues["remarks"],
+        //   ];
+        // } else {
+        //   $transaction_result["executive"]["reason"] = null;
+        // }
+      } else {
+        $transaction_result["executive"] = [];
+      }
+    }
+
+    //Issue
+
+    $issueReceive = $this->issueReceive;
+    $issueIssue = $this->issueIssue;
+
+    $issueReason = $this->issueReason;
+    $issueStatus = null;
+    if ($this->issueStatus) {
+      $issueStatus = $this->issueStatus->status;
+    }
+
+    $issueValues = [
+      "date_received" => $issueReceive ? ($issueReceive->created_at ?: null) : null,
+      "date_issued" => $issueIssue ? ($issueIssue->created_at ?: null) : null,
+      "status" => $issueStatus,
+    ];
+
+    $reasonIssueValues = [
+      "id" => $issueReason ? ($issueReason->reason_id ?: null) : null,
+      "reason" => $issueReason && $issueReason->reason ? $issueReason->reason->reason : null,
+      "remarks" => $issueReason ? ($issueReason->remarks ?: null) : null,
+    ];
+
+    if (
+      array_filter($issueValues, function ($value) {
+        return $value !== null;
+      }) === []
+    ) {
+      $transaction_result["issue"] = [];
+    } else {
+      if ($issueValues) {
+        $transaction_result["issue"] = [
+          "dates" => [
+            "received" => $issueValues["date_received"],
+            "issued" => $issueValues["date_issued"],
+          ],
+          "status" => $issueValues["status"],
+        ];
+
+        if ($reasonIssueValues["id"] !== null || $reasonIssueValues["remarks"] !== null) {
+          $transaction_result["issue"]["reason"] = [
+            "id" => $reasonIssueValues["id"],
+            "reason" => $reasonIssueValues["reason"],
+            "remarks" => $reasonIssueValues["remarks"],
+          ];
+        } else {
+          $transaction_result["issue"]["reason"] = null;
+        }
+      } else {
+        $transaction_result["issue"] = [];
+      }
+    }
+
     $transaction_result["release"] = $release_description;
     $transaction_result["file"] = $file_description;
     $transaction_result["reverse"] = $reverse_description;

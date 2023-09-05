@@ -88,6 +88,8 @@ class TransactionController extends Controller
     $voucher_window = ["AP Associate", "AP Specialist"];
     $approve_window = ["Approver"];
     $cheque_window = ["Treasury Associate"];
+    $audit_window = ["Audit Associate"];
+    $executive_assistant = ["Executive Assistant"];
 
     $is_voucher_transfered = $status == "voucher-transfer";
     $is_transmit_transfered = $status == "transmit-transfer";
@@ -107,6 +109,8 @@ class TransactionController extends Controller
       ->with("po_details", function ($query) {
         return $query->select(["id", "request_id", "po_no", "po_total_amount"]);
       })
+      ->with("audit")
+      ->with("executive")
       ->with("cheques.cheques")
       ->when(!empty($document_ids), function ($query) use ($document_ids) {
         $query->whereIn("document_id", $document_ids);
@@ -201,11 +205,6 @@ class TransactionController extends Controller
               );
             }
           )
-          // ->when(function ($query) {
-          //   return request("document_id") === 4 && request("payment_type") === "partial";
-          // }, function ($query) {
-          //   $query->latest('created_at');
-          // })
           ->whereIn("department_details", $department)
           ->select([
             "id",
@@ -230,6 +229,7 @@ class TransactionController extends Controller
             "document_amount",
             "referrence_no",
             "referrence_amount",
+            "net_amount",
 
             "status",
             "state",
@@ -250,9 +250,10 @@ class TransactionController extends Controller
                 },
                 function ($query) use ($status) {
                   $query->when(
-                    strtolower($status) == "pending-cheque",
+                    strtolower($status) == "pending-release", //remove this
                     function ($query) use ($status) {
-                      $query->whereIn("status", ["cheque-release"]);
+                      // $query->whereIn("status", ["cheque-release"]);
+                      $query->whereIn("status", ["issue-issue"])->where("is_for_releasing", "=", true);
                     },
                     function ($query) use ($status) {
                       $query->when(
@@ -325,6 +326,7 @@ class TransactionController extends Controller
             "document_amount",
             "referrence_no",
             "referrence_amount",
+            "net_amount",
 
             "status",
             "state",
@@ -353,7 +355,7 @@ class TransactionController extends Controller
                   $query->when(
                     strtolower($status) == "pending-transmit",
                     function ($query) {
-                      $query->whereIn("status", ["approve-approve", "transmit-transfer"]);
+                      $query->whereIn("status", ["approve-approve", "transmit-transfer", "inspect-inspect"]);
                     },
                     function ($query) use ($users_id, $status) {
                       $query->when(
@@ -377,7 +379,17 @@ class TransactionController extends Controller
                                   $query->when(
                                     strtolower($status) == "return-return",
                                     function ($query) use ($status) {
-                                      $query->whereIn("status", ["cheque-return", "approve-return"]);
+                                      $query
+                                        ->whereIn("status", [
+                                          "cheque-return",
+                                          "approve-return",
+                                          "inspect-return",
+                                          "issue-return",
+                                          "audit-return",
+                                        ])
+                                        ->orWhere(function ($query) {
+                                          $query->whereIn("status", ["audit-return"])->where("document_id", 9);
+                                        });
                                     },
                                     function ($query) use ($status) {
                                       $query->when(
@@ -434,6 +446,7 @@ class TransactionController extends Controller
             "document_amount",
             "referrence_no",
             "referrence_amount",
+            "net_amount",
 
             "status",
             "state",
@@ -529,6 +542,7 @@ class TransactionController extends Controller
             "document_amount",
             "referrence_no",
             "referrence_amount",
+            "net_amount",
 
             "approver_id",
             "approver_name",
@@ -551,20 +565,37 @@ class TransactionController extends Controller
           )
           ->when(
             strtolower($status) == "cheque-receive",
-            function ($query) {
-              $query->whereIn("status", ["cheque-receive", "cheque-unhold", "cheque-unreturn"]);
+            // function ($query) {
+            //   $query
+            //     ->whereIn("status", ["cheque-receive", "cheque-unhold", "cheque-unreturn"])
+            //     ->whereNull("is_for_releasing");
+            // },
+            function ($query) use ($is_auto_debit) {
+              $query
+                ->whereIn("status", ["cheque-receive", "cheque-unhold", "cheque-unreturn"])
+                ->whereNull("is_for_releasing")
+                ->orWhere(function ($query) use ($is_auto_debit) {
+                  $query->when($is_auto_debit, function ($query) {
+                    $query->where("status", "cheque-receive")->where("is_for_releasing", true);
+                  });
+                });
             },
             function ($query) use ($status) {
               $query->when(
                 strtolower($status) == "cheque-cheque",
                 function ($query) {
-                  $query->whereIn("status", ["cheque-cheque", "cheque-reverse"]);
+                  $query->whereIn("status", ["cheque-cheque", "cheque-reverse"])->where("is_for_releasing", false);
                 },
                 function ($query) use ($status) {
                   $query->when(
                     strtolower($status) == "pending",
                     function ($query) {
-                      $query->whereIn("status", ["transmit-transmit"]);
+                      // $query->whereIn("status", ["transmit-transmit", "audit-return"])->where(function ($query) {
+                      //   $query->whereNull("is_for_voucher_audit")->orWhere("is_for_releasing", true);
+                      // });
+                      $query->whereIn("status", ["transmit-transmit"])->where(function ($query) {
+                        $query->whereNull("is_for_voucher_audit")->orWhere("is_for_releasing", true);
+                      });
                     },
                     function ($query) use ($status) {
                       $query->when(
@@ -591,7 +622,35 @@ class TransactionController extends Controller
                                       $query->whereIn("status", ["release-void"]);
                                     },
                                     function ($query) use ($status) {
-                                      $query->where("status", preg_replace("/\s+/", "", $status));
+                                      $query->when(
+                                        strtolower($status) == "pending-issue",
+                                        function ($query) {
+                                          $query
+                                            ->where("status", "executive-executive")
+                                            ->where("is_for_releasing", true);
+                                        },
+                                        function ($query) use ($status) {
+                                          $query->when(
+                                            strtolower($status) == "issue-receive",
+                                            function ($query) {
+                                              $query->where("status", "issue-receive")->where("is_for_releasing", true);
+                                            },
+                                            function ($query) use ($status) {
+                                              $query->when(
+                                                strtolower($status) == "issue-issue",
+                                                function ($query) {
+                                                  $query
+                                                    ->where("status", "issue-issue")
+                                                    ->where("is_for_releasing", true);
+                                                },
+                                                function ($query) use ($status) {
+                                                  $query->where("status", preg_replace("/\s+/", "", $status));
+                                                }
+                                              );
+                                            }
+                                          );
+                                        }
+                                      );
                                     }
                                   );
                                 }
@@ -629,6 +688,142 @@ class TransactionController extends Controller
             "document_amount",
             "referrence_no",
             "referrence_amount",
+            "net_amount",
+
+            "status",
+            "state",
+          ]);
+      })
+      ->when(in_array($role, $audit_window), function ($query) use ($status) {
+        $query
+          ->when(
+            strtolower($status) == "audit-receive",
+            function ($query) {
+              $query->whereIn("status", ["audit-receive", "audit-unhold", "audit-unreturn"]);
+            },
+            function ($query) use ($status) {
+              $query->when(
+                strtolower($status) == "pending",
+                function ($query) {
+                  $query
+                    ->whereIn("status", ["cheque-cheque", "transmit-transmit"])
+                    // ->whereNull("is_for_releasing")
+                    // ->where("is_for_voucher_audit", false);
+                    ->where(function ($query) {
+                      // $query->where("is_for_cheque_audit", true);
+                      $query->where("is_for_releasing", "!=", true);
+                      // $query->where("is_for_releasing", "!=", false);
+                    });
+                  // ->where(function ($query) {
+                  //   $query->whereNull("is_for_releasing")->where("is_for_voucher_audit", false);
+                  // });
+                  // ->where(function ($query) {
+                  //   $query->where("is_for_voucher_audit", false)->orWhereNull("is_for_voucher_audit");
+                  // });
+                },
+                function ($query) use ($status) {
+                  $query->when(
+                    strtolower($status) == "pending-inspect",
+                    function ($query) {
+                      $query->whereIn("status", ["transmit-transmit"])->where("is_for_voucher_audit", true);
+                    },
+                    function ($query) use ($status) {
+                      // $query->where("status", preg_replace("/\s+/", "", $status));
+                      $query->when(
+                        strtolower($status) == "audit-audit",
+                        function ($query) {
+                          $query->whereIn("status", ["audit-audit"])->orWhere(function ($query) {
+                            $query->where("document_id", 9)->where("is_for_releasing", true);
+                          });
+                        },
+                        function ($query) use ($status) {
+                          $query->where("status", preg_replace("/\s+/", "", $status));
+                        }
+                      );
+                    }
+                  );
+                }
+              );
+            }
+          )
+          ->select([
+            "id",
+            "users_id",
+            "request_id",
+            "supplier_id",
+            "document_id",
+            "tag_no",
+
+            "transaction_id",
+            "document_type",
+            "payment_type",
+            "remarks",
+            "date_requested",
+
+            "company_id",
+            "company",
+            "department",
+            "location",
+
+            "document_no",
+            "document_amount",
+            "referrence_no",
+            "referrence_amount",
+            "net_amount",
+
+            "approver_id",
+            "approver_name",
+
+            "status",
+            "state",
+          ]);
+      })
+      ->when(in_array($role, $executive_assistant), function ($query) use ($status) {
+        $query
+          ->when(
+            strtolower($status) == "executive-receive",
+            function ($query) {
+              $query->whereIn("status", ["executive-receive", "executive-unhold", "executive-unreturn"]);
+            },
+            function ($query) use ($status) {
+              $query->when(
+                strtolower($status) == "pending",
+                function ($query) {
+                  $query->whereIn("status", ["audit-audit"]);
+                },
+                function ($query) use ($status) {
+                  $query->where("status", preg_replace("/\s+/", "", $status));
+                }
+              );
+            }
+          )
+          ->select([
+            "id",
+            "users_id",
+            "request_id",
+            "supplier_id",
+            "document_id",
+            "tag_no",
+
+            "transaction_id",
+            "document_type",
+            "payment_type",
+            "remarks",
+            "date_requested",
+
+            "company_id",
+            "company",
+            "department",
+            "location",
+
+            "document_no",
+            "document_amount",
+            "referrence_no",
+            "referrence_amount",
+            "net_amount",
+
+            "approver_id",
+            "approver_name",
 
             "status",
             "state",
@@ -691,57 +886,216 @@ class TransactionController extends Controller
   {
     $fields = $request->validated();
     $date_requested = date("Y-m-d H:i:s");
-    $transaction_id = GenericMethod::getTransactionID(Auth::user()->department[0]['name']);
+    $transaction_id = GenericMethod::getTransactionID(Auth::user()->department[0]["name"]);
     $request_id = GenericMethod::getRequestID();
 
     switch ($fields["document"]["id"]) {
       case 1: //PAD
-        GenericMethod::documentNoValidation($request["document"]["no"]);
-
         if (empty($fields["po_group"])) {
           $errorMessage = GenericMethod::resultLaravelFormat("po_group", ["PO group required"]);
 
           return $this->resultResponse("invalid", "", $errorMessage);
         }
 
-        $duplicatePO = GenericMethod::validatePOFull($fields["document"]["company"]["id"], $fields["po_group"]);
+        switch ($request->input("document.payment_type")) {
+          case "Partial":
+            $fields["po_group"] = GenericMethod::ValidateIfPOExists(
+              $fields["po_group"],
+              $fields["document"]["company"]["id"]
+            );
 
-        if (isset($duplicatePO)) {
-          return $this->resultResponse("invalid", "", $duplicatePO);
-        }
+            $getAndValidatePOBalance = GenericMethod::getAndValidatePOBalance(
+              $fields,
+              $fields["document"]["company"]["id"],
+              last($fields["po_group"])["no"],
+              $fields["document"]["amount"],
+              $fields["po_group"]
+            );
 
-        $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
+            $existTransaction = Transaction::where("company_id", $fields["document"]["company"]["id"])
+              // ->where('company_id', $fields["document"]["company"]["id"])
+              // ->where('supplier_id', $fields["document"]["supplier"]["id"])
+              ->exists();
 
-        $errorMessage = GenericMethod::validateWith1PesoDifference(
-          "po_group.amount",
-          "Document",
-          $fields["document"]["amount"],
-          $po_total_amount
-        );
+            if ($existTransaction) {
+              $currentRequestids = POBatch::where("po_no", last($fields["po_group"])["no"])->pluck("request_id");
 
-        if (!empty($errorMessage)) {
-          return GenericMethod::resultResponse("invalid", "", $errorMessage);
-        }
+              $ids = [];
 
-        $transaction = GenericMethod::insertTransaction(
-          $transaction_id,
-          $po_total_amount,
-          $request_id,
-          $date_requested,
-          $fields
-        );
+              for ($i = 0; $i < count($currentRequestids); $i++) {
+                $ids[] = $currentRequestids[$i];
+              }
 
-        $request_id = $transaction->id;
+              // Transaction::where('request_id', '=', end($ids))
+              // ->update([
+              //   'is_not_editable' => true
+              // ]);
 
-        GenericMethod::insertPO(
-          $request_id,
-          $fields["po_group"],
-          $po_total_amount,
-          strtoupper($fields["document"]["payment_type"])
-        );
+              //enable new transaction
+              Transaction::where("request_id", "=", end($ids))->update([
+                "is_not_editable" => true,
+                "updated_at" => DB::raw("updated_at"),
+              ]);
+            }
 
-        if (isset($transaction->transaction_id)) {
-          return $this->resultResponse("save", "Transaction", []);
+            if (gettype($getAndValidatePOBalance) == "object") {
+              return $this->resultResponse("invalid", "", $getAndValidatePOBalance);
+            }
+
+            if (gettype($getAndValidatePOBalance) == "array") {
+              //for new po
+              //Additional PO Validation
+              $new_po = $getAndValidatePOBalance["new_po_group"];
+              $po_total_amount = $getAndValidatePOBalance["po_total_amount"];
+              $balance_with_additional_total_po_amount = $getAndValidatePOBalance["balance"];
+
+              $transaction = GenericMethod::insertTransaction(
+                $transaction_id,
+                $po_total_amount,
+                $request_id,
+                $date_requested,
+                $fields,
+                $balance_with_additional_total_po_amount
+              );
+
+              $request_id = $transaction->id;
+
+              GenericMethod::insertPO(
+                $request_id,
+                $fields["po_group"],
+                $po_total_amount,
+                strtoupper($fields["document"]["payment_type"])
+              );
+
+              POBatch::where("request_id", $request_id)
+                ->where("po_no", reset($fields["po_group"])["no"])
+                ->update([
+                  "is_modifiable" => true,
+                ]);
+
+              $isAdd = POBatch::where("request_id", $request_id)->get();
+
+              foreach ($isAdd as $record) {
+                if ($record->is_add == true && $record->is_editable == true) {
+                  $record->update([
+                    "is_modifiable" => true,
+                  ]);
+                }
+              }
+
+              if (isset($transaction->transaction_id)) {
+                return $this->resultResponse("save", "Transaction", []);
+              }
+            }
+
+            $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
+            $balance_po_ref_amount = $po_total_amount - $fields["document"]["amount"];
+
+            if ($po_total_amount < $fields["document"]["amount"]) {
+              $amountValdiation = GenericMethod::resultLaravelFormat("document.amount", ["Insufficient PO balance."]);
+
+              return $this->resultResponse("invalid", "", $amountValdiation);
+            }
+
+            if (isset($getAndValidatePOBalance)) {
+              $balance_po_ref_amount = $getAndValidatePOBalance;
+            }
+
+            $transaction = GenericMethod::insertTransaction(
+              $transaction_id,
+              $po_total_amount,
+              $request_id,
+              $date_requested,
+              $fields,
+              $balance_po_ref_amount
+            );
+
+            $request_id = $transaction->id;
+
+            GenericMethod::insertPO(
+              $request_id,
+              $fields["po_group"],
+              $po_total_amount,
+              strtoupper($fields["document"]["payment_type"])
+            );
+
+            // POBatch::where('request_id', $request_id)->update([
+            //   'is_modifiable' => true
+            // ]);
+
+            // $currentPO = POBatch::where('po_no', last($fields["po_group"])["no"])->pluck('request_id');
+
+            // if ($currentPO) {
+            //   POBatch::where('request_id', reset($currentPO))->update([
+            //     'is_modifiable' => true
+            //   ]);
+            // }
+
+            // $isAdd = POBatch::where('request_id', $request_id)->get();
+
+            // foreach ($isAdd as $record) {
+            //   if ($record->is_add == false && $record->is_editable == true) {
+            //       $record->update([
+            //           'is_modifiable' => true
+            //       ]);
+            //   }
+            // }
+
+            POBatch::where("request_id", $request_id)
+              ->where("is_add", false)
+              ->where("is_editable", true)
+              ->update(["is_modifiable" => true]);
+
+            if (isset($transaction->transaction_id)) {
+              return $this->resultResponse("save", "Transaction", []);
+            }
+
+            //---------------------------------------------------------------------------------------------------
+            break;
+
+          default:
+            GenericMethod::documentNoValidation($request["document"]["no"]);
+
+            $duplicatePO = GenericMethod::validatePOFull($fields["document"]["company"]["id"], $fields["po_group"]);
+
+            if (isset($duplicatePO)) {
+              return $this->resultResponse("invalid", "", $duplicatePO);
+            }
+
+            $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
+
+            $errorMessage = GenericMethod::validateWith1PesoDifference(
+              "po_group.amount",
+              "Document",
+              $fields["document"]["amount"],
+              $po_total_amount
+            );
+
+            if (!empty($errorMessage)) {
+              return GenericMethod::resultResponse("invalid", "", $errorMessage);
+            }
+
+            $transaction = GenericMethod::insertTransaction(
+              $transaction_id,
+              $po_total_amount,
+              $request_id,
+              $date_requested,
+              $fields
+            );
+
+            $request_id = $transaction->id;
+
+            GenericMethod::insertPO(
+              $request_id,
+              $fields["po_group"],
+              $po_total_amount,
+              strtoupper($fields["document"]["payment_type"])
+            );
+
+            if (isset($transaction->transaction_id)) {
+              return $this->resultResponse("save", "Transaction", []);
+            }
+            break;
         }
 
         break;
@@ -826,7 +1180,6 @@ class TransactionController extends Controller
         break;
 
       case 6: //Utilities
-        
         $duplicateUtilities = GenericMethod::validateTransactionByDateRange(
           $fields["document"]["from"],
           $fields["document"]["to"],
@@ -911,7 +1264,6 @@ class TransactionController extends Controller
         break;
 
       case 4: //Receipt
-      
         $isFull = strtoupper($fields["document"]["payment_type"]) === "FULL";
         $isQty = $fields["document"]["reference"]["type"] === "DR Qty";
 
@@ -920,7 +1272,8 @@ class TransactionController extends Controller
           return $this->resultResponse("invalid", "", $errorMessage);
         }
 
-        if (!$isQty && $isFull) {//Full
+        if (!$isQty && $isFull) {
+          //Full
           $duplicateRef = GenericMethod::validateReferenceNo($fields);
 
           if (isset($duplicateRef)) {
@@ -970,7 +1323,8 @@ class TransactionController extends Controller
           }
         }
 
-        if (!$isQty && !$isFull) { //Partial
+        if (!$isQty && !$isFull) {
+          //Partial
 
           $duplicateRef = GenericMethod::validateReferenceNo($fields);
 
@@ -994,31 +1348,29 @@ class TransactionController extends Controller
           //---------------------------------------------------------------------------------------------------
 
           //If the PO's is not unique and consider different condition
-          $existTransaction = Transaction::where('company_id', $fields["document"]["company"]["id"])
+          $existTransaction = Transaction::where("company_id", $fields["document"]["company"]["id"])
             // ->where('company_id', $fields["document"]["company"]["id"])
             // ->where('supplier_id', $fields["document"]["supplier"]["id"])
             ->exists();
 
           if ($existTransaction) {
-            
-            $currentRequestids = POBatch::where('po_no', last($fields["po_group"])["no"])->pluck('request_id');
+            $currentRequestids = POBatch::where("po_no", last($fields["po_group"])["no"])->pluck("request_id");
 
             $ids = [];
-           
+
             for ($i = 0; $i < count($currentRequestids); $i++) {
-              $ids [] = $currentRequestids[$i];
+              $ids[] = $currentRequestids[$i];
             }
-            
+
             // Transaction::where('request_id', '=', end($ids))
             // ->update([
             //   'is_not_editable' => true
             // ]);
 
             //enable new transaction
-            Transaction::where('request_id', '=', end($ids))
-            ->update([
-                'is_not_editable' => true,
-                'updated_at' => DB::raw('updated_at')
+            Transaction::where("request_id", "=", end($ids))->update([
+              "is_not_editable" => true,
+              "updated_at" => DB::raw("updated_at"),
             ]);
           }
 
@@ -1026,7 +1378,8 @@ class TransactionController extends Controller
             return $this->resultResponse("invalid", "", $getAndValidatePOBalance);
           }
 
-          if (gettype($getAndValidatePOBalance) == "array") { //for new po
+          if (gettype($getAndValidatePOBalance) == "array") {
+            //for new po
             //Additional PO Validation
             $new_po = $getAndValidatePOBalance["new_po_group"];
             $po_total_amount = $getAndValidatePOBalance["po_total_amount"];
@@ -1040,7 +1393,7 @@ class TransactionController extends Controller
               $fields,
               $balance_with_additional_total_po_amount
             );
-            
+
             $request_id = $transaction->id;
 
             GenericMethod::insertPO(
@@ -1050,24 +1403,25 @@ class TransactionController extends Controller
               strtoupper($fields["document"]["payment_type"])
             );
 
-            POBatch::where('request_id', $request_id)->where('po_no', reset($fields["po_group"])["no"])->update([
-              'is_modifiable' => true
-            ]);
+            POBatch::where("request_id", $request_id)
+              ->where("po_no", reset($fields["po_group"])["no"])
+              ->update([
+                "is_modifiable" => true,
+              ]);
 
-            $isAdd = POBatch::where('request_id', $request_id)->get();
+            $isAdd = POBatch::where("request_id", $request_id)->get();
 
             foreach ($isAdd as $record) {
               if ($record->is_add == true && $record->is_editable == true) {
-                  $record->update([
-                      'is_modifiable' => true
-                  ]);
+                $record->update([
+                  "is_modifiable" => true,
+                ]);
               }
             }
 
             if (isset($transaction->transaction_id)) {
               return $this->resultResponse("save", "Transaction", []);
             }
-
           }
 
           $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
@@ -1108,7 +1462,7 @@ class TransactionController extends Controller
           // ]);
 
           // $currentPO = POBatch::where('po_no', last($fields["po_group"])["no"])->pluck('request_id');
-          
+
           // if ($currentPO) {
           //   POBatch::where('request_id', reset($currentPO))->update([
           //     'is_modifiable' => true
@@ -1125,10 +1479,10 @@ class TransactionController extends Controller
           //   }
           // }
 
-          POBatch::where('request_id', $request_id)->where('is_add', false)
-            ->where('is_editable', true)
-            ->update(['is_modifiable' => true]);
-
+          POBatch::where("request_id", $request_id)
+            ->where("is_add", false)
+            ->where("is_editable", true)
+            ->update(["is_modifiable" => true]);
 
           if (isset($transaction->transaction_id)) {
             return $this->resultResponse("save", "Transaction", []);
@@ -1162,7 +1516,6 @@ class TransactionController extends Controller
     return $this->resultResponse("not-exist", "Document number", []);
   }
 
-
   public function update(TransactionPostRequest $request, $id)
   {
     $fields = $request->validated();
@@ -1171,6 +1524,177 @@ class TransactionController extends Controller
 
     switch ($fields["document"]["id"]) {
       case 1: //PAD
+        // switch ($request->input("document.payment_type")) {
+        //   case "Partial":
+        //     GenericMethod::documentNoValidationUpdate($request["document"]["no"], $id);
+
+        //     if (empty($fields["po_group"])) {
+        //       $errorMessage = GenericMethod::resultLaravelFormat("po_group", ["PO group required"]);
+        //       return $this->resultResponse("invalid", "", $errorMessage);
+        //     }
+
+        //     $currentTransaction = Transaction::findOrFail($id);
+
+        //     if ($currentTransaction->is_not_editable == 1) {
+        //       $updateData = [
+        //         "document_date" => data_get($fields, "document.date"),
+        //         "remarks" => data_get($fields, "document.remarks"),
+        //         "company" => data_get($fields, "document.company.name"),
+        //         "department_id" => data_get($fields, "document.department.id"),
+        //         "department" => data_get($fields, "document.department.name"),
+        //         "location_id" => data_get($fields, "document.location.id"),
+        //         "location" => data_get($fields, "document.location.name"),
+        //         // "referrence_id" => data_get($fields, "document.reference.id"),
+        //         // "referrence_type" => data_get($fields, "document.reference.type"),
+        //         // "referrence_no" => data_get($fields, "document.reference.no"),
+        //         "category_id" => data_get($fields, "document.category.id"),
+        //         "category" => data_get($fields, "document.category.name"),
+        //       ];
+
+        //       if ($currentTransaction->status == "tag-return") {
+        //         $updateData["status"] = "Pending";
+        //         $updateData["state"] = "pending";
+        //       }
+
+        //       $currentTransaction->update($updateData, ["timestamps" => false]);
+
+        //       return $this->resultResponse("update", "Transaction", []);
+        //     }
+
+        //     $fields["po_group"] = GenericMethod::ValidateIfPOExists(
+        //       $fields["po_group"],
+        //       $fields["document"]["company"]["id"],
+        //       $id
+        //     );
+
+        //     $getAndValidatePOBalance = GenericMethod::getAndValidatePOBalance(
+        //       $fields,
+        //       $fields["document"]["company"]["id"],
+        //       last($fields["po_group"])["no"],
+        //       $fields["document"]["amount"],
+        //       $fields["po_group"],
+        //       $id
+        //     );
+
+        //     if (gettype($getAndValidatePOBalance) == "object") {
+        //       return $this->resultResponse("invalid", "", $getAndValidatePOBalance);
+        //     }
+
+        //     if (gettype($getAndValidatePOBalance) == "array") {
+        //       //Additional PO Validation
+        //       $new_po = $getAndValidatePOBalance["new_po_group"];
+        //       $po_total_amount = $getAndValidatePOBalance["po_total_amount"];
+        //       $balance_with_additional_total_po_amount = $getAndValidatePOBalance["balance"];
+
+        //       $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
+        //       GenericMethod::updatePO(
+        //         $request_id,
+        //         $fields["po_group"],
+        //         $po_total_amount,
+        //         strtoupper($fields["document"]["payment_type"]),
+        //         $id
+        //       );
+
+        //       $transaction = GenericMethod::updateTransaction(
+        //         $id,
+        //         $po_total_amount,
+        //         $request_id,
+        //         $date_requested,
+        //         $request,
+        //         $balance_with_additional_total_po_amount,
+        //         $changes
+        //       );
+        //       if (isset($transaction->transaction_id)) {
+        //         return $this->resultResponse("update", "Transaction", []);
+        //       }
+        //     }
+
+        //     $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
+        //     $balance_po_ref_amount = $po_total_amount - $fields["document"]["amount"];
+
+        //     if (isset($getAndValidatePOBalance)) {
+        //       $balance_po_ref_amount = $getAndValidatePOBalance;
+        //     }
+
+        //     $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
+        //     GenericMethod::updatePO(
+        //       $request_id,
+        //       $fields["po_group"],
+        //       $po_total_amount,
+        //       strtoupper($fields["document"]["payment_type"]),
+        //       $id
+        //     );
+
+        //     $transaction = GenericMethod::updateTransaction(
+        //       $id,
+        //       $po_total_amount,
+        //       $request_id,
+        //       $date_requested,
+        //       $request,
+        //       $balance_po_ref_amount,
+        //       $changes
+        //     );
+        //     if (isset($transaction->transaction_id)) {
+        //       return $this->resultResponse("update", "Transaction", []);
+        //     }
+        //     break;
+
+        //   default:
+        //     GenericMethod::documentNoValidationUpdate($request["document"]["no"], $id);
+
+        //     if (empty($fields["po_group"])) {
+        //       $errorMessage = GenericMethod::resultLaravelFormat("po_group", ["PO group required"]);
+        //       return $this->resultResponse("invalid", "", $errorMessage);
+        //     }
+
+        //     $duplicatePO = GenericMethod::validatePOFullUpdate(
+        //       $fields["document"]["company"]["id"],
+        //       $fields["po_group"],
+        //       $id
+        //     );
+        //     if (isset($duplicatePO)) {
+        //       return $this->resultResponse("invalid", "", $duplicatePO);
+        //     }
+
+        //     $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
+
+        //     $errorMessage = GenericMethod::validateWith1PesoDifference(
+        //       "po_group.amount",
+        //       "Document",
+        //       $fields["document"]["amount"],
+        //       $po_total_amount
+        //     );
+        //     if (!empty($errorMessage)) {
+        //       return GenericMethod::resultResponse("invalid", "", $errorMessage);
+        //     }
+
+        //     $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
+        //     GenericMethod::updatePO(
+        //       $request_id,
+        //       $fields["po_group"],
+        //       $po_total_amount,
+        //       strtoupper($fields["document"]["payment_type"]),
+        //       $id
+        //     );
+
+        //     $transaction = GenericMethod::updateTransaction(
+        //       $id,
+        //       $po_total_amount,
+        //       $request_id,
+        //       $date_requested,
+        //       $request,
+        //       0,
+        //       $changes
+        //     );
+
+        //     if ($transaction == "Nothing Has Changed") {
+        //       return $this->resultResponse("nothing-has-changed", "Transaction", []);
+        //     }
+        //     if (isset($transaction->transaction_id)) {
+        //       return $this->resultResponse("update", "Transaction", []);
+        //     }
+        //     break;
+        // }
         GenericMethod::documentNoValidationUpdate($request["document"]["no"], $id);
 
         if (empty($fields["po_group"])) {
@@ -1342,6 +1866,171 @@ class TransactionController extends Controller
         if (isset($transaction->transaction_id)) {
           return $this->resultResponse("update", "Transaction", []);
         }
+
+        // $transaction = Transaction::find($id);
+
+        // $count = Transaction::where("transaction_id", $transaction->transaction_id)
+        //   ->distinct("request_id")
+        //   ->count("request_id");
+
+        // if (
+        //   Tagging::where("transaction_id", $transaction->transaction_id)
+        //     ->whereNotIn("status", ["tag-return", "tag-void"])
+        //     ->exists()
+        // ) {
+        //   return GenericMethod::resultResponse("ongoing", "", []);
+        // }
+
+        // if ($transaction->status == "tag-return") {
+        //   $prm_group = $fields["prm_group"];
+        //   switch ($transaction->category) {
+        //     case "rental":
+        //       $updateDetails = [
+        //         "total_gross" => null,
+        //         "total_cwt" => null,
+        //         "total_net" => null,
+        //         "period_covered" => null,
+        //         "prm_multiple_from" => null,
+        //         "prm_multiple_to" => null,
+        //         "cheque_date" => null,
+        //         "gross_amount" => null,
+        //         "witholding_tax" => null,
+        //         "net_amount" => null,
+        //       ];
+
+        //       // Transaction::where("transaction_id", $transaction->transaction_id)
+        //       //   ->where("state", "!=", "void")
+        //       //   ->update($updateDetails);
+
+        //       $errors = [];
+        //       $error_date_format = [];
+        //       $error_period_covered = [];
+        //       $error_multiple_cheque = [];
+        //       $error_amount_per_line = [];
+        //       $total_gross = array_sum(array_column($prm_group, "gross_amount"));
+        //       $total_cwt = array_sum(array_column($prm_group, "wht"));
+        //       $total_net = array_sum(array_column($prm_group, "net_of_amount"));
+        //       $total_witholding_and_net = $total_cwt + $total_net;
+        //       $cheque_dates_array = array_column($prm_group, "cheque_date");
+        //       $period_covered_array = array_column($prm_group, "period_covered");
+
+        //       $message_if_error = "Document Amount and Total Gross amount not equal.";
+        //       $validate_document_amount = GenericMethod::validate_document_amount(
+        //         $fields["document"]["amount"],
+        //         $total_gross,
+        //         $message_if_error
+        //       );
+        //       if ($validate_document_amount) {
+        //         return $validate_document_amount;
+        //       }
+
+        //       $error_date_format = GenericMethod::validate_prm_date_range_format($prm_group, $errors);
+        //       $error_period_covered = GenericMethod::validate_period_covered($period_covered_array, $errors);
+        //       $error_multiple_cheque = GenericMethod::validate_multiple_cheque_dates($cheque_dates_array, $errors);
+        //       // $error_amount_per_line = GenericMethod::validate_amount_per_line($prm_group, $errors);
+        //       $error_duplicate_transaction = GenericMethod::validate_duplicate_prm_multiple_transaction(
+        //         $prm_group,
+        //         $fields
+        //       );
+        //       $errors = array_merge(
+        //         $error_date_format,
+        //         $error_period_covered,
+        //         $error_multiple_cheque,
+        //         $error_amount_per_line,
+        //         $error_duplicate_transaction
+        //       );
+
+        //       // if ($errors) {
+        //       //   $errors = collect($errors)
+        //       //     ->sortBy(["line", "description"])
+        //       //     ->values();
+        //       //   $error_list = $errors
+        //       //     ->unique(function ($item) {
+        //       //       return $item["line"] . $item["description"];
+        //       //     })
+        //       //     ->values();
+        //       //   // $error_list =  collect($errors)->unique('description')->all();
+        //       //   return GenericMethod::resultResponse("upload-error", "", $error_list);
+        //       // }
+
+        //       // PROCEED RENTAL
+        //       foreach ($prm_group as $key => $prm_batch) {
+        //         $period_covered = isset($prm_batch["period_covered"]) ? $prm_batch["period_covered"] : null;
+        //         $period_covered_array = explode("-", $period_covered);
+        //         $prm_multiple_from = date("Y-m-d", strtotime(trim($period_covered_array[0])));
+        //         $prm_multiple_to = date("Y-m-d", strtotime(trim($period_covered_array[1])));
+        //         $cheque_date = isset($prm_batch["cheque_date"]) ? $prm_batch["cheque_date"] : null;
+        //         $gross_amount = isset($prm_batch["gross_amount"]) ? $prm_batch["gross_amount"] : null;
+        //         $witholding_tax = isset($prm_batch["wht"]) ? $prm_batch["wht"] : null;
+        //         $net_amount = isset($prm_batch["net_of_amount"]) ? $prm_batch["net_of_amount"] : null;
+        //         // $temporary_request_id = $request_id + $key;
+
+        //         Transaction::where("transaction_id", $transaction->transaction_id)
+        //           ->where("state", "!=", "void")
+        //           ->update([
+        //             "document_id" => $fields["document"]["id"],
+        //             "category_id" => $fields["document"]["category"]["id"],
+        //             "category" => $fields["document"]["category"]["name"],
+        //             "company_id" => $fields["document"]["company"]["id"],
+        //             "company" => $fields["document"]["company"]["name"],
+        //             "department_id" => $fields["document"]["department"]["id"],
+        //             "department" => $fields["document"]["department"]["name"],
+        //             "location_id" => $fields["document"]["location"]["id"],
+        //             "location" => $fields["document"]["location"]["name"],
+        //             "supplier_id" => $fields["document"]["supplier"]["id"],
+        //             "supplier" => $fields["document"]["supplier"]["name"],
+        //             "payment_type" => $fields["document"]["payment_type"],
+        //             "document_no" => $fields["document"]["no"],
+        //             "document_date" => isset($fields["document"]["date"]) ? $fields["document"]["date"] : null,
+        //             "document_amount" => $fields["document"]["amount"],
+        //             "remarks" => $fields["document"]["remarks"],
+        //             "document_type" => $fields["document"]["name"],
+        //             "po_total_amount" => $po_total_amount,
+        //             // "request_id" => $temporary_request_id ? $temporary_request_id : null,
+        //             // "request_id" => isset($temporary_request_id) ? $temporary_request_id : null,
+
+        //             // "date_requested" => $date_requested,
+        //             "status" => "Pending",
+        //             // "period_covered" => $period_covered ? $period_covered : null,
+        //             // "prm_multiple_from" => $prm_multiple_from ? $prm_multiple_from : null,
+        //             // "prm_multiple_to" => $prm_multiple_to ? $prm_multiple_to : null,
+        //             // "cheque_date" => $cheque_date ? $cheque_date : null,
+        //             // "gross_amount" => $gross_amount ? $gross_amount : null,
+        //             // "witholding_tax" => $witholding_tax ? $witholding_tax : null,
+        //             // "net_amount" => $net_amount ? $net_amount : null,
+        //             // "total_gross" => $total_gross ? $total_gross : null,
+        //             // "total_cwt" => $total_cwt ? $total_cwt : null,
+        //             // "total_net" => $total_net ? $total_net : null,
+        //           ]);
+        //       }
+        //       break;
+        //   }
+        // } else {
+        //   GenericMethod::documentNoValidationUpdate($request["document"]["no"], $id, $request["transaction"]["no"]);
+        //   $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
+        //   $transaction = GenericMethod::updateTransaction(
+        //     $id,
+        //     $po_total_amount,
+        //     $request_id,
+        //     $date_requested,
+        //     $request,
+        //     0,
+        //     $changes
+        //   );
+
+        //   // return $transaction;
+
+        //   if ($transaction == "Nothing Has Changed") {
+        //     return $this->resultResponse("nothing-has-changed", "Transaction", []);
+        //   } elseif ($transaction == "On Going Transaction") {
+        //     return GenericMethod::resultResponse("ongoing", "", []);
+        //   }
+
+        //   if (isset($transaction->transaction_id)) {
+        //     return $this->resultResponse("update", "Transaction", []);
+        //   }
+        // }
+
         break;
 
       case 6: //Utilities
@@ -1358,7 +2047,7 @@ class TransactionController extends Controller
           data_get($fields, "document.utility.receipt_no"),
           $id
         );
-        
+
         if (isset($duplicateUtilities)) {
           return $this->resultResponse("invalid", "", $duplicateUtilities);
         }
@@ -1446,8 +2135,6 @@ class TransactionController extends Controller
         break;
 
       case 4: //Receipt
-
-
         // $row = Transaction::find($id);
         // $row->receipt()->create($row->toArray());
 
@@ -1458,7 +2145,6 @@ class TransactionController extends Controller
 
         // Transaction::where('id', $id)->update($row->receipt->toArray());
         // return;
-        
 
         //-------------------------------------------------------------------
 
@@ -1522,7 +2208,6 @@ class TransactionController extends Controller
           }
         }
 
-
         $currentTransaction = Transaction::findOrFail($id);
 
         // $result = POBatch::with('request')->where('request_id', $currentTransaction->request_id)->get();
@@ -1530,30 +2215,30 @@ class TransactionController extends Controller
 
         if ($currentTransaction->is_not_editable == 1) {
           $updateData = [
-              'document_date' => data_get($fields, 'document.date'),
-              'remarks' => data_get($fields, 'document.remarks'),
-              'company' => data_get($fields, 'document.company.name'),
-              'department_id' => data_get($fields, 'document.department.id'),
-              'department' => data_get($fields, 'document.department.name'),
-              'location_id' => data_get($fields, 'document.location.id'),
-              'location' => data_get($fields, 'document.location.name'),
-              'referrence_id' => data_get($fields, 'document.reference.id'),
-              'referrence_type' => data_get($fields, 'document.reference.type'),
-              'referrence_no' => data_get($fields, 'document.reference.no'),
-              'category_id' => data_get($fields, 'document.category.id'),
-              'category' => data_get($fields, 'document.category.name'),
+            "document_date" => data_get($fields, "document.date"),
+            "remarks" => data_get($fields, "document.remarks"),
+            "company" => data_get($fields, "document.company.name"),
+            "department_id" => data_get($fields, "document.department.id"),
+            "department" => data_get($fields, "document.department.name"),
+            "location_id" => data_get($fields, "document.location.id"),
+            "location" => data_get($fields, "document.location.name"),
+            "referrence_id" => data_get($fields, "document.reference.id"),
+            "referrence_type" => data_get($fields, "document.reference.type"),
+            "referrence_no" => data_get($fields, "document.reference.no"),
+            "category_id" => data_get($fields, "document.category.id"),
+            "category" => data_get($fields, "document.category.name"),
           ];
-      
-          if ($currentTransaction->status == 'tag-return') {
-              $updateData['status'] = 'Pending';
-              $updateData['state'] = 'pending';
+
+          if ($currentTransaction->status == "tag-return") {
+            $updateData["status"] = "Pending";
+            $updateData["state"] = "pending";
           }
-      
-          $currentTransaction->update($updateData, ['timestamps' => false]);
-      
+
+          $currentTransaction->update($updateData, ["timestamps" => false]);
+
           return $this->resultResponse("update", "Transaction", []);
         }
-      
+
         $fields["po_group"] = GenericMethod::ValidateIfPOExists(
           $fields["po_group"],
           $fields["document"]["company"]["id"],
@@ -1680,8 +2365,7 @@ class TransactionController extends Controller
         }
         break;
     }
-
-    return $this->resultResponse("not-exist", "Document number", []);
+    // return $this->resultResponse("not-exist", "Document number", []);
   }
 
   public function getPODetails(PODetailsRequest $request)
@@ -1764,12 +2448,13 @@ class TransactionController extends Controller
     return $this->resultResponse("success-no-content", "", []);
   }
 
-  public function validateSOANumber(Request $request) {
-
+  public function validateSOANumber(Request $request)
+  {
     $transaction_id = $request->transaction_id;
 
     $existSOA = Transaction::where(function ($query) use ($request) {
-      $query->where(function ($query) use ($request) {
+      $query
+        ->where(function ($query) use ($request) {
           $query
             ->where(function ($query) use ($request) {
               $query->where("utilities_from", "<", $request->from)->where("utilities_to", ">", $request->from);
@@ -1784,19 +2469,22 @@ class TransactionController extends Controller
           });
         });
     })
-    ->where('utilities_receipt_no', $request->utilities_receipt_no)
-    ->where('supplier_id', $request->supplier_id)
-    ->where('company_id', $request->company_id)
-    ->where('state', '!=', 'void')
-    ->when(isset($transaction_id), function ($query) use ($transaction_id) {
-      $query->where("id", "<>", $transaction_id);
-    })
-    ->count();
+      ->where("utilities_receipt_no", $request->utilities_receipt_no)
+      ->where("supplier_id", $request->supplier_id)
+      ->where("company_id", $request->company_id)
+      ->where("state", "!=", "void")
+      ->when(isset($transaction_id), function ($query) use ($transaction_id) {
+        $query->where("id", "<>", $transaction_id);
+      })
+      ->count();
 
     if ($existSOA > 0) {
-      return $this->resultResponse("invalid", "", GenericMethod::resultLaravelFormat("document.utility.receipt_no", ["SOA/Reference number already exist."]));
+      return $this->resultResponse(
+        "invalid",
+        "",
+        GenericMethod::resultLaravelFormat("document.utility.receipt_no", ["SOA/Reference number already exist."])
+      );
     }
-
   }
 
   public function validatePCFName(Request $request)
@@ -1818,42 +2506,111 @@ class TransactionController extends Controller
 
   public function voidTransaction(Request $request, $id)
   {
-    
     // $transaction = Transaction::with('po_details')->where("id", $id)
     //   ->where("state", "!=", "void")
     //   ->first();
 
-    $transaction = Transaction::with('po_details')
-    ->where("id", $id)
-    ->where("state", "!=", "void")
-    ->first();
+    $transaction = Transaction::with("po_details")
+      ->where("id", $id)
+      ->where("state", "!=", "void")
+      ->first();
 
     $date_requested = date("Y-m-d H:i:s");
     $status = "void";
-
 
     //Make not editable the previous transaction of latest transaction.
     if (!$transaction) {
       return $this->resultResponse("not-found", "Transaction", []);
     } else {
-      if ($transaction->document_id == 4 &&  $transaction->payment_type == 'Partial') {
-
+      if (
+        ($transaction->document_id == 4 || $transaction->document_id == 1) &&
+        $transaction->payment_type == "Partial"
+      ) {
         if ($transaction) {
-            $poNos = $transaction->po_details->pluck('po_no');
+          $poNos = $transaction->po_details->pluck("po_no");
         }
 
-        $currentRequestIds = POBatch::whereIn('po_no', $poNos)->pluck('request_id')->toArray();
+        $currentRequestIds = POBatch::whereIn("po_no", $poNos)
+          ->pluck("request_id")
+          ->toArray();
 
-
-        Transaction::where('request_id', end($currentRequestIds)-1)->update([
-          'is_not_editable' => false
+        Transaction::where("request_id", end($currentRequestIds) - 1)->update([
+          "is_not_editable" => false,
         ]);
 
         // POBatch::where('request_id', end($currentRequestIds)-1)->update([
         //   'is_modifiable' => true
         // ]);
-
       }
+
+      // elseif ($transaction->document_id == 3) {
+      //   $transaction->update([
+      //     "state" => $status,
+      //   ]);
+
+      //   switch ($transaction->category) {
+      //     case "additional rental":
+      //     case "lounge rental":
+      //     case "stall a rental":
+      //     case "stall b rental":
+      //     case "stall c rental":
+      //     case "stall d rental":
+      //     case "cusa rental":
+      //     case "dorm rental":
+      //     case "rental":
+      //       $gross_amount = Transaction::where("transaction_id", $transaction->transaction_id)
+      //         ->where("state", "!=", "void")
+      //         ->sum(DB::raw("gross_amount"));
+
+      //       Transaction::where("transaction_id", $transaction->transaction_id)
+      //         ->where("state", "!=", "void")
+      //         ->update([
+      //           "total_gross" => $gross_amount,
+      //           "document_amount" => $gross_amount,
+      //         ]);
+      //       break;
+
+      //     case "official store leasing":
+      //     case "unofficial store leasing":
+      //     case "leasing":
+      //       $transactionData = Transaction::where("transaction_id", $transaction->transaction_id)
+      //         ->where("state", "!=", "void")
+      //         ->selectRaw(
+      //           "SUM(principal) as principal_amount, SUM(interest) as interest_amount, SUM(cwt) as cwt_amount"
+      //         )
+      //         ->first();
+
+      //       $document_amount =
+      //         $transactionData->principal_amount + $transactionData->interest_amount - $transactionData->cwt_amount;
+
+      //       Transaction::where("transaction_id", $transaction->transaction_id)
+      //         ->where("state", "!=", "void")
+      //         ->update([
+      //           "document_amount" => $document_amount,
+      //         ]);
+
+      //       break;
+
+      //     case "loans":
+      //       $transactionData = Transaction::where("transaction_id", $transaction->transaction_id)
+      //         ->where("state", "!=", "void")
+      //         ->selectRaw(
+      //           "SUM(principal) as principal_amount, SUM(interest) as interest_amount, SUM(cwt) as cwt_amount"
+      //         )
+      //         ->first();
+
+      //       $document_amount =
+      //         $transactionData->principal_amount + $transactionData->interest_amount - $transactionData->cwt_amount;
+
+      //       Transaction::where("transaction_id", $transaction->transaction_id)
+      //         ->where("state", "!=", "void")
+      //         ->update([
+      //           "document_amount" => $document_amount,
+      //         ]);
+
+      //       break;
+      //   }
+      // }
     }
 
     if (!isset($transaction)) {

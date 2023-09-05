@@ -7,19 +7,19 @@ use Illuminate\Database\Eloquent\Model;
 
 class Cheque extends Model
 {
-    use HasFactory;
+  use HasFactory;
 
-    protected $table ='cheques';
+  protected $table = "cheques";
 
-    protected $fillable = [
-        'transaction_id',
-        'treasury_id',
-        'bank_id',
-        'bank_name',
-        'cheque_no',
-        'cheque_date',
-        'cheque_amount',
-        'transaction_type',
-        'entry_type'
-    ];
+  protected $fillable = [
+    "transaction_id",
+    "treasury_id",
+    "bank_id",
+    "bank_name",
+    "cheque_no",
+    "cheque_date",
+    "cheque_amount",
+    "transaction_type",
+    "entry_type",
+  ];
 }
