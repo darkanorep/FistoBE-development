@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\ChequeIndex;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Requests\PODetailsRequest;
@@ -90,6 +91,7 @@ class TransactionController extends Controller
     $cheque_window = ["Treasury Associate"];
     $audit_window = ["Audit Associate"];
     $executive_assistant = ["Executive Assistant"];
+    $gas_window = ["GAS Associate"];
 
     $is_voucher_transfered = $status == "voucher-transfer";
     $is_transmit_transfered = $status == "transmit-transfer";
@@ -100,18 +102,25 @@ class TransactionController extends Controller
       "company_id",
       // ,'tag_no'
     ])
-      ->with("users", function ($query) {
-        return $query->select(["id", "first_name", "middle_name", "last_name", "users.department", "position"]);
-      })
-      ->with("supplier.supplier_type", function ($query) {
-        return $query->select(["id", "type as name", "transaction_days"]);
-      })
-      ->with("po_details", function ($query) {
-        return $query->select(["id", "request_id", "po_no", "po_total_amount"]);
-      })
-      ->with("audit")
-      ->with("executive")
-      ->with("cheques.cheques")
+      ->with([
+        "users:id,first_name,middle_name,last_name,department,position",
+        //          "supplier:id,name,supplier_type_id",
+        "supplier.supplier_type:id,type as name,transaction_days",
+        "po_details:id,request_id,po_no,po_total_amount",
+        "cheques.cheques",
+      ])
+      //      ->with("users", function ($query) {
+      //        return $query->select(["id", "first_name", "middle_name", "last_name", "users.department", "position"]);
+      //      })
+      //      ->with("supplier.supplier_type", function ($query) {
+      //        return $query->select(["id", "type as name", "transaction_days"]);
+      //      })
+      //      ->with("po_details", function ($query) {
+      //        return $query->select(["id", "request_id", "po_no", "po_total_amount"]);
+      //      })
+      //      ->with("audit", "executive", "cheques.cheques")
+      //      ->with("executive")
+      //      ->with("cheques.cheques")
       ->when(!empty($document_ids), function ($query) use ($document_ids) {
         $query->whereIn("document_id", $document_ids);
       })
@@ -179,7 +188,7 @@ class TransactionController extends Controller
             },
             function ($query) use ($status) {
               $query->when(
-                strtolower($status) == "return-return",
+                strtolower($status) == "return-request",
                 function ($query) use ($status) {
                   $query->whereIn("status", ["tag-return"]);
                 },
@@ -230,9 +239,15 @@ class TransactionController extends Controller
             "referrence_no",
             "referrence_amount",
             "net_amount",
+              "cheque_date",
+            "receipt_type",
 
             "status",
             "state",
+              "principal",
+              "interest",
+              "gross_amount",
+              "category"
           ]);
       })
       ->when(in_array($role, $tag_window), function ($query) use ($status) {
@@ -252,8 +267,12 @@ class TransactionController extends Controller
                   $query->when(
                     strtolower($status) == "pending-release", //remove this
                     function ($query) use ($status) {
-                      // $query->whereIn("status", ["cheque-release"]);
                       $query->whereIn("status", ["issue-issue"])->where("is_for_releasing", "=", true);
+//                        $query->where(function ($query) {
+//                            $query->whereIn('status', ["issue-issue"])->where('receipt_type', 'unofficial')->where("is_for_releasing", "=", true);
+//                        })->orWhere(function ($query) {
+//                            $query->where('status', 'discharge-discharge');
+//                        });
                     },
                     function ($query) use ($status) {
                       $query->when(
@@ -269,15 +288,15 @@ class TransactionController extends Controller
                             },
                             function ($query) use ($status) {
                               $query->when(
-                                strtolower($status) == "return-return",
+                                strtolower($status) == "return-tag",
                                 function ($query) use ($status) {
-                                  $query->whereIn("status", ["voucher-return"]);
+                                  $query->whereIn("status", ["voucher-return", "gas-return"]);
                                 },
                                 function ($query) use ($status) {
                                   $query->when(
-                                    strtolower($status) == "return-hold",
+                                    strtolower($status) == "hold-tag",
                                     function ($query) use ($status) {
-                                      $query->whereIn("status", ["voucher-hold"]);
+                                      $query->whereIn("status", ["voucher-hold", "gas-hold"]);
                                     },
                                     function ($query) use ($status) {
                                       $query->when(
@@ -327,9 +346,15 @@ class TransactionController extends Controller
             "referrence_no",
             "referrence_amount",
             "net_amount",
+              "cheque_date",
+              "receipt_type",
 
             "status",
             "state",
+              "principal",
+              "interest",
+              "gross_amount",
+              "category"
           ]);
       })
       ->when(in_array($role, $voucher_window), function ($query) use (
@@ -339,7 +364,7 @@ class TransactionController extends Controller
         $is_transmit_transfered,
         $is_file_transfered
       ) {
-        $query
+        $query->where("distributed_id", $users_id)
           ->when(
             strtolower($status) == "voucher-receive",
             function ($query) {
@@ -349,19 +374,31 @@ class TransactionController extends Controller
               $query->when(
                 strtolower($status) == "pending",
                 function ($query) {
-                  $query->whereIn("status", ["tag-tag", "voucher-transfer"]);
+//                  $query->whereIn("status", ["tag-tag", "voucher-transfer"])->where('receipt_type', 'unofficial');
+                    $query->where(function ($query) {
+                        $query->whereIn('status', ['tag-tag', 'voucher-transfer'])->where('receipt_type', 'unofficial');
+                    })->orWhere(function ($query) {
+                        $query->where('status', 'gas-gas')->where('receipt_type', 'official');
+                    });
                 },
                 function ($query) use ($users_id, $status) {
                   $query->when(
                     strtolower($status) == "pending-transmit",
                     function ($query) {
-                      $query->whereIn("status", ["approve-approve", "transmit-transfer", "inspect-inspect"]);
+                      $query
+                        ->whereIn("status", ["approve-approve", "transmit-transfer"])
+                        ->whereNull("is_for_releasing");
                     },
                     function ($query) use ($users_id, $status) {
                       $query->when(
                         strtolower($status) == "pending-file",
                         function ($query) {
-                          $query->whereIn("status", ["release-release", "file-transfer"]);
+//                          $query->whereIn("status", ["release-release", "file-transfer"]);
+                            $query->where(function ($query) {
+                                $query->whereIn('status', ['release-release'])->where('receipt_type', 'unofficial');
+                            })->orWhere(function ($query) {
+                                $query->where('status', 'discharge-discharge');
+                            });
                         },
                         function ($query) use ($users_id, $status) {
                           $query->when(
@@ -377,25 +414,27 @@ class TransactionController extends Controller
                                 },
                                 function ($query) use ($status) {
                                   $query->when(
-                                    strtolower($status) == "return-return",
+                                    strtolower($status) == "return-voucher",
                                     function ($query) use ($status) {
-                                      $query
-                                        ->whereIn("status", [
-                                          "cheque-return",
-                                          "approve-return",
-                                          "inspect-return",
-                                          "issue-return",
-                                          "audit-return",
-                                        ])
-                                        ->orWhere(function ($query) {
-                                          $query->whereIn("status", ["audit-return"])->where("document_id", 9);
-                                        });
+                                      $query->whereIn("status", [
+                                        "cheque-return",
+                                        "approve-return",
+                                        "inspect-return",
+                                        "issue-return",
+                                        "debit-return",
+                                      ]);
                                     },
                                     function ($query) use ($status) {
                                       $query->when(
-                                        strtolower($status) == "return-hold",
+                                        strtolower($status) == "hold-voucher",
                                         function ($query) use ($status) {
-                                          $query->whereIn("status", ["cheque-hold", "approve-hold"]);
+                                          $query->whereIn("status", [
+                                            "cheque-hold",
+                                            "approve-hold",
+                                            "inspect-hold",
+                                            "issue-hold",
+                                            "debit-hold",
+                                          ]);
                                         },
                                         function ($query) use ($status) {
                                           $query->when(
@@ -447,12 +486,19 @@ class TransactionController extends Controller
             "referrence_no",
             "referrence_amount",
             "net_amount",
+              "cheque_date",
+              "receipt_type",
 
             "status",
             "state",
 
             "distributed_id",
             "distributed_name",
+              "is_cleared",
+              "principal",
+              "interest",
+              "gross_amount",
+              "category"
           ])
           ->when(
             in_array(strtolower($status), ["pending-request", "reverse-receive-approver", "reverse-approve"]),
@@ -543,43 +589,49 @@ class TransactionController extends Controller
             "referrence_no",
             "referrence_amount",
             "net_amount",
+              "cheque_date",
+              "receipt_type",
 
             "approver_id",
             "approver_name",
 
             "status",
             "state",
+              "principal",
+              "interest",
+              "gross_amount",
+              "category"
           ])
           ->where("approver_id", $users_id);
       })
       ->when(in_array($role, $cheque_window), function ($query) use ($status, $is_auto_debit) {
         $query
-          ->when(
-            $is_auto_debit,
-            function ($query) {
-              $query->where("document_type", "Auto Debit");
-            },
-            function ($query) {
-              $query->where("document_type", "<>", "Auto Debit");
-            }
-          )
+          // ->when(
+          //   $is_auto_debit,
+          //   function ($query) {
+          //     $query->where("document_type", "Auto Debit");
+          //   },
+          //   function ($query) {
+          //     $query->where("document_type", "<>", "Auto Debit");
+          //   }
+          // )
           ->when(
             strtolower($status) == "cheque-receive",
-            // function ($query) {
-            //   $query
-            //     ->whereIn("status", ["cheque-receive", "cheque-unhold", "cheque-unreturn"])
-            //     ->whereNull("is_for_releasing");
-            // },
-            function ($query) use ($is_auto_debit) {
+            function ($query) {
               $query
                 ->whereIn("status", ["cheque-receive", "cheque-unhold", "cheque-unreturn"])
-                ->whereNull("is_for_releasing")
-                ->orWhere(function ($query) use ($is_auto_debit) {
-                  $query->when($is_auto_debit, function ($query) {
-                    $query->where("status", "cheque-receive")->where("is_for_releasing", true);
-                  });
-                });
+                ->whereNull("is_for_releasing");
             },
+            // function ($query) use ($is_auto_debit) {
+            //   $query
+            //     ->whereIn("status", ["cheque-receive", "cheque-unhold", "cheque-unreturn"])
+            //     ->whereNull("is_for_releasing")
+            //     ->orWhere(function ($query) use ($is_auto_debit) {
+            //       $query->when($is_auto_debit, function ($query) {
+            //         $query->where("status", "cheque-receive")->where("is_for_releasing", true);
+            //       });
+            //     });
+            // },
             function ($query) use ($status) {
               $query->when(
                 strtolower($status) == "cheque-cheque",
@@ -590,30 +642,42 @@ class TransactionController extends Controller
                   $query->when(
                     strtolower($status) == "pending",
                     function ($query) {
-                      // $query->whereIn("status", ["transmit-transmit", "audit-return"])->where(function ($query) {
-                      //   $query->whereNull("is_for_voucher_audit")->orWhere("is_for_releasing", true);
-                      // });
-                      $query->whereIn("status", ["transmit-transmit"])->where(function ($query) {
-                        $query->whereNull("is_for_voucher_audit")->orWhere("is_for_releasing", true);
-                      });
+                      $query
+                        ->whereIn("status", ["transmit-transmit"])
+                        ->where(function ($query) {
+                          $query->whereNull("is_for_voucher_audit")->orWhere("is_for_releasing", true);
+                        })
+                        ->orWhere(function ($query) {
+                          $query->where("status", "inspect-inspect")->where("document_id", 8);//PCF
+                        });
                     },
                     function ($query) use ($status) {
                       $query->when(
                         strtolower($status) == "pending-clear",
                         function ($query) {
-                          $query->whereIn("status", ["file-file"]);
+                          $query->whereIn("status", [
+                              "release-release",
+                              "file-receive",
+                              "file-file",
+                              "discharge-receive",
+                              "discharge-discharge"
+                          ])->whereNull('is_cleared');
                         },
                         function ($query) use ($status) {
                           $query->when(
                             strtolower($status) == "return-return",
                             function ($query) use ($status) {
-                              $query->whereIn("status", ["release-return", "reverse-return"]);
+                              $query->whereIn("status", ["reverse-return"]);
                             },
                             function ($query) use ($status) {
                               $query->when(
-                                strtolower($status) == "return-hold",
+                                // strtolower($status) == "return-hold",
+                                // function ($query) use ($status) {
+                                //   $query->whereIn("status", ["release-hold"]);
+                                // }
+                                strtolower($status) == "hold-cheque",
                                 function ($query) use ($status) {
-                                  $query->whereIn("status", ["release-hold"]);
+                                  $query->whereIn("status", ["audit-hold"]);
                                 },
                                 function ($query) use ($status) {
                                   $query->when(
@@ -644,7 +708,44 @@ class TransactionController extends Controller
                                                     ->where("is_for_releasing", true);
                                                 },
                                                 function ($query) use ($status) {
-                                                  $query->where("status", preg_replace("/\s+/", "", $status));
+                                                  $query->when(
+                                                    strtolower($status) == "pending-debit",
+                                                    function ($query) {
+                                                      $query
+                                                        ->where("document_id", 9)
+                                                        ->where("status", "inspect-inspect");
+                                                    },
+                                                    function ($query) use ($status) {
+                                                      $query->when(
+                                                        strtolower($status) == "return-cheque",
+                                                        function ($query) {
+                                                          $query->whereIn("status", ["audit-return"]);
+                                                        },
+                                                        function ($query) use ($status) {
+                                                          $query->when(
+                                                            strtolower($status) == "return-release",
+                                                            function ($query) {
+                                                              $query->whereIn("status", ["release-return"]);
+                                                            },
+                                                            function ($query) use ($status) {
+                                                              $query->when(
+                                                                  strtolower($status) == "clear-clear",
+                                                                  function ($query) {
+                                                                      $query->where('is_cleared', true);
+                                                                  },
+                                                                  function ($query) use ($status) {
+                                                                      $query->where(
+                                                                          "status",
+                                                                          preg_replace("/\s+/", "", $status)
+                                                                      );
+                                                                  }
+                                                              );
+                                                            }
+                                                          );
+                                                        }
+                                                      );
+                                                    }
+                                                  );
                                                 }
                                               );
                                             }
@@ -681,7 +782,9 @@ class TransactionController extends Controller
 
             "company_id",
             "company",
+            "department_id",
             "department",
+            "location_id",
             "location",
 
             "document_no",
@@ -689,9 +792,18 @@ class TransactionController extends Controller
             "referrence_no",
             "referrence_amount",
             "net_amount",
+              "cheque_date",
+              "receipt_type",
 
             "status",
             "state",
+            "voucher_no",
+            "voucher_month",
+              "is_cleared",
+              "principal",
+              "interest",
+              "gross_amount",
+              "category"
           ]);
       })
       ->when(in_array($role, $audit_window), function ($query) use ($status) {
@@ -728,13 +840,13 @@ class TransactionController extends Controller
                       $query->whereIn("status", ["transmit-transmit"])->where("is_for_voucher_audit", true);
                     },
                     function ($query) use ($status) {
-                      // $query->where("status", preg_replace("/\s+/", "", $status));
                       $query->when(
-                        strtolower($status) == "audit-audit",
+                        strtolower($status) == "inspect-inspect",
                         function ($query) {
-                          $query->whereIn("status", ["audit-audit"])->orWhere(function ($query) {
-                            $query->where("document_id", 9)->where("is_for_releasing", true);
-                          });
+                          // $query->whereIn("status", ["audit-audit"])->orWhere(function ($query) {
+                          //   $query->where("document_id", 9)->where("is_for_releasing", true);
+                          // });
+                          $query->whereIn("status", ["inspect-inspect"]);
                         },
                         function ($query) use ($status) {
                           $query->where("status", preg_replace("/\s+/", "", $status));
@@ -770,12 +882,18 @@ class TransactionController extends Controller
             "referrence_no",
             "referrence_amount",
             "net_amount",
+              "cheque_date",
+              "receipt_type",
 
             "approver_id",
             "approver_name",
 
             "status",
             "state",
+              "principal",
+              "interest",
+              "gross_amount",
+              "category"
           ]);
       })
       ->when(in_array($role, $executive_assistant), function ($query) use ($status) {
@@ -821,14 +939,85 @@ class TransactionController extends Controller
             "referrence_no",
             "referrence_amount",
             "net_amount",
+              "cheque_date",
+              "receipt_type",
 
             "approver_id",
             "approver_name",
 
             "status",
             "state",
+              "principal",
+              "interest",
+              "gross_amount",
+              "category"
           ]);
       })
+        ->when(in_array($role, $gas_window), function ($query) use ($status) {
+            $query
+                ->when(
+                    strtolower($status) == "gas-receive",
+                    function ($query) {
+                        $query->whereIn("status", ["gas-receive", "gas-unhold", "gas-unreturn"]);
+                    },
+                    function ($query) use ($status) {
+                        $query->when(
+                            strtolower($status) == "pending",
+                            function ($query) {
+                                $query->whereIn("status", ["tag-tag"])->where('receipt_type', 'official');
+                            },
+                            function ($query) use ($status) {
+                                $query->when(
+                                    strtolower($status) == 'pending-discharge',
+                                    function ($query) {
+                                        $query->whereIn("status", ["release-release"])->where('receipt_type', 'official');
+                                    },
+                                    function ($query) use ($status) {
+                                        $query->where("status", preg_replace("/\s+/", "", $status));
+                                    }
+                                );
+                            }
+                        );
+                    }
+                )
+                ->select([
+                    "id",
+                    "users_id",
+                    "request_id",
+                    "supplier_id",
+                    "document_id",
+                    "tag_no",
+
+                    "transaction_id",
+                    "document_type",
+                    "payment_type",
+                    "remarks",
+                    "date_requested",
+
+                    "company_id",
+                    "company",
+                    "department",
+                    "location",
+
+                    "document_no",
+                    "document_amount",
+                    "referrence_no",
+                    "referrence_amount",
+                    "net_amount",
+                    "cheque_date",
+                    "receipt_type",
+
+                    "approver_id",
+                    "approver_name",
+
+                    "status",
+                    "state",
+                    "principal",
+                    "interest",
+                    "gross_amount",
+                    "category"
+                ]);
+        })
       ->latest("updated_at")
       ->paginate($rows);
 
@@ -1501,11 +1690,20 @@ class TransactionController extends Controller
         if ($is_duplicate) {
           return $this->resultResponse("invalid", "", $is_duplicate);
         }
-        GenericMethod::validate_debit_amount(
-          $fields["document"]["amount"],
-          $fields["autoDebit_group"],
-          "Document amount and net of cwt amount is not equal."
-        );
+        // GenericMethod::validate_debit_amount(
+        //   $fields["document"]["amount"],
+        //   $fields["autoDebit_group"],
+        //   "Document amount and net of cwt amount is not equal."
+        // );
+
+        isset($fields["autoDebit_group"])
+          ? GenericMethod::validate_debit_amount(
+            $fields["document"]["amount"],
+            $fields["autoDebit_group"],
+            "Document amount and net of cwt amount is not equal."
+          )
+          : null;
+
         $transaction = GenericMethod::insertTransaction($transaction_id, null, $request_id, $date_requested, $fields);
         if (isset($transaction->transaction_id)) {
           return $this->resultResponse("save", "Transaction", []);
@@ -1524,230 +1722,244 @@ class TransactionController extends Controller
 
     switch ($fields["document"]["id"]) {
       case 1: //PAD
-        // switch ($request->input("document.payment_type")) {
-        //   case "Partial":
-        //     GenericMethod::documentNoValidationUpdate($request["document"]["no"], $id);
+        switch ($request->input("document.payment_type")) {
+          case "Partial":
+            GenericMethod::documentNoValidationUpdate($request["document"]["no"], $id);
 
-        //     if (empty($fields["po_group"])) {
-        //       $errorMessage = GenericMethod::resultLaravelFormat("po_group", ["PO group required"]);
-        //       return $this->resultResponse("invalid", "", $errorMessage);
-        //     }
+            if (empty($fields["po_group"])) {
+              $errorMessage = GenericMethod::resultLaravelFormat("po_group", ["PO group required"]);
+              return $this->resultResponse("invalid", "", $errorMessage);
+            }
 
-        //     $currentTransaction = Transaction::findOrFail($id);
+            $currentTransaction = Transaction::findOrFail($id);
 
-        //     if ($currentTransaction->is_not_editable == 1) {
-        //       $updateData = [
-        //         "document_date" => data_get($fields, "document.date"),
-        //         "remarks" => data_get($fields, "document.remarks"),
-        //         "company" => data_get($fields, "document.company.name"),
-        //         "department_id" => data_get($fields, "document.department.id"),
-        //         "department" => data_get($fields, "document.department.name"),
-        //         "location_id" => data_get($fields, "document.location.id"),
-        //         "location" => data_get($fields, "document.location.name"),
-        //         // "referrence_id" => data_get($fields, "document.reference.id"),
-        //         // "referrence_type" => data_get($fields, "document.reference.type"),
-        //         // "referrence_no" => data_get($fields, "document.reference.no"),
-        //         "category_id" => data_get($fields, "document.category.id"),
-        //         "category" => data_get($fields, "document.category.name"),
-        //       ];
+            if ($currentTransaction->is_not_editable == 1) {
+              $updateData = [
+                "document_no" => data_get($fields, "document.no"),
+                "document_date" => data_get($fields, "document.date"),
+                "remarks" => data_get($fields, "document.remarks"),
+                "company" => data_get($fields, "document.company.name"),
+                "department_id" => data_get($fields, "document.department.id"),
+                "department" => data_get($fields, "document.department.name"),
+                "location_id" => data_get($fields, "document.location.id"),
+                "location" => data_get($fields, "document.location.name"),
+                // "referrence_id" => data_get($fields, "document.reference.id"),
+                // "referrence_type" => data_get($fields, "document.reference.type"),
+                // "referrence_no" => data_get($fields, "document.reference.no"),
+                "category_id" => data_get($fields, "document.category.id"),
+                "category" => data_get($fields, "document.category.name"),
+                  "business_unit_id" => data_get($fields, "document.business_unit.id"),
+                  "business_unit" => data_get($fields, "document.business_unit.name"),
+                  "sub_unit_id" => data_get($fields, "document.sub_unit.id"),
+                  "sub_unit" => data_get($fields, "document.sub_unit.name"),
+              ];
 
-        //       if ($currentTransaction->status == "tag-return") {
-        //         $updateData["status"] = "Pending";
-        //         $updateData["state"] = "pending";
-        //       }
+              if ($currentTransaction->status == "tag-return") {
+                $updateData["status"] = "Pending";
+                $updateData["state"] = "pending";
+              }
 
-        //       $currentTransaction->update($updateData, ["timestamps" => false]);
+              $currentTransaction->update($updateData, ["timestamps" => false]);
+              $poGroups = data_get($fields, "po_group");
 
-        //       return $this->resultResponse("update", "Transaction", []);
-        //     }
+              for ($i = 0; $i < count($poGroups); $i++) {
+                POBatch::where("request_id", $currentTransaction->request_id)
+                  ->where("po_no", $poGroups[$i]["no"])
+                  ->update([
+                    "rr_group" => $poGroups[$i]["rr_no"],
+                  ]);
+              }
 
-        //     $fields["po_group"] = GenericMethod::ValidateIfPOExists(
-        //       $fields["po_group"],
-        //       $fields["document"]["company"]["id"],
-        //       $id
-        //     );
+              return $this->resultResponse("update", "Transaction", []);
+            }
 
-        //     $getAndValidatePOBalance = GenericMethod::getAndValidatePOBalance(
-        //       $fields,
-        //       $fields["document"]["company"]["id"],
-        //       last($fields["po_group"])["no"],
-        //       $fields["document"]["amount"],
-        //       $fields["po_group"],
-        //       $id
-        //     );
+            $fields["po_group"] = GenericMethod::ValidateIfPOExists(
+              $fields["po_group"],
+              $fields["document"]["company"]["id"],
+              $id
+            );
 
-        //     if (gettype($getAndValidatePOBalance) == "object") {
-        //       return $this->resultResponse("invalid", "", $getAndValidatePOBalance);
-        //     }
+            $getAndValidatePOBalance = GenericMethod::getAndValidatePOBalance(
+              $fields,
+              $fields["document"]["company"]["id"],
+              last($fields["po_group"])["no"],
+              $fields["document"]["amount"],
+              $fields["po_group"],
+              $id
+            );
 
-        //     if (gettype($getAndValidatePOBalance) == "array") {
-        //       //Additional PO Validation
-        //       $new_po = $getAndValidatePOBalance["new_po_group"];
-        //       $po_total_amount = $getAndValidatePOBalance["po_total_amount"];
-        //       $balance_with_additional_total_po_amount = $getAndValidatePOBalance["balance"];
+            if (gettype($getAndValidatePOBalance) == "object") {
+              return $this->resultResponse("invalid", "", $getAndValidatePOBalance);
+            }
 
-        //       $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
-        //       GenericMethod::updatePO(
-        //         $request_id,
-        //         $fields["po_group"],
-        //         $po_total_amount,
-        //         strtoupper($fields["document"]["payment_type"]),
-        //         $id
-        //       );
+            if (gettype($getAndValidatePOBalance) == "array") {
+              //Additional PO Validation
+              $new_po = $getAndValidatePOBalance["new_po_group"];
+              $po_total_amount = $getAndValidatePOBalance["po_total_amount"];
+              $balance_with_additional_total_po_amount = $getAndValidatePOBalance["balance"];
 
-        //       $transaction = GenericMethod::updateTransaction(
-        //         $id,
-        //         $po_total_amount,
-        //         $request_id,
-        //         $date_requested,
-        //         $request,
-        //         $balance_with_additional_total_po_amount,
-        //         $changes
-        //       );
-        //       if (isset($transaction->transaction_id)) {
-        //         return $this->resultResponse("update", "Transaction", []);
-        //       }
-        //     }
+              $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
+              GenericMethod::updatePO(
+                $request_id,
+                $fields["po_group"],
+                $po_total_amount,
+                strtoupper($fields["document"]["payment_type"]),
+                $id
+              );
 
-        //     $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
-        //     $balance_po_ref_amount = $po_total_amount - $fields["document"]["amount"];
+              $transaction = GenericMethod::updateTransaction(
+                $id,
+                $po_total_amount,
+                $request_id,
+                $date_requested,
+                $request,
+                $balance_with_additional_total_po_amount,
+                $changes
+              );
+              if (isset($transaction->transaction_id)) {
+                return $this->resultResponse("update", "Transaction", []);
+              }
+            }
 
-        //     if (isset($getAndValidatePOBalance)) {
-        //       $balance_po_ref_amount = $getAndValidatePOBalance;
-        //     }
+            $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
+            $balance_po_ref_amount = $po_total_amount - $fields["document"]["amount"];
 
-        //     $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
-        //     GenericMethod::updatePO(
-        //       $request_id,
-        //       $fields["po_group"],
-        //       $po_total_amount,
-        //       strtoupper($fields["document"]["payment_type"]),
-        //       $id
-        //     );
+            if (isset($getAndValidatePOBalance)) {
+              $balance_po_ref_amount = $getAndValidatePOBalance;
+            }
 
-        //     $transaction = GenericMethod::updateTransaction(
-        //       $id,
-        //       $po_total_amount,
-        //       $request_id,
-        //       $date_requested,
-        //       $request,
-        //       $balance_po_ref_amount,
-        //       $changes
-        //     );
-        //     if (isset($transaction->transaction_id)) {
-        //       return $this->resultResponse("update", "Transaction", []);
-        //     }
-        //     break;
+            $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
+            GenericMethod::updatePO(
+              $request_id,
+              $fields["po_group"],
+              $po_total_amount,
+              strtoupper($fields["document"]["payment_type"]),
+              $id
+            );
 
-        //   default:
-        //     GenericMethod::documentNoValidationUpdate($request["document"]["no"], $id);
+            $transaction = GenericMethod::updateTransaction(
+              $id,
+              $po_total_amount,
+              $request_id,
+              $date_requested,
+              $request,
+              $balance_po_ref_amount,
+              $changes
+            );
+            if (isset($transaction->transaction_id)) {
+              return $this->resultResponse("update", "Transaction", []);
+            }
+            break;
 
-        //     if (empty($fields["po_group"])) {
-        //       $errorMessage = GenericMethod::resultLaravelFormat("po_group", ["PO group required"]);
-        //       return $this->resultResponse("invalid", "", $errorMessage);
-        //     }
+          default:
+            GenericMethod::documentNoValidationUpdate($request["document"]["no"], $id);
 
-        //     $duplicatePO = GenericMethod::validatePOFullUpdate(
-        //       $fields["document"]["company"]["id"],
-        //       $fields["po_group"],
-        //       $id
-        //     );
-        //     if (isset($duplicatePO)) {
-        //       return $this->resultResponse("invalid", "", $duplicatePO);
-        //     }
+            if (empty($fields["po_group"])) {
+              $errorMessage = GenericMethod::resultLaravelFormat("po_group", ["PO group required"]);
+              return $this->resultResponse("invalid", "", $errorMessage);
+            }
 
-        //     $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
+            $duplicatePO = GenericMethod::validatePOFullUpdate(
+              $fields["document"]["company"]["id"],
+              $fields["po_group"],
+              $id
+            );
+            if (isset($duplicatePO)) {
+              return $this->resultResponse("invalid", "", $duplicatePO);
+            }
 
-        //     $errorMessage = GenericMethod::validateWith1PesoDifference(
-        //       "po_group.amount",
-        //       "Document",
-        //       $fields["document"]["amount"],
-        //       $po_total_amount
-        //     );
-        //     if (!empty($errorMessage)) {
-        //       return GenericMethod::resultResponse("invalid", "", $errorMessage);
-        //     }
+            $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
 
-        //     $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
-        //     GenericMethod::updatePO(
-        //       $request_id,
-        //       $fields["po_group"],
-        //       $po_total_amount,
-        //       strtoupper($fields["document"]["payment_type"]),
-        //       $id
-        //     );
+            $errorMessage = GenericMethod::validateWith1PesoDifference(
+              "po_group.amount",
+              "Document",
+              $fields["document"]["amount"],
+              $po_total_amount
+            );
+            if (!empty($errorMessage)) {
+              return GenericMethod::resultResponse("invalid", "", $errorMessage);
+            }
 
-        //     $transaction = GenericMethod::updateTransaction(
-        //       $id,
-        //       $po_total_amount,
-        //       $request_id,
-        //       $date_requested,
-        //       $request,
-        //       0,
-        //       $changes
-        //     );
+            $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
+            GenericMethod::updatePO(
+              $request_id,
+              $fields["po_group"],
+              $po_total_amount,
+              strtoupper($fields["document"]["payment_type"]),
+              $id
+            );
 
-        //     if ($transaction == "Nothing Has Changed") {
-        //       return $this->resultResponse("nothing-has-changed", "Transaction", []);
-        //     }
-        //     if (isset($transaction->transaction_id)) {
-        //       return $this->resultResponse("update", "Transaction", []);
-        //     }
-        //     break;
+            $transaction = GenericMethod::updateTransaction(
+              $id,
+              $po_total_amount,
+              $request_id,
+              $date_requested,
+              $request,
+              0,
+              $changes
+            );
+
+            if ($transaction == "Nothing Has Changed") {
+              return $this->resultResponse("nothing-has-changed", "Transaction", []);
+            }
+            if (isset($transaction->transaction_id)) {
+              return $this->resultResponse("update", "Transaction", []);
+            }
+            break;
+        }
+        // GenericMethod::documentNoValidationUpdate($request["document"]["no"], $id);
+
+        // if (empty($fields["po_group"])) {
+        //   $errorMessage = GenericMethod::resultLaravelFormat("po_group", ["PO group required"]);
+        //   return $this->resultResponse("invalid", "", $errorMessage);
         // }
-        GenericMethod::documentNoValidationUpdate($request["document"]["no"], $id);
 
-        if (empty($fields["po_group"])) {
-          $errorMessage = GenericMethod::resultLaravelFormat("po_group", ["PO group required"]);
-          return $this->resultResponse("invalid", "", $errorMessage);
-        }
+        // $duplicatePO = GenericMethod::validatePOFullUpdate(
+        //   $fields["document"]["company"]["id"],
+        //   $fields["po_group"],
+        //   $id
+        // );
+        // if (isset($duplicatePO)) {
+        //   return $this->resultResponse("invalid", "", $duplicatePO);
+        // }
 
-        $duplicatePO = GenericMethod::validatePOFullUpdate(
-          $fields["document"]["company"]["id"],
-          $fields["po_group"],
-          $id
-        );
-        if (isset($duplicatePO)) {
-          return $this->resultResponse("invalid", "", $duplicatePO);
-        }
+        // $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
 
-        $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
+        // $errorMessage = GenericMethod::validateWith1PesoDifference(
+        //   "po_group.amount",
+        //   "Document",
+        //   $fields["document"]["amount"],
+        //   $po_total_amount
+        // );
+        // if (!empty($errorMessage)) {
+        //   return GenericMethod::resultResponse("invalid", "", $errorMessage);
+        // }
 
-        $errorMessage = GenericMethod::validateWith1PesoDifference(
-          "po_group.amount",
-          "Document",
-          $fields["document"]["amount"],
-          $po_total_amount
-        );
-        if (!empty($errorMessage)) {
-          return GenericMethod::resultResponse("invalid", "", $errorMessage);
-        }
+        // $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
+        // GenericMethod::updatePO(
+        //   $request_id,
+        //   $fields["po_group"],
+        //   $po_total_amount,
+        //   strtoupper($fields["document"]["payment_type"]),
+        //   $id
+        // );
 
-        $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
-        GenericMethod::updatePO(
-          $request_id,
-          $fields["po_group"],
-          $po_total_amount,
-          strtoupper($fields["document"]["payment_type"]),
-          $id
-        );
+        // $transaction = GenericMethod::updateTransaction(
+        //   $id,
+        //   $po_total_amount,
+        //   $request_id,
+        //   $date_requested,
+        //   $request,
+        //   0,
+        //   $changes
+        // );
 
-        $transaction = GenericMethod::updateTransaction(
-          $id,
-          $po_total_amount,
-          $request_id,
-          $date_requested,
-          $request,
-          0,
-          $changes
-        );
-
-        if ($transaction == "Nothing Has Changed") {
-          return $this->resultResponse("nothing-has-changed", "Transaction", []);
-        }
-        if (isset($transaction->transaction_id)) {
-          return $this->resultResponse("update", "Transaction", []);
-        }
+        // if ($transaction == "Nothing Has Changed") {
+        //   return $this->resultResponse("nothing-has-changed", "Transaction", []);
+        // }
+        // if (isset($transaction->transaction_id)) {
+        //   return $this->resultResponse("update", "Transaction", []);
+        // }
         break;
 
       case 5: //Contractor's Billing
@@ -1867,6 +2079,8 @@ class TransactionController extends Controller
           return $this->resultResponse("update", "Transaction", []);
         }
 
+        #----------------------------------------------------------------------#
+
         // $transaction = Transaction::find($id);
 
         // $count = Transaction::where("transaction_id", $transaction->transaction_id)
@@ -1874,7 +2088,7 @@ class TransactionController extends Controller
         //   ->count("request_id");
 
         // if (
-        //   Tagging::where("transaction_id", $transaction->transaction_id)
+        //   Transaction::where("transaction_id", $transaction->transaction_id)
         //     ->whereNotIn("status", ["tag-return", "tag-void"])
         //     ->exists()
         // ) {
@@ -2234,6 +2448,16 @@ class TransactionController extends Controller
             $updateData["state"] = "pending";
           }
 
+          $poGroups = data_get($fields, "po_group");
+
+          for ($i = 0; $i < count($poGroups); $i++) {
+            POBatch::where("request_id", $currentTransaction->request_id)
+              ->where("po_no", $poGroups[$i]["no"])
+              ->update([
+                "rr_group" => $poGroups[$i]["rr_no"],
+              ]);
+          }
+
           $currentTransaction->update($updateData, ["timestamps" => false]);
 
           return $this->resultResponse("update", "Transaction", []);
@@ -2341,12 +2565,22 @@ class TransactionController extends Controller
 
         $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
 
-        GenericMethod::validate_debit_amount(
-          $fields["document"]["amount"],
-          $fields["autoDebit_group"],
-          "Document amount and net of amount is not equal."
-        );
-        GenericMethod::update_debit_attachment($request_id, $fields["autoDebit_group"], $id);
+        // GenericMethod::validate_debit_amount(
+        //   $fields["document"]["amount"],
+        //   $fields["autoDebit_group"],
+        //   "Document amount and net of amount is not equal."
+        // );
+        // GenericMethod::update_debit_attachment($request_id, $fields["autoDebit_group"], $id);
+
+        if ($fields["autoDebit_group"]) {
+          GenericMethod::validate_debit_amount(
+            $fields["document"]["amount"],
+            $fields["autoDebit_group"],
+            "Document amount and net of amount is not equal."
+          );
+          GenericMethod::update_debit_attachment($request_id, $fields["autoDebit_group"], $id);
+        }
+
         $transaction = GenericMethod::updateTransaction(
           $id,
           $po_total_amount,
@@ -2648,4 +2882,124 @@ class TransactionController extends Controller
     }
     return $this->resultResponse("not-found", "Requestor Logs", []);
   }
+
+    public function chequeIndex(Request $request)
+    {
+        $status = $request->input("state", "request");
+        $state = $request->input("state", "request");
+
+        $rows = $request->input("rows", 10);
+
+        $search = $request->input("search");
+
+        $suppliers = json_decode($request->input("suppliers")) ?? [];
+
+        $cheque_from = isset($request["cheque_from"]) ? Carbon::createFromFormat("Y-m-d", $request->input("cheque_from"))->format("Y-m-d") : null;
+        $cheque_to = isset($request["cheque_to"]) ? Carbon::createFromFormat("Y-m-d", $request->input("cheque_to"))->format("Y-m-d") : null;
+
+
+        $transactions = Transaction::with([
+            "users" => function ($query) {
+                return $query->select(["users.id", "users.first_name", "users.middle_name", "users.last_name", "users.department", "users.position"]);
+            },
+            "supplier.supplier_type" => function ($query) {
+                return $query->select(["supplier_types.id", "supplier_types.type as name"]);
+            },
+            "cheques.cheques"
+        ])
+
+            // Supplier Filter
+            ->when(count($suppliers), function ($query) use ($suppliers) {
+                return $query->whereIn("supplier_id", $suppliers);
+            })
+
+            // Cheque Date Filter (Will deprecate)
+            ->when($cheque_from && $cheque_to, function ($query) use ($cheque_from, $cheque_to) {
+                return $query->whereHas("cheques.cheques", function ($query) use ($cheque_from, $cheque_to) {
+                    return $query
+                        ->whereDate("cheque_date", ">=", $cheque_from)
+                        ->whereDate("cheque_date", "<=", $cheque_to);
+                });
+            })
+
+            // Search
+            ->where(function ($query) use ($search) {
+                $query
+                    ->where("remarks", "like", "%" . $search . "%")
+                    ->orWhere("payment_type", "like", "%" . $search . "%")
+
+                    ->orWhere("tag_no", "like", "%" . $search . "%")
+
+                    ->orWhere("company", "like", "%" . $search . "%")
+                    ->orWhere("department", "like", "%" . $search . "%")
+                    ->orWhere("location", "like", "%" . $search . "%")
+                    ->orWhere("supplier", "like", "%" . $search . "%")
+
+                    ->orWhere("document_no", "like", "%" . $search . "%")
+                    ->orWhere("referrence_no", "like", "%" . $search . "%");
+            })
+
+
+            ->when($status == "pending", function ($query) {
+                return $query->where("status", "transmit-transmit");
+            })
+            ->when($status == "cheque-receive", function ($query) {
+                return $query->whereIn("status", ["cheque-receive", "cheque-unhold", "cheque-unreturn"]);
+            })
+
+            ->when($status == "return-cheque", function ($query) {
+                return $query->where("status", "audit-return");
+            })
+            ->when($status == "hold-cheque", function ($query) {
+                return $query->where("status", "audit-hold");
+            })
+
+            ->when(!in_array($status, ["pending", "cheque-receive", "return-cheque", "hold-cheque"]), function ($query) use ($status) {
+                return $query->where("status", preg_replace("/\s+/", "", $status));
+            })
+
+            ->select([
+                "id",
+                "users_id",
+                "supplier_id",
+                "transaction_id",
+
+                "tag_no",
+                "document_id",
+                "document_type",
+                "payment_type",
+                "receipt_type",
+                "voucher_no",
+                "voucher_month",
+                "remarks",
+
+                "company_id",
+                "company",
+                "department_id",
+                "department",
+                "location_id",
+                "location",
+
+                "document_no",
+                "document_amount",
+                "referrence_no",
+                "referrence_amount",
+
+                "date_requested",
+
+                "status",
+                "state",
+            ])
+
+            ->latest("updated_at")
+            ->paginate((int) $rows);
+
+        ChequeIndex::collection($transactions);
+
+        if (count($transactions)) {
+            return $this->resultResponse("fetch", "Transaction", $transactions);
+        }
+
+        return $this->resultResponse("not-found", "Transaction", []);
+    }
 }

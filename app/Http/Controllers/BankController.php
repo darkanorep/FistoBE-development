@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\FistoException;
 
+use App\Http\Requests\BankRequest;
 use App\Models\Bank;
 use App\Models\AccountTitle;
 use Illuminate\Http\Request;
@@ -18,12 +19,26 @@ class BankController extends Controller
     $search =  $request['search'];
     $paginate = (isset($request['paginate']))? $request['paginate']:$paginate = 1;
     $account_title_id = (isset($request['account_title_id']))? $request['account_title_id']:NULL;
-    
+
     $banks = Bank::withTrashed()
-    ->with('AccountTitleOne')
-    ->with('AccountTitleTwo')
+//    ->with('AccountTitleOne')
+//    ->with('AccountTitleTwo')
+        ->with([
+            'AccountTitleOne',
+            'AccountTitleTwo',
+            'CompanyOne',
+            'CompanyTwo',
+            'BusinessUnitOne',
+            'BusinessUnitTwo',
+            'DepartmentOne',
+            'DepartmentTwo',
+            'SubUnitOne',
+            'SubUnitTwo',
+            'LocationOne',
+            'LocationTwo'
+        ])
     ->where(function ($query) use ($status){
-      return ($status==true)?$query->whereNull('deleted_at'):$query->whereNotNull('deleted_at');
+      return ($status==true) ? $query->whereNull('deleted_at') : $query->whereNotNull('deleted_at');
     })
     ->where(function ($query) use ($search) {
       $query->where('banks.code', 'like', '%'.$search.'%')
@@ -33,101 +48,80 @@ class BankController extends Controller
       ->orWhere('banks.location', 'like', '%'.$search.'%');
     })
     ->latest('updated_at');
-    
+
    if($paginate == 0){
      $banks = $banks
     //  ->without('AccountTitleOne')
     //  ->without('AccountTitleTwo')
-     ->get(['account_title_1','account_title_2','id','name','branch']);
+     ->get(['account_title_1','account_title_2','id','name','branch', 'code', 'account_no', 'location', 'account_title_1', 'account_title_2', 'company_id_1', 'company_id_2', 'business_unit_id_1', 'business_unit_id_2', 'department_id_1', 'department_id_2', 'sub_unit_id_1', 'sub_unit_id_2', 'location_id_1', 'location_id_2']);
      $banks = ["banks"=>$banks];
     }else{
       $banks = $banks->paginate($rows);
 
     }
 
-    
+
     if(count($banks)==true){
       return $this->resultResponse('fetch','Bank',$banks);
     }
     return $this->resultResponse('not-found','Bank',[]);
   }
 
-  public function store(Request $request)
+  public function store(BankRequest $request)
   {
-    $fields = $request->validate([
-      'code' => 'required|string',
-      'name' => 'required|string',
-      'branch' => 'required|string',
-      'account_no' => 'required|string',
-      'location' => 'required|string',
-      'account_title_1' => 'required|numeric',
-      'account_title_2' => 'required|numeric'
-    ]);
-
-    $bank_validateCodeDuplicate = Bank::withTrashed()->where('code', $fields['code'])->first();
-    if (!empty($bank_validateCodeDuplicate)) {
-      return $this->resultResponse('registered','Code',["error_field" => "code"]);
-    }
-    $bank_validateBranchDuplicate = Bank::withTrashed()->where('branch', $fields['branch'])->first();
-
-    // if (!empty($bank_validateBranchDuplicate)) {
-    //   return $this->resultResponse('registered','Branch',["error_field" => "branch"]);
-    // }
-    
-    $bank_validateAccountNoDuplicate = Bank::withTrashed()->where('account_no', $fields['account_no'])->first();
-    if (!empty($bank_validateAccountNoDuplicate)) {
-      return $this->resultResponse('registered','Account number',["error_field" => "account_no"]);
-    }
-
-    $new_bank = Bank::create($fields);
-    return $this->resultResponse('save','Bank',$new_bank);
-    
-  }
-    
-  public function update(Request $request, $id)
-  {
-      $specific_bank = Bank::find($id);
-
-      $fields = $request->validate([
-          'code' => ['required'],
-          'name' => ['required'],
-          'branch' => ['required'],
-          'account_no' => ['required'],
-          'location' => ['required'],
-          'account_title_1' => ['required'],
-          'account_title_2' => ['required']
+      $new_bank = Bank::create([
+          'code' => $request->code,
+          'name' => $request->name,
+          'branch' => $request->branch,
+          'account_no' => $request->account_no,
+          'location' => $request->location,
+          'account_title_1' => $request->account_title_1,
+          'account_title_2' => $request->account_title_2,
+          'company_id_1' => $request->company_id_1,
+          'business_unit_id_1' => $request->business_unit_id_1,
+          'business_unit_id_2' => $request->business_unit_id_2,
+          'department_id_1' => $request->department_id_1,
+          'department_id_2' => $request->department_id_2,
+          'sub_unit_id_1' => $request->sub_unit_id_1,
+          'sub_unit_id_2' => $request->sub_unit_id_2,
+          'location_id_1' => $request->location_id_1,
+          'location_id_2' => $request->location_id_2,
       ]);
 
-     
-      if (!$specific_bank) {
-        return $this->resultResponse('not-found','Bank',[]);
+      return $this->resultResponse('save','Bank', $new_bank);
+  }
+
+  public function update(BankRequest $request, $id)
+  {
+      $specific_bank = Bank::where('id', $id)->first();
+
+      if($specific_bank) {
+          $specific_bank->update([
+              'code' => $request->code,
+              'name' => $request->name,
+              'branch' => $request->branch,
+              'account_no' => $request->account_no,
+              'location' => $request->location,
+              'account_title_1' => $request->account_title_1,
+              'account_title_2' => $request->account_title_2,
+              'company_id_1' => $request->company_id_1,
+              'company_id_2' => $request->company_id_2,
+              'business_unit_id_1' => $request->business_unit_id_1,
+              'business_unit_id_2' => $request->business_unit_id_2,
+              'department_id_1' => $request->department_id_1,
+              'department_id_2' => $request->department_id_2,
+              'sub_unit_id_1' => $request->sub_unit_id_1,
+              'sub_unit_id_2' => $request->sub_unit_id_2,
+              'location_id_1' => $request->location_id_1,
+              'location_id_2' => $request->location_id_2,
+          ]);
+
+          return $this->resultResponse('update','Bank', $specific_bank);
       } else {
-        $bank_validateCodeDuplicate = Bank::withTrashed()->where('code', $fields['code'])->where('id','<>',$id)->first();
-
-        if (!empty($bank_validateCodeDuplicate)) {
-          return $this->resultResponse('registered','Code',["error_field" => "code"]);
-        }
-        $bank_validateBranchDuplicate = Bank::withTrashed()->where('branch', $fields['branch'])->where('id','<>',$id)->first();
-    
-        if (!empty($bank_validateBranchDuplicate)) {
-          return $this->resultResponse('registered','Branch',["error_field" => "branch"]);
-        }
-        $bank_validateAccountNoDuplicate = Bank::withTrashed()->where('account_no', $fields['account_no'])->where('id','<>',$id)->first();
-        if (!empty($bank_validateAccountNoDuplicate)) {
-          return $this->resultResponse('registered','Account number',["error_field" => "account_no"]);
-        }
-
-          $specific_bank->code = $request->get('code');
-          $specific_bank->name = $request->get('name');
-          $specific_bank->branch = $request->get('branch');
-          $specific_bank->account_no = $request->get('account_no');
-          $specific_bank->location = $request->get('location');
-          $specific_bank->account_title_1 = $request->get('account_title_1');
-          $specific_bank->account_title_2 = $request->get('account_title_2');
-          return $this->validateIfNothingChangeThenSave($specific_bank,'Bank');
+          return $this->resultResponse('not-found','Bank',[]);
       }
   }
-    
+
   public function change_status(Request $request,$id){
     $status = $request['status'];
     $model = new Bank();
@@ -137,7 +131,7 @@ class BankController extends Controller
   public function import(Request $request)
   {
     $bank_masterlist = Bank::withTrashed()->get();
-    $account_title_masterlist = AccountTitle::withTrashed()->get(); 
+    $account_title_masterlist = AccountTitle::withTrashed()->get();
     $account_title_masterlist_array = $account_title_masterlist->toArray();
     $account_title_titles =  array_column($account_title_masterlist_array,'title');
     $timezone = "Asia/Dhaka";
@@ -172,7 +166,7 @@ class BankController extends Controller
         }
       }
       if (!empty($code)) {
-        
+
         $duplicateCode = $this->getDuplicateInputs($bank_masterlist,$code,'code');
         if ($duplicateCode->count() > 0)
           $errorBag[] = (object) [
@@ -199,8 +193,8 @@ class BankController extends Controller
             "description" => $account_no. " is already registered."
           ];
       }
-      
-      
+
+
       if (!empty($account_title_1)) {
         if(!in_array($account_title_1,$account_title_titles)){
           $errorBag[] = (object) [
@@ -222,7 +216,7 @@ class BankController extends Controller
       }
       $index++;
     }
-      
+
     $original_lines = array_keys($data_validation_fields);
     $duplicate_code = array_values(array_diff($original_lines,array_keys($this->unique_multidim_array($data_validation_fields,'code'))));
 
@@ -230,7 +224,7 @@ class BankController extends Controller
       $input_code = $data_validation_fields[$line]['code'];
       $duplicate_data =  array_filter($data_validation_fields, function ($query) use($input_code){
         return ($query['code'] == $input_code);
-      }); 
+      });
       $duplicate_lines =  implode(",",array_map(function($query){return $query+2;},array_keys($duplicate_data)));
       $firstDuplicateLine =  array_key_first($duplicate_data);
 
@@ -249,7 +243,7 @@ class BankController extends Controller
     //   $input_branch = $data_validation_fields[$line]['branch'];
     //   $duplicate_data =  array_filter($data_validation_fields, function ($query) use($input_branch){
     //     return ($query['branch'] == $input_branch);
-    //   }); 
+    //   });
     //   $duplicate_lines =  implode(",",array_map(function($query){
     //     return $query+2;
     //   },array_keys($duplicate_data)));
@@ -266,14 +260,14 @@ class BankController extends Controller
     // }
 
     $errorBag = array_values(array_unique($errorBag,SORT_REGULAR));
-    
+
     $duplicate_account_no = array_values(array_diff($original_lines,array_keys($this->unique_multidim_array($data_validation_fields,'account_no'))));
     foreach($duplicate_account_no as $line){
 
       $input_account_no = $data_validation_fields[$line]['account_no'];
       $duplicate_data =  array_filter($data_validation_fields, function ($query) use($input_account_no){
         return ($query['account_no'] == $input_account_no);
-      }); 
+      });
       $duplicate_lines =  implode(",",array_map(function($query){
         return $query+2;
       },array_keys($duplicate_data)));
@@ -333,7 +327,7 @@ class BankController extends Controller
     $id = $request['id'];
     $status = $request['status'];
     $paginate = $request['paginate'];
-    
+
     $bank_details = Bank::where('account_title_1',$id)->select('id','name','branch')->get();
     if(!($bank_details)->isEmpty()){
       return $this->resultResponse('fetch','Bank',["banks"=>$bank_details]);

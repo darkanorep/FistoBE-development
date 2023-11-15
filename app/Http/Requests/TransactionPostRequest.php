@@ -141,6 +141,19 @@ class TransactionPostRequest extends FormRequest
       "autoDebit_group.*.interest_due" => "nullable",
       "autoDebit_group.*.cwt" => "nullable",
       "autoDebit_group.*.dst" => "nullable",
+
+        "document.business_unit.id" => [
+            "nullable"
+        ],
+        "document.business_unit.name" => [
+            "nullable"
+        ],
+        "document.sub_unit.id" => [
+            "nullable"
+        ],
+        "document.sub_unit.name" => [
+            "nullable"
+        ],
     ];
   }
 

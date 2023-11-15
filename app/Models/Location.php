@@ -42,7 +42,7 @@ class Location extends Model
     return $this->belongsToMany(Department::class, "location_departments")->select(
       "departments.id",
       "departments.department as name"
-    );
+    )->withTrashed();
   }
   public function departments2()
   {

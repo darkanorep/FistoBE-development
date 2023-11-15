@@ -59,7 +59,7 @@ class CompanyController extends Controller
           return $query->get(["id", "code", "company as name", "updated_at", "deleted_at"]);
         })
         ->when($api_for == "default", function ($query) {
-          return $query->get(["id", "company as name"]);
+          return $query->get(["id", "code", "company as name"]);
         });
 
       if (count($companies) == true) {

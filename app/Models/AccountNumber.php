@@ -27,14 +27,14 @@ class AccountNumber extends Model
 
   public function location()
   {
-    return $this->hasOne(UtilityLocation::class,'id', 'location_id')->select(['id','location']);
+    return $this->hasOne(UtilityLocation::class,'id', 'location_id')->select(['id','location'])->withTrashed();
   }
   public function category()
   {
-    return $this->hasOne(UtilityCategory::class,'id', 'category_id')->select(['id','category']);
+    return $this->hasOne(UtilityCategory::class,'id', 'category_id')->select(['id','category'])->withTrashed();
   }
   public function supplier()
   {
-    return $this->hasOne(Supplier::class,'id', 'supplier_id')->select(['id','name']);
+    return $this->hasOne(Supplier::class,'id', 'supplier_id')->select(['id','name'])->withTrashed();
   }
 }

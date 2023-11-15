@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\VoucherCode;
 use Illuminate\Http\Request;
 use App\Models\Department;
 use App\Models\Company;
@@ -23,7 +24,10 @@ class DepartmentController extends Controller
 
     $departments = Department::withTrashed()
       ->when($paginate === 1, function ($query) {
-        return $query->with("Company");
+        return $query->with([
+            'Company',
+            'voucherCode:id,code'
+        ]);
       })
       ->where(function ($query) use ($status) {
         if ($status == "all") {
@@ -53,10 +57,10 @@ class DepartmentController extends Controller
         ->when($api_for == "vladimir", function ($query) {
           return $query
           ->with("Company")
-          ->get(["id", "code", "department as name", "company", 
+          ->get(["id", "code", "department as name", "company",
           DB::RAW("(CASE WHEN (ISNULL(deleted_at)) THEN 1 ELSE 0 END) as status"),
           "deleted_at"]);
-          
+
           // return $query->get([
           //   "id",
           //   "code",
@@ -72,7 +76,7 @@ class DepartmentController extends Controller
             ->get(["id", "code", "department as name", "company", "updated_at", "deleted_at"]);
         })
         ->when($api_for == "default", function ($query) {
-          return $query->get(["id", "department as name"]);
+          return $query->get(["id", "code", "department as name"]);
         });
 
       if (count($departments)) {
@@ -93,6 +97,12 @@ class DepartmentController extends Controller
       "code" => "required",
       "department" => "required",
       "company" => "required",
+        "voucher_code_id" => [
+            "nullable",
+            Rule::exists("voucher_codes", "id")->where(function ($query) {
+                return $query->whereNull("deleted_at");
+            })
+        ]
     ]);
 
     $department_validateCodeDuplicate = Department::withTrashed()
@@ -115,6 +125,7 @@ class DepartmentController extends Controller
       "code" => $fields["code"],
       "department" => $fields["department"],
       "company" => $fields["company"],
+        "voucher_code_id" => $fields["voucher_code_id"] ?? null,
     ]);
     return $this->resultResponse("save", "Department", $new_department);
   }
@@ -127,6 +138,12 @@ class DepartmentController extends Controller
       "code" => "required",
       "department" => "required",
       "company" => "required",
+        "voucher_code_id" => [
+            "nullable",
+            Rule::exists("voucher_codes", "id")->where(function ($query) {
+                return $query->whereNull("deleted_at");
+            })
+        ]
     ]);
 
     $department_validateCodeDuplicate = Department::withTrashed()
@@ -156,6 +173,7 @@ class DepartmentController extends Controller
       $specific_department->code = $fields["code"];
       $specific_department->department = $fields["department"];
       $specific_department->company = $fields["company"];
+        $specific_department->voucher_code_id = $fields["voucher_code_id"] ?? null;
       return $this->validateIfNothingChangeThenSave($specific_department, "Department");
     }
   }
@@ -179,9 +197,10 @@ class DepartmentController extends Controller
     $index = 2;
     $department_list = Department::withTrashed()->get();
     $company_list = Company::get();
+    $voucher_code_list = VoucherCode::withTrashed()->pluck("code")->toArray();
 
-    $headers = "Code, Department, Company, Status";
-    $template = ["code", "department", "company", "status"];
+    $headers = "Code, Department, Company, Voucher Code, Status";
+    $template = ["code", "department", "company", "voucher_code", "status"];
     $keys = array_keys(current($data));
     $this->validateHeader($template, $keys, $headers);
 
@@ -189,6 +208,7 @@ class DepartmentController extends Controller
       $code = $department["code"];
       $department_name = $department["department"];
       $company = $department["company"];
+      $voucher_code = $department["voucher_code"];
 
       foreach ($department as $key => $value) {
         if (empty($value)) {
@@ -231,6 +251,14 @@ class DepartmentController extends Controller
             "description" => $company . " is not registered.",
           ];
         }
+      }
+
+      if (!in_array($voucher_code, $voucher_code_list)) {
+        $errorBag[] = (object) [
+          "error_type" => "unregistered",
+          "line" => $index,
+          "description" => $voucher_code . " voucher code is not registered.",
+        ];
       }
       $index++;
     }
@@ -299,6 +327,7 @@ class DepartmentController extends Controller
           "code" => $department["code"],
           "department" => $department["department"],
           "company" => Company::where("company", $department["company"])->first()->id,
+            "voucher_code_id" => VoucherCode::where("code", $department["voucher_code"])->first()->id,
           "created_at" => $date,
           "updated_at" => $date,
           "deleted_at" => $status_date,

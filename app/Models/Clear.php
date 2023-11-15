@@ -8,13 +8,14 @@ use Illuminate\Database\Eloquent\Model;
 class Clear extends Model
 {
     use HasFactory;
-    
+
     protected $fillable = [
         "tag_id",
         "date_received",
         "status",
         "date_status",
-        "date_cleared"
+        "date_cleared",
+        "transaction_id"
     ];
 
     public function account_title(){

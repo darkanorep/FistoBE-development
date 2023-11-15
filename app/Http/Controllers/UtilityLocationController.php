@@ -49,13 +49,13 @@ class UtilityLocationController extends Controller
      ->whereNotIn('utility_locations.id',$utility_Locations_ids)
      ->groupBy('utility_locations.id','utility_locations.location')
      ->get(['utility_locations.id','utility_locations.location as name']);
-     
+
      $utility_locations = array("utility_locations"=>$utility_locations);
    }else{
     $utility_locations = $utility_locations->latest()
     ->paginate($rows);
    }
-    
+
     if(count($utility_locations)==true){
       return $this->resultResponse('fetch','Utility Location',$utility_locations);
     }
@@ -71,7 +71,7 @@ class UtilityLocationController extends Controller
     $utility_location_validateDuplicate = DB::table('utility_locations')
       ->where('location', $fields['location'])
       ->get();
-    
+
     if (count($utility_location_validateDuplicate) > 0) {
       return $this->resultResponse('registered','Utility Location',[]);
     }

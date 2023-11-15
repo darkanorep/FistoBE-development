@@ -7,16 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class Filing extends Model
 {
-    use HasFactory;
+  use HasFactory;
 
-    protected $fillable = [
-        'tag_id',
-        'distributed_to',
-        'date_received',
-        'status',
-        'date_status',
-        'reason_id',
-        'remarks'
+  protected $fillable = ["tag_id", "distributed_to", "date_received", "status", "date_status", "reason_id", "remarks"];
 
-    ];
+  public function reason()
+  {
+    return $this->belongsTo(Reason::class, "reason_id");
+  }
 }

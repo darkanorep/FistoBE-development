@@ -41,13 +41,13 @@ class UserController extends Controller
         if(!OrganizationDepartment::where('name',$department)->exists()){
             return $this->resultResponse('not-exist-department','Department',collect(['error_field'=>'department']));
         }
-        
+
         return $this->resultResponse('available','Department',[]);
     }
 
     public function index(Request $request)
     {
-        
+
         $status =  $request['status'];
         $rows =  (empty($request['rows']))?10:(int)$request['rows'];
         $search =  $request['search'];
@@ -55,7 +55,7 @@ class UserController extends Controller
         $categories = Category::all();
         $documents = Document::all();
         $permissions = Permission::all();
-        
+
         $users = User::withTrashed()
         ->where(function ($query) use ($status){
           ($status==true)?$query->whereNull('deleted_at'):$query->whereNotNull('deleted_at');
@@ -75,14 +75,14 @@ class UserController extends Controller
         })
         ->latest('updated_at')
         ->paginate($rows);
-        
+
         if(count($users)!=true){
             return $this->resultResponse('not-found','User',[]);
         }
 
         foreach($users as $user)
         {
-            $permission_list = [];   
+            $permission_list = [];
             $new_permissions = [];
             foreach($user['permissions'] as $permission)
             {
@@ -103,7 +103,7 @@ class UserController extends Controller
 
                 if(count($documents->where('id',$document_type['id']))>0)
                 {
-                
+
                     $document_description = $documents->where('id',$document_type['id']);
                     $category_ids = $document_type['categories'];
                     if(count($category_ids)>0)
@@ -117,7 +117,7 @@ class UserController extends Controller
                                 $new_category_list['name'] = $category_description;
                                 array_push($new_categories,$new_category_list);
                             }
-    
+
                         }
                     }
                     $new_document_type_list['id'] = ($document_description->values()->first()->id);
@@ -142,7 +142,7 @@ class UserController extends Controller
         $document_types =  $fields['document_types'];
         $document_ids = array_column($document_types,'id');
         $fields['password'] = bcrypt(strtolower($fields['username']));
-        
+
         $new_user = User::create($fields);
 
         foreach($document_types as $document_type)
@@ -183,7 +183,7 @@ class UserController extends Controller
         $new_user = User::withTrashed()->with('documents.document_categories')->where('id',$id)->first();
         $document_types =  $specific_user['document_types'];
         $document_ids = array_column($document_types,'document_id');
-        
+
         UserMethod::validateIfExist($user,$id);
         UserMethod::synchWithSedarValidation($specific_user,$id);
         $user =  UserMethod::redefinedUserForSaving($user,$specific_user);
@@ -202,11 +202,11 @@ class UserController extends Controller
                 $document_model = new Document();
                 $category_model = new Category();
                 $document_type_object= $this->validateIfObjectExist($document_model,$document_type['id'],'Document');
-                
+
                 $categories= $document_type['categories'];
                 $this->validateIfObjectsExist($category_model,$categories,'Category');
                 $is_tagged_array_modified_category = $this->isTaggedArrayModified($document_type['categories'],  $document_type_object->document_categories()->get(),'id');
-                
+
                 $document_type_object->document_categories()->detach();
                 $document_type_object->document_categories()->attach($categories,['user_id' => $new_user->id]);
             }
@@ -258,7 +258,7 @@ class UserController extends Controller
             $cookie = cookie('sanctum', $token, 3600);
 
             return response($response, 200)->withCookie($cookie);
-            
+
         }
         return response ([
             "code"=>401,
@@ -311,7 +311,7 @@ class UserController extends Controller
 
     public function reset($id)
     {
-        
+
         if( Auth::user()->role == "Administrator")
         {
            $user = User::find($id);
@@ -321,9 +321,9 @@ class UserController extends Controller
 
            $user->password =bcrypt(strtolower($user->username));
            $user->save();
-            
+
            return $this->resultResponse('password-reset','User',[]);
-        }  
+        }
         return $this->resultResponse('password-error-cred','User',[]);
     }
 }

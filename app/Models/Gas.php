@@ -9,15 +9,17 @@ class Gas extends Model
 {
     use HasFactory;
 
+    protected $table = "gas";
+
     protected $fillable = [
-        "tag_id",
-        "receipt_type",
-        "date_received",
-        "status",
-        "date_status",
-        "witholding_tax",
-        "percentage_tax",
-        "reason_id",
-        "remarks"
+        'transaction_id',
+        'status',
+        'reason_id',
+        'remarks',
     ];
+
+    public function reason()
+    {
+        return $this->belongsTo(Reason::class, "reason_id");
+    }
 }

@@ -3,9 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\FistoException;
-use App\Http\Resources\ChargingResource; 
-use App\Http\Resources\UserResource; 
+use App\Http\Requests\DocumentCoaRequest;
+use App\Http\Resources\ChargingResource;
+use App\Http\Resources\DocumentCoaResource;
+use App\Http\Resources\DocumentResource;
+use App\Http\Resources\UserResource;
 
+use App\Models\TransactionType;
 use App\Models\User;
 use App\Models\Company;
 use App\Models\Department;
@@ -20,6 +24,7 @@ use App\Models\Sedar;
 use App\Models\AccountTitle;
 use App\Models\OrganizationDepartment;
 
+use App\Models\VoucherCode;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -62,11 +67,36 @@ class MasterlistController extends Controller
       return $this->resultResponse('fetch','Location and Category',$data);
   }
 
-  public function accountTitleDropdown(){
-    $data =  array(
-      "account_titles"=>AccountTitle::whereNull('deleted_at')->get(['id','title']));
-      return $this->resultResponse('fetch','Account Title',$data);
-  }
+    public function accountTitleDropdown(){
+        $data =  array(
+            "account_titles"=>AccountTitle::whereNull('deleted_at')->get(['id','title', 'code']));
+        return $this->resultResponse('fetch','Account Title',$data);
+    }
+
+//    public function accountTitleDocumentDropdown($id){
+//        $data = Document::where('id',$id)
+//            ->with([
+//                "categories:id,name"
+//            ])->first();
+//
+//        if ($data) {
+//            return $this->resultResponse('fetch', 'Account Title', new DocumentResource($data));
+//        } else {
+//            return $this->resultResponse('not-found', 'Account Title', []);
+//        }
+//    }
+
+    public function accountTitleTransactionTypeDropdown($id) {
+      $data = TransactionType::where('id', $id)
+          ->first();
+
+      if ($data) {
+            return $this->resultResponse('fetch', 'Account Title', new DocumentResource($data));
+        } else {
+            return $this->resultResponse('not-found', 'Account Title', []);
+      }
+    }
+
   public function transactionAccountTitleDropdown(Request $request){
     $api_for = $request->api_for?$request->api_for: "default";
     $data =  array(
@@ -84,7 +114,7 @@ class MasterlistController extends Controller
 
 
   public function companyDropdown(){
-    $data =  array("companies"=>Company::whereNull('deleted_at')->get(['id','company']));
+    $data =  array("companies"=>Company::whereNull('deleted_at')->get(['id','code','company']));
     return $this->resultResponse('fetch','Company',$data);
   }
 
@@ -108,20 +138,20 @@ class MasterlistController extends Controller
     if(count($data['associates'])==0){
       return $this->resultResponse('not-found','',[]);
     }
-    
+
     return $this->resultResponse('fetch','AP Associate',$data);
   }
-  
+
   public function approverDropdown(Request $request){
     $data =  array("approvers"=>User::where('role','Approver')->get(['id','position',DB::raw("CONCAT(users.first_name,' ',users.last_name)  AS name")]));
     if(count($data['approvers'])==0){
       return $this->resultResponse('not-found','',[]);
     }
-    
+
     return $this->resultResponse('fetch','Approver',$data);
   }
 
-  
+
   public function creditCardAccountNoDropdown(Request $request){
     $credit_card_account_no =  DB::table('credit_cards')
     ->get(['id','account_no as no']);
@@ -130,7 +160,7 @@ class MasterlistController extends Controller
   }
 
 
-  
+
   public function chargingDropdown(){
     $company =  DB::table('companies')
     ->get(['id','company']);
@@ -140,16 +170,16 @@ class MasterlistController extends Controller
   }
 
   public function currentUser(){
-    
+
     $categories = Category::all();
     $documents = Document::all();
-    
+
     $user = User::withTrashed()
     ->select('id','id_prefix','id_no','role','position','first_name','middle_name','last_name','suffix','department','document_types')
     ->where('id',Auth::id())
     ->latest('updated_at')
     ->first();
-    
+
     $new_document_type_list = [];
     $new_document_types = [];
 
@@ -161,7 +191,7 @@ class MasterlistController extends Controller
 
             if(count($documents->where('id',$document_type['id']))>0)
             {
-            
+
                 $document_description = $documents->where('id',$document_type['id']);
                 $category_ids = $document_type['categories'];
                 if(count($category_ids)>0)
@@ -194,12 +224,12 @@ class MasterlistController extends Controller
     $departments = Department::when(isset($request['all']), function($query) {
       return $query->withTrashed();
     })
-    ->get(['id','department as name']);
+    ->get(['id','code','department as name']);
 
     $data = array(
       "departments" => $departments
     );
-    
+
     return $this->resultResponse('fetch','Department',$data);
   }
 
@@ -212,8 +242,24 @@ class MasterlistController extends Controller
     $data = array(
       "departments" => $departments
     );
-    
+
     return $this->resultResponse('fetch','Department',$data);
+  }
+
+  public function voucherCodeDropdown() {
+      $voucher_code = array(
+            "voucher_codes" => VoucherCode::whereNull('deleted_at')->get(['id','code'])
+      );
+
+      return $this->resultResponse('fetch', 'Voucher Code', $voucher_code);
+  }
+
+  public function transactionTypeDropdown() {
+      $transaction_type = array(
+            "transaction_types" => DB::table('transaction_types')->get(['id','transaction_type as name'])
+      );
+
+      return $this->resultResponse('fetch', 'Transaction Type', $transaction_type);
   }
 
   public static function coa(Request $request){
@@ -236,7 +282,7 @@ class MasterlistController extends Controller
 
     return GenericMethod::resultResponse('fetch','Company',$companies);
 
-  } 
+  }
 
   public function genus_orders(){
 

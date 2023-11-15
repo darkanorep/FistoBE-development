@@ -11,7 +11,7 @@ class Supplier extends Model
 {
   use HasFactory;
   use SoftDeletes;
-  
+
   protected $table = 'suppliers';
   protected $fillable = ['code', 'name', 'terms', 'supplier_type_id', 'referrences'];
   protected $hidden = ['pivot','supplier_type_id','created_at'];
@@ -32,11 +32,11 @@ class Supplier extends Model
 
   public function references()
   {
-    return $this->belongsToMany(Referrence::class, 'supplier_referrences', 'supplier_id', 'referrence_id')->select(['referrences.id','referrences.type']);
+    return $this->belongsToMany(Referrence::class, 'supplier_referrences', 'supplier_id', 'referrence_id')->select(['referrences.id','referrences.type'])->withTrashed();
   }
 
   public function supplier_type()
   {
-    return $this->hasOne(SupplierType::class,'id', 'supplier_type_id')->select(['id','type']);
+    return $this->hasOne(SupplierType::class,'id', 'supplier_type_id')->select(['id','type'])->withTrashed();
   }
 }

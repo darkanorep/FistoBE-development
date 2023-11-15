@@ -18,6 +18,6 @@ class Tagging extends Model
     "reason_id",
     "remarks",
     "distributed_id",
-    "distributed_name",
+    "distributed_name"
   ];
 }

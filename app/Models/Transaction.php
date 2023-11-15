@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -66,6 +67,7 @@ class Transaction extends Model
     "balance_document_ref_amount",
     "balance_po_ref_amount",
     "balance_po_ref_qty",
+      "receipt_type",
     "tag_no",
 
     "utilities_category_id",
@@ -113,6 +115,13 @@ class Transaction extends Model
     "voucher_no",
     "is_for_releasing",
     "is_for_voucher_audit",
+      "business_unit_id",
+      "business_unit",
+      "sub_unit_id",
+      "sub_unit",
+      "input_tax",
+      "box_no",
+      "is_cleared"
   ];
 
   public $timestamps = ["created_at"];
@@ -182,7 +191,9 @@ class Transaction extends Model
         "date_status as date",
         "status",
         "reason_id",
-        "remarks"
+        "remarks",
+        "transaction_type_id",
+        "transaction_type_name"
       )
       ->latest();
   }
@@ -197,8 +208,10 @@ class Transaction extends Model
 
   public function clear()
   {
-    return $this->hasMany(Clear::class, "tag_id", "tag_no")
-      ->select("tag_id", "id", "date_status as date", "status", "date_cleared")
+//    return $this->hasMany(Clear::class, "tag_id", "tag_no")
+      return $this->hasMany(Clear::class, "transaction_id", "id")
+//      ->select("tag_id", "id", "date_status as date", "status", "date_cleared")
+          ->select("transaction_id", "id", "date_status as date", "status", "date_cleared")
       ->latest();
   }
 
@@ -206,30 +219,31 @@ class Transaction extends Model
 
   public function tag()
   {
-    return $this->hasMany(Tagging::class, "request_id", "request_id")
-      ->select(
-        "request_id",
-        "tag_id",
-        "transaction_id",
-        "date_status as date",
-        "status",
-        "distributed_id",
-        "distributed_name",
-        "reason_id",
-        "remarks"
-      )
+    return $this->hasMany(Tagging::class)
+//      ->select(
+//        "request_id",
+//        "tag_id",
+//        "transaction_id",
+//        "date_status as date",
+//        "status",
+//        "distributed_id",
+//        "distributed_name",
+//        "reason_id",
+//        "remarks"
+//      )
       ->latest()
       ->limit(1);
   }
 
   public function voucher()
   {
-    return $this->hasMany(Associate::class, "tag_id", "tag_no")
+      return $this->hasMany(Associate::class, "transaction_id", "id")
+//    return $this->hasMany(Associate::class, "tag_id", "tag_no")
       ->select(
         "transaction_id",
         "tag_id",
         "id",
-        "receipt_type",
+//        "receipt_type",
         "percentage_tax",
         "witholding_tax",
         "net_amount",
@@ -238,15 +252,28 @@ class Transaction extends Model
         "date_status as date",
         "status",
         "reason_id",
-        "remarks"
+        "remarks",
+        "transaction_type_id",
+        "transaction_type_name"
       )
       ->latest()
       ->limit(1);
   }
 
+  public function account_titles() {
+      return $this->hasManyThrough(
+          VoucherAccountTitle::class,
+          Associate::class,
+          'transaction_id',
+          'associate_id',
+          'id',
+          'id'
+      );
+  }
+
   public function approve()
   {
-    return $this->hasMany(Approver::class, "tag_id", "tag_no")
+    return $this->hasMany(Approver::class, "transaction_id", "id")
       ->select(
         "transaction_id",
         "tag_id",
@@ -264,15 +291,17 @@ class Transaction extends Model
 
   public function cheques()
   {
-    return $this->hasMany(Treasury::class, "tag_id", "tag_no")
+//    return $this->hasMany(Treasury::class, "tag_id", "tag_no")
+      return $this->hasMany(Treasury::class, "transaction_id", "id")
       ->select("transaction_id", "tag_id", "id", "date_status as date", "status", "reason_id", "remarks")
       ->latest()
       ->limit(1);
   }
 
+
   public function transmit()
   {
-    return $this->hasMany(Transmit::class, "tag_id", "tag_no")
+    return $this->hasMany(Transmit::class, "transaction_id", "id")
       ->select("transaction_id", "tag_id", "id", "date_status as date", "status")
       ->latest()
       ->limit(1);
@@ -280,7 +309,8 @@ class Transaction extends Model
 
   public function release()
   {
-    return $this->hasMany(Release::class, "tag_id", "tag_no")
+//    return $this->hasMany(Release::class, "tag_id", "tag_no")
+        return $this->hasMany(Release::class, "transaction_id", "id")
       ->select(
         "transaction_id",
         "tag_id",
@@ -298,7 +328,8 @@ class Transaction extends Model
 
   public function file()
   {
-    return $this->hasMany(File::class, "tag_id", "tag_no")
+//    return $this->hasMany(File::class, "tag_id", "tag_no")
+        return $this->hasMany(File::class, "transaction_id", "id")
       ->select(
         "transaction_id",
         "tag_id",
@@ -496,6 +527,81 @@ class Transaction extends Model
   //     ->limit(1);
   // }
 
+    public function receiveGas()
+    {
+        return $this->hasOne(Gas::class, "transaction_id")
+            ->select(["transaction_id", "status", "created_at"])
+            ->where("status", "gas-receive")
+            ->latest()
+            ->limit(1);
+    }
+
+    public function gas() {
+        return $this->hasOne(Gas::class, "transaction_id")
+            ->select(["transaction_id", "status", "created_at"])
+            ->where("status", "gas-gas")
+            ->latest()
+            ->limit(1);
+    }
+
+    public function reasonGas() {
+        return $this->hasOne(Gas::class, "transaction_id")
+            ->wherein("status", ["gas-hold", "gas-return", "gas-void"])
+                ->select(["transaction_id", "reason_id", "remarks"])
+                ->latest()
+                ->limit(1);
+    }
+
+    public function statusGas() {
+        return $this->hasOne(Gas::class, "transaction_id")
+            ->whereIn('status', ["gas-receive","gas-gas","gas-hold", "gas-return", "gas-void"])
+                ->with([
+                    "reason" => function ($query) {
+                        $query->select(["reason"]);
+                    },
+                ])
+                ->select(["status"])
+                ->latest()
+                ->limit(1);
+    }
+
+    public function receiveDischarge() {
+        return $this->hasOne(Gas::class, "transaction_id")
+            ->select(["transaction_id", "status", "created_at"])
+            ->where("status", "discharge-receive")
+            ->latest()
+            ->limit(1);
+    }
+
+    public function discharge() {
+        return $this->hasOne(Gas::class, "transaction_id")
+            ->select(["transaction_id", "status", "created_at"])
+            ->where("status", "discharge-discharge")
+            ->latest()
+            ->limit(1);
+    }
+
+    public function reasonDischarge() {
+        return $this->hasOne(Gas::class, "transaction_id")
+            ->wherein("status", ["discharge-hold", "discharge-return", "discharge-void"])
+            ->select(["transaction_id", "reason_id", "remarks"])
+            ->latest()
+            ->limit(1);
+    }
+
+    public function statusDischarge() {
+        return $this->hasOne(Gas::class, "transaction_id")
+            ->whereIn('status', ["discharge-receive","discharge-discharge","discharge-hold", "discharge-return", "discharge-void"])
+            ->with([
+                "reason" => function ($query) {
+                    $query->select(["reason"]);
+                },
+            ])
+            ->select(["status"])
+            ->latest()
+            ->limit(1);
+    }
+
   public function receiveExecutive()
   {
     return $this->hasOne(Executive::class, "transaction_id")
@@ -547,9 +653,9 @@ class Transaction extends Model
 
   public function issueReceive()
   {
-    return $this->hasOne(Audit::class, "transaction_id")
+    return $this->hasOne(Issue::class, "transaction_id")
       ->select(["created_at"])
-      ->where("type", "date")
+//      ->where("type", "date")
       ->where("status", "issue-receive")
       ->latest()
       ->limit(1);
@@ -557,9 +663,9 @@ class Transaction extends Model
 
   public function issueIssue()
   {
-    return $this->hasOne(Audit::class, "transaction_id")
+    return $this->hasOne(Issue::class, "transaction_id")
       ->select(["created_at"])
-      ->where("type", "date")
+//      ->where("type", "date")
       ->where("status", "issue-issue")
       ->latest()
       ->limit(1);
@@ -567,24 +673,72 @@ class Transaction extends Model
 
   public function issueStatus()
   {
-    return $this->hasOne(Audit::class, "transaction_id")
+    return $this->hasOne(Issue::class, "transaction_id")
       ->with([
         "reason" => function ($query) {
           $query->select(["reason"]);
         },
       ])
       ->select(["status"])
-      ->where("type", "date")
+//      ->where("type", "date")
       ->latest()
       ->limit(1);
   }
 
   public function issueReason()
   {
-    return $this->hasOne(Audit::class, "transaction_id")
+    return $this->hasOne(Issue::class, "transaction_id")
       ->select(["transaction_id", "reason_id", "remarks"])
-      ->where("type", "date")
+//      ->where("type", "date")
       ->latest()
       ->limit(1);
+  }
+
+  public function debitReceive()
+  {
+    return $this->hasOne(Filing::class, "tag_id")
+      ->select(["created_at"])
+      ->where("status", "debit-receive")
+      ->latest()
+      ->limit(1);
+  }
+
+  public function debitFile()
+  {
+    return $this->hasOne(Filing::class, "tag_id")
+      ->select(["created_at"])
+      ->where("status", "debit-file")
+      ->latest()
+      ->limit(1);
+  }
+
+  public function debitStatus()
+  {
+    return $this->hasOne(Filing::class, "tag_id")
+      ->with([
+        "reason" => function ($query) {
+          $query->select(["reason"]);
+        },
+      ])
+      ->select(["status"])
+      ->latest()
+      ->limit(1);
+  }
+
+  public function debitReason()
+  {
+    return $this->hasOne(Filing::class, "tag_id")
+      ->select(["tag_id", "reason_id", "remarks"])
+      ->latest()
+      ->limit(1);
+  }
+
+  public function debit_file(): HasMany {
+      return $this->hasMany(ClearingAccountTitle::class, 'clear_id', 'tag_no')
+          ->where('transaction_type', 'debit');
+  }
+
+  public function voucher_associate() {
+        return $this->hasOne(Associate::class, 'tag_id', 'tag_no')->latest()->limit(1);
   }
 }

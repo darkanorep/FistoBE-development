@@ -1,6 +1,12 @@
 <?php
 
 namespace App\Http\Resources;
+use App\Models\BusinessUnit;
+use App\Models\Charging;
+use App\Models\Company;
+use App\Models\Department;
+use App\Models\Location;
+use App\Models\SubUnit;
 use App\Models\User;
 use App\Models\POBatch;
 use App\Models\Transaction;
@@ -28,6 +34,7 @@ class TransactionResource extends JsonResource
    */
   public function toArray($request)
   {
+
     $document = [];
     $tag = null;
     $voucher = null;
@@ -51,8 +58,9 @@ class TransactionResource extends JsonResource
     $counter_receipt_status = $this->counter_receipt_status ? $this->counter_receipt_status : null;
     $counter_receipt_no = $this->counter_receipt_no ? $this->counter_receipt_no : null;
 
-    $transaction = Transaction::with("tag")
-      ->with("voucher.account_title")
+    $transaction = Transaction::
+    with("tag")
+        ->with("voucher.account_title")
       ->with("approve")
       ->with("transmit")
       ->with("cheques.cheques")
@@ -63,6 +71,21 @@ class TransactionResource extends JsonResource
       ->with("reverse")
       ->with("clear")
       ->with("clear.account_title")
+//        with([
+//            'tag',
+//            'voucher.account_title',
+////            'account_titles',
+//            'approve',
+//            'transmit',
+//            'cheques.cheques',
+//            'cheques.account_title',
+//            'audit',
+//            'release',
+//            'file',
+//            'reverse',
+//            'clear',
+//            'clear.account_title'
+//        ])
       ->when($this->document_type == "Auto Debit", function ($query) {
         $query->with("auto_debit");
       })
@@ -82,7 +105,7 @@ class TransactionResource extends JsonResource
       isset($transaction["document"]["capex_no"]) ? $transaction["document"]["capex_no"] : null;
       $transaction_tag_date = isset($transaction_tag->date) ? $transaction_tag->date : null;
       $transaction_tag_status = isset($transaction_tag->status) ? $transaction_tag->status : null;
-      $transaction_tag_distributed_id = isset($transaction->distributed_id) ? $transaction->distributed_id : null;
+      $transaction_tag_distributed_id = isset($transaction->distributed_id) ? $this->distributed_id : null;
       $transaction_tag_distributed_name = isset($transaction->distributed_name) ? $transaction->distributed_name : null;
 
       $reason_id = isset($transaction_tag->reason_id) ? $transaction_tag->reason_id : null;
@@ -353,7 +376,10 @@ class TransactionResource extends JsonResource
           "no" => $this->document_no,
           "date" => $this->document_date,
           "payment_type" => $this->payment_type,
-          "amount" => $this->document_amount,
+//          "amount" => $this->document_amount,
+            'amount' => ($this->document_id == 3)
+                ? ($this->category == 'rental' ? $this->gross_amount : floatval((number_format(($this->principal + $this->interest), 2, '.', ''))))
+                : $this->document_amount,
           "net_amount" => $this->net_amount,
           "release_date" => $this->release_date,
           "batch_no" => $this->batch_no,
@@ -388,6 +414,9 @@ class TransactionResource extends JsonResource
           case "stall d rental":
           case "cusa rental":
           case "dorm rental":
+          case "corporate special program - education":
+          case "official store rental":
+          case "unofficial store rental":
           case "rental":
             $document["period_covered"] = $this->period_covered;
             $document["prm_multiple_from"] = $this->prm_multiple_from;
@@ -642,7 +671,7 @@ class TransactionResource extends JsonResource
       $model = new Tagging();
       $process = "tag";
       $subprocess = ["receive", "tag"];
-      $dates = $this->get_transaction_dates($model, $transaction_request_id, $process, $subprocess);
+      $dates = $this->get_transaction_dates($model, $this->id, $process, $subprocess);
 
       if (isset($transaction_tag_distributed_id)) {
         $distributed_to = [
@@ -660,6 +689,7 @@ class TransactionResource extends JsonResource
 
       $tag = [
         "status" => $transaction_tag_status,
+          "receipt_type" => $this->receipt_type,
         "no" => $transaction_tag_no,
         "dates" => $dates,
         "distributed_to" => $distributed_to,
@@ -672,12 +702,13 @@ class TransactionResource extends JsonResource
       $reason = null;
       $approver = null;
       $account_title = null;
-
+      $transaction_type = null;
       $dates = null;
+      $input_tax = null;
       $model = new Associate();
       $process = "voucher";
       $subprocess = ["transfer", "receive", "voucher"];
-      $dates = $this->get_transaction_dates($model, $transaction_tag_no, $process, $subprocess);
+      $dates = $this->get_transaction_dates($model, $this->id, $process, $subprocess);
 
       if (isset($voucher->account_title)) {
         $voucher_account_title = $voucher->account_title;
@@ -688,10 +719,37 @@ class TransactionResource extends JsonResource
               "entry" => $item["entry"],
               "account_title" => [
                 "id" => $item["account_title_id"],
-                "name" => $item["account_title_name"],
+                  "code" => $item["account_title_code"],
+                "name" => $item["account_title_name"]
               ],
               "amount" => $item["amount"],
               "remarks" => $item["remarks"],
+                "company" => [
+                    'id' => $item['company_id'],
+                    'name' => isset($item['company_id']) ? $item["company_name"] : null,
+                    'code' => isset($item['company_id']) ? $item["company_code"] : null
+                ],
+                "department" => [
+                    'id' => $item['department_id'],
+                    'name' => isset($item['department_id']) ? $item["department_name"] : null,
+                    'code' => isset($item['department_id']) ? $item["department_code"] : null
+                ],
+                "location" => [
+                    'id' => $item['location_id'],
+                    'name' => isset($item['location_id']) ? $item["location_name"] : null,
+                    'code' => isset($item['location_id']) ? $item["location_code"] : null
+                ],
+                "business_unit" => [
+                    'id' => $item['business_unit_id'],
+                    'name' => isset($item['business_unit_id']) ? $item["business_unit_name"] : null,
+                    'code' => isset($item['business_unit_id']) ? $item["business_unit_code"] : null
+                ],
+                "sub_unit" => [
+                    'id' => $item['sub_unit_id'],
+                    'name' => isset($item['sub_unit_id']) ? $item["sub_unit_name"] : null,
+                    'code' => isset($item['sub_unit_id']) ? $item["sub_unit_code"] : null
+                ],
+                "is_default" => $item["is_default"]
             ],
           ];
         });
@@ -710,6 +768,13 @@ class TransactionResource extends JsonResource
             "id" => $voucher_approver_id,
             "name" => $voucher_approver_name,
           ];
+
+          $transaction_type = [
+              'id' => $voucher->transaction_type_id,
+              'name' => $voucher->transaction_type_name
+          ];
+
+          $input_tax = $this->input_tax;
         }
       }
 
@@ -726,7 +791,9 @@ class TransactionResource extends JsonResource
         "no" => $transaction_voucher_no,
         "dates" => $dates,
         "month" => $transaction_voucher_month,
-        "receipt_type" => $voucher_receipt_type,
+//        "receipt_type" => $voucher_receipt_type,
+        "transaction_type" => $transaction_type,
+        "input_tax" => $input_tax,
         "accounts" => $account_title,
         "approver" => $approver,
         "reason" => $reason,
@@ -741,7 +808,7 @@ class TransactionResource extends JsonResource
       $model = new Approver();
       $process = "approve";
       $subprocess = ["receive", "approve"];
-      $dates = $this->get_transaction_dates($model, $transaction_tag_no, $process, $subprocess);
+      $dates = $this->get_transaction_dates($model, $this->id, $process, $subprocess);
 
       if (isset($approve_distributed_id)) {
         $distributed_to = [
@@ -771,7 +838,7 @@ class TransactionResource extends JsonResource
       $model = new Transmit();
       $process = "transmit";
       $subprocess = ["transfer", "receive", "transmit"];
-      $dates = $this->get_transaction_dates($model, $transaction_tag_no, $process, $subprocess);
+      $dates = $this->get_transaction_dates($model, $this->id, $process, $subprocess);
 
       $transmit = [
         "dates" => $dates,
@@ -787,7 +854,7 @@ class TransactionResource extends JsonResource
       $model = new Treasury();
       $process = "cheque";
       $subprocess = ["receive", "cheque", "release"];
-      $dates = $this->get_transaction_dates($model, $transaction_tag_no, $process, $subprocess);
+      $dates = $this->get_transaction_dates($model, $this->id, $process, $subprocess);
 
       if (isset($cheque->cheques)) {
         $cheque_cheques = $cheque->cheques;
@@ -872,7 +939,7 @@ class TransactionResource extends JsonResource
       $model = new Release();
       $process = "release";
       $subprocess = ["receive", "release"];
-      $dates = $this->get_transaction_dates($model, $transaction_tag_no, $process, $subprocess);
+      $dates = $this->get_transaction_dates($model, $this->id, $process, $subprocess);
 
       if (isset($release_distributed_id)) {
         $distributed_to = [
@@ -904,7 +971,8 @@ class TransactionResource extends JsonResource
       $model = new File();
       $process = "file";
       $subprocess = ["transfer", "receive", "file"];
-      $dates = $this->get_transaction_dates($model, $transaction_tag_no, $process, $subprocess);
+      $box_no = $this->box_no;
+      $dates = $this->get_transaction_dates($model, $this->id, $process, $subprocess);
 
       if (isset($file_reason_id)) {
         $reason = [
@@ -918,6 +986,7 @@ class TransactionResource extends JsonResource
         "dates" => $dates,
         "status" => $file_status,
         "reason" => $reason,
+        "box_no" => $box_no,
       ];
     }
 
@@ -974,7 +1043,7 @@ class TransactionResource extends JsonResource
       $model = new Clear();
       $process = "clear";
       $subprocess = ["receive", "clear"];
-      $dates = $this->get_transaction_dates($model, $transaction_tag_no, $process, $subprocess);
+      $dates = $this->get_transaction_dates($model, $this->id, $process, $subprocess);
 
       if (isset($clear->account_title)) {
         $clear_account_title = $clear->account_title;
@@ -1024,6 +1093,9 @@ class TransactionResource extends JsonResource
         case "dorm rental":
         case "additional rental":
         case "lounge rental":
+        case "corporate special program - education":
+        case "official store rental":
+        case "unofficial store rental":
         case "rental":
           $prm_fields = Transaction::where("transaction_id", $this->transaction_id)
             // ->where("state", "!=", "void")
@@ -1061,26 +1133,6 @@ class TransactionResource extends JsonResource
           break;
       }
       $prm_group = $prm_fields;
-    }
-
-    // AUTO DEBIT GROUP
-    if ($this->document_type == "Auto Debit") {
-      $auto_debit = [];
-      foreach ($transaction_with_debit->auto_debit as $k => $auto_debit_batch) {
-        $auto_debit[$k]["request_id"] = $auto_debit_batch->request_id;
-        $auto_debit[$k]["pn_no"] = $auto_debit_batch->pn_no;
-        $auto_debit[$k]["interest_from"] = $auto_debit_batch->interest_from;
-        $auto_debit[$k]["interest_to"] = $auto_debit_batch->interest_to;
-        $auto_debit[$k]["outstanding_amount"] = floatVal($auto_debit_batch->outstanding_amount);
-        $auto_debit[$k]["interest_rate"] = floatVal($auto_debit_batch->interest_rate);
-        $auto_debit[$k]["no_of_days"] = floatVal($auto_debit_batch->no_of_days);
-        $auto_debit[$k]["principal_amount"] = floatVal($auto_debit_batch->principal_amount);
-        $auto_debit[$k]["interest_due"] = floatVal($auto_debit_batch->interest_due);
-        $auto_debit[$k]["cwt"] = floatVal($auto_debit_batch->cwt);
-        $auto_debit[$k]["dst"] = floatVal($auto_debit_batch->dst);
-      }
-
-      $autoDebit_group = $auto_debit;
     }
 
     // COUNTER RECEIPT
@@ -1124,7 +1176,21 @@ class TransactionResource extends JsonResource
       "document" => $document,
     ];
 
-    $transaction_result["autoDebit_group"] = $autoDebit_group;
+      $transaction_result["autoDebit_group"] = $this->auto_debit->map(function ($autoDebit) {
+        return [
+          "request_id" => $autoDebit->request_id,
+          "pn_no" => $autoDebit->pn_no,
+          "interest_from" => $autoDebit->interest_from,
+          "interest_to" => $autoDebit->interest_to,
+          "outstanding_amount" => floatVal($autoDebit->outstanding_amount),
+          "interest_rate" => floatVal($autoDebit->interest_rate),
+          "no_of_days" => floatVal($autoDebit->no_of_days),
+          "principal_amount" => floatVal($autoDebit->principal_amount),
+          "interest_due" => floatVal($autoDebit->interest_due),
+          "cwt" => floatVal($autoDebit->cwt),
+          "dst" => floatVal($autoDebit->dst),
+        ];
+      });
     $transaction_result["po_group"] = $po_details;
     $transaction_result["prm_group"] = $prm_group;
     $transaction_result["tag"] = $tag;
@@ -1132,6 +1198,109 @@ class TransactionResource extends JsonResource
     $transaction_result["approve"] = $approve;
     $transaction_result["transmit"] = $transmit;
     $transaction_result["cheque"] = $cheque_description;
+
+    // GAS
+      $receiveGas = $this->receiveGas;
+      $gas = $this->gas;
+      $reasonGas = $this->reasonGas;
+      $statusGas = null;
+      if ($this->statusGas) {
+        $statusGas = $this->statusGas->status;
+      }
+
+      $gasValues = [
+        "date_received" => $receiveGas ? ($receiveGas->created_at ?: null) : null,
+        "date_gas" => $gas ? ($gas->created_at ?: null) : null,
+        "status" => $statusGas,
+      ];
+
+      $reasonGasValues = [
+        "id" => $reasonGas ? ($reasonGas->reason_id ?: null) : null,
+        "reason" => $reasonGas && $reasonGas->reason ? $reasonGas->reason->reason : null,
+        "remarks" => $reasonGas ? ($reasonGas->remarks ?: null) : null,
+      ];
+
+      if (
+          array_filter($gasValues, function ($value) {
+          return $value !== null;
+        }) === []
+      ) {
+        $transaction_result["gas"] = [];
+      } else {
+        if ($gasValues) {
+          $transaction_result["gas"] = [
+            "dates" => [
+              "received" => $gasValues["date_received"],
+              "gas" => $gasValues["date_gas"],
+            ],
+            "status" => $gasValues["status"],
+          ];
+
+          if ($reasonGasValues["id"] !== null || $reasonGasValues["remarks"] !== null) {
+            $transaction_result["gas"]["reason"] = [
+              "id" => $reasonGasValues["id"],
+              "reason" => $reasonGasValues["reason"],
+              "remarks" => $reasonGasValues["remarks"],
+            ];
+          } else {
+            $transaction_result["gas"]["reason"] = null;
+          }
+        } else {
+          $transaction_result["gas"] = [];
+        }
+      }
+
+      //Discharge
+        $receiveDischarge = $this->receiveDischarge;
+        $discharge = $this->discharge;
+        $reasonDischarge = $this->reasonDischarge;
+        $statusDischarge = null;
+
+        if ($this->statusDischarge) {
+          $statusDischarge = $this->statusDischarge->status;
+        }
+
+        $dischargeValues = [
+          "date_received" => $receiveDischarge ? ($receiveDischarge->created_at ?: null) : null,
+          "date_discharge" => $discharge ? ($discharge->created_at ?: null) : null,
+          "status" => $statusDischarge,
+        ];
+
+        $reasonDischargeValues = [
+          "id" => $reasonDischarge ? ($reasonDischarge->reason_id ?: null) : null,
+          "reason" => $reasonDischarge && $reasonDischarge->reason ? $reasonDischarge->reason->reason : null,
+          "remarks" => $reasonDischarge ? ($reasonDischarge->remarks ?: null) : null,
+        ];
+
+        if (
+          array_filter($dischargeValues, function ($value) {
+            return $value !== null;
+          }) === []
+        ) {
+          $transaction_result["discharge"] = [];
+        } else {
+          if ($dischargeValues) {
+            $transaction_result["discharge"] = [
+              "dates" => [
+                "received" => $dischargeValues["date_received"],
+                "discharged" => $dischargeValues["date_discharge"],
+              ],
+              "status" => $dischargeValues["status"],
+            ];
+
+            if ($reasonDischargeValues["id"] !== null || $reasonDischargeValues["remarks"] !== null) {
+              $transaction_result["discharge"]["reason"] = [
+                "id" => $reasonDischargeValues["id"],
+                "reason" => $reasonDischargeValues["reason"],
+                "remarks" => $reasonDischargeValues["remarks"],
+              ];
+            } else {
+              $transaction_result["discharge"]["reason"] = null;
+            }
+          } else {
+            $transaction_result["discharge"] = [];
+          }
+        }
 
     //Inspect Voucher
     $receive = $this->receiveVoucher;
@@ -1287,7 +1456,6 @@ class TransactionResource extends JsonResource
     }
 
     //Issue
-
     $issueReceive = $this->issueReceive;
     $issueIssue = $this->issueIssue;
 
@@ -1339,10 +1507,100 @@ class TransactionResource extends JsonResource
       }
     }
 
+    //for Auto Debit
+    $debitReceive = $this->debitReceive;
+    $debitFile = $this->debitFile;
+    $debitReason = $this->debitReason;
+    $debitStatus = null;
+    if ($this->debitStatus) {
+      $debitStatus = $this->debitStatus->status;
+    }
+
+    $debitValues = [
+      "date_received" => $debitReceive ? ($debitReceive->created_at ?: null) : null,
+      "date_filed" => $debitFile ? ($debitFile->created_at ?: null) : null,
+      "status" => $debitStatus,
+    ];
+
+    $reasondebitValues = [
+      "id" => $debitReason ? ($debitReason->reason_id ?: null) : null,
+      "reason" => $debitReason && $debitReason->reason ? $debitReason->reason->reason : null,
+      "remarks" => $debitReason ? ($debitReason->remarks ?: null) : null,
+    ];
+
+    if (
+      array_filter($debitValues, function ($value) {
+        return $value !== null;
+      }) === []
+    ) {
+      $transaction_result["debit"] = [];
+    } else {
+      if ($debitValues) {
+        $transaction_result["debit"] = [
+          "dates" => [
+            "received" => $debitValues["date_received"],
+            "filed" => $debitValues["date_filed"],
+          ],
+          "status" => $debitValues["status"],
+            "accounts" => $this->debit_file->map(function ($debitFile) {
+                return [
+                    "entry" => $debitFile->entry,
+                    "accounts" => [
+                        "id" => $debitFile->account_title_id,
+                        "name" => $debitFile->account_title_name
+                    ],
+                ];
+            }),
+        ];
+
+        if ($reasondebitValues["id"] !== null || $reasondebitValues["remarks"] !== null) {
+          $transaction_result["debit"]["reason"] = [
+            "id" => $reasondebitValues["id"],
+            "reason" => $reasondebitValues["reason"],
+            "remarks" => $reasondebitValues["remarks"],
+          ];
+        } else {
+          $transaction_result["debit"]["reason"] = null;
+        }
+      } else {
+        $transaction_result["debit"] = [];
+      }
+    }
+
     $transaction_result["release"] = $release_description;
     $transaction_result["file"] = $file_description;
     $transaction_result["reverse"] = $reverse_description;
     $transaction_result["clear"] = $clear_description;
+    $transaction_result["document"]["business_unit"] = [
+        "id" => $this->business_unit_id,
+        "name" => $this->business_unit,
+    ];
+    $transaction_result["document"]["sub_unit"] = [
+        "id" => $this->sub_unit_id,
+        "name" => $this->sub_unit,
+    ];
+
+
+    //---------------------------------------------------------------------------------------------------------------------------//
+//      $test = Transaction::where('id', $this->id)->select(['company_id', 'department_id'])->first()->toArray();
+//      $test2 = Charging::where('transaction_id', $this->id)->select(['company_id', 'department_id'])->first()->toArray();
+//
+//      $test_array = array_diff($test2, $test);
+//
+//      if ($test_array) {
+//          $changedData = [
+//              'company' => [
+//                  'id' => isset($test_array['company_id']) ? $test_array['company_id'] : null,
+//                  'name' => isset($test_array['company_id']) ? Company::where('id', $test_array['company_id'])->select('company')->first()->company : null,
+//              ],
+//              'department' => [
+//                  'id' => isset($test_array['department_id']) ? $test_array['department_id'] : null,
+//                  'name' => isset($test_array['department_id']) ? Department::where('id', $test_array['department_id'])->select('department')->first()->department : null,
+//              ]
+//          ];
+//          $transaction_result["change"] =  $changedData;
+//      }
+      //---------------------------------------------------------------------------------------------------------------------------//
     // return $transaction_result;
     $result = [];
     foreach ($transaction_result as $k => $v) {
@@ -1355,18 +1613,26 @@ class TransactionResource extends JsonResource
 
   public function get_transaction_dates($model, $id, $process, $subprocesses)
   {
-    $flow_details = $model
-      ::when(
-        $process == "tag",
-        function ($query) use ($id) {
-          $query->where("request_id", $id);
-        },
-        function ($query) use ($id) {
-          $query->where("tag_id", $id);
-        }
-      )
-      ->latest()
-      ->get();
+//    $flow_details = $model
+//      ::when(
+//        $process == "tag",
+////        function ($query) use ($id) {
+////          $query->where("request_id", $id);
+////        },
+//          function ($query) use ($id) {
+//              $query->where("transaction_id", $id);
+//          },
+////        function ($query) use ($id) {
+////          $query->where("tag_id", $id);
+////        }
+//          function ($query) use ($id) {
+//              $query->where("tag_id", $id);
+//          }
+//      )
+//      ->latest()
+//      ->get();
+
+    $flow_details = $model::where('transaction_id', $id)->latest()->get();
 
     $details = [];
     foreach ($subprocesses as $k => $subprocess) {

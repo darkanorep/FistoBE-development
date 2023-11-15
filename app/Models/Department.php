@@ -12,12 +12,12 @@ class Department extends Model
   use HasFactory;
   use SoftDeletes;
   protected $table = "departments";
-  protected $fillable = ["code", "department", "company"];
-  protected $hidden = ["created_at", "pivot"];
+  protected $fillable = ["code", "department", "company", "voucher_code_id"];
+  protected $hidden = ["created_at", "pivot", "voucher_code_id"];
 
   public function Company()
   {
-    return $this->hasOne(Company::class, "id", "company")->select("id", "company as name");
+    return $this->hasOne(Company::class, "id", "company")->select("id", "company as name")->withTrashed();
   }
 
   public function getCreatedAtAttribute($value)
@@ -46,5 +46,9 @@ class Department extends Model
   public function locations()
   {
     return $this->belongsToMany(Location::class, "location_departments", "department_id", "location_id");
+  }
+
+  public function voucherCode() {
+      return $this->hasOne(VoucherCode::class, "id", "voucher_code_id")->withTrashed();
   }
 }
