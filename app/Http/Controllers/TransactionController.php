@@ -487,7 +487,7 @@ class TransactionController extends Controller
 
             "distributed_id",
             "distributed_name",
-              "is_cleared",
+//              "is_cleared",
               "principal",
               "interest",
               "gross_amount",
@@ -799,7 +799,7 @@ class TransactionController extends Controller
             "state",
             "voucher_no",
             "voucher_month",
-              "is_cleared",
+//              "is_cleared",
               "principal",
               "interest",
               "gross_amount",

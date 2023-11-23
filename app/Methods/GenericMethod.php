@@ -683,7 +683,7 @@ class GenericMethod
     $cheques,
     $account_titles
   ) {
-      $model::where('transaction_id', $transaction_id)->where('status', $status)->delete();
+//      $model::where('transaction_id', $transaction_id)->where('status', $status)->delete();
     $cheque_transaction = $model::Create([
       "transaction_id" => $transaction_id,
       "tag_id" => $tag_no,
