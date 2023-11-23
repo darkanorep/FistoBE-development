@@ -5,8 +5,16 @@ namespace App\Http\Controllers;
 use App\Methods\GenericMethod;
 use App\Models\Approver;
 use App\Models\Associate;
+use App\Models\Audit;
+use App\Models\Cheque;
+use App\Models\Executive;
+use App\Models\File;
+use App\Models\Gas;
+use App\Models\Issue;
+use App\Models\Release;
 use App\Models\Tagging;
 use App\Models\Transaction;
+use App\Models\Transmit;
 use App\Models\Treasury;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -45,6 +53,14 @@ class TransactionFlowController extends Controller
                     ]);
                 }
                 break;
+            case 'gas':
+                foreach ($transactions as $transaction){
+                    Gas::create([
+                        'transaction_id' => $transaction,
+                        'status' => $process . '-receive',
+                    ]);
+                }
+                break;
             case 'voucher':
                 foreach ($transactions as $transaction) {
                     Associate::create([
@@ -62,6 +78,83 @@ class TransactionFlowController extends Controller
                         'status' => $process . '-receive',
                         'date_status' => date('Y-m-d'),
                         'transaction_id' => $transaction,
+                    ]);
+                }
+                break;
+            case 'executive':
+                foreach ($transactions as $transaction){
+                    Executive::create([
+                        'transaction_id' => $transaction,
+                        'status' => $process . '-receive',
+                    ]);
+                }
+                break;
+            case 'discharge':
+                foreach ($transactions as $transaction){
+                    Gas::create([
+                        'transaction_id' => $transaction,
+                        'status' => $process . '-receive',
+                    ]);
+                }
+                break;
+                //issue
+            case 'issue':
+                foreach ($transactions as $transaction) {
+                    Issue::create([
+                        'transaction_id' => $transaction,
+                        'status' => $process . '-receive',
+                    ]);
+                }
+                break;
+                //release
+            case 'release':
+                foreach ($transactions as $transaction) {
+                    Release::create([
+                        'transaction_id' => $transaction,
+                        'status' => $process . '-receive',
+                        'date_status' => date('Y-m-d'),
+                        'tag_id' => Transaction::where('id', $transaction)->first()->tag_no
+                    ]);
+                }
+                break;
+                //file
+            case 'file':
+                foreach ($transactions as $transaction) {
+                    File::create([
+                        'transaction_id' => $transaction,
+                        'status' => $process . '-receive',
+                        'tag_id' => Transaction::where('id', $transaction)->first()->tag_no,
+                        'receipt_type' => Transaction::where('id', $transaction)->first()->receipt_type,
+                        'date_status' => date('Y-m-d')
+                    ]);
+                }
+                break;
+            case 'transmit':
+                foreach ($transactions as $transaction) {
+                    Transmit::create([
+                        'transaction_id' => $transaction,
+                        'status' => $process . '-receive',
+                        'tag_id' => Transaction::where('id', $transaction)->first()->tag_no,
+                        'date_status' => date('Y-m-d')
+                    ]);
+                }
+                break;
+            case 'cheque':
+                foreach ($transactions as $transaction) {
+                    Treasury::create([
+                        'transaction_id' => $transaction,
+                        'status' => $process . '-receive',
+                        'tag_id' => Transaction::where('id', $transaction)->first()->tag_no,
+                        'date_status' => date('Y-m-d')
+                    ]);
+                }
+                break;
+            case 'audit':
+                foreach ($transactions as $transaction) {
+                    Audit::create([
+                        'transaction_id' => $transaction,
+                        'type' => 'cheque',
+                        'status' => $process . '-receive'
                     ]);
                 }
                 break;
@@ -115,6 +208,8 @@ class TransactionFlowController extends Controller
         $accounts = $request->accounts;
         $cheques = $request->cheques;
 
+        Treasury::whereIn('transaction_id', $transactions)->where('status', $process.'-'.$process)->delete();
+        Cheque::whereIn('transaction_id', $transactions)->delete();
         foreach($transactions as $transaction) {
             $treasury = Treasury::create([
                 'transaction_id' => $transaction,
@@ -163,9 +258,8 @@ class TransactionFlowController extends Controller
                     'status' => $process . '-' . $process,
                     'is_for_releasing' => false
                 ]);
-
-            return GenericMethod::result(200, "Transaction has been saved.", []);
         }
+        return GenericMethod::result(200, "Transaction has been saved.", []);
 
 //        $tessst = [];
 //        foreach ($transactions as $transaction) {

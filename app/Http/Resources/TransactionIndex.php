@@ -21,49 +21,6 @@ class TransactionIndex extends JsonResource
 
     public function toArray($request)
   {
-//      if (Auth::user()->role == 'Treasury Associate' && (request()->state == 'pending' || $this->status == 'cheque-receive')) {
-//
-//          return [
-//              'id' => $this->id,
-//              'transaction_no' => $this->transaction_id,
-//              'receipt_type' => $this->receipt_type,
-//              'payment_type' => $this->payment_type,
-//              'document' => [
-//                  'id' => $this->document_id,
-//                  'name' => $this->document_type
-//              ],
-//              'supplier' => [
-//                    'id' => $this->supplier_id,
-//                    'name' => $this->supplier->name,
-//                    'type' => $this->supplier->supplier_type->name,
-//              ],
-//              'voucher' => [
-//                  'no' => $this->voucher_no,
-//                  'month' => $this->voucher_month,
-//                  'date' => $this->get_transaction_dates(Associate::class, $this->id, 'voucher', ["voucher"])
-//              ],
-//              'company' => [
-//                  'id' => $this->company_id,
-//                  'name' => $this->company,
-//              ],
-//              'department' => [
-//                  'id' => $this->department_id,
-//                  'name' => $this->department,
-//              ],
-//              'location' => [
-//                    'id' => $this->location_id,
-//                    'name' => $this->location,
-//              ],
-//              'remarks' => $this->remarks,
-//              'document_no' => $this->document_no,
-//              'document_amount' => $this->document_amount,
-//              'referrence_no' => $this->referrence_no,
-//              'referrence_amount' => $this->referrence_amount,
-//              'status' => $this->stateChange($this->state),
-//              'state' => $this->status,
-//          ];
-//      }
-
       $this->state = $this->stateChange($this->state);
 
     $is_editable_prm = 0;
@@ -89,6 +46,13 @@ class TransactionIndex extends JsonResource
         $is_latest_transaction = 1;
       }
     }
+
+    $collect = $this->treasuryCheque->pluck('is_cleared');
+    $is_cleared = $collect->isEmpty() ? 0 : ($collect->contains(0 || null) ? 0 : 1);
+//    return [
+//        'cheques' => $collect,
+//        'is_cleared' => $is_cleared,
+//    ];
 
     return [
       "id" => $this->id,
@@ -121,7 +85,15 @@ class TransactionIndex extends JsonResource
       "users" => $this->users,
       "po_details" => in_array($this->document_id, [1, 4, 5]) ? $this->po_details : [],
         'receipt_type' => $this->receipt_type,
-        "is_cleared" => $this->is_cleared
+        'is_cleared' => $is_cleared,
+        'cheques' => $this->treasuryCheque->map(function ($item) {
+            return [
+                'bank' => $item->bank_name,
+                'cheque_no' => $item->cheque_no,
+                'amount' => $item->cheque_amount,
+                'is_cleared' => $item->is_cleared,
+            ];
+        }),
     ];
   }
 

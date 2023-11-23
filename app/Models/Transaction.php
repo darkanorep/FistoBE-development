@@ -121,7 +121,6 @@ class Transaction extends Model
       "sub_unit",
       "input_tax",
       "box_no",
-      "is_cleared"
   ];
 
   public $timestamps = ["created_at"];
@@ -740,5 +739,27 @@ class Transaction extends Model
 
   public function voucher_associate() {
         return $this->hasOne(Associate::class, 'tag_id', 'tag_no')->latest()->limit(1);
+  }
+
+  public function treasuryCheque() {
+      return $this->hasManyThrough(
+          Cheque::class,
+          Treasury::class,
+          'transaction_id',
+          'treasury_id',
+          'id',
+          'id'
+      );
+  }
+
+  public function accountTitleClear() {
+      return $this->hasManyThrough(
+          ClearingAccountTitle::class,
+          Cheque::class,
+            'transaction_id',
+          'clear_id',
+            'id',
+            'id'
+      );
   }
 }

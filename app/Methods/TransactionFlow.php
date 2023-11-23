@@ -648,13 +648,11 @@ class TransactionFlow
               "is_for_voucher_audit" => null,
               // "is_for_releasing" => false,
             ]);
-            // $status = "transmit-transmit"; // Is this line necessary? It's commented out.
           }
-        } elseif ($transaction->document_id === 9) {
-          $transaction->update([
-            // "is_for_releasing" => false,
-            "is_for_voucher_audit" => true,
-          ]);
+//        } elseif ($transaction->document_id === 9) { // auto-debit
+//          $transaction->update([
+//            "is_for_voucher_audit" => true,
+//          ]);
         } else {
           $transaction->update([
             // "is_for_releasing" => false,
@@ -1400,8 +1398,8 @@ class TransactionFlow
         $request_id,
         $receipt_type,
         $tag_no,
-//        $status,
-          $transaction->status,
+        $status,
+//          $transaction->status,
         $state,
         $reason_id,
         $reason_description,
@@ -1414,8 +1412,7 @@ class TransactionFlow
         $approver_name,
             $inputTax,
             'cheque',
-            $request->box_no ?? $transaction->box_no,
-          true
+            $request->box_no ?? $transaction->box_no
       );
     } elseif ($process == "issue") {
       $account_titles = $cheque_account_titles;
@@ -1439,19 +1436,30 @@ class TransactionFlow
           //   return GenericMethod::resultResponse("not-equal", "Document and cheque", []);
           // }
 
-          switch ($transaction->document_id) {
-            case 3:
-              if ($transaction->net_amount != $cheque_amount) {
-                return GenericMethod::resultResponse("not-equal", "Document amount and account title", []);
-              }
-              break;
-
-            default:
-              if ($document_amount != $cheque_amount) {
-                return GenericMethod::resultResponse("not-equal", "Document and cheque", []);
-              }
-              break;
-          }
+//          switch ($transaction->document_id) {
+//            case 3:
+//                  switch ($transaction->category) {
+//
+//                      case 'rental':
+//                          if ($transaction->gross_amount != $cheque_amount) {
+//                              return GenericMethod::resultResponse("not-equal", "Document and account title", []);
+//                          }
+//                          break;
+//
+//                      default:
+//
+//                          if (floatval((number_format(($transaction->principal + $transaction->interest), 2, '.', ''))) != $cheque_amount) {
+//                              return GenericMethod::resultResponse("not-equal", "Document and account title", []);
+//                          }
+//                  }
+//                  break;
+//
+//            default:
+//              if ($document_amount != $cheque_amount) {
+//                return GenericMethod::resultResponse("not-equal", "Document and cheque", []);
+//              }
+//              break;
+//          }
         }
 
         if (!empty($account_titles)) {
@@ -1481,10 +1489,10 @@ class TransactionFlow
           }
         }
 
-          $not_valid = GenericMethod::validateCheque($id, $cheques);
-          if ($not_valid) {
-              return GenericMethod::resultResponse("cheque-no-exist", "Cheque_no number already exist.", []);
-          }
+//          $not_valid = GenericMethod::validateCheque($id, $cheques);
+//          if ($not_valid) {
+//              return GenericMethod::resultResponse("cheque-no-exist", "Cheque_no number already exist.", []);
+//          }
 
       } elseif ($subprocess == "hold") {
         $status = "issue-hold";

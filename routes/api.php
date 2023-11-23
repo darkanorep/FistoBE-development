@@ -258,8 +258,11 @@ Route::group(["middleware" => "auth:sanctum"], function () {
     Route::post("transactions/flow/receive", [TransactionFlowController::class, "multipleReceive"]);
     Route::post("transactions/flow/tag", [TransactionFlowController::class, "multipleTag"]);
     Route::post("transactions/flow/cheque", [TransactionFlowController::class, "multipleCheque"]);
+
     // CHEQUES
     Route::get("cheques", [TransactionController::class, "chequeIndex"]);
+    Route::get("clear-cheques", [TransactionController::class, "clearChequeIndex"]);
+    Route::post("clear-cheques/{id}", [TransactionController::class, "chequeClear"]);
 
   // Route::get('transactions/flow/',[TransactionFlowController::class,'pullRequest']);
   // Route::get('transactions/flow/{id}',[TransactionFlowController::class,'pullSingleRequest']);

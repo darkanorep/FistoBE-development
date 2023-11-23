@@ -45,4 +45,5 @@ class Treasury extends Model
     public function cheques(){
         return $this->hasMany(Cheque::class,'treasury_id','id');
     }
+
 }

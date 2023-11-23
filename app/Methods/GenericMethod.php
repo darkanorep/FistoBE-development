@@ -683,6 +683,7 @@ class GenericMethod
     $cheques,
     $account_titles
   ) {
+      $model::where('transaction_id', $transaction_id)->where('status', $status)->delete();
     $cheque_transaction = $model::Create([
       "transaction_id" => $transaction_id,
       "tag_id" => $tag_no,
@@ -918,6 +919,7 @@ class GenericMethod
 
   public static function addCheque($transaction_id, $id, $cheques)
   {
+      Cheque::where("transaction_id", $transaction_id)->delete();
     foreach ($cheques as $specific_cheques) {
         if (request()->process == 'issue') {
             foreach ($specific_cheques as $specific_cheque) {
@@ -2573,8 +2575,7 @@ class GenericMethod
     $approver_name,
     $input_tax,
     $transaction_type = "cheque",
-      $box_no = null,
-      $is_cleared = null
+      $box_no = null
   ) {
     // $voucher_no = isset($voucher_no) ? $voucher_no : null;
     // $voucher_month = isset($voucher_month) ? $voucher_month : null;
@@ -2659,7 +2660,6 @@ class GenericMethod
           $approver_name,
           $transaction_type,
             $box_no,
-            $is_cleared,
             $input_tax
         ) {
           $query->update([
@@ -2678,7 +2678,6 @@ class GenericMethod
             "approver_name" => $approver_name,
             "transaction_type" => $transaction_type,
               'box_no' => $box_no,
-              "is_cleared" => $is_cleared,
               'input_tax' => $input_tax
           ]);
         }

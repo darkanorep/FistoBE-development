@@ -2,7 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\ChequeClearIndex;
 use App\Http\Resources\ChequeIndex;
+use App\Http\Resources\TransactionResource1;
+use App\Models\Cheque;
+use App\Models\Clear;
+use App\Models\ClearingAccountTitle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Requests\PODetailsRequest;
@@ -109,18 +114,6 @@ class TransactionController extends Controller
         "po_details:id,request_id,po_no,po_total_amount",
         "cheques.cheques",
       ])
-      //      ->with("users", function ($query) {
-      //        return $query->select(["id", "first_name", "middle_name", "last_name", "users.department", "position"]);
-      //      })
-      //      ->with("supplier.supplier_type", function ($query) {
-      //        return $query->select(["id", "type as name", "transaction_days"]);
-      //      })
-      //      ->with("po_details", function ($query) {
-      //        return $query->select(["id", "request_id", "po_no", "po_total_amount"]);
-      //      })
-      //      ->with("audit", "executive", "cheques.cheques")
-      //      ->with("executive")
-      //      ->with("cheques.cheques")
       ->when(!empty($document_ids), function ($query) use ($document_ids) {
         $query->whereIn("document_id", $document_ids);
       })
@@ -661,7 +654,11 @@ class TransactionController extends Controller
                               "file-file",
                               "discharge-receive",
                               "discharge-discharge"
-                          ])->whereNull('is_cleared');
+                          ])
+//                              ->whereNull('is_cleared');
+                          ->whereHas('cheques.cheques', function ($query) {
+                              $query->whereNull('is_cleared');
+                          });
                         },
                         function ($query) use ($status) {
                           $query->when(
@@ -731,7 +728,10 @@ class TransactionController extends Controller
                                                               $query->when(
                                                                   strtolower($status) == "clear-clear",
                                                                   function ($query) {
-                                                                      $query->where('is_cleared', true);
+//                                                                      $query->where('is_cleared', true);
+                                                                      $query->whereHas('cheques.cheques', function ($query) {
+                                                                          $query->where('is_cleared', true);
+                                                                      });
                                                                   },
                                                                   function ($query) use ($status) {
                                                                       $query->where(
@@ -1055,6 +1055,7 @@ class TransactionController extends Controller
     });
 
     $singleTransaction = TransactionResource::collection($transaction);
+//    $singleTransaction = TransactionResource1::collection($transaction);
     if (count($singleTransaction) != true) {
       throw new FistoException("No records found.", 404, null, []);
     }
@@ -2905,7 +2906,7 @@ class TransactionController extends Controller
             "supplier.supplier_type" => function ($query) {
                 return $query->select(["supplier_types.id", "supplier_types.type as name"]);
             },
-            "cheques.cheques"
+////            "cheques.cheques"
         ])
 
             // Supplier Filter
@@ -2939,9 +2940,9 @@ class TransactionController extends Controller
                     ->orWhere("referrence_no", "like", "%" . $search . "%");
             })
 
-
-            ->when($status == "pending", function ($query) {
-                return $query->where("status", "transmit-transmit");
+            // creation of cheque
+            ->when($status == "pending-cheque", function ($query) {
+                return $query->whereIn("status", ["transmit-transmit", "inspect-inspect"]);
             })
             ->when($status == "cheque-receive", function ($query) {
                 return $query->whereIn("status", ["cheque-receive", "cheque-unhold", "cheque-unreturn"]);
@@ -2954,7 +2955,47 @@ class TransactionController extends Controller
                 return $query->where("status", "audit-hold");
             })
 
-            ->when(!in_array($status, ["pending", "cheque-receive", "return-cheque", "hold-cheque"]), function ($query) use ($status) {
+            // auditing of cheque
+            ->when($status == "pending-audit", function ($query) {
+                return $query->where("status", "cheque-cheque")->where("is_for_releasing", "!=", true);
+            })
+            ->when($status == "audit-receive", function ($query) {
+                return $query->whereIn("status", ["audit-receive", "audit-unhold", "audit-unreturn"]);
+            })
+
+            // signing of cheque
+            ->when($status == "pending-executive", function ($query) {
+//                return $query->where("status", "cheque-cheque");
+                return $query->where("status", "audit-audit");
+            })
+            ->when($status == "executive-receive", function ($query) {
+                return $query->whereIn("status", ["executive-receive", "executive-unhold", "executive-unreturn"]);
+            })
+
+            // releasing of cheque (internal)
+            ->when($status == "pending-issue", function ($query) {
+                return $query->where("status", "executive-executive");
+            })
+            ->when($status == "issue-receive", function ($query) {
+                return $query->whereIn("status", ["issue-receive", "issue-unhold", "issue-unreturn"]);
+            })
+
+            ->when($status == "return-issue", function ($query) {
+                return $query->where("status", "release-return");
+            })
+            ->when($status == "hold-issue", function ($query) {
+                return $query->where("status", "release-hold");
+            })
+
+            // releasing of cheque (external)
+            ->when($status == "pending-release", function ($query) {
+                return $query->where("status", "issue-issue")->where("is_for_releasing", true);
+            })
+            ->when($status == "release-receive", function ($query) {
+                return $query->whereIn("status", ["release-receive", "release-unhold", "release-unreturn"]);
+            })
+
+            ->when(!in_array($status, ["pending-cheque", "cheque-receive", "return-cheque", "hold-cheque", "pending-audit", "audit-receive", "pending-executive", "executive-receive", "pending-issue", "issue-receive", "return-issue", "hold-issue", "pending-release", "release-receive"]), function ($query) use ($status) {
                 return $query->where("status", preg_replace("/\s+/", "", $status));
             })
 
@@ -2963,6 +3004,7 @@ class TransactionController extends Controller
                 "users_id",
                 "supplier_id",
                 "transaction_id",
+                "category",
 
                 "tag_no",
                 "document_id",
@@ -2982,6 +3024,9 @@ class TransactionController extends Controller
 
                 "document_no",
                 "document_amount",
+                "principal",
+                "interest",
+                "gross_amount",
                 "referrence_no",
                 "referrence_amount",
 
@@ -3001,5 +3046,88 @@ class TransactionController extends Controller
         }
 
         return $this->resultResponse("not-found", "Transaction", []);
+    }
+
+    public function clearChequeIndex(Request $request) {
+
+        $status = $request->input("state", "request");
+        $rows = $request->input("rows", 10);
+        $search = $request->input("search");
+
+        $cheques = Cheque::where(function ($query) use ($search) {
+            $query->where('cheque_no', 'like', '%' . $search . '%')
+                ->orWhere('bank_name', 'like', '%' . $search . '%')
+                ->orWhere('cheque_date', 'like', '%' . $search . '%')
+                ->orWhere('cheque_amount', 'like', '%' . $search . '%');
+        })
+            ->when($status == 'pending-clear', function ($query) {
+                $query->whereHas('transaction', function ($query) {
+                    $query->whereIn('status', [
+                        "release-release",
+                        "file-receive",
+                        "file-file",
+                        "discharge-receive",
+                        "discharge-discharge"
+                    ]);
+                })->whereNull('is_cleared');
+            })
+
+            ->when($status == 'clear-clear', function ($query) {
+                $query->where('is_cleared', true);
+            })
+            ->latest('updated_at')
+            ->paginate((int) $rows);
+        ChequeClearIndex::collection($cheques);
+
+        if (count($cheques)) {
+            return $this->resultResponse("fetch", "Transaction", $cheques);
+        }
+        return $this->resultResponse("not-found", "Transaction", []);
+
+    }
+
+    public function chequeClear(Request $request, $id) {
+
+        $accounts = $request->accounts;
+        $cheque = Cheque::find($id);
+        $clear_date = $request->date_cleared;
+
+        if ($cheque) {
+            $sameCheques = Cheque::where('bank_id', $cheque->bank_id)->where('cheque_no', $cheque->cheque_no)->get()->pluck('id');
+            $sameTransactionIds = Cheque::where('bank_id', $cheque->bank_id)->where('cheque_no', $cheque->cheque_no)->get()->pluck('transaction_id');
+            Cheque::where('bank_id', $cheque->bank_id)
+                ->where('cheque_no', $cheque->cheque_no)
+                ->update([
+                    'date_cleared' => $clear_date,
+                    'is_cleared' => true
+                ]);
+
+            foreach ($sameTransactionIds as $sameTransactionId) {
+                Clear::create([
+                    'transaction_id' => $sameTransactionId,
+                    'tag_id' => Transaction::where('id', $sameTransactionId)->first()->tag_no,
+                    'status' => 'clear-clear',
+                    'date_status' => date('Y-m-d'),
+                    'date_cleared' => $clear_date,
+                ]);
+            }
+
+            foreach ($accounts as $account) {
+                foreach ($sameCheques as $sameCheque) {
+                    ClearingAccountTitle::create([
+                        'clear_id' => $sameCheque,
+                        'entry' => $account['entry'],
+                        'account_title_id' => $account['account_title']['id'],
+                        'account_title_name' => $account['account_title']['name'],
+                        'amount' => $account['amount'],
+                        'remarks' => $account['remarks'],
+                        'transaction_type' => 'new'
+                    ]);
+                }
+            }
+            return $this->resultResponse("update", "Transaction", []);
+        } else {
+            return $this->resultResponse("not-found", "Transaction", []);
+        }
     }
 }
