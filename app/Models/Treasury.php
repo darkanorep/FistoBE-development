@@ -17,7 +17,8 @@ class Treasury extends Model
         "status",
         "date_status",
         "reason_id",
-        "reason_remarks"
+        "reason_remarks",
+        'batch_no'
     ];
 
     public function account_title(){
@@ -46,4 +47,7 @@ class Treasury extends Model
         return $this->hasMany(Cheque::class,'treasury_id','id');
     }
 
+    public function chequeViaTransaction() {
+        return $this->hasMany(Cheque::class,'transaction_id','transaction_id');
+    }
 }

@@ -23,21 +23,21 @@ class DocumentResource extends JsonResource
                         'name' => $document_coa->account_title->title,
                         'code' => $document_coa->account_title->code,
                     ],
-                    'company' => [
-                        'id' => $document_coa->company->id,
-                        'name' => $document_coa->company->company,
-                        'code' => $document_coa->company->code,
-                    ],
-                    'department' => [
-                        'id' => $document_coa->department->id,
-                        'name' => $document_coa->department->department,
-                        'code' => $document_coa->department->code,
-                    ],
-                    'location' => [
-                        'id' => $document_coa->location->id,
-                        'name' => $document_coa->location->location,
-                        'code' => $document_coa->location->code,
-                    ]
+//                    'company' => [
+//                        'id' => $document_coa->company->id,
+//                        'name' => $document_coa->company->company,
+//                        'code' => $document_coa->company->code,
+//                    ],
+//                    'department' => [
+//                        'id' => $document_coa->department->id,
+//                        'name' => $document_coa->department->department,
+//                        'code' => $document_coa->department->code,
+//                    ],
+//                    'location' => [
+//                        'id' => $document_coa->location->id,
+//                        'name' => $document_coa->location->location,
+//                        'code' => $document_coa->location->code,
+//                    ]
                 ];
             })
         ];

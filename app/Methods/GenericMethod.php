@@ -4,6 +4,7 @@ namespace App\Methods;
 
 use App\Exceptions\FistoException;
 use App\Exceptions\FistoLaravelException;
+use App\Http\Controllers\TransactionController;
 use App\Models\AccountTitle;
 use App\Models\Approver;
 use App\Models\Associate;
@@ -256,7 +257,7 @@ class GenericMethod
 //      $field = "distributed_id";
     } elseif ($process == "cheque") {
       $model = new Treasury();
-      $field = "cheque_no";
+      $field = "transaction_id";
     } elseif ($process == "release") {
       $model = new Tagging();
       $field = "";
@@ -297,10 +298,13 @@ class GenericMethod
         return $status;
     }
       //---------------------------------------------------------------//
-    $is_exists = Cheque::where("transaction_id", $transaction["transaction_id"])->exists();
-    if ($process == "cheque" and $is_exists) {
-      return $status;
-    }
+//    $is_exists = Treasury::where("transaction_id", $transaction["transaction_id"])
+//        ->where('status', 'cheque-cheque')
+//        ->exists();
+//
+//    if ($process == "cheque" and $is_exists) {
+//      return $status;
+//    }
 
     $is_audited = Audit::where("transaction_id", $transaction->id)
       ->where("status", "audit-audit")
@@ -484,16 +488,8 @@ class GenericMethod
       $transaction_type_id,
       $transaction_type_name
   ) {
-    $approver_id = isset($approver["id"])
-      ? $approver["id"]
-      : (isset($approver["approver"]["id"])
-        ? $approver["approver"]["id"]
-        : null);
-    $approver_name = isset($approver["name"])
-      ? $approver["name"]
-      : (isset($approver["approver"]["name"])
-        ? $approver["approver"]["name"]
-        : null);
+    $approver_id = $approver["id"] ?? ($approver["approver"]["id"] ?? Transaction::where("id", $transaction_id)->first()->approver_id) ?? null;
+    $approver_name = $approver["name"] ?? ($approver["approver"]["name"] ?? Transaction::where("id", $transaction_id)->first()->approver_name) ?? null;
 
     $voucher_transaction = $model::Create([
       "transaction_id" => $transaction_id,
@@ -515,6 +511,20 @@ class GenericMethod
         return GenericMethod::addAccountTitleEntry($process, $id, $account_titles);
       }
     }
+
+      if ($status == in_array($status, ["voucher-return", "voucher-hold", "voucher-voucher", "voucher-void"])) {
+//        $test = new Transaction();
+          $transaction = Transaction::where('id', $transaction_id)->first();
+          $transaction->account_titles()
+              ->update([
+                  'associate_id' => $voucher_transaction->id,
+              ]);
+//
+//          $transaction->treasuryAccountTitle()
+//              ->update([
+//                  'treasury_id' => $cheque_transaction->id
+//              ]);
+      }
   }
 
   public static function approveTransaction(
@@ -683,7 +693,9 @@ class GenericMethod
     $cheques,
     $account_titles
   ) {
-      $model::where('transaction_id', $transaction_id)->where('status', $status)->delete();
+//      $model::where('transaction_id', $transaction_id)->where('status', $status)->delete();
+      $test = new TransactionController();
+      $batch_no = $test->generateBatchNo();
     $cheque_transaction = $model::Create([
       "transaction_id" => $transaction_id,
       "tag_id" => $tag_no,
@@ -691,6 +703,7 @@ class GenericMethod
       "date_status" => $date_now,
       "reason_id" => $reason_id,
       "remarks" => $reason_remarks,
+        "batch_no" => $batch_no,
     ]);
 
     if (isset($cheques)) {
@@ -707,6 +720,19 @@ class GenericMethod
         $process = "treasury";
         GenericMethod::addAccountTitleEntry($process, $id, $account_titles);
       }
+    }
+
+    if ($status == in_array($status, ["cheque-return", "cheque-hold", "cheque-cheque", "cheque-void"])) {
+        $transaction = Transaction::where('id', $transaction_id)->first();
+        $transaction->treasuryCheque()
+            ->update([
+                'treasury_id' => $cheque_transaction->id,
+            ]);
+
+        $transaction->treasuryAccountTitle()
+            ->update([
+                'treasury_id' => $cheque_transaction->id
+            ]);
     }
   }
 
@@ -917,35 +943,63 @@ class GenericMethod
     return $duplicate_count;
   }
 
-  public static function addCheque($transaction_id, $id, $cheques)
-  {
-      Cheque::where("transaction_id", $transaction_id)->delete();
-    foreach ($cheques as $specific_cheques) {
-        if (request()->process == 'issue') {
-            foreach ($specific_cheques as $specific_cheque) {
-                $entry_type = isset($specific_cheque["transaction_type"])
-                    ? $specific_cheque["transaction_type"]
-                    : $specific_cheque["type"];
-                $bank_id = $specific_cheque["bank"]["id"];
-                $bank_name = $specific_cheque["bank"]["name"];
-                $cheque_no = $specific_cheque["no"];
-                $cheque_date = $specific_cheque["date"];
-                $cheque_amount = $specific_cheque["amount"];
-                $transaction_type = isset($specific_cheque["transaction_type"]) ? $specific_cheque["transaction_type"] : "new";
+//  public static function addCheque($transaction_id, $id, $cheques)
+//  {
+//      Cheque::where("transaction_id", $transaction_id)->delete();
+//    foreach ($cheques as $specific_cheques) {
+//        if (request()->process == 'issue') {
+//            foreach ($specific_cheques as $specific_cheque) {
+//                $entry_type = isset($specific_cheque["transaction_type"])
+//                    ? $specific_cheque["transaction_type"]
+//                    : $specific_cheque["type"];
+//                $bank_id = $specific_cheque["bank"]["id"];
+//                $bank_name = $specific_cheque["bank"]["name"];
+//                $cheque_no = $specific_cheque["no"];
+//                $cheque_date = $specific_cheque["date"];
+//                $cheque_amount = $specific_cheque["amount"];
+//                $transaction_type = isset($specific_cheque["transaction_type"]) ? $specific_cheque["transaction_type"] : "new";
+//
+//                Cheque::Create([
+//                    "transaction_id" => $transaction_id,
+//                    "treasury_id" => $id,
+//                    "entry_type" => $specific_cheque['type'],
+//                    "bank_id" => $specific_cheque['bank']['id'],
+//                    "bank_name" => $specific_cheque['bank']['name'],
+//                    "cheque_no" => $specific_cheque['no'],
+//                    "cheque_date" => $specific_cheque['date'],
+//                    "cheque_amount" => $specific_cheque['amount'],
+//                    "transaction_type" => $specific_cheque['transaction_type'] ?? "new",
+//                ]);
+//            }
+//        } else {
+//            $entry_type = isset($specific_cheques["transaction_type"])
+//                ? $specific_cheques["transaction_type"]
+//                : $specific_cheques["type"];
+//            $bank_id = $specific_cheques["bank"]["id"];
+//            $bank_name = $specific_cheques["bank"]["name"];
+//            $cheque_no = $specific_cheques["no"];
+//            $cheque_date = $specific_cheques["date"];
+//            $cheque_amount = $specific_cheques["amount"];
+//            $transaction_type = isset($specific_cheques["transaction_type"]) ? $specific_cheques["transaction_type"] : "new";
+//
+//            Cheque::Create([
+//                "transaction_id" => $transaction_id,
+//                "treasury_id" => $id,
+//                "entry_type" => $specific_cheques['type'],
+//                "bank_id" => $specific_cheques['bank']['id'],
+//                "bank_name" => $specific_cheques['bank']['name'],
+//                "cheque_no" => $specific_cheques['no'],
+//                "cheque_date" => $specific_cheques['date'],
+//                "cheque_amount" => $specific_cheques['amount'],
+//                "transaction_type" => $specific_cheques['transaction_type'] ?? "new",
+//            ]);
+//        }
+//    }
+//  }
 
-                Cheque::Create([
-                    "transaction_id" => $transaction_id,
-                    "treasury_id" => $id,
-                    "entry_type" => $specific_cheque['type'],
-                    "bank_id" => $specific_cheque['bank']['id'],
-                    "bank_name" => $specific_cheque['bank']['name'],
-                    "cheque_no" => $specific_cheque['no'],
-                    "cheque_date" => $specific_cheque['date'],
-                    "cheque_amount" => $specific_cheque['amount'],
-                    "transaction_type" => $specific_cheque['transaction_type'] ?? "new",
-                ]);
-            }
-        } else {
+    public static function addCheque($transaction_id, $id, $cheques) {
+        Cheque::where("transaction_id", $transaction_id)->delete();
+        foreach ($cheques as $specific_cheques) {
             $entry_type = isset($specific_cheques["transaction_type"])
                 ? $specific_cheques["transaction_type"]
                 : $specific_cheques["type"];
@@ -969,9 +1023,8 @@ class GenericMethod
             ]);
         }
     }
-  }
 
-  public static function addAccountTitleEntry($process, $id, $account_titles)
+    public static function addAccountTitleEntry($process, $id, $account_titles)
   {
     $associate_id = null;
     $treasury_id = null;

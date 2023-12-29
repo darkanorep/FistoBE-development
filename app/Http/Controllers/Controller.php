@@ -572,4 +572,41 @@ class Controller extends BaseController
       return strtolower((string) $q["$dbfield"]) === strtolower((string) $param);
     });
   }
+
+    function stateChange($state)
+    {
+        switch ($state) {
+            case "tag":
+                $state = "Tagged";
+                break;
+            case "request":
+            case "pending":
+                $state = "Pending";
+                break;
+            case "hold":
+                $state = "Held";
+                break;
+            case "transmit":
+                $state = "Transmitted";
+                break;
+            case "receive-approver":
+                $state = "Received";
+                break;
+            case "receive-requestor":
+                $state = "Received";
+                break;
+
+            default:
+                if (str_ends_with($state, "e")) {
+                    $state = ucfirst($state . "d");
+                } elseif (str_ends_with($state, "g")) {
+                    $state = ucfirst($state);
+                } else {
+                    $state = ucfirst($state . "ed");
+                }
+        }
+
+        return $state;
+    }
+
 }

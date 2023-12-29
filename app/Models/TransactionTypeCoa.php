@@ -12,17 +12,17 @@ class TransactionTypeCoa extends Model
 
     protected $table = 'transaction_type_coa';
 
-    protected $hidden = ['created_at', 'transaction_type_id', 'company_id', 'business_unit_id', 'department_id', 'sub_unit_id', 'location_id', 'account_title_id'];
+//    protected $hidden = ['created_at', 'transaction_type_id', 'company_id', 'business_unit_id', 'department_id', 'sub_unit_id', 'location_id', 'account_title_id'];
+    protected $hidden = ['created_at', 'transaction_type_id', 'business_unit_id', 'sub_unit_id', 'account_title_id'];
 
     protected $fillable = [
         'transaction_type_id',
         'entry',
-        'document_id',
-        'company_id',
-        'business_unit_id',
-        'department_id',
-        'sub_unit_id',
-        'location_id',
+//        'company_id',
+//        'business_unit_id',
+//        'department_id',
+//        'sub_unit_id',
+//        'location_id',
         'account_title_id',
     ];
 

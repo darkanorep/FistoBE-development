@@ -258,14 +258,32 @@ Route::group(["middleware" => "auth:sanctum"], function () {
     Route::post("transactions/flow/receive", [TransactionFlowController::class, "multipleReceive"]);
     Route::post("transactions/flow/tag", [TransactionFlowController::class, "multipleTag"]);
     Route::post("transactions/flow/cheque", [TransactionFlowController::class, "multipleCheque"]);
-
+//    Route::post("cheques/flow/receive", [TransactionFlowController::class, "multipleChequeReceive"]);
+    Route::post("cheques/flow/receive", [TransactionFlowController::class, "multipleChequeReceive"]);
     // CHEQUES
     Route::get("cheques", [TransactionController::class, "chequeIndex"]);
     Route::get("clear-cheques", [TransactionController::class, "clearChequeIndex"]);
-    Route::post("clear-cheques/{id}", [TransactionController::class, "chequeClear"]);
+    Route::post("transactions/flow/clear-cheques/{id}", [TransactionController::class, "chequeClear"]);
+    Route::post('transactions/flow/cheque-revert/{id}', [TransactionController::class, "chequeRevert"]);
 
   // Route::get('transactions/flow/',[TransactionFlowController::class,'pullRequest']);
   // Route::get('transactions/flow/{id}',[TransactionFlowController::class,'pullSingleRequest']);
   // Route::post('transactions/flow/update-status/{id}',[TransactionFlowController::class,'receivedRequest']);
   // Route::post('transactions/flow/search',[TransactionFlowController::class,'searchRequest']);
+
+    //===TEST MODULE===//
+    //Single View
+    Route::get("transactions1/{id}", [TransactionController::class, "showTransaction1"]);
+    //Cheque Index distinct
+    Route::get("cheques1", [TransactionController::class, "chequeIndex1"]);
+    //Revert Cheque
+    Route::post('transactions/flow/cheque-revert', [TransactionController::class, "chequeRevert1"]);
+    //Cheque Flow
+    Route::post('cheque/flow', [\App\Methods\TransactionFlow::class, "chequeFlow"]);
+    //Clear
+//    Route::post("cheque/clear", [TransactionController::class, "chequeClear1"]);
+
+    //MultiReceive
+//    Route::post("cheques/flow/receive-test", [TransactionFlowController::class, "multipleChequeReceiveTest"]);
+
 });

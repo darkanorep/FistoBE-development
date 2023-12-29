@@ -2,11 +2,17 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Bank;
 use App\Models\Supplier;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class ChequeClearIndex extends JsonResource
+class
+ChequeClearIndex extends JsonResource
 {
+    /**
+     * @var mixed
+     */
+
     /**
      * Transform the resource into an array.
      *
@@ -15,10 +21,32 @@ class ChequeClearIndex extends JsonResource
      */
     public function toArray($request)
     {
-        $account_title = $this->transaction->voucher->first()->account_title;
+        $clearing =  $this->transaction->cheques->first()->account_title->filter(function ($item, $index) {
+            return $item->account_title_id == $this->bank->AccountTitleOne->id || $item->entry == 'Debit';
+        });
+
+        $cleared = $this->clearAccountTitle->filter(function ($item, $index) {
+            return $item->entry == 'Credit';
+        });
+
+        $clearing1 = $clearing->values()->filter(function ($item, $index) {
+            return $item->entry == 'Debit';
+        });
+
+        $cleared2 = $cleared->values();
+
+        $merged = $clearing1->merge($cleared2);
+
+        $account_title = $this->transaction->cheques->first()->account_title
+            ? $this->is_cleared == 1
+                ? $merged
+                : $clearing->values()
+            : $this->transaction->voucher->first()->account_title;
+
         return [
-            'id' => optional($this->transaction)->id,
-            'tag_no' => optional($this->transaction)->tag_no,
+            'id' => $this->transaction->id,
+            'cheque_id' => $this->id,
+            'tag_no' => $this->transaction->tag_no,
             'transaction_no' => $this->transaction->transaction_id,
             'receipt_type' => $this->transaction->receipt_type,
             'payment_type' => $this->transaction->payment_type,
@@ -62,9 +90,15 @@ class ChequeClearIndex extends JsonResource
                     'bank' => [
                         'id' => $this->bank_id,
                         'name' => $this->bank_name,
+                        'company_two' => $this->bank->CompanyTwo,
+                        'department_two' => $this->bank->DepartmentTwo,
+                        'location_two' => $this->bank->LocationTwo,
+                        'business_unit_two' => $this->bank->BusinessUnitTwo,
+                        'sub_unit_two' => $this->bank->SubUnitTwo,
+                        'account_title_two' => $this->bank->AccountTitleTwo,
                     ],
                     'amount' => $this->cheque_amount,
-                    'date' => $this->cheque_date
+                    'date' => $this->cheque_date,
                 ]
             ],
             "accounts" => $account_title->map(function ($item) {

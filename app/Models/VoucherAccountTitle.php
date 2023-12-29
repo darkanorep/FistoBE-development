@@ -4,22 +4,24 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class VoucherAccountTitle extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $table = "voucher_account_title";
     protected $fillable = [
         "associate_id"
-        ,"treasury_id"
-        ,"entry"
-        ,"account_title_id"
-        ,"account_title_code"
-        ,"account_title_name"
-        ,"amount"
-        ,"remarks"
-        ,"transaction_type",
+        , "treasury_id",
+        "issue_id"
+        , "entry"
+        , "account_title_id"
+        , "account_title_code"
+        , "account_title_name"
+        , "amount"
+        , "remarks"
+        , "transaction_type",
         "company_id",
         "company_code",
         "company_name",

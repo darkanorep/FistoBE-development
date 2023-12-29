@@ -108,4 +108,5 @@ class Bank extends Model
         return $this->hasOne(Location::class, 'id', 'location_id_2')->select('id', 'location as name', 'code')->withTrashed();
     }
 
+
 }

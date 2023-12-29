@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class AccountNumberRequest extends FormRequest
 {
@@ -24,11 +25,32 @@ class AccountNumberRequest extends FormRequest
     public function rules()
     {
         return [
-            "account_no" => ['required','string'],
-            "location_id" => ['required','numeric'],
-            "category_id" => ['required','numeric'],
-            "supplier_id" => ['required','numeric'],
-            
+            "account_no" => [
+                'required',
+                'string',
+                Rule::unique('account_numbers','account_no')->ignore($this->route('account_number'))
+            ],
+            "location_id" => [
+                'required',
+                'numeric',
+                Rule::exists('utility_locations','id')->where(function($query){
+                    $query->whereNull('deleted_at');
+                })
+            ],
+            "category_id" => [
+                'required',
+                'numeric',
+                Rule::exists('utility_categories','id')->where(function($query){
+                    $query->whereNull('deleted_at');
+                })
+            ],
+            "supplier_id" => [
+                'required',
+                'numeric',
+                Rule::exists('suppliers','id')->where(function($query){
+                    $query->whereNull('deleted_at');
+                })
+            ],
         ];
     }
 

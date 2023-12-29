@@ -256,7 +256,7 @@ class MasterlistController extends Controller
 
   public function transactionTypeDropdown() {
       $transaction_type = array(
-            "transaction_types" => DB::table('transaction_types')->get(['id','transaction_type as name'])
+            "transaction_types" => DB::table('transaction_types')->whereNull('deleted_at')->get(['id','transaction_type as name'])
       );
 
       return $this->resultResponse('fetch', 'Transaction Type', $transaction_type);

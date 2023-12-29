@@ -2,8 +2,13 @@
 namespace App\Methods;
 
 use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\TransactionFlowController;
 use App\Models\Charging;
+use App\Models\Cheque;
 use App\Models\ClearingAccountTitle;
+use App\Models\Executive;
+use App\Models\Issue;
+use App\Models\VoucherAccountTitle;
 use Carbon\Carbon;
 use App\Models\Gas;
 
@@ -33,6 +38,7 @@ use App\Methods\GenericMethod;
 use App\Models\ChequeClearing;
 use App\Models\ChequeCreation;
 use App\Models\ChequeReleased;
+use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Pagination\Paginator;
@@ -110,6 +116,9 @@ class TransactionFlow
         $previous_approver = [
           "id" => $firstVoucher["approver_id"],
           "name" => $firstVoucher["approver_name"],
+
+//            "id" => $transaction->approver_id,
+//            "name" => $transaction->approver_name,
         ];
       }
     }
@@ -117,6 +126,9 @@ class TransactionFlow
     $previous_distributed = [
       "id" => $previous_voucher_transaction["distributed_id"],
       "name" => $previous_voucher_transaction["distributed_name"],
+
+//        "id" => $transaction->distributed_id,
+//        "name" => $transaction->distributed_name,
     ];
 
     $cheque_cheques = $previous_cheque_transaction["transaction_cheque"]->isEmpty()
@@ -186,18 +198,16 @@ class TransactionFlow
 
     $voucher_month = data_get($request, "voucher.month", $transaction->voucher_month);
     $voucher_account_titles = GenericMethod::with_previous_transaction($accounts, $voucher_account_title);
-    $approver = GenericMethod::with_previous_transaction($request["approver"], $previous_approver);
-    $distributed = GenericMethod::with_previous_transaction($request["distributed_to"], $previous_distributed);
+    $approver = GenericMethod::with_previous_transaction($request["approver"] ?? null, $previous_approver);
+//    $approver  = $approver;
+    $distributed = GenericMethod::with_previous_transaction($request["distributed_to"] ?? null, $previous_distributed);
+//    $distributed = $distributed;
 
-//    $approver_id = isset($approver["id"]) ? $approver["id"] : null;
-//    $approver_name = isset($approver["name"]) ? $approver["name"] : null;
+    $approver_id = data_get($request, 'approver.id') ?? $transaction->approver_id;
+    $approver_name = data_get($request, 'approver.name') ?? $transaction->approver_name;
 
-      $approver_id = $approver["id"] ?? $transaction->approver_id;
-      $approver_name = $approver["name"] ?? $transaction->approver_name;
-
-    // $audit_by = data_get($request, "audit_by.id", null);
-    $distributed_id = isset($distributed["id"]) ? $distributed["id"] : null;
-    $distributed_name = isset($distributed["name"]) ? $distributed["name"] : null;
+    $distributed_id = data_get($request, 'distributed_to.id') ?? $transaction->distributed_id;
+    $distributed_name =data_get($request, 'distributed_to.name')  ?? $transaction->distributed_name;
 
     $cheque_cheques = GenericMethod::with_previous_transaction($cheque_cheques, $previous_cheque_transaction_cheque);
     $cheque_account_titles = GenericMethod::with_previous_transaction(
@@ -418,6 +428,9 @@ class TransactionFlow
       } elseif ($subprocess == "voucher") {
         // GenericMethod::voucherNoValidationUponSaving($voucher_no, $id);
         $status = "voucher-voucher";
+          $transaction->account_titles()->forceDelete();
+          $transaction->treasuryCheque()->forceDelete();
+          $transaction->treasuryAccountTitle()->delete();
 
 //        $voucher_no = $generic->generateVoucherNo($transaction->id);
 
@@ -720,6 +733,8 @@ class TransactionFlow
         $status = "cheque-void";
       } elseif ($subprocess == "cheque") {
         $status = "cheque-cheque";
+        $transaction->treasuryCheque()->forceDelete();
+        $transaction->treasuryAccountTitle()->forceDelete();
         // if (
         //   $transaction->document_id === 8 &&
         //   $transaction->status == "cheque-receive"
@@ -747,10 +762,10 @@ class TransactionFlow
           ]);
         }
 
-        $not_valid = GenericMethod::validateCheque($id, $cheques);
-        if ($not_valid) {
-          return GenericMethod::resultResponse("cheque-no-exist", "Cheque_no number already exist.", []);
-        }
+//        $not_valid = GenericMethod::validateCheque($id, $cheques);
+//        if ($not_valid) {
+//          return GenericMethod::resultResponse("cheque-no-exist", "Cheque_no number already exist.", []);
+//        }
 
         // $transaction->update([
         //   "is_for_cheque_audit" => true,
@@ -849,34 +864,34 @@ class TransactionFlow
         //   return GenericMethod::resultResponse("not-equal", "Document and cheque", []);
         // }
 
-        switch ($transaction->document_id) {
-          case 3:
-//            if ($transaction->net_amount != $cheque_amount) {
-//              return GenericMethod::resultResponse("not-equal", "Net amount and account title", []);
+//        switch ($transaction->document_id) {
+//          case 3:
+////            if ($transaction->net_amount != $cheque_amount) {
+////              return GenericMethod::resultResponse("not-equal", "Net amount and account title", []);
+////            }
+//
+//            switch ($transaction->category) {
+//
+//                case 'rental':
+//                    if ($transaction->gross_amount != $cheque_amount) {
+//                        return GenericMethod::resultResponse("not-equal", "Document and account title", []);
+//                    }
+//                    break;
+//
+//                default:
+//
+//                    if (floatval((number_format(($transaction->principal + $transaction->interest), 2, '.', ''))) != $cheque_amount) {
+//                        return GenericMethod::resultResponse("not-equal", "Document and account title", []);
+//                    }
 //            }
-
-            switch ($transaction->category) {
-
-                case 'rental':
-                    if ($transaction->gross_amount != $cheque_amount) {
-                        return GenericMethod::resultResponse("not-equal", "Document and account title", []);
-                    }
-                    break;
-
-                default:
-
-                    if (floatval((number_format(($transaction->principal + $transaction->interest), 2, '.', ''))) != $cheque_amount) {
-                        return GenericMethod::resultResponse("not-equal", "Document and account title", []);
-                    }
-            }
-            break;
-
-          default:
-            if ($document_amount != $cheque_amount) {
-              return GenericMethod::resultResponse("not-equal", "Document and cheque", []);
-            }
-            break;
-        }
+//            break;
+//
+//          default:
+//            if ($document_amount != $cheque_amount) {
+//              return GenericMethod::resultResponse("not-equal", "Document and cheque", []);
+//            }
+//            break;
+//        }
       }
 
       if (!empty($account_titles)) {
@@ -965,7 +980,9 @@ class TransactionFlow
         $status = "audit-hold";
       } elseif ($subprocess == "return") {
         $status = "audit-return";
-
+//        Cheque::where("transaction_id", $transaction->id)->update([
+//          "is_returned" => true,
+//        ]);
         // if ($transaction->document_id == 8 && !$transaction->is_for_voucher_audit) {
         //   $status = "audit-return";
 
@@ -1376,6 +1393,7 @@ class TransactionFlow
           $inputTax
       );
       return GenericMethod::resultResponse($state, "", "");
+
     } elseif ($process == "clear") {
       $account_titles = $cheque_account_titles;
       $model = new Clear();
@@ -1515,22 +1533,20 @@ class TransactionFlow
 
 
       if ($subprocess == "issue") {
-
-          $cheques = $request->validate([
-                  'cheques.*.type' => 'nullable',
-                  'cheques.*.bank' => 'nullable',
-                  'cheques.*.bank.*.id' => 'nullable',
-                  'cheques.*.no' => 'nullable',
-                  'cheques.*.bank.*.name' => 'nullable',
-                  'cheques.*.bank.*.branch' => 'nullable',
-                  'cheques.*.bank.*.account_title_one.*.id' => 'nullable',
-                  'cheques.*.bank.*.account_title_one.*.name' => 'nullable',
-                  'cheques.*.bank.*.account_title_two.*.id' => 'nullable',
-                  'cheques.*.bank.*.account_title_two.*.name' => 'nullable',
-                  'cheques.*.date' => 'required',
-                  'cheques.*.amount' => 'required',
-          ]);
-
+//          $cheques = $request->validate([
+//                  'cheques.*.type' => 'nullable',
+//                  'cheques.*.bank' => 'nullable',
+//                  'cheques.*.bank.*.id' => 'nullable',
+//                  'cheques.*.no' => 'nullable',
+//                  'cheques.*.bank.*.name' => 'nullable',
+//                  'cheques.*.bank.*.branch' => 'nullable',
+//                  'cheques.*.bank.*.account_title_one.*.id' => 'nullable',
+//                  'cheques.*.bank.*.account_title_one.*.name' => 'nullable',
+//                  'cheques.*.bank.*.account_title_two.*.id' => 'nullable',
+//                  'cheques.*.bank.*.account_title_two.*.name' => 'nullable',
+//                  'cheques.*.date' => 'required',
+//                  'cheques.*.amount' => 'required',
+//          ]);
          GenericMethod::chequeTransaction(
               $model,
 //        $transaction_id,
@@ -1796,7 +1812,431 @@ class TransactionFlow
   }
 
   public static function voidTransaction($request, $id) {
-      $test = new TransactionController();
-      $test->voidTransaction($request, $id);
+      $void = new TransactionController();
+      $void->voidTransaction($request, $id);
   }
+
+    public function chequeFlow(Request $request) {
+        $bankId = $request->bank_id;
+        $chequeNo = $request->cheque_no;
+
+        $context = [
+            'process'    => $request->process,
+            'subprocess' => $request->subprocess,
+            'cheques' => $request->cheques,
+            'cheque' => $request->cheque,
+            'accounts' => $request->accounts,
+        ];
+
+        $transactionIds = Cheque::where('bank_id', $bankId)
+            ->where('cheque_no', $chequeNo)
+            ->pluck('transaction_id')
+            ->unique()
+            ->toArray();
+
+        if (!empty($transactionIds)) {
+
+//            if ($context['subprocess'] == 'issue') {
+//                return $this->issueCheque($request, $transactionIds);
+//            } elseif ($context['subprocess'] == 'release') {
+//                return $this->releaseCheque($request, $transactionIds);
+//            } elseif ($context['subprocess'] == 'clear') {
+//                return $this->clearCheque($request, $transactionIds);
+//            } elseif ($context['subprocess'] == 'audit') {
+//                return $this->chequeTransmit($request, $transactionIds);
+//            } elseif ($context['subprocess'] == 'executive') {
+//                return $this->chequeTransmit($request, $transactionIds);
+//            } elseif ($context['subprocess'] == 'receive' ) {
+//                return $this->chequeSingleReceive($request, $transactionIds);
+//            } elseif ($context['subprocess'] == 'unreturn') {
+//                return $this->unreturnUnhold($transactionIds, $context);
+//            } elseif ($context['subprocess'] == 'unhold') {
+//                return $this->unreturnUnhold($transactionIds, $context);
+//            }
+
+            switch($context['subprocess']) {
+                case 'issue':
+                    return $this->issueCheque($request, $transactionIds);
+                    break;
+                case 'release':
+                    return $this->releaseCheque($request, $transactionIds);
+                    break;
+                case 'clear':
+                    return $this->clearCheque($request, $transactionIds);
+                    break;
+                case 'audit':
+                    return $this->chequeTransmit($request, $transactionIds);
+                    break;
+                case 'executive':
+                    return $this->chequeTransmit($request, $transactionIds);
+                    break;
+                case 'receive':
+                    return $this->chequeSingleReceive($request, $transactionIds);
+                    break;
+                case 'unreturn':
+                    return $this->unreturnUnhold($transactionIds, $context);
+                    break;
+                case 'unhold':
+                    return $this->unreturnUnhold($transactionIds, $context);
+                    break;
+            }
+
+            foreach ($transactionIds as $transactionId) {
+                static::updateInTransactionFlow($context, $transactionId);
+            }
+
+            return GenericMethod::resultResponse($request->subprocess, "", "");
+        } else {
+            return GenericMethod::resultResponse("not-found", "", null);
+        }
+    }
+
+    //Issue Cheque
+    function issueCheque($request, $transactionIds) {
+
+        for($i = 0; $i < count($transactionIds); $i++) {
+
+            Cheque::where('transaction_id', $transactionIds[$i])
+                ->where('bank_id', data_get($request, 'cheque.bank.id'))
+                ->where('cheque_no', data_get($request, 'cheque.no'))
+                ->whereNull('issue_id')->delete();
+
+            $transaction = Transaction::find($transactionIds[$i]);
+
+            $issue = $transaction->issue()->create([
+                'status' => 'issue-issue',
+            ]);
+
+            for ($j = 0; $j < count($request->accounts); $j++) {
+                $account = $request->accounts[$j];
+
+                $issue->accountTitles()->create([
+                    'entry' => data_get($account, 'entry'),
+                    'account_title_id' => data_get($account, 'account_title.id'),
+                    'account_title_code' => data_get($account, 'account_title.code'),
+                    'account_title_name' => data_get($account, 'account_title.name'),
+                    'amount' => data_get($account, 'amount'),
+                    'remarks' => data_get($account, 'remarks'),
+                    'transaction_type' => 'new',
+                    'company_id' => data_get($account, 'company.id'),
+                    'company_code' => data_get($account, 'company.code'),
+                    'company_name' => data_get($account, 'company.name'),
+                    'department_id' => data_get($account, 'department.id'),
+                    'department_code' => data_get($account, 'department.code'),
+                    'department_name' => data_get($account, 'department.name'),
+                    'location_id' => data_get($account, 'location.id'),
+                    'location_code' => data_get($account, 'location.code'),
+                    'location_name' => data_get($account, 'location.name'),
+                    'business_unit_id' => data_get($account, 'business_unit.id'),
+                    'business_unit_code' => data_get($account, 'business_unit.code'),
+                    'business_unit_name' => data_get($account, 'business_unit.name'),
+                    'sub_unit_id' => data_get($account, 'sub_unit.id'),
+                    'sub_unit_code' => data_get($account, 'sub_unit.code'),
+                    'sub_unit_name' => data_get($account, 'sub_unit.name'),
+                ]);
+            }
+
+            $issue->issueCheques()->create([
+                'transaction_id' => $transactionIds[$i],
+                'entry_type' => data_get($request, 'cheque.type'),
+                'bank_id' => data_get($request, 'cheque.bank.id'),
+                'bank_name' => data_get($request, 'cheque.bank.name'),
+                'cheque_no' => data_get($request, 'cheque.no'),
+                'cheque_date' => date('Y-m-d', strtotime(data_get($request, 'cheque.date'))),
+                'cheque_amount' => data_get($request, 'cheque.amount'),
+                'transaction_type' => 'new',
+                'is_issued' => true,
+            ]);
+        }
+
+        $this->chequeIssueChecker($request, $transactionIds);
+
+        return GenericMethod::resultResponse($request->subprocess, "", "");
+    }
+
+    //Release Cheque
+    function releaseCheque($request, $transactionIds) {
+        for($i = 0; $i < count($transactionIds); $i++) {
+
+            $transaction = Transaction::find($transactionIds[$i]);
+
+            $transaction->release()->create([
+                'status' => 'release-release',
+                'distributed_id' => data_get($request, 'distributed_to.id'),
+                'distributed_name' => data_get($request, 'distributed_to.name'),
+                'description' => $transaction->remarks,
+                'date_status' => Carbon::now('Asia/Manila')->format('Y-m-d H:i:s'),
+            ]);
+
+//            Cheque::where('bank_id', data_get($request, 'bank_id'))
+//                ->where('cheque_no', data_get($request, 'cheque_no'))
+//                ->whereNull('is_released')
+//                ->update([
+//                    'is_released' => true,
+//                ]);
+
+//            $this->chequeIssueChecker($request, $transactionIds);
+
+//            return GenericMethod::resultResponse($request->subprocess, "", "");
+        }
+
+        Cheque::whereIn('transaction_id', $transactionIds)
+            ->whereNull('is_released')
+            ->update([
+                'is_released' => true,
+            ]);
+
+        Transaction::whereIn('id', $transactionIds)->update([
+            'state' => $request->subprocess,
+            'status' => $request->process . '-' . $request->subprocess,
+        ]);
+
+        return GenericMethod::resultResponse($request->subprocess, "", "");
+    }
+
+    //Clear Cheque
+    function clearCheque($request, $transactionIds) {
+        for($i = 0; $i < count($transactionIds); $i++) {
+
+            Cheque::where('bank_id', data_get($request, 'bank_id'))
+                ->where('cheque_no', data_get($request, 'cheque_no'))
+                ->update([
+                    'date_cleared' => date('Y-m-d', strtotime(data_get($request, 'date'))),
+                    'is_cleared' => true,
+                ]);
+
+            $transaction = Transaction::find($transactionIds[$i]);
+
+            $clear = $transaction->clear()->create([
+                'status' => 'clear-clear',
+                'tag_id' => $transaction->id,
+                'date_status' => Carbon::now('Asia/Manila')->format('Y-m-d H:i:s'),
+            ]);
+
+            for ($j = 0; $j < count($request->accounts); $j++) {
+                $account = $request->accounts[$j];
+
+                $clear->account_title()->create([
+                    'entry' => data_get($account, 'entry'),
+                    'account_title_id' => data_get($account, 'account_title.id'),
+                    'account_title_code' => data_get($account, 'account_title.code'),
+                    'account_title_name' => data_get($account, 'account_title.name'),
+                    'amount' => data_get($account, 'amount'),
+                    'remarks' => data_get($account, 'remarks'),
+                    'transaction_type' => 'new',
+                    'company_id' => data_get($account, 'company.id'),
+                    'company_code' => data_get($account, 'company.code'),
+                    'company_name' => data_get($account, 'company.name'),
+                    'department_id' => data_get($account, 'department.id'),
+                    'department_code' => data_get($account, 'department.code'),
+                    'department_name' => data_get($account, 'department.name'),
+                    'location_id' => data_get($account, 'location.id'),
+                    'location_code' => data_get($account, 'location.code'),
+                    'location_name' => data_get($account, 'location.name'),
+                    'business_unit_id' => data_get($account, 'business_unit.id'),
+                    'business_unit_code' => data_get($account, 'business_unit.code'),
+                    'business_unit_name' => data_get($account, 'business_unit.name'),
+                    'sub_unit_id' => data_get($account, 'sub_unit.id'),
+                    'sub_unit_code' => data_get($account, 'sub_unit.code'),
+                    'sub_unit_name' => data_get($account, 'sub_unit.name'),
+                ]);
+            }
+        }
+
+        return GenericMethod::resultResponse($request->subprocess, "", "");
+    }
+
+    function chequeSingleReceive($request, $transactionIds) {
+
+        foreach ($transactionIds as $transactionId) {
+
+            $transaction = Transaction::find($transactionId);
+
+            switch ($request->process) {
+                case 'audit':
+                    $transaction->audit()->create([
+                        'type' => 'Cheque',
+                        'status' => $request->process. '-receive',
+                        'date_status' => Carbon::now('Asia/Manila')->format('Y-m-d H:i:s'),
+                    ]);
+                    break;
+
+                case 'executive':
+                    $transaction->executive()->create([
+                        'transaction_id' => $transaction,
+                        'status' => $request->process. '-receive',
+                    ]);
+                    break;
+
+                case 'issue':
+                    $transaction->issue()->create([
+                        'transaction_id' => $transaction,
+                        'status' => $request->process. '-receive',
+                    ]);
+                    break;
+
+                case 'release':
+                    $transaction->release()->create([
+                        'date_status' => Carbon::now('Asia/Manila')->format('Y-m-d H:i:s'),
+                        'transaction_id' => $transaction,
+                        'status' => $request->process. '-receive',
+                    ]);
+                    break;
+            }
+        }
+
+
+      Cheque::where('bank_id', $request->bank_id)
+          ->where('cheque_no', $request->cheque_no)
+          ->update([
+              'is_received' => true,
+          ]);
+
+      $cheques = Cheque::whereIn('transaction_id', $transactionIds)->whereNull('is_received')->get();
+
+      if ($cheques->isEmpty()) {
+          Transaction::whereIn('id', $transactionIds)->update([
+              'state' => $request->subprocess,
+              'status' => $request->process . '-' . $request->subprocess,
+          ]);
+      }
+
+        return GenericMethod::resultResponse($request->subprocess, "", "");
+    }
+
+    function chequeTransmit($request, $transactionIds) {
+
+        foreach ($transactionIds as $transaction) {
+            switch ($request->subprocess) {
+                case 'audit':
+                    $is_processed = 'is_audited';
+                    Audit::create([
+                        'transaction_id' => $transaction,
+                        'type' => 'Cheque',
+                        'status' => $request->subprocess.'-'.$request->subprocess,
+                        'date_status' => date('Y-m-d')
+                    ]);
+                    break;
+                case 'executive':
+                    $is_processed = 'is_executived';
+                    Executive::create([
+                        'transaction_id' => $transaction,
+                        'status' => $request->subprocess.'-'.$request->subprocess,
+                    ]);
+                    break;
+            }
+        }
+
+
+      Cheque::where('bank_id', $request->bank_id)
+          ->where('cheque_no', $request->cheque_no)
+          ->update([
+              'is_received' => null,
+              $is_processed => true,
+//              'is_returned' => null
+          ]);
+
+      $cheques = Cheque::whereIn('transaction_id', $transactionIds)->whereNull($is_processed)->get();
+
+      if ($cheques->isEmpty()) {
+          Transaction::whereIn('id', $transactionIds)->update([
+              'state' => $request->subprocess,
+              'status' => $request->process . '-' . $request->subprocess,
+          ]);
+      }
+
+        return GenericMethod::resultResponse($request->subprocess, "", "");
+
+    }
+
+    function unreturnUnhold($transactionIds, $context) {
+
+        switch ($context['process']) {
+            case 'audit':
+                $is_processed = 'is_audited';
+                break;
+
+            case 'release':
+                $is_processed = 'is_released';
+                break;
+        }
+
+//        if ($context['subprocess'] == 'unreturn') {
+//            Cheque::whereIn('transaction_id', $transactionIds)
+//                ->where('is_returned', true)
+//                ->update([
+//                    'is_returned' => null,
+//                ]);
+//        } else {
+//            Cheque::whereIn('transaction_id', $transactionIds)
+//                ->where('is_held', true)
+//                ->update([
+//                    'is_held' => null,
+//                ]);
+//        }
+
+        $processed = Cheque::whereIn('transaction_id', $transactionIds)
+            ->whereNull($is_processed)->count();
+
+        $is_processed = Cheque::whereIn('transaction_id', $transactionIds)
+            ->whereNotNull($is_processed)->count();
+
+        $no_of_transaction = count($transactionIds);
+
+        if ($is_processed == ($no_of_transaction || $processed)) {
+            Transaction::whereIn('id', $transactionIds)
+                ->update([
+                    'state' => $context['process'],
+                    'status' => $context['process'].'-'.$context['process'],
+                ]);
+        }
+
+        if ($processed) {
+            Transaction::whereIn('id', $transactionIds)
+                ->update([
+                    'state' => $context['subprocess'],
+                    'status' => $context['process'].'-receive',
+                ]);
+        }
+
+        return GenericMethod::resultResponse($context['subprocess'], "", "");
+    }
+
+    function chequeIssueChecker($request, $transactionIds) {
+
+      switch ($request->subprocess) {
+
+          case 'issue':
+
+              $cheques = Cheque::whereIn('transaction_id', $transactionIds)->whereNull('issue_id')->whereNull('deleted_at')->get();
+
+              if($cheques->isEmpty()) {
+                  Transaction::whereIn('id', $transactionIds)->update([
+                      'is_for_releasing' => true,
+                      'state' => 'transmit',
+                      'status' => $request->subprocess . '-' . $request->process,
+                  ]);
+              }
+
+              break;
+
+          case 'release':
+
+//              Transaction::whereIn('id', $transactionIds)->update([
+//                  'state' => $request->subprocess,
+//                  'status' => $request->subprocess . '-' . $request->process,
+//              ]);
+
+              $cheques = Cheque::whereIn('transaction_id', $transactionIds)->whereNull('is_released')->get();
+
+              if ($cheques->isEmpty()) {
+                  Transaction::whereIn('id', $transactionIds)->update([
+                      'state' => $request->subprocess,
+                      'status' => $request->subprocess . '-' . $request->process,
+                  ]);
+              }
+
+              break;
+      }
+    }
 }

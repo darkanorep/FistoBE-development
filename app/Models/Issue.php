@@ -13,11 +13,20 @@ class Issue extends Model
         "transaction_id",
         "status",
         "reason_id",
-        "remarks"
+        "remarks",
+        ""
     ];
 
     public function reason()
     {
         return $this->belongsTo(Reason::class, "reason_id");
+    }
+
+    public function accountTitles() {
+        return $this->hasMany(VoucherAccountTitle::class, "issue_id", "id");
+    }
+
+    public function issueCheques() {
+        return $this->hasMany(Cheque::class, "issue_id", "id");
     }
 }

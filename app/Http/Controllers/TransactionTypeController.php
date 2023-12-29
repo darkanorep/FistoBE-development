@@ -20,12 +20,12 @@ class TransactionTypeController extends Controller
         ->with([
             "accounts" => function ($query) {
                 $query->with([
-                    "company:id,code,company as name",
-                    "department:id,code,department as name",
+//                    "company:id,code,company as name",
+//                    "department:id,code,department as name",
                     "account_title:id,code,title as name",
-                    "business_unit:id,code,business_unit as name",
-                    "sub_unit:id,code,subunit as name",
-                    "location:id,code,location as name",
+//                    "business_unit:id,code,business_unit as name",
+//                    "sub_unit:id,code,subunit as name",
+//                    "location:id,code,location as name",
                 ]);
             }
             ])
@@ -116,11 +116,11 @@ class TransactionTypeController extends Controller
         foreach ($request as $account) {
             $model->accounts()->create([
                 'entry' => $account['entry'] ?? null,
-                'company_id' => $account['company_id'] ?? null,
-                'business_unit_id' => $account['business_unit_id'] ?? null,
-                'department_id' => $account['department_id'],
-                'sub_unit_id' => $account['sub_unit_id'] ?? null,
-                'location_id' => $account['location_id'] ?? null,
+//                'company_id' => $account['company_id'] ?? null,
+//                'business_unit_id' => $account['business_unit_id'] ?? null,
+//                'department_id' => $account['department_id'],
+//                'sub_unit_id' => $account['sub_unit_id'] ?? null,
+//                'location_id' => $account['location_id'] ?? null,
                 'account_title_id' => $account['account_title_id'] ?? null,
             ]);
         }

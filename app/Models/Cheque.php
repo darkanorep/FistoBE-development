@@ -4,12 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Cheque extends Model
 {
-  use HasFactory;
+  use HasFactory, SoftDeletes;
 
-  protected $table = "cheques";
+    protected $table = "cheques";
 
   protected $fillable = [
     "transaction_id",
@@ -21,7 +22,14 @@ class Cheque extends Model
     "cheque_amount",
     "transaction_type",
     "entry_type",
+      "is_received",
+      "is_returned",
+      "is-held",
+      "is_audited",
+      "is_executived",
+      "is_issued",
       "is_cleared",
+      "is_released",
       'date_cleared'
   ];
 
@@ -51,7 +59,17 @@ class Cheque extends Model
         "voucher_month",
         "remarks",
         "status",
-        "state"
+        "state",
+        "issue_id"
     ]);
   }
+
+  public function bank(){
+    return $this->belongsTo(Bank::class,'bank_id','id');
+  }
+
+  public function clearAccountTitle(){
+      return $this->hasMany(ClearingAccountTitle::class,'clear_id','id');
+  }
+
 }

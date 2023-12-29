@@ -70,21 +70,6 @@ class TransactionResource extends JsonResource
             ->with("reverse")
             ->with("clear")
             ->with("clear.account_title")
-//        with([
-//            'tag',
-//            'voucher.account_title',
-////            'account_titles',
-//            'approve',
-//            'transmit',
-//            'cheques.cheques',
-//            'cheques.account_title',
-//            'audit',
-//            'release',
-//            'file',
-//            'reverse',
-//            'clear',
-//            'clear.account_title'
-//        ])
             ->when($this->document_type == "Auto Debit", function ($query) {
                 $query->with("auto_debit");
             })
@@ -213,12 +198,12 @@ class TransactionResource extends JsonResource
         // END REVERSE PROCESS
 
         // CLEAR PROCESS
-    if (count($transaction->clear) > 0) {
-      $clear = $transaction->clear->first();
-      $clear_status = isset($clear->status) ? $clear->status : null;
-      $clear_date_status = isset($clear->date) ? $clear->date : null;
-      $clear_date_cleared = isset($clear->date_cleared) ? $clear->date_cleared : null;
-    }
+        if (count($transaction->clear) > 0) {
+            $clear = $transaction->clear->first();
+            $clear_status = isset($clear->status) ? $clear->status : null;
+            $clear_date_status = isset($clear->date) ? $clear->date : null;
+            $clear_date_cleared = isset($clear->date_cleared) ? $clear->date_cleared : null;
+        }
 
         $condition = $this->state == "void" ? "=" : "!=";
         $document_amount = Transaction::where("request_id", $this->request_id)
@@ -1064,42 +1049,42 @@ class TransactionResource extends JsonResource
         }
 
         // CLEARING
-    if (isset($clear_status)) {
-      $dates = null;
-      $model = new Clear();
-      $process = "clear";
-      $subprocess = ["receive", "clear"];
-      $dates = $this->get_transaction_dates($model, $this->id, $process, $subprocess);
+        if (isset($clear_status)) {
+            $dates = null;
+            $model = new Clear();
+            $process = "clear";
+            $subprocess = ["receive", "clear"];
+            $dates = $this->get_transaction_dates($model, $this->id, $process, $subprocess);
 
-      if (isset($clear->account_title)) {
-        $clear_account_title = $clear->account_title;
-        $clear_account_title = $clear_account_title->filter(function ($value, $key) {
-          return $value["transaction_type"] == "new";
-        });
-        $clear_account_title = $clear_account_title->mapToGroups(function ($item, $key) {
-          return [
-            $item["clear_id"] => [
-              "id" => $item["clear_id"],
-              "entry" => $item["entry"],
-              "account_title" => [
-                "id" => $item["account_title_id"],
-                "name" => $item["account_title_name"],
-              ],
-              "amount" => $item["amount"],
-              "remarks" => $item["remarks"],
-            ],
-          ];
-        });
-        $account_title = $clear_account_title->values();
-      }
+            if (isset($clear->account_title)) {
+                $clear_account_title = $clear->account_title;
+                $clear_account_title = $clear_account_title->filter(function ($value, $key) {
+                    return $value["transaction_type"] == "new";
+                });
+                $clear_account_title = $clear_account_title->mapToGroups(function ($item, $key) {
+                    return [
+                        $item["clear_id"] => [
+                            "id" => $item["clear_id"],
+                            "entry" => $item["entry"],
+                            "account_title" => [
+                                "id" => $item["account_title_id"],
+                                "name" => $item["account_title_name"],
+                            ],
+                            "amount" => $item["amount"],
+                            "remarks" => $item["remarks"],
+                        ],
+                    ];
+                });
+                $account_title = $clear_account_title->values();
+            }
 
-      if (!$account_title->isEmpty()) {
-        $account_title = $account_title->first();
-      } else {
-        $account_title = [];
-      }
+            if (!$account_title->isEmpty()) {
+                $account_title = $account_title->first();
+            } else {
+                $account_title = [];
+            }
 
-      $clear_description = [
+            $clear_description = [
 //        "dates" => $dates,
 //        "status" => $clear_status,
 //        "date" => $clear_date_status,
@@ -1111,21 +1096,46 @@ class TransactionResource extends JsonResource
 //                  'date' => $item->date_cleared
 //              ];
 //          }),
-          'accounts' => $this->accountTitleClear->map(function ($item) {
-              return [
-                  'id' => $item->id,
-                  'entry' => $item->entry,
-                  'account_title' => [
-                      'id' => $item->account_title_id,
-                      'code' => $item->account_title_code,
-                      'name' => $item->account_title_name
-                  ],
-                  'amount' => $item->amount,
-                  'remarks' => $item->remarks
-              ];
-          })
-      ];
-    }
+                'accounts' => $this->accountTitleClear->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'entry' => $item->entry,
+                        'account_title' => [
+                            'id' => $item->account_title_id,
+                            'code' => $item->account_title_code,
+                            'name' => $item->account_title_name
+                        ],
+                        'company' => [
+                            'id' => $item->company_id,
+                            'name' => $item->company_name,
+                            'code' => $item->company_code
+                        ],
+                        'department' => [
+                            'id' => $item->department_id,
+                            'name' => $item->department_name,
+                            'code' => $item->department_code
+                        ],
+                        'location' => [
+                            'id' => $item->location_id,
+                            'name' => $item->location_name,
+                            'code' => $item->location_code
+                        ],
+                        'business_unit' => [
+                            'id' => $item->business_unit_id,
+                            'name' => $item->business_unit_name,
+                            'code' => $item->business_unit_code
+                        ],
+                        'sub_unit' => [
+                            'id' => $item->sub_unit_id,
+                            'name' => $item->sub_unit_name,
+                            'code' => $item->sub_unit_code
+                        ],
+                        'amount' => $item->amount,
+                        'remarks' => $item->remarks
+                    ];
+                })
+            ];
+        }
 
         // PRM GROUP
         if ($this->document_type == "PRM Multiple") {

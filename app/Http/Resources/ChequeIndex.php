@@ -16,7 +16,13 @@ class ChequeIndex extends JsonResource
      */
     public function toArray($request)
     {
-        $cheques = $this->cheques->first()->cheques ?? $this->cheques;
+//        $cheques = $this->cheques->first()->cheques ?? $this->cheques;
+        $cheques = $this->cheques->first()
+            ? $this->cheques->first()->chequeViaTransaction
+                ? $this->cheques->first()->chequeViaTransaction
+                : $this->cheques
+            : $this->cheques;
+
         $account_title = $this->voucher->first()->account_title;
         return [
             "id" => $this->id,
