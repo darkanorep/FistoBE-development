@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\SupplierTypeRequest;
 use App\Models\SupplierType;
 use App\Methods\GenericMethod;
 use Illuminate\Http\Request;
@@ -13,13 +14,17 @@ class SupplierTypeController extends Controller
 
     public function index(Request $request)
     {
-        $status =  $request['status'];
-        $rows =  (empty($request['rows']))?10:(int)$request['rows'];
-        $search =  $request['search'];
-        
+//        $status =  $request['status'];
+//        $rows =  (empty($request['rows']))?10:(int)$request['rows'];
+//        $search =  $request['search'];
+
+        $status = $request->status;
+        $rows = (int) $request->input('rows', 10);
+        $search = $request->search;
+
         $supplier_types = SupplierType::withTrashed()
         ->where(function ($query) use ($status){
-          return ($status==true)?$query->whereNull('deleted_at'):$query->whereNotNull('deleted_at');
+          return $status ? $query->whereNull('deleted_at') : $query->whereNotNull('deleted_at');
         })
         ->where(function ($query) use ($search) {
             $query->where('type', 'like', '%' . $search . '%')
@@ -27,60 +32,78 @@ class SupplierTypeController extends Controller
         })
         ->latest('updated_at')
         ->paginate($rows);
-        
-      if(count($supplier_types)==true){
+
+      if(count($supplier_types)){
         return $this->resultResponse('fetch','Supplier Type',$supplier_types);
       }
       return $this->resultResponse('not-found','Supplier Type',[]);
     }
 
-    public function store(Request $request)
+    public function store(SupplierTypeRequest $request)
     {
-        $fields = $request->validate([
-            'type' => 'required|string',
-            'transaction_days' => 'required',
-
-        ]);
-        $duplicateValues= GenericMethod::validateDuplicateByIdAndTable($fields['type'],'type','supplier_types');
-
-        if(count($duplicateValues)>0) {
-            return $this->resultResponse('registered','Supplier Type',[]);
-         }
-
-        $new_supplier_type = SupplierType::create([
-            'type' => $fields['type']
-            , 'transaction_days' => $fields['transaction_days']
+        $supplier_type = SupplierType::create([
+            'type' => $request->type,
+            'transaction_days' => $request->transaction_days
         ]);
 
-        return $this->resultResponse('save','Supplier Type',$new_supplier_type);
+        return $this->resultResponse('save','Supplier Type',$supplier_type);
+//        $fields = $request->validate([
+//            'type' => 'required|string',
+//            'transaction_days' => 'required',
+//
+//        ]);
+//        $duplicateValues= GenericMethod::validateDuplicateByIdAndTable($fields['type'],'type','supplier_types');
+//
+//        if(count($duplicateValues)>0) {
+//            return $this->resultResponse('registered','Supplier Type',[]);
+//         }
+//
+//        $new_supplier_type = SupplierType::create([
+//            'type' => $fields['type']
+//            , 'transaction_days' => $fields['transaction_days']
+//        ]);
+//
+//        return $this->resultResponse('save','Supplier Type',$new_supplier_type);
     }
 
-    public function update(Request $request, $id)
+    public function update(SupplierTypeRequest $request, $id)
     {
-        $specific_supplier_type = SupplierType::find($id);
-        $fields = $request->validate([
-            'type' => 'required|string',
-        ]);
+        $supplier_type = SupplierType::find($id);
 
-        if (!$specific_supplier_type) {
-            return $this->resultResponse('not-found','Supplier Type',[]);
+        if ($supplier_type) {
+            $supplier_type->type = $request->type;
+            $supplier_type->transaction_days = $request->transaction_days;
+            return $this->validateIfNothingChangeThenSave($supplier_type,'Supplier type');
         } else {
-            $validateDuplicateInUpdate =  GenericMethod::validateDuplicateInUpdate($fields['type'],'type','supplier_types',$id);
-            if(count($validateDuplicateInUpdate)>0) {
-                return $this->resultResponse('registered','Supplier Type',[]);
-            }
-            $specific_supplier_type->type = $request->get('type');
-            $specific_supplier_type->transaction_days = $request->get('transaction_days');
-            return $this->validateIfNothingChangeThenSave($specific_supplier_type,'Supplier type');
+
+            return $this->resultResponse('not-found','Supplier Type',[]);
         }
+//        $specific_supplier_type = SupplierType::find($id);
+//        $fields = $request->validate([
+//            'type' => 'required|string',
+//        ]);
+//
+//        if (!$specific_supplier_type) {
+//            return $this->resultResponse('not-found','Supplier Type',[]);
+//        } else {
+//            $validateDuplicateInUpdate =  GenericMethod::validateDuplicateInUpdate($fields['type'],'type','supplier_types',$id);
+//            if(count($validateDuplicateInUpdate)>0) {
+//                return $this->resultResponse('registered','Supplier Type',[]);
+//            }
+//            $specific_supplier_type->type = $request->get('type');
+//            $specific_supplier_type->transaction_days = $request->get('transaction_days');
+//            return $this->validateIfNothingChangeThenSave($specific_supplier_type,'Supplier type');
+//        }
     }
 
     public function change_status(Request $request,$id){
-        $status = $request['status'];
-        $model = new SupplierType();
-        return $this->change_masterlist_status($status,$model,$id,'Supplier type');
+//        $status = $request['status'];
+//        $model = new SupplierType();
+//        return $this->change_masterlist_status($status,$model,$id,'Supplier type');
+
+        return $this->changeStatus($id, SupplierType::class, 'Supplier type');
     }
-    
+
 
 
 }

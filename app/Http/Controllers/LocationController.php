@@ -12,167 +12,256 @@ class LocationController extends Controller
 {
   public function index(Request $request)
   {
-    $status = $request["status"];
-    $rows = empty($request["rows"]) ? 10 : (int) $request["rows"];
-    $search = $request["search"];
-    $paginate = isset($request["paginate"]) ? $request["paginate"] : ($paginate = 1);
-    $department_id = $request["department_id"];
 
-    // System Name
-    $api_for = $request->input("api_for", "default");
+      $status = $request->status;
+      $rows = $request->input('rows', 10);
+      $search = $request->search;
+      $department_id = $request->department_id;
+      $paginate = $request->input('paginate', 1);
 
-    $locations = Location::withTrashed()
-      ->when($paginate === 1, function ($query) {
-        return $query->with("departments");
-      })
-      ->where(function ($query) use ($status) {
-        if ($status == "all") {
-          return $query;
-        }
+      // System Name
+      $api_for = $request->input("api_for", "default");
 
-        if ($status == 1) {
-          return $query->whereNull("deleted_at");
-        }
+      $locations = Location::withTrashed()
+          ->when(isset($status), function ($query) use ($status) {
+              return $status ? $query->whereNull('deleted_at') : $query->whereNotNull('deleted_at');
+          })
+          ->where(function ($query) use ($search) {
+                $query->where('location', 'like', '%' . $search . '%')
+                    ->orWhere('code', 'like', '%' . $search . '%')
+                    ->orWhereHas('departments', function ($query) use ($search) {
+                        return $query->where('department', 'like', '%' . $search . '%');
+                    });
+          })
+          ->latest('updated_at');
 
-        if ($status == 0) {
-          return $query->whereNotNull("deleted_at");
-        }
-      })
-      ->where(function ($query) use ($search) {
-        $query
-          ->where("code", "like", "%" . $search . "%")
-          ->orWhere("location", "like", "%" . $search . "%")
-          ->orWhereHas("departments", function ($query) use ($search) {
-            return $query->where("department", "like", "%" . $search . "%");
+      if ($paginate == 1) {
+          $locations = $locations->paginate($rows);
+          $locations->transform(function ($value) {
+              return [
+                  'id' => $value->id,
+                  'code' => $value->code,
+                  'location' => $value->location,
+                  'departments' => $value->departments->map(function ($department) {
+                      return [
+                          'id' => $department->id,
+                          'name' => $department->department,
+                      ];
+                  }),
+                  'updated_at' => $value->updated_at,
+                  'deleted_at' => $value->deleted_at,
+              ];
           });
-      })
-      ->latest("updated_at");
+      } else if ($paginate == 0) {
+//          $locations = $locations->get();
+          $locations = $locations
+              ->when($api_for == 'vladimir', function ($query) {
+                  return $query->with([
+                      'departments:id,department',
+                  ])->get([
+                      'id',
+                      'code',
+                      'location',
+                      DB::RAW("(CASE WHEN (ISNULL(deleted_at)) THEN 1 ELSE 0 END) as status"),
+                      'deleted_at',
+                  ]);
+              })
+              ->when($api_for == 'genus_etd', function ($query) {
+                  return $query
+                      ->with('departments')
+                      ->get(["id", "code", "location as name", "updated_at", "deleted_at"]);
+              })
+              ->when($api_for == 'default', function ($query) {
+                  return $query->get(["id", "code", "location as name"]);
+              });
 
-    if ($paginate == 1) {
-      $locations = $locations->paginate($rows);
-    } else {
-      $locations = $locations
-        ->when(!empty($department_id), function ($query) use ($department_id) {
-          return $query->whereHas("departments", function ($query) use ($department_id) {
-            return $query->where("departments.id", $department_id);
-          });
-        })
-        ->when($api_for == "vladimir", function ($query) {
-          return $query->with("departments")->get(["id", "code", "location as name",
-          DB::RAW("(CASE WHEN (ISNULL(deleted_at)) THEN 1 ELSE 0 END) as status"),
-          "deleted_at"]);
+          $locations = array("locations" => $locations);
+      }
 
-          // return $query->get([
-          //   "id",
-          //   "code",
-          //   "location as name",
-          //   DB::RAW("(CASE WHEN (ISNULL(deleted_at)) THEN 1 ELSE 0 END) as status"),
-          // ]);
-        })
-        ->when($api_for == "genus_etd", function ($query) {
-          return $query->with("departments")->get(["id", "code", "location as name", "updated_at", "deleted_at"]);
-        })
-        ->when($api_for == "default", function ($query) {
-          return $query->get(["id", "code", "location as name"]);
-        });
+//      $locations = Location::withTrashed()
+//          ->when($paginate === 1, function ($query) {
+//              return $query->with("departments");
+//          })
+//          ->where(function ($query) use ($status) {
+//              if ($status == "all") {
+//                  return $query;
+//              }
+//
+//              if ($status == 1) {
+//                  return $query->whereNull("deleted_at");
+//              }
+//
+//              if ($status == 0) {
+//                  return $query->whereNotNull("deleted_at");
+//              }
+//          })
+//          ->where(function ($query) use ($search) {
+//              $query
+//                  ->where("code", "like", "%" . $search . "%")
+//                  ->orWhere("location", "like", "%" . $search . "%")
+//                  ->orWhereHas("departments", function ($query) use ($search) {
+//                      return $query->where("department", "like", "%" . $search . "%");
+//                  });
+//          })
+//          ->latest("updated_at");
+//
+//      if ($paginate == 1) {
+//          $locations = $locations->paginate($rows);
+//      } else {
+//          $locations = $locations
+//              ->when(!empty($department_id), function ($query) use ($department_id) {
+//                  return $query->whereHas("departments", function ($query) use ($department_id) {
+//                      return $query->where("departments.id", $department_id);
+//                  });
+//              })
+//              ->when($api_for == "vladimir", function ($query) {
+//                  return $query->with("departments")->get(["id", "code", "location as name",
+//                      DB::RAW("(CASE WHEN (ISNULL(deleted_at)) THEN 1 ELSE 0 END) as status"),
+//                      "deleted_at"]);
+//
+//                  // return $query->get([
+//                  //   "id",
+//                  //   "code",
+//                  //   "location as name",
+//                  //   DB::RAW("(CASE WHEN (ISNULL(deleted_at)) THEN 1 ELSE 0 END) as status"),
+//                  // ]);
+//              })
+//              ->when($api_for == "genus_etd", function ($query) {
+//                  return $query->with("departments")->get(["id", "code", "location as name", "updated_at", "deleted_at"]);
+//              })
+//              ->when($api_for == "default", function ($query) {
+//                  return $query->get(["id", "code", "location as name"]);
+//              });
+//
+//          if (count($locations)) {
+//              $locations = ["locations" => $locations];
+//          }
+//      }
 
       if (count($locations)) {
-        $locations = ["locations" => $locations];
+          return $this->resultResponse("fetch", "Location", $locations);
+      } else {
+            return $this->resultResponse("not-found", "Location", []);
       }
-    }
-
-    if (count($locations)) {
-      return $this->resultResponse("fetch", "Location", $locations);
-    }
-    return $this->resultResponse("not-found", "Location", []);
   }
 
   public function store(Request $request)
   {
-    $fields = $request->validate([
-      "code" => "required",
-      "location" => "required",
-      "departments" => "required",
-    ]);
+      $location = Location::create([
+          'code' => $request->code,
+          'location' => $request->location
+      ]);
 
-    $location_validateCodeDuplicate = Location::withTrashed()
-      ->where("code", $fields["code"])
-      ->first();
-    if (!empty($location_validateCodeDuplicate)) {
-      return $this->resultResponse("registered", "Code", ["error_field" => "code"]);
-    }
-    $location_validateDescriptionDuplicate = Location::withTrashed()
-      ->where("location", $fields["location"])
-      ->first();
-    if (!empty($location_validateDescriptionDuplicate)) {
-      return $this->resultResponse("registered", "Location", ["error_field" => "location"]);
-    }
-    $departmentExist = $this->validateIfObjectsExistByLocationStore(
-      new Department(),
-      $fields["departments"],
-      "Department"
-    );
+      $location->attach($request->departments);
 
-    $new_location = Location::create([
-      "code" => $fields["code"],
-      "location" => $fields["location"],
-    ]);
-    $new_location->departments()->attach($fields["departments"]);
-    return $this->resultResponse("save", "Location", $new_location);
+      return $this->resultResponse("save", "Location", $location);
+
+//    $fields = $request->validate([
+//      "code" => "required",
+//      "location" => "required",
+//      "departments" => "required",
+//    ]);
+//
+//    $location_validateCodeDuplicate = Location::withTrashed()
+//      ->where("code", $fields["code"])
+//      ->first();
+//    if (!empty($location_validateCodeDuplicate)) {
+//      return $this->resultResponse("registered", "Code", ["error_field" => "code"]);
+//    }
+//    $location_validateDescriptionDuplicate = Location::withTrashed()
+//      ->where("location", $fields["location"])
+//      ->first();
+//    if (!empty($location_validateDescriptionDuplicate)) {
+//      return $this->resultResponse("registered", "Location", ["error_field" => "location"]);
+//    }
+//    $departmentExist = $this->validateIfObjectsExistByLocationStore(
+//      new Department(),
+//      $fields["departments"],
+//      "Department"
+//    );
+//
+//    $new_location = Location::create([
+//      "code" => $fields["code"],
+//      "location" => $fields["location"],
+//    ]);
+//    $new_location->departments()->attach($fields["departments"]);
+//    return $this->resultResponse("save", "Location", $new_location);
   }
 
   public function update(Request $request, $id)
   {
-    $company = new Company();
-    $specific_location = Location::find($id);
 
-    if (!$specific_location) {
-      return $this->resultResponse("not-found", "Location", []);
-    }
+      $location = Location::where('id', $id)->first();
 
-    $fields = $request->validate([
-      "code" => "required",
-      "location" => "required",
-      "departments" => "required",
-    ]);
+      if ($location) {
 
-    $location_validateCodeDuplicate = Location::withTrashed()
-      ->where("code", $fields["code"])
-      ->where("id", "<>", $id)
-      ->first();
-    if (!empty($location_validateCodeDuplicate)) {
-      return $this->resultResponse("registered", "Code", ["error_field" => "code"]);
-    }
-    $location_validateDescriptionDuplicate = Location::withTrashed()
-      ->where("location", $fields["location"])
-      ->where("id", "<>", $id)
-      ->first();
-    if (!empty($location_validateDescriptionDuplicate)) {
-      return $this->resultResponse("registered", "Location", ["error_field" => "location"]);
-    }
+          $location->departments()->detach();
+          $location->update([
+              'code' => $request->code,
+              'location' => $request->location
+          ]);
 
-    $departmentExist = $this->validateIfObjectsExistByLocationStore(
-      new Department(),
-      $fields["departments"],
-      "Department"
-    );
+          $location->departments()->attach($request->departments);
+          $location->touch();
 
-    $is_associates_modified = $this->isTaggedArrayModified(
-      $fields["departments"],
-      $specific_location->departments()->get(),
-      "id"
-    );
-    $specific_location->code = $fields["code"];
-    $specific_location->location = $fields["location"];
-    $specific_location->departments()->sync(array_unique($fields["departments"]));
-    return $this->validateIfNothingChangeThenSave($specific_location, "Location", $is_associates_modified);
+          return $this->resultResponse("update", "Location", $location);
+
+      } else {
+            return $this->resultResponse("not-found", "Location", []);
+      }
+
+//    $company = new Company();
+//    $specific_location = Location::find($id);
+//
+//    if (!$specific_location) {
+//      return $this->resultResponse("not-found", "Location", []);
+//    }
+//
+//    $fields = $request->validate([
+//      "code" => "required",
+//      "location" => "required",
+//      "departments" => "required",
+//    ]);
+//
+//    $location_validateCodeDuplicate = Location::withTrashed()
+//      ->where("code", $fields["code"])
+//      ->where("id", "<>", $id)
+//      ->first();
+//    if (!empty($location_validateCodeDuplicate)) {
+//      return $this->resultResponse("registered", "Code", ["error_field" => "code"]);
+//    }
+//    $location_validateDescriptionDuplicate = Location::withTrashed()
+//      ->where("location", $fields["location"])
+//      ->where("id", "<>", $id)
+//      ->first();
+//    if (!empty($location_validateDescriptionDuplicate)) {
+//      return $this->resultResponse("registered", "Location", ["error_field" => "location"]);
+//    }
+//
+//    $departmentExist = $this->validateIfObjectsExistByLocationStore(
+//      new Department(),
+//      $fields["departments"],
+//      "Department"
+//    );
+//
+//    $is_associates_modified = $this->isTaggedArrayModified(
+//      $fields["departments"],
+//      $specific_location->departments()->get(),
+//      "id"
+//    );
+//    $specific_location->code = $fields["code"];
+//    $specific_location->location = $fields["location"];
+//    $specific_location->departments()->sync(array_unique($fields["departments"]));
+//    return $this->validateIfNothingChangeThenSave($specific_location, "Location", $is_associates_modified);
   }
 
-  public function change_status(Request $request, $id)
+  public function change_status($id)
   {
-    $status = $request["status"];
-    $model = new Location();
-    return $this->change_masterlist_status($status, $model, $id, "Location");
+
+      return $this->changeStatus($id, Location::class, 'Location');
+//    $status = $request["status"];
+//    $model = new Location();
+//    return $this->change_masterlist_status($status, $model, $id, "Location");
   }
 
 //  public function group_and_merge($raw_location_data)

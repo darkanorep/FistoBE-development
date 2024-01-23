@@ -138,21 +138,7 @@ class ReasonController extends Controller
 
     public function change_status($id){
 
-        $category = Reason::withTrashed()->find($id);
-
-        if ($category) {
-
-            if ($category->trashed()) {
-                $category->restore();
-                return $this->resultResponse('restore','Reason', []);
-            } else {
-                $category->delete();
-                return $this->resultResponse('archive','Reason', []);
-            }
-
-        } else {
-            return $this->resultResponse('not-found','Reason',[]);
-        }
+        return $this->changeStatus($id,Reason::class,'Reason');
 //        $status = $request['status'];
 //        $model = new Reason();
 //        return $this->change_masterlist_status($status,$model,$id,'Reason');

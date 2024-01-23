@@ -71,9 +71,9 @@ class TransactionResource1 extends JsonResource
         ];
 
         $reason = [
-            'id' => $this->reason_id,
-            'description' => $this->reason_description,
-            'remarks' => $this->reason_remarks,
+            'id' => $this->reason_id ?? null,
+            'description' => Reason::where('id', $this->reason_id)->first()->remarks ?? null,
+            'remarks' => $this->reason_remarks ?? null,
 //            'date' => $this->reason_id ? $this->updated_at : null,
         ];
 
@@ -372,6 +372,7 @@ class TransactionResource1 extends JsonResource
                     ],
                 ];
                 break;
+
             case 9: //Auto Debit
                 $document = [
                     "id" => $this->document_id,
@@ -569,7 +570,6 @@ class TransactionResource1 extends JsonResource
                     break;
             }
         }
-
 
         //TAG
         if ($this->tag()->count() > 0) {

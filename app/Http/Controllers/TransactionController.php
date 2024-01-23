@@ -613,7 +613,7 @@ class TransactionController extends Controller
                     ])
                     ->where("approver_id", $users_id);
             })
-            ->when(in_array($role, $cheque_window), function ($query) use ($status, $is_auto_debit) {
+            ->when(in_array($role, $cheque_window), function ($query) use ($status, $is_auto_debit, $search) {
                 $query
                     // ->when(
                     //   $is_auto_debit,
@@ -1089,44 +1089,11 @@ class TransactionController extends Controller
         return $this->resultResponse("fetch", "Transaction details", $singleTransaction->first());
     }
 
-    public function showTransaction1($id)
-    {
-        $counter_receipt_status = null;
-        $counter_receipt_no = null;
-        // $transaction = DB::table('transactions')->where('id',$id)->first();
-        $transaction = Transaction::where("id", $id)->get();
-        if ($transaction->isEmpty()) {
-            throw new FistoException("No records found.", 404, null, []);
-        }
-
-        $counter_receipt_details = CounterReceiptMethod::get_counter_receipt_id(
-            $transaction->first()->referrence_no,
-            $transaction->first()->supplier_id,
-            $transaction->first()->department_id
-        );
-        if ($counter_receipt_details) {
-            $counter_receipt_status = $counter_receipt_details->counter_receipt_status;
-            $counter_receipt_no = $counter_receipt_details->counter_receipt_no;
-        }
-
-        $transaction->map(function ($value) use ($counter_receipt_status, $counter_receipt_no) {
-            $value["counter_receipt_status"] = $counter_receipt_status;
-            $value["counter_receipt_no"] = $counter_receipt_no;
-        });
-
-        //        $singleTransaction = TransactionResource::collection($transaction);
-        $singleTransaction = TransactionResource1::collection($transaction);
-        if (count($singleTransaction) != true) {
-            throw new FistoException("No records found.", 404, null, []);
-        }
-        return $this->resultResponse("fetch", "Transaction details", $singleTransaction->first());
-    }
-
     public function showCurrentPO($id)
     {
         $transaction = Transaction::where("id", $id)->get();
         $singleTransaction = TransactionResource::collection($transaction);
-        if (count($singleTransaction) != true) {
+        if (!count($singleTransaction)) {
             throw new FistoException("No records found.", 404, null, []);
         }
         return $singleTransaction->first();
@@ -3555,7 +3522,7 @@ class TransactionController extends Controller
                             //                        });
                             return $query
                                 ->whereHas("transaction", function ($query) {
-                                    return $query->whereIn("status", ["issue-issue", "issue-receive"]);
+                                    return $query->whereIn("status", ["issue-issue", "issue-receive", "executive-executive"]);
                                 })
                                 ->where("is_issued", true)
                                 ->whereNull("is_received");
@@ -3574,9 +3541,8 @@ class TransactionController extends Controller
                                 ->whereHas("transaction", function ($query) {
                                     return $query->whereIn("status", ["release-release", "release-receive"]);
                                 })
-                                ->where("is_released", true)
-                                ->whereNull("is_received");
-                            //                            ->orwhereNotNull('is_released');
+                                ->where("is_released", true);
+//                                ->whereNull("is_received");
                         })
                         ->when($status == "clear-clear", function ($query) {
                             return $query->whereNotNull("is_cleared");
@@ -3864,10 +3830,10 @@ class TransactionController extends Controller
         return $collection->values();
     }
 
-    public function chequeRevert1(Request $request)
+    public function chequeRevert1($bank_id, $cheque_no, $process)
     {
-        $bank_id = $request->bank_id;
-        $cheque_no = $request->cheque_no;
+        // $bank_id = $request->bank_id;
+        // $cheque_no = $request->cheque_no;
 
         $cheque = Cheque::where("bank_id", $bank_id)
             ->where("cheque_no", $cheque_no)
@@ -3883,21 +3849,52 @@ class TransactionController extends Controller
             $treasuryIds = Treasury::where("batch_no", $batch_no)->pluck("id");
             $transactionIds = Treasury::whereIn("id", $treasuryIds)->pluck("transaction_id");
 
-            VoucherAccountTitle::whereIn("treasury_id", $treasuryIds)->delete();
+            VoucherAccountTitle::whereIn("treasury_id", $treasuryIds)->forceDelete();
             Treasury::whereIn("id", $treasuryIds)->delete();
             Cheque::whereIn("treasury_id", $treasuryIds)
-                ->where("cheque_no", $cheque_no)
-                ->delete();
+                // ->where("cheque_no", $cheque_no)
+                ->forceDelete();
+
+            $process == "cheque"
+                ? // ? ($status = "cheque-receive")
+                ($status[] = [
+                    "status" => "cheque-receive",
+                    "state" => "receive",
+                ])
+                : // : ($status = "audit-return");
+                ($status[] = [
+                    "status" => "audit-return",
+                    "state" => "return",
+                ]);
+
             Transaction::whereIn("id", $transactionIds)
                 ->where("state", "!=", "void")
                 ->update([
-                    "status" => "cheque-receive",
-                    "state" => "receive",
+                    "status" => $status[0]["status"],
+                    "state" => $status[0]["state"],
                 ]);
 
+//            if ($process == "cheque") {
+//                Transaction::whereIn("id", $transactionIds)
+//                    ->where("state", "!=", "void")
+//                    ->update([
+//                        "status" => "cheque-receive",
+//                        "state" => "receive",
+//                    ]);
+//            } else {
+//                Transaction::whereIn("id", $transactionIds)
+//                    ->where("state", "!=", "void")
+//                    ->update([
+//                        "status" => "audit-return",
+//                        "state" => "return",
+//                    ]);
+//            }
+
             return $this->resultResponse("update", "Transaction", []);
-        } else {
-            return $this->resultResponse("not-found", "Transaction", []);
         }
+
+//        else {
+//            return $this->resultResponse("not-found", "Transaction", []);
+//        }
     }
 }

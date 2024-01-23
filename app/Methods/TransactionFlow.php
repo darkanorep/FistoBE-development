@@ -980,6 +980,8 @@ class TransactionFlow
         $status = "audit-hold";
       } elseif ($subprocess == "return") {
         $status = "audit-return";
+
+          (new TransactionController())->chequeRevert1($request["bank_id"], $request["cheque_no"], $process);
 //        Cheque::where("transaction_id", $transaction->id)->update([
 //          "is_returned" => true,
 //        ]);
@@ -1821,11 +1823,13 @@ class TransactionFlow
         $chequeNo = $request->cheque_no;
 
         $context = [
-            'process'    => $request->process,
-            'subprocess' => $request->subprocess,
-            'cheques' => $request->cheques,
-            'cheque' => $request->cheque,
-            'accounts' => $request->accounts,
+            "process" => $request->process,
+            "subprocess" => $request->subprocess,
+            "cheques" => $request->cheques,
+            "cheque" => $request->cheque,
+            "accounts" => $request->accounts,
+            "bank_id" => $bankId,
+            "cheque_no" => $chequeNo,
         ];
 
         $transactionIds = Cheque::where('bank_id', $bankId)
@@ -1959,6 +1963,13 @@ class TransactionFlow
         for($i = 0; $i < count($transactionIds); $i++) {
 
             $transaction = Transaction::find($transactionIds[$i]);
+
+            if ($transaction->status != 'release-receive') {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Other Cheque is not yet received.'
+                ], 400);
+            }
 
             $transaction->release()->create([
                 'status' => 'release-release',
@@ -2160,20 +2171,6 @@ class TransactionFlow
                 $is_processed = 'is_released';
                 break;
         }
-
-//        if ($context['subprocess'] == 'unreturn') {
-//            Cheque::whereIn('transaction_id', $transactionIds)
-//                ->where('is_returned', true)
-//                ->update([
-//                    'is_returned' => null,
-//                ]);
-//        } else {
-//            Cheque::whereIn('transaction_id', $transactionIds)
-//                ->where('is_held', true)
-//                ->update([
-//                    'is_held' => null,
-//                ]);
-//        }
 
         $processed = Cheque::whereIn('transaction_id', $transactionIds)
             ->whereNull($is_processed)->count();

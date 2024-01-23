@@ -100,8 +100,8 @@ class UtilityCategoryController extends Controller
 
         if ($utility_category) {
             $utility_category->category = $request->category;
-            $utility_category->save();
-            return $this->resultResponse('update','Utility Category', $utility_category);
+
+            return $this->validateIfNothingChangeThenSave($utility_category, 'Utility Category');
         }
         else {
             return $this->resultResponse('not-found','Utility Category', []);
@@ -130,20 +130,7 @@ class UtilityCategoryController extends Controller
     }
     public function change_status($id){
 
-        $utility_category = UtilityCategory::withTrashed()->where('id', $id)->first();
-
-        if ($utility_category) {
-            if ($utility_category->trashed()) {
-                $utility_category->restore();
-                return $this->resultResponse('restore','Utility Category', []);
-            } else {
-                $utility_category->delete();
-                return $this->resultResponse('archive','Utility Category', []);
-            }
-        }
-        else {
-            return $this->resultResponse('not-found','Utility Category', []);
-        }
+        return $this->changeStatus($id, UtilityCategory::class, 'Utility Category');
 
 //      $status = $request['status'];
 //      $model = new UtilityCategory();

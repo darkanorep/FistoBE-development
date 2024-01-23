@@ -4,10 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\VoucherCodeRequest;
 use App\Models\VoucherCode;
+use App\Services\VoucherCodeServices;
 use Illuminate\Http\Request;
 
 class VoucherCodeController extends Controller
 {
+    private $voucherCodeServices;
+
+    public function __construct(VoucherCodeServices $voucherCodeServices)
+    {
+        $this->voucherCodeServices = $voucherCodeServices;
+    }
     public function index(Request $request)  {
 
         $status =  $request['status'];
@@ -50,46 +57,46 @@ class VoucherCodeController extends Controller
         }
     }
 
+    //Traditional way
+//    public function store(VoucherCodeRequest $request) {
+//
+//        $new_voucher_code = VoucherCode::create([
+//            'code' => $request->code,
+//        ]);
+//
+//        return $this->resultResponse('save', 'Voucher Code', $new_voucher_code);
+//    }
+
     public function store(VoucherCodeRequest $request) {
 
-        $new_voucher_code = VoucherCode::create([
-            'code' => $request->code,
-        ]);
+        $voucherCode = $this->voucherCodeServices->store($request->validated());
 
-        return $this->resultResponse('save', 'Voucher Code', $new_voucher_code);
+        return $this->resultResponse('save', 'Voucher Code', $voucherCode);
     }
 
-    public function update(VoucherCodeRequest $request, $id) {
-        $voucher_code = VoucherCode::where('id', $id)->first();
+    //Traditional way
+//    public function update(VoucherCodeRequest $request, $id) {
+//        $voucher_code = VoucherCode::where('id', $id)->first();
+//
+//        if ($voucher_code) {
+//            $voucher_code->update([
+//                'code' => $request->code,
+//            ]);
+//
+//            return $this->resultResponse('update', 'Voucher Code', $voucher_code);
+//        } else {
+//            return $this->resultResponse('not-found', 'Voucher Code', []);
+//        }
+//    }
 
-        if ($voucher_code) {
-            $voucher_code->update([
-                'code' => $request->code,
-            ]);
+    public function update(VoucherCodeRequest $request, VoucherCode $voucherCode) {
 
-            return $this->resultResponse('update', 'Voucher Code', $voucher_code);
-        } else {
-            return $this->resultResponse('not-found', 'Voucher Code', []);
-        }
+        $voucher_Code = $this->voucherCodeServices->update($voucherCode, $request->validated());
+
+        return $this->resultResponse('update', 'Voucher Code', $voucher_Code);
     }
 
     public function change_status($id) {
-
-        $data = VoucherCode::withTrashed()->find($id);
-
-        if ($data) {
-            if ($data->trashed()) {
-                $data->restore();
-
-                return $this->resultResponse("restore", 'Voucher Code', []);
-            } else {
-                $data->delete();
-
-                return $this->resultResponse("archive", 'Voucher Code', []);
-            }
-        } else {
-
-            return $this->resultResponse('not-found','Voucher Code', []);
-        }
+        return $this->changeStatus($id, VoucherCode::class, 'Voucher Code');
     }
 }

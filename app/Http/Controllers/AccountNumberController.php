@@ -125,24 +125,10 @@ class AccountNumberController extends Controller
 //      return $this->validateIfNothingChangeThenSave($account_number,'Account number');
   }
 
-  public function change_status(Request $request,$id)
+  public function change_status($id)
   {
 
-      $account_number = AccountNumber::withTrashed()->where('id', $id)->first();
-
-      if ($account_number) {
-
-          if ($account_number->trashed()) {
-              $account_number->restore();
-              return $this->resultResponse('restore', 'Account Number', $account_number);
-          } else {
-              $account_number->delete();
-              return $this->resultResponse('archive', 'Account Number', $account_number);
-          }
-
-      } else {
-          return $this->resultResponse('not-found', 'Account Number', []);
-      }
+      return $this->changeStatus($id,  AccountNumber::class, 'Account number');
 
 //    $status = $request['status'];
 //    $model = new AccountNumber();

@@ -94,22 +94,24 @@ class TransactionTypeController extends Controller
     }
 
     public function change_status($id) {
-        $data = TransactionType::withTrashed()->find($id);
+//        $data = TransactionType::withTrashed()->find($id);
+//
+//        if ($data) {
+//            if ($data->trashed()) {
+//                $data->restore();
+//
+//                return $this->resultResponse("restore", 'Transaction Type', []);
+//            } else {
+//                $data->delete();
+//
+//                return $this->resultResponse("archive", 'Transaction Type', []);
+//            }
+//        } else {
+//
+//            return $this->resultResponse('not-found','Transaction Type', []);
+//        }
 
-        if ($data) {
-            if ($data->trashed()) {
-                $data->restore();
-
-                return $this->resultResponse("restore", 'Transaction Type', []);
-            } else {
-                $data->delete();
-
-                return $this->resultResponse("archive", 'Transaction Type', []);
-            }
-        } else {
-
-            return $this->resultResponse('not-found','Transaction Type', []);
-        }
+        return $this->changeStatus($id, TransactionType::class, 'Transaction Type');
     }
 
     function tagCoa($model, $request){

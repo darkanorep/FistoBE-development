@@ -19,9 +19,13 @@ class DocumentController extends Controller
 {
     public function index(Request $request)
     {
-        $status =  $request['status'];
-        $rows =  (empty($request['rows']))?10:(int)$request['rows'];
-        $search =  $request['search'];
+//        $status =  $request['status'];
+//        $rows =  (empty($request['rows']))?10:(int)$request['rows'];
+//        $search =  $request['search'];
+
+        $status = $request->status;
+        $rows = (int) $request->input('rows', 10);
+        $search = $request->search;
 
         $documents = Document::withTrashed()
         ->with([
@@ -42,7 +46,7 @@ class DocumentController extends Controller
             }
         ])
         ->where(function ($query) use ($status){
-          return ($status==true)?$query->whereNull('deleted_at'):$query->whereNotNull('deleted_at');
+            return $status ? $query->whereNull('deleted_at') : $query->whereNotNull('deleted_at');
         })
         ->where(function ($query) use ($search) {
             $query->where('documents.type', 'like', '%' . $search . '%')
@@ -52,7 +56,7 @@ class DocumentController extends Controller
         ->latest('updated_at')
         ->paginate($rows);
 
-        if(count($documents)==true){
+        if(count($documents)){
             return $this->resultResponse('fetch','Document', $documents);
           }
           return $this->resultResponse('not-found','Document',[]);
@@ -176,10 +180,13 @@ class DocumentController extends Controller
         return $this->resultResponse('update','Document',$specific_document);
     }
 
-    public function change_status(Request $request,$id){
-        $status = $request['status'];
-        $model = new Document();
-        return $this->change_masterlist_status($status,$model,$id,'Document');
+    public function change_status($id){
+
+        return $this->changeStatus($id, Document::class, 'Document');
+
+//        $status = $request['status'];
+//        $model = new Document();
+//        return $this->change_masterlist_status($status,$model,$id,'Document');
     }
 
 }

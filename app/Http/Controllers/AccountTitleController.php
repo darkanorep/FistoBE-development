@@ -114,21 +114,8 @@ class AccountTitleController extends Controller
   public function change_status($id)
   {
 
-      $account_title = AccountTitle::withTrashed()->where('id',$id)->first();
+      return $this->changeStatus($id, AccountTitle::class, 'Account Title');
 
-      if ($account_title) {
-
-          if ($account_title->trashed()) {
-              $account_title->restore();
-              return $this->resultResponse('restore','Account Title', $account_title);
-          } else {
-              $account_title->delete();
-              return $this->resultResponse('archive','Account Title', $account_title);
-          }
-
-        } else {
-            return $this->resultResponse('not-found','Account Title', []);
-      }
 
 //    $status = $request['status'];
 //    $model = new AccountTitle();
@@ -161,7 +148,7 @@ class AccountTitleController extends Controller
                   "line" => (string) $index,
                   "description" => "Code is already registered."
               ];
-          }
+         }
 
          if (in_array($title, $title_list)) {
               $errorBag[] = [
@@ -169,10 +156,10 @@ class AccountTitleController extends Controller
                   "line" => (string) $index,
                   "description" => "Title is already registered."
               ];
-          }
+         }
 
-          if(!in_array($status, ['Active', 'Inactive'])) {
-              $errorBag[] = (object) [
+          if (!in_array($status, ['Active', 'Inactive'])) {
+              $errorBag[] = (object)[
                   "error_type" => "wrong-format",
                   "line" => $index,
                   "description" => "Status must be Active or Inactive.",
@@ -181,7 +168,7 @@ class AccountTitleController extends Controller
 
           foreach ($account_title as $key => $value) {
               if (empty($value)) {
-                  $errorBag[] = (object) [
+                  $errorBag[] = (object)[
                       "error_type" => "empty",
                       "line" => $index,
                       "description" => $key . " is empty.",
@@ -240,7 +227,7 @@ class AccountTitleController extends Controller
               })->toArray();
 
               foreach ($transformChunk as $chunk) {
-                  $new_account_title = AccountTitle::create([
+                  AccountTitle::create([
                       'code' => $chunk['code'],
                       'title' => $chunk['title'],
                       'category' => $chunk['category'],

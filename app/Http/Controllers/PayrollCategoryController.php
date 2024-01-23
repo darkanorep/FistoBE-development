@@ -117,25 +117,8 @@ class PayrollCategoryController extends Controller
     public function change_status($id)
     {
 
-        $payroll_category = PayrollCategory::withTrashed()->find($id);
+        return $this->changeStatus($id, PayrollCategory::class, 'Payroll Category');
 
-        if ($payroll_category) {
-
-            if ($payroll_category->trashed()) {
-                $payroll_category->restore();
-
-                return $this->resultResponse('restore', 'Payroll Category', []);
-
-            } else {
-
-                $payroll_category->delete();
-
-                return $this->resultResponse('delete', 'Payroll Category', []);
-            }
-
-        } else {
-            return $this->resultResponse('not-found', 'Payroll Category', []);
-        }
     }
 
 }

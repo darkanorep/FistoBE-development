@@ -446,8 +446,9 @@ class GenericMethod
     $status,
     $distributed_to = []
   ) {
-    $distributed_id = null;
-    $distributed_name = null;
+      $transaction = Transaction::where('id', $transaction_id)->first();
+    $distributed_id = $transaction->distributed_id ?? null;
+    $distributed_name = $transaction->distributed_name ?? null;
     if (!empty($distributed_to)) {
       $distributed_id = $distributed_to["id"];
       $distributed_name = $distributed_to["name"];
@@ -4714,238 +4715,238 @@ class GenericMethod
     return response($arrayResponse, $code);
   }
 
-  public static function resultResponse($action, $modelName, $data = [])
-  {
-    $modelName = ucfirst(strtolower($modelName));
-    switch ($action) {
-      case "not-equal":
-        return GenericMethod::error(422, $modelName . " amount not equal.", []);
-        break;
-      case "receive":
-        return GenericMethod::result(200, "Transaction has been received.", []);
-        break;
-      case "hold":
-        return GenericMethod::result(200, "Transaction has been hold.", []);
-        break;
-      case "unhold":
-        return GenericMethod::result(200, "Transaction has been unhold.", []);
-        break;
-      case "return":
-        return GenericMethod::result(200, "Transaction has been returned.", []);
-        break;
-      case "unreturn":
-        return GenericMethod::result(200, "Transaction has been unreturned.", []);
-        break;
-      case "void":
-        return GenericMethod::result(200, "Transaction has been voided.", []);
-        break;
-        case "gas":
-            return GenericMethod::result(200, "Transaction has been saved.", []);
-            break;
-        case "discharge":
-            return GenericMethod::result(200, "Transaction has been saved.", []);
-            break;
-      case "tag":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "voucher":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "approve":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "transmit":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "inspect":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "audit":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "cheque":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "executive":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "issue":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "release":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "reverse":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "file":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "clear":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "request":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "accept":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "receive-approver":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "receive-requestor":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "transfer":
-        return GenericMethod::result(200, "Transaction has been transferred.", []);
-        break;
-      case "fetch":
-        return GenericMethod::result(200, Str::plural($modelName) . " has been fetched.", $data);
-        break;
+    public static function resultResponse($action, $modelName, $data = [])
+    {
+        $modelName = ucfirst(strtolower($modelName));
+        switch ($action) {
+            case "not-equal":
+                return GenericMethod::error(422, $modelName . " amount not equal.", []);
+                break;
+            case "receive":
+                return GenericMethod::result(200, "Transaction has been received.", []);
+                break;
+            case "hold":
+                return GenericMethod::result(200, "Transaction has been hold.", []);
+                break;
+            case "unhold":
+                return GenericMethod::result(200, "Transaction has been unhold.", []);
+                break;
+            case "return":
+                return GenericMethod::result(200, "Transaction has been returned.", []);
+                break;
+            case "unreturn":
+                return GenericMethod::result(200, "Transaction has been unreturned.", []);
+                break;
+            case "void":
+                return GenericMethod::result(200, "Transaction has been voided.", []);
+                break;
+            case "gas":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "discharge":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "tag":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "voucher":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "approve":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "transmit":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "inspect":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "audit":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "cheque":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "executive":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "issue":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "release":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "reverse":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "file":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "clear":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "request":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "accept":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "receive-approver":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "receive-requestor":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "transfer":
+                return GenericMethod::result(200, "Transaction has been transferred.", []);
+                break;
+            case "fetch":
+                return GenericMethod::result(200, Str::plural($modelName) . " has been fetched.", $data);
+                break;
 
-      case "save":
-        return GenericMethod::result(201, "New " . strtolower($modelName) . " has been saved.", $data);
-        break;
+            case "save":
+                return GenericMethod::result(201, "New " . strtolower($modelName) . " has been saved.", $data);
+                break;
 
-      case "counter-save":
-        return GenericMethod::result(201, $modelName . " has been saved.", $data);
-        break;
+            case "counter-save":
+                return GenericMethod::result(201, $modelName . " has been saved.", $data);
+                break;
 
-      case "import":
-        return GenericMethod::result(201, Str::plural($modelName) . " has been imported.", $data);
-        break;
+            case "import":
+                return GenericMethod::result(201, Str::plural($modelName) . " has been imported.", $data);
+                break;
 
-      case "update":
-        return GenericMethod::result(200, $modelName . " has been updated.", $data);
-        break;
+            case "update":
+                return GenericMethod::result(200, $modelName . " has been updated.", $data);
+                break;
 
-      case "archive":
-        return GenericMethod::result(200, $modelName . " has been archived.", $data);
-        break;
+            case "archive":
+                return GenericMethod::result(200, $modelName . " has been archived.", $data);
+                break;
 
-      case "restore":
-        return GenericMethod::result(200, $modelName . " has been restored.", $data);
-        break;
+            case "restore":
+                return GenericMethod::result(200, $modelName . " has been restored.", $data);
+                break;
 
-      case "registered":
-        throw new FistoException($modelName . " already registered.", 409, null, $data);
-        break;
+            case "registered":
+                throw new FistoException($modelName . " already registered.", 409, null, $data);
+                break;
 
-      case "not-registered":
-        throw new FistoException($modelName . " not registered.", 409, null, $data);
-        break;
+            case "not-registered":
+                throw new FistoException($modelName . " not registered.", 409, null, $data);
+                break;
 
-      case "registered-inactive":
-        throw new FistoException($modelName . " already registered but inactive.", 409, null, $data);
-        break;
+            case "registered-inactive":
+                throw new FistoException($modelName . " already registered but inactive.", 409, null, $data);
+                break;
 
-      case "exist":
-        throw new FistoException($modelName . " already exist.", 409, null, $data);
-        break;
+            case "exist":
+                throw new FistoException($modelName . " already exist.", 409, null, $data);
+                break;
 
-      case "transfer-invalid-process":
-        throw new FistoException(
-          $modelName . " Invalid, process inputted is not allowed to transfer.",
-          422,
-          null,
-          $data
-        );
-        break;
+            case "transfer-invalid-process":
+                throw new FistoException(
+                    $modelName . " Invalid, process inputted is not allowed to transfer.",
+                    422,
+                    null,
+                    $data
+                );
+                break;
 
-      case "transfer-invalid-subprocess":
-        throw new FistoException($modelName . " Invalid, subprocess must be transfer.", 422, null, $data);
-        break;
+            case "transfer-invalid-subprocess":
+                throw new FistoException($modelName . " Invalid, subprocess must be transfer.", 422, null, $data);
+                break;
 
-      case "exist-flow":
-        throw new FistoException("Transaction already " . strtolower($modelName) . ".", 409, null, $data);
-        break;
+            case "exist-flow":
+                throw new FistoException("Transaction already " . strtolower($modelName) . ".", 409, null, $data);
+                break;
 
-      case "import-error":
-        throw new FistoException(
-          "No " . Str::plural(strtolower($modelName)) . " were imported. Kindly check the errors.",
-          409,
-          null,
-          $data
-        );
-        break;
+            case "import-error":
+                throw new FistoException(
+                    "No " . Str::plural(strtolower($modelName)) . " were imported. Kindly check the errors.",
+                    409,
+                    null,
+                    $data
+                );
+                break;
 
-      case "ongoing":
-        return GenericMethod::result(422, "On-going Transaction encountered.", []);
-        break;
+            case "ongoing":
+                return GenericMethod::result(422, "On-going Transaction encountered.", []);
+                break;
 
-      case "upload-error":
-        return GenericMethod::result(422, "The given data was invalid..", $data);
-        break;
+            case "upload-error":
+                return GenericMethod::result(422, "The given data was invalid..", $data);
+                break;
 
-      case "import-format":
-        throw new FistoException("Invalid excel template, it should be " . $modelName . ".", 406, null, []);
-        break;
+            case "import-format":
+                throw new FistoException("Invalid excel template, it should be " . $modelName . ".", 406, null, []);
+                break;
 
-      case "nothing-has-changed":
-        return GenericMethod::result(200, "Nothing has changed.", $data);
-        break;
+            case "nothing-has-changed":
+                return GenericMethod::result(200, "Nothing has changed.", $data);
+                break;
 
-      case "not-found":
-        throw new FistoException("No records found.", 404, null, $data);
-        break;
+            case "not-found":
+                throw new FistoException("No records found.", 404, null, $data);
+                break;
 
-      case "password-changed":
-        return GenericMethod::result(200, "Password has been changed.", $data);
-        break;
+            case "password-changed":
+                return GenericMethod::result(200, "Password has been changed.", $data);
+                break;
 
-      case "password-incorrect":
-        throw new FistoException("The password you entered is incorrect.", 409, null, $data);
-        break;
+            case "password-incorrect":
+                throw new FistoException("The password you entered is incorrect.", 409, null, $data);
+                break;
 
-      case "password-error-cred":
-        throw new FistoException("You don't have the proper credentials to perform this action.", 401, null, $data);
-        break;
+            case "password-error-cred":
+                throw new FistoException("You don't have the proper credentials to perform this action.", 401, null, $data);
+                break;
 
-      case "login":
-        return GenericMethod::result(200, "Succesfully login.", $data);
-        break;
+            case "login":
+                return GenericMethod::result(200, "Succesfully login.", $data);
+                break;
 
-      case "logout":
-        return GenericMethod::result(200, "User has been logged out.", $data);
-        break;
+            case "logout":
+                return GenericMethod::result(200, "User has been logged out.", $data);
+                break;
 
-      case "logout-again":
-        throw new FistoException("User is already logged out.", 401, null, []);
-        break;
+            case "logout-again":
+                throw new FistoException("User is already logged out.", 401, null, []);
+                break;
 
-      case "login-error":
-        throw new FistoException("Invalid username or password.", 409, null, $data);
-        break;
+            case "login-error":
+                throw new FistoException("Invalid username or password.", 409, null, $data);
+                break;
 
-      case "available":
-        return GenericMethod::result(200, $modelName . " is available.", $data);
-        break;
+            case "available":
+                return GenericMethod::result(200, $modelName . " is available.", $data);
+                break;
 
-      case "password-reset":
-        return GenericMethod::result(200, "User's default password has been restored.", $data);
-        break;
+            case "password-reset":
+                return GenericMethod::result(200, "User's default password has been restored.", $data);
+                break;
 
-      case "invalid-access":
-        throw new FistoLaravelException("API cannot access by this user.", 422, null, $data);
-        break;
+            case "invalid-access":
+                throw new FistoLaravelException("API cannot access by this user.", 422, null, $data);
+                break;
 
-      case "invalid":
-        throw new FistoLaravelException("The given data was invalid.", 422, null, $data);
-        break;
+            case "invalid":
+                throw new FistoLaravelException("The given data was invalid.", 422, null, $data);
+                break;
 
-      case "voucher-no-exist":
-        throw new FistoLaravelException("Voucher number already exist.", 422, null, $data);
-        break;
+            case "voucher-no-exist":
+                throw new FistoLaravelException("Voucher number already exist.", 422, null, $data);
+                break;
 
-      case "cheque-no-exist":
-        throw new FistoLaravelException("Cheque number already exist.", 422, null, $data);
-        break;
+            case "cheque-no-exist":
+                throw new FistoLaravelException("Cheque number already exist.", 422, null, $data);
+                break;
 
-      case "success-no-content":
-        return GenericMethod::result(204, "Success.", []);
-        break;
+            case "success-no-content":
+                return GenericMethod::result(204, "Success.", []);
+                break;
+        }
     }
-  }
 
   public static function resultLaravelFormat($column, $message)
   {

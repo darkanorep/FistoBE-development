@@ -136,23 +136,7 @@ class CategoryController extends Controller
 
     public function change_status($id){
 
-        $category = Category::withTrashed()->find($id);
-
-        if ($category) {
-
-            if ($category->trashed()) {
-                $category->restore();
-
-                return $this->resultResponse("restore", 'Category', []);
-            } else {
-                $category->delete();
-
-                return $this->resultResponse('archive','Category', []);
-            }
-
-        } else {
-            return $this->resultResponse('not-found','Category',[]);
-        }
+        return $this->changeStatus($id, Category::class, 'Category');
 
 
 //        $status = $request['status'];
