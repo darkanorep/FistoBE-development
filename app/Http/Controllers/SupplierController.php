@@ -74,10 +74,12 @@ class SupplierController extends Controller
       $terms = $request->terms;
       $supplier_type_id = $request->supplier_type_id;
       $references = $request->references;
+      $receipt_type = $request->receipt_type;
 
       $supplier = Supplier::create([
           'code' => $code,
           'name' => $name,
+          'receipt_type' => $receipt_type,
           'terms' => $terms,
           'supplier_type_id' => $supplier_type_id
       ]);
@@ -117,12 +119,14 @@ class SupplierController extends Controller
 
         $code = $request->code;
         $name = $request->name;
+        $receipt_type = $request->receipt_type;
         $terms = $request->terms;
         $supplier_type_id = $request->supplier_type_id;
         $references = $request->references;
 
         $supplier->code = $code;
         $supplier->name = $name;
+        $supplier->receipt_type = $receipt_type;
         $supplier->terms = $terms;
         $supplier->supplier_type_id = $supplier_type_id;
 
@@ -175,8 +179,8 @@ class SupplierController extends Controller
         $errorBag = [];
         $suppliers = $request->all();
 
-        $headers = 'Supplier Code, Supplier Name, Terms, Supplier Type, Referrences, Status';
-        $template = ["code", "name", "terms", "supplier_type", "referrences", "status"];
+        $headers = 'Supplier Code, Supplier Name, Receipt Type, Terms, Supplier Type, Referrences, Status';
+        $template = ["code", "name", "receipt_type", "terms", "supplier_type", "referrences", "status"];
         $keys = array_keys(current($suppliers));
         $this->validateHeader($template, $keys, $headers);
 
@@ -190,6 +194,7 @@ class SupplierController extends Controller
         foreach ($suppliers as $supplier) {
             $code = $supplier['code'];
             $name = $supplier['name'];
+            $receipt_type = $supplier['receipt_type'];
             $type = $supplier['supplier_type'];
             $references = $supplier['referrences'];
             $terms = $supplier['terms'];
@@ -238,6 +243,14 @@ class SupplierController extends Controller
                     "error_type" => "wrong-format",
                     "line" => $index,
                     "description" => "Status must be Active or Inactive.",
+                ];
+            }
+
+            if(!in_array($receipt_type, ['Official', 'Unofficial'])) {
+                $errorBag[] = (object) [
+                    "error_type" => "wrong-format",
+                    "line" => $index,
+                    "description" => "Receipt Type must be Official or Unofficial.",
                 ];
             }
 
@@ -292,6 +305,7 @@ class SupplierController extends Controller
                     return [
                         'code' => $supplier['code'],
                         'name' => $supplier['name'],
+                        'receipt_type' => $supplier['receipt_type'],
                         'terms' => $supplier['terms'],
                         'supplier_type_id' => SupplierType::where('type', $supplier['supplier_type'])->first()->id,
                         'created_at' => date("Y-m-d H:i:s", strtotime('now')),

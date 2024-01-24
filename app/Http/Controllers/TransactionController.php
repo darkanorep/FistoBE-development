@@ -8,6 +8,7 @@ use App\Http\Resources\TransactionResource1;
 use App\Models\Cheque;
 use App\Models\Clear;
 use App\Models\ClearingAccountTitle;
+use App\Models\Permission;
 use App\Models\Supplier;
 use App\Models\Treasury;
 use App\Models\VoucherAccountTitle;
@@ -237,6 +238,7 @@ class TransactionController extends Controller
                         "net_amount",
                         "cheque_date",
                         "receipt_type",
+                        "is_not_editable",
 
                         "status",
                         "state",
@@ -346,6 +348,7 @@ class TransactionController extends Controller
                         "net_amount",
                         "cheque_date",
                         "receipt_type",
+                        "is_not_editable",
 
                         "status",
                         "state",
@@ -493,6 +496,7 @@ class TransactionController extends Controller
                         "net_amount",
                         "cheque_date",
                         "receipt_type",
+                        "is_not_editable",
 
                         "status",
                         "state",
@@ -598,6 +602,7 @@ class TransactionController extends Controller
                         "net_amount",
                         "cheque_date",
                         "receipt_type",
+                        "is_not_editable",
 
                         "approver_id",
                         "approver_name",
@@ -813,6 +818,7 @@ class TransactionController extends Controller
                         "net_amount",
                         "cheque_date",
                         "receipt_type",
+                        "is_not_editable",
 
                         "status",
                         "state",
@@ -905,6 +911,7 @@ class TransactionController extends Controller
                         "net_amount",
                         "cheque_date",
                         "receipt_type",
+                        "is_not_editable",
 
                         "approver_id",
                         "approver_name",
@@ -964,6 +971,7 @@ class TransactionController extends Controller
                         "net_amount",
                         "cheque_date",
                         "receipt_type",
+                        "is_not_editable",
 
                         "approver_id",
                         "approver_name",
@@ -1031,6 +1039,7 @@ class TransactionController extends Controller
                         "net_amount",
                         "cheque_date",
                         "receipt_type",
+                        "is_not_editable",
 
                         "approver_id",
                         "approver_name",
@@ -2796,6 +2805,35 @@ class TransactionController extends Controller
                     ->pluck("request_id")
                     ->toArray();
 
+//                $test = Transaction::whereIn("request_id", $currentRequestIds)
+//                    ->where("state", "!=", "void")
+//                    ->pluck("is_not_editable")
+//                    ->toArray();
+//
+//                if (count($test) == 2) {
+//                    $test = collect($test);
+//
+//                    $is_editable = $test
+//                        ->filter(function ($q) {
+//                            return $q == 1;
+//                        })
+//                        ->count();
+//
+//                    $is_not_editable = $test
+//                        ->filter(function ($q) {
+//                            return $q == 0;
+//                        })
+//                        ->count();
+//
+//                    if ($is_editable == $is_not_editable) {
+//                        Transaction::whereIn("request_id", $currentRequestIds)
+//                            ->where("state", "!=", "void")
+//                            ->update([
+//                                "is_not_editable" => false,
+//                            ]);
+//                    }
+//                }
+
                 Transaction::where("request_id", end($currentRequestIds) - 1)->update([
                     "is_not_editable" => false,
                 ]);
@@ -3079,7 +3117,7 @@ class TransactionController extends Controller
                 "date_requested",
 
                 "status",
-                "state",
+                "state"
             ])
             ->latest("updated_at")
             ->paginate((int)$rows);
@@ -3896,5 +3934,76 @@ class TransactionController extends Controller
 //        else {
 //            return $this->resultResponse("not-found", "Transaction", []);
 //        }
+    }
+
+    public function statusCounter() {
+        $permissions = auth()->user()->permissions;
+        $user_id = auth()->user()->id;
+
+        $statusMap = [
+            1 => [], //Creation of Request
+            2 => [], //Creation of Confidential Request
+            3 => [], //Auditing of Voucher
+            4 => [], //Received Receipt Report
+            5 => [], //Auditing of Cheque
+            6 => [], //External Releasing of Cheque
+            7 => [], //Creation of Cheque
+            8 => [], //Clearing of Cheque
+            9 => [], //Creation of Debit Memo
+            10 => [], //Reversal Request
+            11 => [], //Filing of Voucher
+            12 => ["tag-tag", "voucher-receive", "voucher-voucher", "voucher-return"], //Creation of Voucher
+            13 => [], //Transmittal of Confidential Document
+            14 => [], //Filing of Confidential Voucher
+            15 => [], //Tagging and Vouchering
+            16 => [], //Releasing of Confidential Cheque
+            17 => ["voucher-voucher", "approve-receive", "approve-approve"], //Approval of Voucher
+            18 => [], //Approval of Confidential Voucher
+            19 => ["approve-approve"], //Transmittal of Document
+            20 => ["pending", "voucher-return"], //Tagging of Document
+            21 => [], //Creation of Counter Receipt
+            22 => [], //Monitoring of Counter Receipt
+            23 => [],  //Transmittal of Cheque
+            24 => [], //Internal Releasing of Cheque
+            25 => [], //Transmittal of Official Receipt
+            26 => [], //Filing of Official Receipt
+        ];
+
+        $response = [];
+
+        foreach ($permissions as $permission) {
+            if (isset($statusMap[$permission])) {
+                $status = $statusMap[$permission];
+                $permissionName = Permission::where('id', $permission)->first()->name;
+
+                // Initialize all status counts to zero
+                $result = array_fill_keys($status, 0);
+
+                // Count the transactions
+                $counts = Transaction::select('status', DB::raw('count(*) as count'))
+                    ->whereIn('status', $status)
+                    ->where(function ($query) use ($user_id) {
+                        $query->where('distributed_id', $user_id)
+                            ->orWhere('approver_id', $user_id);
+                    })
+                    ->groupBy('status')
+                    ->get()
+                    ->pluck('count', 'status')
+                    ->toArray();
+
+                // Update the counts
+                foreach ($counts as $stat => $count) {
+                    $result[$stat] = $count;
+                }
+
+                $response[] = [
+                    'permission' => $permissionName,
+                    'result' => $result
+                ];
+            }
+        }
+
+        return response()->json($response);
+
     }
 }

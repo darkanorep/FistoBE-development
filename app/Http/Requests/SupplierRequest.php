@@ -43,7 +43,8 @@ class SupplierRequest extends FormRequest
                     $query->whereNull('deleted_at');
                 })
             ],
-            'references' => 'required|array'
+            'references' => 'required|array',
+            'receipt_type' => 'required|string'
         ];
     }
 }

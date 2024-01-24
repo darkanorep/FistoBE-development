@@ -63,7 +63,7 @@ class DocumentController extends Controller
 
     }
 
-    public function store(Request $request, DocumentCoaRequest $documentCoaRequest)
+    public function store(Request $request)
     {
         $fields = $request->validate([
             'type' => 'required|string',
@@ -109,27 +109,27 @@ class DocumentController extends Controller
             $category_ids = $request['categories'];
             $new_document->categories()->attach($category_ids);
 
-            $accounts = $documentCoaRequest['account'];
-            if (isset($accounts)) {
-                foreach ($accounts as $account) {
-                    DocumentCoa::create([
-                        'document_id' => $new_document->id,
-                        'entry' => $account['entry'],
-                        'company_id' => $account['company_id'],
-                        'business_unit_id' => $account['business_unit_id'],
-                        'department_id' => $account['department_id'],
-                        'sub_unit_id' => $account['sub_unit_id'],
-                        'location_id' => $account['location_id'],
-                        'account_title_id' => $account['account_title_id'],
-                    ]);
-                }
-            }
+//            $accounts = $documentCoaRequest['account'];
+//            if (isset($accounts)) {
+//                foreach ($accounts as $account) {
+//                    DocumentCoa::create([
+//                        'document_id' => $new_document->id,
+//                        'entry' => $account['entry'],
+//                        'company_id' => $account['company_id'],
+//                        'business_unit_id' => $account['business_unit_id'],
+//                        'department_id' => $account['department_id'],
+//                        'sub_unit_id' => $account['sub_unit_id'],
+//                        'location_id' => $account['location_id'],
+//                        'account_title_id' => $account['account_title_id'],
+//                    ]);
+//                }
+//            }
 
             return $this->resultResponse('save','Document',$new_document);
          }
     }
 
-    public function update(Request $request, DocumentCoaRequest $documentCoaRequest, $id)
+    public function update(Request $request, $id)
     {
         $specific_document = Document::find($id);
         $fields = $request->validate([
@@ -159,23 +159,23 @@ class DocumentController extends Controller
         $specific_document->categories()->detach();
         $specific_document->categories()->attach($category_ids);
 
-        $accounts = $documentCoaRequest['account'];
-
-        if (isset($accounts)) {
-            DocumentCoa::where('document_id', $id)->delete();
-            foreach ($accounts as $account) {
-                $test = DocumentCoa::create([
-                    'document_id' => $specific_document->id,
-                    'entry' => $account['entry'] ?? null,
-                    'company_id' => $account['company_id'] ?? null,
-                    'business_unit_id' => $account['business_unit_id'] ?? null,
-                    'department_id' => $account['department_id'],
-                    'sub_unit_id' => $account['sub_unit_id'] ?? null,
-                    'location_id' => $account['location_id'] ?? null,
-                    'account_title_id' => $account['account_title_id'] ?? null,
-                ]);
-            }
-        }
+//        $accounts = $documentCoaRequest['account'];
+//
+//        if (isset($accounts)) {
+//            DocumentCoa::where('document_id', $id)->delete();
+//            foreach ($accounts as $account) {
+//                $test = DocumentCoa::create([
+//                    'document_id' => $specific_document->id,
+//                    'entry' => $account['entry'] ?? null,
+//                    'company_id' => $account['company_id'] ?? null,
+//                    'business_unit_id' => $account['business_unit_id'] ?? null,
+//                    'department_id' => $account['department_id'],
+//                    'sub_unit_id' => $account['sub_unit_id'] ?? null,
+//                    'location_id' => $account['location_id'] ?? null,
+//                    'account_title_id' => $account['account_title_id'] ?? null,
+//                ]);
+//            }
+//        }
 //        return $this->validateIfNothingChangeThenSave($specific_document,'Document',$is_tagged_modified);
         return $this->resultResponse('update','Document',$specific_document);
     }

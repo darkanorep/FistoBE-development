@@ -30,29 +30,40 @@ class TransactionIndex extends JsonResource
                 ->exists();
         }
 
-
         $is_latest_transaction = 0;
         if ($this->po_details->isNotEmpty() && strtoupper($this->payment_type) === "PARTIAL") {
             $po_no = $this->po_details->last()->po_no;
 
-            $trxns_id = POBatch::with("transaction_ids")
-                ->where("p_o_batches.po_no", $po_no)
-                ->select(["request_id", "po_no"])
-                ->get();
+//            $trxns_id = POBatch::with("transaction_ids")
+//                ->where("p_o_batches.po_no", $po_no)
+//                ->select(["request_id", "po_no"])
+//                ->get();
+//
+//            $latest_trxn_id = $trxns_id->pluck("transaction_ids.id")->last();
+//
+//            if ($latest_trxn_id == $this->id) {
+//                $is_latest_transaction = 1;
+//            }
 
-            $latest_trxn_id = $trxns_id->pluck("transaction_ids.id")->last();
+            $trxns_id = POBatch::with([
+                'request' => function ($query) {
+                $query->where('state', '!=', 'void')
+                    ->select(['request_id']);
+                }
+            ])
+                ->where('po_no', $po_no)->select(['request_id', 'po_no'])->get();
 
-            if ($latest_trxn_id == $this->id) {
+            $trxns_id = $trxns_id->filter(function ($query) {
+                return $query['request'] != null;
+            })->pluck('request.request_id')->last();
+
+            if ($trxns_id == $this->id) {
                 $is_latest_transaction = 1;
             }
         }
 
         $collect = $this->treasuryCheque->pluck('is_cleared');
         $is_cleared = $collect->isEmpty() ? 0 : ($collect->contains(0 || null) ? 0 : 1);
-//    return [
-//        'cheques' => $collect,
-//        'is_cleared' => $is_cleared,
-//    ];
 
         return [
             "id" => $this->id,

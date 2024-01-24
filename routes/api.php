@@ -267,7 +267,6 @@ Route::group(["middleware" => "auth:sanctum"], function () {
     Route::post("transactions/flow/receive", [TransactionFlowController::class, "multipleReceive"]);
     Route::post("transactions/flow/tag", [TransactionFlowController::class, "multipleTag"]);
     Route::post("transactions/flow/cheque", [TransactionFlowController::class, "multipleCheque"]);
-//    Route::post("cheques/flow/receive", [TransactionFlowController::class, "multipleChequeReceive"]);
     Route::post("cheques/flow/receive", [TransactionFlowController::class, "multipleChequeReceive"]);
     // CHEQUES
     Route::get("cheques", [TransactionController::class, "chequeIndex"]);
@@ -292,5 +291,8 @@ Route::group(["middleware" => "auth:sanctum"], function () {
 
     //MultiReceive
 //    Route::post("cheques/flow/receive-test", [TransactionFlowController::class, "multipleChequeReceiveTest"]);
+
+    Route::get('/status-count', [TransactionController::class, 'statusCounter']);
+
 
 });
