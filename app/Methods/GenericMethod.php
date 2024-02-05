@@ -256,7 +256,7 @@ class GenericMethod
 //      $model = new Approver();
 //      $field = "distributed_id";
     } elseif ($process == "cheque") {
-      $model = new Treasury();
+//      $model = new Treasury();
       $field = "transaction_id";
     } elseif ($process == "release") {
       $model = new Tagging();
@@ -298,13 +298,13 @@ class GenericMethod
         return $status;
     }
       //---------------------------------------------------------------//
-//    $is_exists = Treasury::where("transaction_id", $transaction["transaction_id"])
-//        ->where('status', 'cheque-cheque')
-//        ->exists();
-//
-//    if ($process == "cheque" and $is_exists) {
-//      return $status;
-//    }
+    $is_chequed = Treasury::where("transaction_id", $transaction["transaction_id"])
+        ->where('status', 'cheque-cheque')
+        ->exists();
+
+    if ($process == "cheque" and $is_chequed) {
+      return $status;
+    }
 
     $is_audited = Audit::where("transaction_id", $transaction->id)
       ->where("status", "audit-audit")
@@ -723,7 +723,7 @@ class GenericMethod
       }
     }
 
-    if ($status == in_array($status, ["cheque-return", "cheque-hold", "cheque-cheque", "cheque-void"])) {
+    if ($status == in_array($status, ["cheque-return", "cheque-hold", "cheque-cheque", "cheque-void", "cheque-unhold"])) {
         $transaction = Transaction::where('id', $transaction_id)->first();
         $transaction->treasuryCheque()
             ->update([

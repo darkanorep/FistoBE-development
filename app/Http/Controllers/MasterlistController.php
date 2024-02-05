@@ -9,6 +9,12 @@ use App\Http\Resources\DocumentCoaResource;
 use App\Http\Resources\DocumentResource;
 use App\Http\Resources\UserResource;
 
+use App\Models\AccountTitleChild;
+use App\Models\AccountTitleGrandParent;
+use App\Models\AccountTitleGreatGrandParent;
+use App\Models\AccountTitleParent;
+use App\Models\AccountTitlePnL;
+use App\Models\AccountTitleUnit;
 use App\Models\TransactionType;
 use App\Models\User;
 use App\Models\Company;
@@ -87,8 +93,11 @@ class MasterlistController extends Controller
 //    }
 
     public function accountTitleTransactionTypeDropdown($id) {
-      $data = TransactionType::where('id', $id)
-          ->first();
+//      $data = TransactionType::with('accounts')->where('id', $id)
+//          ->first();
+
+        $data = TransactionType::with('accounts.account_title')->where('id', $id)
+            ->first();
 
       if ($data) {
             return $this->resultResponse('fetch', 'Account Title', new DocumentResource($data));
@@ -261,6 +270,61 @@ class MasterlistController extends Controller
 
       return $this->resultResponse('fetch', 'Transaction Type', $transaction_type);
   }
+
+    public function accountTitleGreatGrandParentsDropdown()
+    {
+        $account_title_ggparent = array(
+            "account_title_ggparents" => AccountTitleGreatGrandParent::whereNull('deleted_at')->get(['id', 'name'])
+        );
+
+        return $this->resultResponse('fetch', 'Account Title Great Grand Parent', $account_title_ggparent);
+    }
+
+    public function accountTitleGrandParentsDropdown()
+    {
+        $account_title_gparent = array(
+            "account_title_gparents" => AccountTitleGrandParent::whereNull('deleted_at')->get(['id', 'name'])
+        );
+
+        return $this->resultResponse('fetch', 'Account Title Grand Parent', $account_title_gparent);
+    }
+
+    public function accountTitleParentsDropdown()
+    {
+        $account_title_parent = array(
+            "account_title_parents" => AccountTitleParent::whereNull('deleted_at')->get(['id', 'name'])
+        );
+
+        return $this->resultResponse('fetch', 'Account Title Parent', $account_title_parent);
+    }
+
+    public function accountTitleChildrenDropdown()
+    {
+        $account_title_child = array(
+            "account_title_children" => AccountTitleChild::whereNull('deleted_at')->get(['id', 'name'])
+        );
+
+        return $this->resultResponse('fetch', 'Account Title Child', $account_title_child);
+    }
+
+    public function accountTitlePnlsDropdown()
+    {
+        $account_title_pnl = array(
+            "account_title_pnls" => AccountTitlePnL::whereNull('deleted_at')->get(['id', 'name'])
+        );
+
+        return $this->resultResponse('fetch', 'Account Title PNL', $account_title_pnl);
+    }
+
+    public function accountTitleUnitsDropdown()
+    {
+        $account_title_unit = array(
+            "account_title_units" => AccountTitleUnit::whereNull('deleted_at')->get(['id', 'name'])
+        );
+
+        return $this->resultResponse('fetch', 'Account Title Unit', $account_title_unit);
+    }
+
 
   public static function coa(Request $request){
 

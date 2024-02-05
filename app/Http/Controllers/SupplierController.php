@@ -40,7 +40,7 @@ class SupplierController extends Controller
           ->orWhere('suppliers.name', 'like', '%'.$search.'%')
           ->orWhere('suppliers.terms', 'like', '%'.$search.'%');
       })
-      ->latest('suppliers.updated_at');
+      ->latest('updated_at');
 
       if ($paginate == 1){
         $suppliers = $suppliers->paginate($rows);

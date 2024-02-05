@@ -60,7 +60,7 @@ class Cheque extends Model
         "remarks",
         "status",
         "state",
-        "issue_id"
+//        "issue_id"
     ]);
   }
 

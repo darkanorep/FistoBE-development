@@ -77,9 +77,10 @@ class CreditCardController extends Controller
     {
       $fields = $request->validated();
 
-      $credit_card = CreditCard::withTrashed()->find($id);
+//      $credit_card = CreditCard::withTrashed()->find($id);
+        $credit_card = CreditCard::find($id);
 
-      if(!empty($credit_card)){
+      if($credit_card){
 
         $credit_card->name = $fields['name'];
         $credit_card->account_no = $fields['account_no'];

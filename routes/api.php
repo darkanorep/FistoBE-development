@@ -104,6 +104,12 @@ Route::group(["middleware" => "auth:sanctum"], function () {
       Route::get("department", [MasterlistController::class, "departmentDropdown"]);
       Route::get("associate", [MasterlistController::class, "associateDropdown"]);
       Route::get("voucher-code", [MasterlistController::class, "voucherCodeDropdown"]);
+      Route::get("account-title-great-grand-parent", [MasterlistController::class, "accountTitleGreatGrandParentsDropdown"]);
+      Route::get("account-title-grand-parent", [MasterlistController::class, "accountTitleGrandParentsDropdown"]);
+      Route::get("account-title-parent", [MasterlistController::class, "accountTitleParentsDropdown"]);
+      Route::get("account-title-child", [MasterlistController::class, "accountTitleChildrenDropdown"]);
+      Route::get("account-title-pnl", [MasterlistController::class, "accountTitlePnlsDropdown"]);
+      Route::get("account-title-unit", [MasterlistController::class, "accountTitleUnitsDropdown"]);
 //      Route::get("transaction-type", [MasterlistController::class, "transactionTypeDropdown"]);
     });
 
@@ -210,8 +216,8 @@ Route::group(["middleware" => "auth:sanctum"], function () {
 
     //BUSINESS UNIT
       Route::get("business-units/", [BusinessUnitController::class, "index"]);
-      Route::patch('business-units/{id}', [\App\Http\Controllers\BusinessUnitController::class, 'change_status']);
-      Route::resource("business-units", \App\Http\Controllers\BusinessUnitController::class);
+      Route::patch('business-units/{id}', [BusinessUnitController::class, 'change_status']);
+      Route::resource("business-units", BusinessUnitController::class);
 
       //SUB UNIT
       Route::patch("sub-units/{id}", [SubUnitController::class, "change_status"]);
@@ -228,6 +234,29 @@ Route::group(["middleware" => "auth:sanctum"], function () {
       //VOUCHER CODE
       Route::patch('voucher-codes/{id}', [VoucherCodeController::class, "change_status"]);
       Route::resource("voucher-codes", VoucherCodeController::class);
+
+      //ACCOUNT TITLE GREAT GRAND PARENT
+      Route::patch('account-title-great-grand-parents/{id}', [\App\Http\Controllers\AccountTitleGreatGrandParentController::class, "change_status"]);
+      Route::resource("account-title-great-grand-parents", \App\Http\Controllers\AccountTitleGreatGrandParentController::class);
+
+      //ACCOUNT TITLE GRAND PARENT
+      Route::patch('account-title-grand-parents/{id}', [\App\Http\Controllers\AccountTitleGrandParentController::class, "change_status"]);
+      Route::resource("account-title-grand-parents", \App\Http\Controllers\AccountTitleGrandParentController::class);
+
+      //ACCOUNT TITLE PARENT
+      Route::patch('account-title-parents/{id}', [\App\Http\Controllers\AccountTitleParentController::class, "change_status"]);
+      Route::resource("account-title-parents", \App\Http\Controllers\AccountTitleParentController::class);
+      //ACCOUNT TITLE CHILDREN
+      Route::patch('account-title-children/{id}', [\App\Http\Controllers\AccountTitleChildController::class, "change_status"]);
+      Route::resource("account-title-children", \App\Http\Controllers\AccountTitleChildController::class);
+
+      //ACCOUNT TITLE P&L
+      Route::patch('account-title-pnls/{id}', [\App\Http\Controllers\AccountTitlePnLController::class, "change_status"]);
+      Route::resource("account-title-pnls", \App\Http\Controllers\AccountTitlePnLController::class);
+
+      //ACCOUNT TITLE UNIT
+      Route::patch('account-title-units/{id}', [\App\Http\Controllers\AccountTitleUnitController::class, "change_status"]);
+      Route::resource("account-title-units", \App\Http\Controllers\AccountTitleUnitController::class);
   });
 
   // USER
@@ -292,7 +321,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
     //MultiReceive
 //    Route::post("cheques/flow/receive-test", [TransactionFlowController::class, "multipleChequeReceiveTest"]);
 
-    Route::get('/status-count', [TransactionController::class, 'statusCounter']);
-
+    Route::get('/status-transactions-count', [TransactionController::class, 'statusTransactionCounter']);
+    Route::get('/status-cheques-count', [TransactionController::class, 'statusChequeCounter']);
 
 });

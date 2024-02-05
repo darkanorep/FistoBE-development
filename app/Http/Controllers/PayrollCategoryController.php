@@ -15,56 +15,56 @@ class PayrollCategoryController extends Controller
     public function index(Request $request)
     {
 
-        $status =  $request['status'];
-        $rows =  (int) $request->input('rows', 10);
-        $search =  $request['search'];
-        $paginate = $request->input('paginate', 1);
-
-        $payroll_categories = PayrollCategory::withTrashed()->where(function ($query) use ($status) {
-            return $status ? $query->whereNull('deleted_at') : $query->whereNotNull('deleted_at');
-        })->where(function ($query) use ($search) {
-            $query->where('category', 'like', '%' . $search . '%');
-        })->latest('updated_at');
-
-        if ($paginate == 1) {
-            $payroll_categories = $payroll_categories->paginate($rows);
-        } else if ($paginate == 0) {
-            $payroll_categories = array("payroll_categories" => $payroll_categories->get(['id', 'category as name']));
-        }
-
-        if (count($payroll_categories)) {
-            return $this->resultResponse('fetch', 'Payroll Category', $payroll_categories);
-        } else {
-            return $this->resultResponse('not-found', 'Payroll Category', []);
-        }
-
-//        $status = $request['status'];
-//        $rows = (empty($request['rows'])) ? 10 : (int)$request['rows'];
-//        $search = $request['search'];
-//        $paginate = (isset($request['paginate'])) ? $request['paginate'] : $paginate = 1;
+//        $status =  $request['status'];
+//        $rows =  (int) $request->input('rows', 10);
+//        $search =  $request['search'];
+//        $paginate = $request->input('paginate', 1);
 //
-//        $payroll_category = PayrollCategory::withTrashed()
-//            ->where(function ($query) use ($status) {
-//                return ($status == true) ? $query->whereNull('deleted_at') : $query->whereNotNull('deleted_at');
-//            })
-//            ->where('category', 'like', '%' . $search . '%')
-//            ->latest('updated_at');
+//        $payroll_categories = PayrollCategory::withTrashed()->where(function ($query) use ($status) {
+//            return $status ? $query->whereNull('deleted_at') : $query->whereNotNull('deleted_at');
+//        })->where(function ($query) use ($search) {
+//            $query->where('category', 'like', '%' . $search . '%');
+//        })->latest('updated_at');
 //
 //        if ($paginate == 1) {
-//            $payroll_category = $payroll_category
-//                ->paginate($rows);
+//            $payroll_categories = $payroll_categories->paginate($rows);
 //        } else if ($paginate == 0) {
-//            $payroll_category = $payroll_category
-//                ->get(['id', 'category as name']);
-//            if (count($payroll_category) == true) {
-//                $payroll_category = array("payroll_categories" => $payroll_category);;
-//            }
+//            $payroll_categories = array("payroll_categories" => $payroll_categories->get(['id', 'category as name']));
 //        }
 //
-//        if (count($payroll_category) == true) {
-//            return $this->resultResponse('fetch', 'Payroll Category', $payroll_category);
+//        if (count($payroll_categories)) {
+//            return $this->resultResponse('fetch', 'Payroll Category', $payroll_categories);
+//        } else {
+//            return $this->resultResponse('not-found', 'Payroll Category', []);
 //        }
-//        return $this->resultResponse('not-found', 'Payroll Category', []);
+
+        $status = $request['status'];
+        $rows = (empty($request['rows'])) ? 10 : (int)$request['rows'];
+        $search = $request['search'];
+        $paginate = (isset($request['paginate'])) ? $request['paginate'] : $paginate = 1;
+
+        $payroll_category = PayrollCategory::withTrashed()
+            ->where(function ($query) use ($status) {
+                return ($status == true) ? $query->whereNull('deleted_at') : $query->whereNotNull('deleted_at');
+            })
+            ->where('category', 'like', '%' . $search . '%')
+            ->latest('updated_at');
+
+        if ($paginate == 1) {
+            $payroll_category = $payroll_category
+                ->paginate($rows);
+        } else if ($paginate == 0) {
+            $payroll_category = $payroll_category
+                ->get(['id', 'category as name']);
+            if (count($payroll_category) == true) {
+                $payroll_category = array("payroll_categories" => $payroll_category);;
+            }
+        }
+
+        if (count($payroll_category) == true) {
+            return $this->resultResponse('fetch', 'Payroll Category', $payroll_category);
+        }
+        return $this->resultResponse('not-found', 'Payroll Category', []);
     }
 
     public function store(PayrollCategoryRequest $request)

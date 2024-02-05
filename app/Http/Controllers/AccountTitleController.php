@@ -6,6 +6,12 @@ use App\Exceptions\FistoException;
 
 use App\Http\Requests\AccountTitleRequest;
 use App\Models\AccountTitle;
+use App\Models\AccountTitleChild;
+use App\Models\AccountTitleGrandParent;
+use App\Models\AccountTitleGreatGrandParent;
+use App\Models\AccountTitleParent;
+use App\Models\AccountTitlePnL;
+use App\Models\AccountTitleUnit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -19,13 +25,39 @@ class AccountTitleController extends Controller
       $search = $request['search'];
 
       $account_titles = AccountTitle::withTrashed()
+          ->with([
+              'greatGrandParents:id,name',
+              'grandParents:id,name',
+              'parents:id,name',
+              'children:id,name',
+              'pnl:id,name',
+              'units:id,name',
+          ])
           ->where(function ($query) use ($status) {
               return ($status == true) ? $query->whereNull('deleted_at') : $query->whereNotNull('deleted_at');
           })
           ->where(function ($query) use ($search) {
               $query->where('code', 'like', '%' . $search . '%')
                   ->orWhere('title', 'like', '%' . $search . '%')
-                  ->orWhere('category', 'like', '%' . $search . '%');
+//                  ->orWhere('category', 'like', '%' . $search . '%');
+              ->orWhereHas('greatGrandParents', function ($query) use ($search) {
+                  $query->where('name', 'like', '%' . $search . '%');
+              })
+                  ->orWhereHas('grandParents', function ($query) use ($search) {
+                      $query->where('name', 'like', '%' . $search . '%');
+                  })
+                  ->orWhereHas('parents', function ($query) use ($search) {
+                      $query->where('name', 'like', '%' . $search . '%');
+                  })
+                  ->orWhereHas('children', function ($query) use ($search) {
+                      $query->where('name', 'like', '%' . $search . '%');
+                  })
+                  ->orWhereHas('pnl', function ($query) use ($search) {
+                      $query->where('name', 'like', '%' . $search . '%');
+                  })
+                  ->orWhereHas('units', function ($query) use ($search) {
+                      $query->where('name', 'like', '%' . $search . '%');
+                  });
           })
           ->latest('updated_at')
           ->paginate($rows);
@@ -43,7 +75,13 @@ class AccountTitleController extends Controller
       $account_title = AccountTitle::create([
           'code' => $request['code'],
           'title' => $request['title'],
-          'category' => $request['category']
+//          'category' => $request['category']
+          'account_title_ggparent_id' => $request['account_title_ggparent_id'],
+          'account_title_gparent_id' => $request['account_title_gparent_id'],
+          'account_title_parent_id' => $request['account_title_parent_id'],
+          'account_title_child_id' => $request['account_title_child_id'],
+          'account_title_pnl_id' => $request['account_title_pnl_id'],
+          'account_title_unit_id' => $request['account_title_unit_id'],
       ]);
 
       return $this->resultResponse('save','Account Title', $account_title);
@@ -75,7 +113,12 @@ class AccountTitleController extends Controller
     if ($account_title) {
         $account_title->code = $request['code'];
         $account_title->title = $request['title'];
-        $account_title->category = $request['category'];
+//        $account_title->category = $request['category'];
+        $account_title->account_title_ggparent_id = $request['account_title_ggparent_id'];
+        $account_title->account_title_gparent_id = $request['account_title_gparent_id'];
+        $account_title->account_title_parent_id = $request['account_title_parent_id'];
+        $account_title->account_title_child_id = $request['account_title_child_id'];
+        $account_title->account_title_pnl_id = $request['account_title_pnl_id'];
 
         return $this->validateIfNothingChangeThenSave($account_title,'Account Title');
 
@@ -127,11 +170,17 @@ class AccountTitleController extends Controller
       $errorBag = [];
       $code_list = AccountTitle::withTrashed()->pluck('code')->toArray();
       $title_list = AccountTitle::withTrashed()->pluck('title')->toArray();
+      $ggp_list = AccountTitleGreatGrandParent::withTrashed()->pluck('name')->toArray();
+      $gp_list = AccountTitleGrandParent::withTrashed()->pluck('name')->toArray();
+      $p_list = AccountTitleParent::withTrashed()->pluck('name')->toArray();
+      $c_list = AccountTitleChild::withTrashed()->pluck('name')->toArray();
+      $pnl_list = AccountTitlePnL::withTrashed()->pluck('name')->toArray();
+      $unit_list = AccountTitleUnit::withTrashed()->pluck('name')->toArray();
 
       date_default_timezone_set('Asia/Manila');
 
-      $headers =  "Code, Title, Category, Status";
-      $template = ["code", "title", "category", "status"];
+      $headers =  "Code, Title, Category, GreatGrandParent, GrandParent, Parent, Child, Unit, Status";
+      $template = ["code", "title", "category", "greatgrandparent", "grandparent", "parent", "child", "unit", "status"];
       $keys = array_keys(current($account_titles));
       $this->validateHeader($template, $keys, $headers);
 
@@ -139,7 +188,12 @@ class AccountTitleController extends Controller
       foreach ($account_titles as $account_title) {
           $code = $account_title['code'];
           $title = $account_title['title'];
-          $category = $account_title['category'];
+          $pnl = $account_title['category'];
+          $greatgrandparent = $account_title['greatgrandparent'];
+          $grandparent = $account_title['grandparent'];
+          $parent = $account_title['parent'];
+          $child = $account_title['child'];
+          $unit = $account_title['unit'];
           $status = $account_title['status'];
 
          if (in_array($code, $code_list)) {
@@ -166,7 +220,60 @@ class AccountTitleController extends Controller
               ];
           }
 
+          if (!in_array($pnl, $pnl_list)) {
+              $errorBag[] = (object)[
+                  "error_type" => "not-registered",
+                  "line" => $index,
+                  "description" => "Category is not registered.",
+              ];
+          }
+
+          if (!in_array($greatgrandparent, $ggp_list)) {
+              $errorBag[] = (object)[
+                  "error_type" => "not-registered",
+                  "line" => $index,
+                  "description" => "Great Grand Parent is not registered.",
+              ];
+          }
+
+          if (!in_array($grandparent, $gp_list)) {
+              $errorBag[] = (object)[
+                  "error_type" => "not-registered",
+                  "line" => $index,
+                  "description" => "Grand Parent is not registered.",
+              ];
+          }
+
+          if (!in_array($parent, $p_list)) {
+              $errorBag[] = (object)[
+                  "error_type" => "not-registered",
+                  "line" => $index,
+                  "description" => "Parent is not registered.",
+              ];
+          }
+
+          if (!in_array($child, $c_list)) {
+              $errorBag[] = (object)[
+                  "error_type" => "not-registered",
+                  "line" => $index,
+                  "description" => "Child is not registered.",
+              ];
+          }
+
+          if (!in_array($unit, $unit_list)) {
+              $errorBag[] = (object)[
+                  "error_type" => "not-registered",
+                  "line" => $index,
+                  "description" => "Unit is not registered.",
+              ];
+          }
+
+          $excludeKeys = ['greatgrandparent', 'grandparent', 'parent', 'child', 'unit'];
+
           foreach ($account_title as $key => $value) {
+              if (in_array($key, $excludeKeys)) {
+                  continue;
+              }
               if (empty($value)) {
                   $errorBag[] = (object)[
                       "error_type" => "empty",
@@ -219,7 +326,13 @@ class AccountTitleController extends Controller
                   return [
                       'code' => $account_title['code'],
                       'title' => $account_title['title'],
-                      'category' => $account_title['category'],
+//                      'category' => $account_title['category'],
+                      'account_title_ggparent_id' => AccountTitleGreatGrandParent::withTrashed()->where('name', $account_title['greatgrandparent'])->first()->id,
+                      'account_title_gparent_id' => AccountTitleGrandParent::withTrashed()->where('name', $account_title['grandparent'])->first()->id,
+                      'account_title_parent_id' => AccountTitleParent::withTrashed()->where('name', $account_title['parent'])->first()->id,
+                      'account_title_child_id' => AccountTitleChild::withTrashed()->where('name', $account_title['child'])->first()->id,
+                      'account_title_pnl_id' => AccountTitlePnL::withTrashed()->where('name', $account_title['category'])->first()->id,
+                      'account_title_unit_id' => AccountTitleUnit::withTrashed()->where('name', $account_title['unit'])->first()->id,
                       'created_at' => date('Y-m-d H:i:s'),
                       'updated_at' => date('Y-m-d H:i:s'),
                       'deleted_at' => (strtolower($account_title['status']) == 'active') ? null : date('Y-m-d H:i:s'),
@@ -230,7 +343,13 @@ class AccountTitleController extends Controller
                   AccountTitle::create([
                       'code' => $chunk['code'],
                       'title' => $chunk['title'],
-                      'category' => $chunk['category'],
+//                      'category' => $chunk['category'],
+                      'account_title_ggparent_id' => $chunk['account_title_ggparent_id'],
+                      'account_title_gparent_id' => $chunk['account_title_gparent_id'],
+                      'account_title_parent_id' => $chunk['account_title_parent_id'],
+                      'account_title_child_id' => $chunk['account_title_child_id'],
+                      'account_title_pnl_id' => $chunk['account_title_pnl_id'],
+                      'account_title_unit_id' => $chunk['account_title_unit_id'],
                       'created_at' => $chunk['created_at'],
                       'updated_at' => $chunk['updated_at'],
                       'deleted_at' => $chunk['deleted_at'],

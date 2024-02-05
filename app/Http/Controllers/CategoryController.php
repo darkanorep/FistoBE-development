@@ -15,55 +15,55 @@ class CategoryController extends Controller
     public function index(Request $request)
     {
 
-        $status =  $request['status'];
-        $rows =  (int) $request->input('rows', 10);
-        $search =  $request['search'];
-        $paginate = $request->input('paginate', 1);
-
-        $category = Category::withTrashed()->where(function ($query) use ($status) {
-            return $status ? $query->whereNull('deleted_at') : $query->whereNotNull('deleted_at');
-        })->where(function ($query) use ($search) {
-            $query->where('name', 'like', '%' . $search . '%');
-        })->latest('updated_at');
-
-
-        if ($paginate == 1) {
-            $category = $category->paginate($rows);
-        } else if ($paginate == 0) {
-            $category = $category->get(['id','name']);
-        }
-
-        if (count($category)) {
-            return $this->resultResponse('fetch', 'Category', $category);
-        } else {
-            return $this->resultResponse('not-found', 'Category', []);
-        }
-
 //        $status =  $request['status'];
-//        $rows =  (empty($request['rows']))?10:(int)$request['rows'];
+//        $rows =  (int) $request->input('rows', 10);
 //        $search =  $request['search'];
-//        $paginate = (isset($request['paginate']))? $request['paginate']:$paginate = 1;
+//        $paginate = $request->input('paginate', 1);
 //
-//        $categories = Category::withTrashed()
-//        ->where(function ($query) use ($status){
-//          return ($status==true)?$query->whereNull('deleted_at'):$query->whereNotNull('deleted_at');
-//        })
-//        ->where(function ($query) use ($search){
-//            return (isset($search))?$query->where('name', 'like', '%' . $search . '%'):$query;
-//        })
-//        ->latest('updated_at');
+//        $category = Category::withTrashed()->where(function ($query) use ($status) {
+//            return $status ? $query->whereNull('deleted_at') : $query->whereNotNull('deleted_at');
+//        })->where(function ($query) use ($search) {
+//            $query->where('name', 'like', '%' . $search . '%');
+//        })->latest('updated_at');
 //
-//         if ($paginate == 1){
-//        $categories = $categories
-//        ->paginate($rows);
-//        }else if ($paginate == 0){
-//          $categories = $categories->get(['id','name']);
+//
+//        if ($paginate == 1) {
+//            $category = $category->paginate($rows);
+//        } else if ($paginate == 0) {
+//            $category = $category->get(['id','name']);
 //        }
 //
-//        if(count($categories)==true){
-//            return $this->resultResponse('fetch','Category',$categories);
+//        if (count($category)) {
+//            return $this->resultResponse('fetch', 'Category', $category);
+//        } else {
+//            return $this->resultResponse('not-found', 'Category', []);
 //        }
-//        return $this->resultResponse('not-found','Category',[]);
+
+        $status =  $request['status'];
+        $rows =  (empty($request['rows']))?10:(int)$request['rows'];
+        $search =  $request['search'];
+        $paginate = (isset($request['paginate']))? $request['paginate']:$paginate = 1;
+
+        $categories = Category::withTrashed()
+        ->where(function ($query) use ($status){
+          return ($status==true)?$query->whereNull('deleted_at'):$query->whereNotNull('deleted_at');
+        })
+        ->where(function ($query) use ($search){
+            return (isset($search))?$query->where('name', 'like', '%' . $search . '%'):$query;
+        })
+        ->latest('updated_at');
+
+         if ($paginate == 1){
+        $categories = $categories
+        ->paginate($rows);
+        }else if ($paginate == 0){
+          $categories = $categories->get(['id','name']);
+        }
+
+        if(count($categories)==true){
+            return $this->resultResponse('fetch','Category',$categories);
+        }
+        return $this->resultResponse('not-found','Category',[]);
     }
 
     public function store(CategoryRequest $request)

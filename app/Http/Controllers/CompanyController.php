@@ -27,93 +27,93 @@ class CompanyController extends Controller
       // System Name
       $api_for = $request->input("api_for", "default");
 
-      $companies = Company::withTrashed()
-          ->when(isset($status), function ($query) use ($status) {
-              return $status ? $query->whereNull("deleted_at") : $query->whereNotNull("deleted_at");
-          })
-          ->where(function ($query) use ($search) {
-              $query->where("code", "like", "%" . $search . "%")
-                  ->orWhere("company", "like", "%" . $search . "%");
-          })
-          ->latest("updated_at");
-
-      if ($paginate == 1) {
-          $companies = $companies->with("associates")->paginate($rows);
-      } else if ($paginate == 0) {
-          $companies = $companies
-              ->when($api_for == 'vladimir', function ($query) {
-                  return $query->get([
-                      "id",
-                      "code",
-                      "company as name",
-                      DB::RAW("(CASE WHEN (ISNULL(deleted_at)) THEN 1 ELSE 0 END) as status")
-                  ]);
-              })
-              ->when($api_for == 'genus_etd', function ($query) {
-                  return $query->get([
-                      "id",
-                      "code",
-                      "company as name",
-                      "updated_at",
-                      "deleted_at"
-                  ]);
-              })
-              ->when($api_for == 'default', function ($query) {
-                  return $query->get([
-                      "id",
-                      "code",
-                      "company as name"
-                  ]);
-              });
-
-          $companies = array('companies' => $companies);
-      }
-
 //      $companies = Company::withTrashed()
-//          ->when($paginate === 1, function ($query) {
-//              return $query->with("associates");
-//          })
-//          ->where(function ($query) use ($status) {
-//              if ($status == "all") {
-//                  return $query;
-//              }
-//
-//              if ($status == 1) {
-//                  return $query->whereNull("deleted_at");
-//              }
-//
-//              if ($status == 0) {
-//                  return $query->whereNotNull("deleted_at");
-//              }
+//          ->when(isset($status), function ($query) use ($status) {
+//              return $status ? $query->whereNull("deleted_at") : $query->whereNotNull("deleted_at");
 //          })
 //          ->where(function ($query) use ($search) {
-//              $query->where("code", "like", "%" . $search . "%")->orWhere("company", "like", "%" . $search . "%");
+//              $query->where("code", "like", "%" . $search . "%")
+//                  ->orWhere("company", "like", "%" . $search . "%");
 //          })
 //          ->latest("updated_at");
 //
 //      if ($paginate == 1) {
-//          $companies = $companies->paginate($rows);
-//      } elseif ($paginate == 0) {
+//          $companies = $companies->with("associates")->paginate($rows);
+//      } else if ($paginate == 0) {
 //          $companies = $companies
-//              ->when($api_for == "vladimir", function ($query) {
+//              ->when($api_for == 'vladimir', function ($query) {
 //                  return $query->get([
 //                      "id",
 //                      "code",
 //                      "company as name",
-//                      DB::RAW("(CASE WHEN (ISNULL(deleted_at)) THEN 1 ELSE 0 END) as status"),
+//                      DB::RAW("(CASE WHEN (ISNULL(deleted_at)) THEN 1 ELSE 0 END) as status")
 //                  ]);
 //              })
-//              ->when($api_for == "genus_etd", function ($query) {
-//                  return $query->get(["id", "code", "company as name", "updated_at", "deleted_at"]);
+//              ->when($api_for == 'genus_etd', function ($query) {
+//                  return $query->get([
+//                      "id",
+//                      "code",
+//                      "company as name",
+//                      "updated_at",
+//                      "deleted_at"
+//                  ]);
 //              })
-//              ->when($api_for == "default", function ($query) {
-//                  return $query->get(["id", "code", "company as name"]);
+//              ->when($api_for == 'default', function ($query) {
+//                  return $query->get([
+//                      "id",
+//                      "code",
+//                      "company as name"
+//                  ]);
 //              });
 //
-//          if (count($companies)) {
-//              $companies = ["companies" => $companies];
-//          }
+//          $companies = array('companies' => $companies);
 //      }
+
+      $companies = Company::withTrashed()
+          ->when($paginate === 1, function ($query) {
+              return $query->with("associates");
+          })
+          ->where(function ($query) use ($status) {
+              if ($status == "all") {
+                  return $query;
+              }
+
+              if ($status == 1) {
+                  return $query->whereNull("deleted_at");
+              }
+
+              if ($status == 0) {
+                  return $query->whereNotNull("deleted_at");
+              }
+          })
+          ->where(function ($query) use ($search) {
+              $query->where("code", "like", "%" . $search . "%")->orWhere("company", "like", "%" . $search . "%");
+          })
+          ->latest("updated_at");
+
+      if ($paginate == 1) {
+          $companies = $companies->paginate($rows);
+      } elseif ($paginate == 0) {
+          $companies = $companies
+              ->when($api_for == "vladimir", function ($query) {
+                  return $query->get([
+                      "id",
+                      "code",
+                      "company as name",
+                      DB::RAW("(CASE WHEN (ISNULL(deleted_at)) THEN 1 ELSE 0 END) as status"),
+                  ]);
+              })
+              ->when($api_for == "genus_etd", function ($query) {
+                  return $query->get(["id", "code", "company as name", "updated_at", "deleted_at"]);
+              })
+              ->when($api_for == "default", function ($query) {
+                  return $query->get(["id", "code", "company as name"]);
+              });
+
+          if (count($companies)) {
+              $companies = ["companies" => $companies];
+          }
+      }
 
       if (count($companies)) {
           return $this->resultResponse("fetch", "Company", $companies);
@@ -175,18 +175,23 @@ class CompanyController extends Controller
   public function update(CompanyRequest $request, $id)
   {
 
-      $company = Company::findOrFail($id);
-      $company->associates()->detach();
-      $company->associates()->attach($request->associates);
+      $company = Company::find($id);
 
-      $company->update([
-          'code' => $request->code,
-          'company' => $request->company,
-      ]);
+      if ($company) {
+          $company->associates()->detach();
+          $company->associates()->attach($request->associates);
 
-      $company->touch();
+          $company->update([
+              'code' => $request->code,
+              'company' => $request->company,
+          ]);
 
-      return $this->resultResponse("update", "Company", $company);
+          $company->touch();
+
+          return $this->resultResponse("update", "Company", $company);
+      } else {
+            return $this->resultResponse("not-found", "Company", []);
+      }
 
 //    $user = new User();
 //    $specific_company = Company::withTrashed()->find($id);

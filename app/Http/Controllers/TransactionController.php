@@ -116,7 +116,7 @@ class TransactionController extends Controller
                 //          "supplier:id,name,supplier_type_id",
                 "supplier.supplier_type:id,type as name,transaction_days",
                 "po_details:id,request_id,po_no,po_total_amount",
-                "cheques.cheques",
+//                "cheques.cheques",
             ])
             ->when(!empty($document_ids), function ($query) use ($document_ids) {
                 $query->whereIn("document_id", $document_ids);
@@ -1090,7 +1090,7 @@ class TransactionController extends Controller
             $value["counter_receipt_no"] = $counter_receipt_no;
         });
 
-        //        $singleTransaction = TransactionResource::collection($transaction);
+//                $singleTransaction = TransactionResource::collection($transaction);
         $singleTransaction = TransactionResource1::collection($transaction);
         if (count($singleTransaction) != true) {
             throw new FistoException("No records found.", 404, null, []);
@@ -3012,7 +3012,11 @@ class TransactionController extends Controller
 
             // creation of cheque
             ->when($status == "pending-cheque", function ($query) {
-                return $query->whereIn("status", ["transmit-transmit", "inspect-inspect"]);
+//                return $query->whereIn("status", ["transmit-transmit", "inspect-inspect"]);
+                return $query->where(function ($query) {
+                    $query->where("status", "transmit-transmit")
+                        ->where("document_id", '!=', 8);
+                })->orWhere("status", "inspect-inspect");
             })
             ->when($status == "cheque-receive", function ($query) {
                 return $query->whereIn("status", ["cheque-receive", "cheque-unhold", "cheque-unreturn"]);
@@ -3479,7 +3483,7 @@ class TransactionController extends Controller
             ->when($status == "pending-release", function ($query) {
                 $query
                     ->whereHas("transaction", function ($query) {
-                        return $query->whereIn("status", ["issue-issue"])->where("is_for_releasing", true);
+                        return $query->whereIn("status", ["issue-issue", "release-receive"])->where("is_for_releasing", true);
                     })
                     ->whereNull("is_received");
             })
@@ -3936,37 +3940,38 @@ class TransactionController extends Controller
 //        }
     }
 
-    public function statusCounter() {
+    public function statusTransactionCounter()
+    {
         $permissions = auth()->user()->permissions;
-        $user_id = auth()->user()->id;
+//        $user_id = $request->input('user_id', null);
 
         $statusMap = [
-            1 => [], //Creation of Request
+            1 => ["tag-return", "pending"], //Creation of Request
             2 => [], //Creation of Confidential Request
-            3 => [], //Auditing of Voucher
+            3 => ["transmit-transmit"], //Auditing of Voucher
             4 => [], //Received Receipt Report
-            5 => [], //Auditing of Cheque
-            6 => [], //External Releasing of Cheque
-            7 => [], //Creation of Cheque
-            8 => [], //Clearing of Cheque
+//            5 => [], //Auditing of Cheque
+//            6 => [], //External Releasing of Cheque
+            7 => ["transmit-transmit", "audit-return", "inspect-inspect"], //Creation of Cheque
+//            8 => [], //Clearing of Cheque
             9 => [], //Creation of Debit Memo
             10 => [], //Reversal Request
-            11 => [], //Filing of Voucher
-            12 => ["tag-tag", "voucher-receive", "voucher-voucher", "voucher-return"], //Creation of Voucher
+            11 => ["discharge-discharge", "release-release"], //Filing of Voucher
+            12 => ["gas-gas", "tag-tag", "approve-return", "cheque-return", "cheque-return"], //Creation of Voucher
             13 => [], //Transmittal of Confidential Document
             14 => [], //Filing of Confidential Voucher
             15 => [], //Tagging and Vouchering
             16 => [], //Releasing of Confidential Cheque
-            17 => ["voucher-voucher", "approve-receive", "approve-approve"], //Approval of Voucher
+            17 => ["voucher-voucher"], //Approval of Voucher
             18 => [], //Approval of Confidential Voucher
             19 => ["approve-approve"], //Transmittal of Document
             20 => ["pending", "voucher-return"], //Tagging of Document
             21 => [], //Creation of Counter Receipt
             22 => [], //Monitoring of Counter Receipt
-            23 => [],  //Transmittal of Cheque
-            24 => [], //Internal Releasing of Cheque
-            25 => [], //Transmittal of Official Receipt
-            26 => [], //Filing of Official Receipt
+//            23 => [],  //Transmittal of Cheque
+//            24 => [], //Internal Releasing of Cheque
+            25 => ["tag-tag"], //Transmittal of Official Receipt
+            26 => ["release-release"], //Filing of Official Receipt
         ];
 
         $response = [];
@@ -3977,23 +3982,372 @@ class TransactionController extends Controller
                 $permissionName = Permission::where('id', $permission)->first()->name;
 
                 // Initialize all status counts to zero
-                $result = array_fill_keys($status, 0);
+//                $result = array_fill_keys($status, 0);
+                $result = [
+                    'pending' => 0,
+                    'return' => 0,
+                ];
 
-                // Count the transactions
+                $user_id = null;
+                $document_id = null;
+                $receipt_type = null;
+                switch ($permissionName) {
+                    case 'Transmittal of Official Receipt':
+                    case 'Filing of Official Receipt':
+                        $receipt_type = 'Official';
+                        break;
+
+                    case 'Creation of Voucher':
+                    case 'Transmittal of Document':
+                    case 'Approval of Voucher':
+                        $user_id = auth()->user()->id;
+                        break;
+
+                    case 'Auditing of Voucher':
+                        $document_id = 8;
+                        break;
+                }
+
                 $counts = Transaction::select('status', DB::raw('count(*) as count'))
-                    ->whereIn('status', $status)
-                    ->where(function ($query) use ($user_id) {
-                        $query->where('distributed_id', $user_id)
-                            ->orWhere('approver_id', $user_id);
+                    ->when($document_id, function ($query) use ($document_id, $status) {
+                        if ($status == 'transmit-transmit' && $document_id != 8) {
+                            $query->where('status', $status);
+                        }
+                        return $query->where('document_id', $document_id);
                     })
+                    ->when($user_id, function ($query) use ($user_id) {
+                        $query->where(function ($query) use ($user_id) {
+                            $query->where('distributed_id', $user_id)
+                                ->orWhere('approver_id', $user_id);
+                        });
+                    })
+                    ->when($receipt_type, function ($query) use ($receipt_type, $status) {
+                        return $query->where('receipt_type', $receipt_type);
+                    })
+                    ->when($permissionName == 'Creation of Voucher', function ($query) {
+                        $query->where(function ($query) {
+                            $query->where('status', 'tag-tag')
+                                ->where('receipt_type', '!=', 'Official');
+                        })->orWhere(function ($query) {
+                            $query->where('status', 'gas-gas');
+                        });
+                    })
+                    ->when($permissionName == 'Filing of Voucher', function ($query) {
+                        $query->where(function ($query) {
+                            $query->where('status', 'release-release')
+                                ->where('receipt_type', '!=', 'Official');
+                        })->orWhere(function ($query) {
+                            $query->where('status', 'discharge-discharge');
+                        });
+                    })
+                    ->whereIn('status', $status)
                     ->groupBy('status')
                     ->get()
                     ->pluck('count', 'status')
                     ->toArray();
 
+
+//                $counts = Transaction::select('status', DB::raw('count(*) as count'))
+//                    ->whereIn('status', $status)
+//                    ->when($user_id, function ($query) use ($user_id){
+//                        $query->where('distributed_id', $user_id)
+//                            ->orWhere('approver_id', $user_id);
+//                    })
+//                    ->when($receipt_type, function ($query) use ($receipt_type){
+//                        $query->where('receipt_type', $receipt_type);
+//                    })
+//                    ->groupBy('status')
+//                    ->get()
+//                    ->pluck('count', 'status')
+//                    ->toArray();
+
                 // Update the counts
+//                foreach ($counts as $stat => $count) {
+//                    $result[strtolower($stat)] = $count;
+//                }
+
                 foreach ($counts as $stat => $count) {
-                    $result[$stat] = $count;
+                    switch ($stat) {
+                        case 'Pending':
+                        case 'tag-tag':
+                        case 'gas-gas':
+                        case 'voucher-voucher':
+                        case 'approve-approve':
+                        case 'transmit-transmit':
+                        case 'inspect-inspect':
+                        case 'release-release':
+                        case 'discharge-discharge':
+                            $result['pending'] = $count += $result['pending'];
+                            break;
+
+                        case 'voucher-return':
+                        case 'approve-return':
+                        case 'cheque-return':
+                        case 'audit-return':
+                            $result['return'] = $count;
+                            break;
+                    }
+                }
+
+
+                $response[] = [
+                    'permission' => $permissionName,
+                    'result' => $result
+                ];
+            }
+        }
+        return response()->json($response);
+    }
+
+//    public function statusChequeCounter() {
+//        $permissions = auth()->user()->permissions;
+//
+//        $statusMap = [
+//            1 => [], //Creation of Request
+//            2 => [], //Creation of Confidential Request
+////            3 => [], //Auditing of Voucher
+//            4 => [], //Received Receipt Report
+//            5 => ["cheque-cheque", "audit-receive", "audit-audit"], //Auditing of Cheque
+//            6 => ["issue-issue", "release-receive", "release-release"], //External Releasing of Cheque
+////            7 => ["transmit-transmit", "cheque-receive", "cheque-cheque"], //Creation of Cheque
+//            8 => ["clear-pending", "clear-clear"], //Clearing of Cheque
+//            9 => [], //Creation of Debit Memo
+//            10 => [], //Reversal Request
+//            11 => [], //Filing of Voucher
+////            12 => ["tag-tag", "gas-gas", "voucher-receive", "voucher-voucher", "approve-return", "cheque-return"], //Creation of Voucher
+//            13 => [], //Transmittal of Confidential Document
+//            14 => [], //Filing of Confidential Voucher
+//            15 => [], //Tagging and Vouchering
+//            16 => [], //Releasing of Confidential Cheque
+////            17 => ["voucher-voucher", "approve-receive", "approve-approve"], //Approval of Voucher
+//            18 => [], //Approval of Confidential Voucher
+////            19 => ["approve-approve", "transmit-receive", "transmit-transmit"], //Transmittal of Document
+////            20 => ["pending", "voucher-return"], //Tagging of Document
+//            21 => [], //Creation of Counter Receipt
+//            22 => [], //Monitoring of Counter Receipt
+//            23 => ["audit-audit", "executive-receive", "executive-executive"],  //Transmittal of Cheque
+//            24 => ["executive-executive", "issue-receive", "issue-issue"], //Internal Releasing of Cheque
+////            25 => ["tag-tag", "gas-gas"], //Transmittal of Official Receipt
+////            26 => [], //Filing of Official Receipt
+//        ];
+//
+//        $response = [];
+//
+//        foreach ($permissions as $permission) {
+//            if (isset($statusMap[$permission])) {
+//                $status = $statusMap[$permission];
+//                $permissionName = Permission::where('id', $permission)->first()->name;
+//
+//                // Initialize all status counts to zero
+//                $result = array_fill_keys($status, 0);
+//
+//                // Count the total number of records for each status
+//                foreach ($status as $stat) {
+//
+//
+//                    $counts = Cheque::select('bank_id', 'cheque_no')
+//                        ->when($stat == 'cheque-cheque', function ($query) {
+//                            $query->whereHas('transaction', function ($query) {
+//                                $query->whereIn('status', ['cheque-cheque', 'audit-receive', 'audit-audit']);
+//                            })->whereNull('is_received')->whereNull('is_audited');
+//                        })
+//                        ->when($stat == 'audit-receive', function ($query) {
+//                            $query->whereHas('transaction', function ($query) {
+//                                $query->whereIn('status', ['cheque-cheque', 'audit-receive', 'audit-audit']);
+//                            })->where('is_received', true)->whereNull('is_audited');
+//                        })
+//                        ->when($stat == 'audit-audit', function ($query) {
+//                            $query->whereHas('transaction', function ($query) {
+//                                $query->whereIn('status', ['cheque-cheque', 'audit-receive', 'audit-audit']);
+//                            })->where('is_audited', true)->whereNull('is_received');
+//                        })
+//                        ->when($stat == 'executive-receive', function ($query) {
+//                            $query->whereHas('transaction', function ($query) {
+//                                $query->whereIn('status', ['audit-audit', 'executive-receive', 'executive-executive']);
+//                            })->where('is_audited', true)->whereNull('is_executived')->where('is_received', true);
+//                        })
+//                        ->when($stat == 'executive-executive', function ($query) {
+//                            $query->whereHas('transaction', function ($query) {
+//                                $query->whereIn('status', ['audit-audit', 'executive-receive', 'executive-executive']);
+//                            })->where('is_executived', true)->whereNull('is_received');
+//                        })
+//                        ->when($stat == 'issue-receive', function ($query) {
+//                            $query->whereHas('transaction', function ($query) {
+//                                $query->whereIn('status', ['executive-executive', 'issue-receive', 'issue-issue']);
+//                            })->where('is_audited', true)->where('is_executived', true)->where('is_received', true);
+//                        })
+//                        ->when($stat == 'issue-issue', function ($query) {
+//                            $query->whereHas('transaction', function ($query) {
+//                                $query->whereIn('status', ['executive-executive', 'issue-receive', 'issue-issue']);
+//                            })->where('is_issued', true)->whereNull('is_received');
+//                        })
+//                        ->when($stat == 'release-receive', function ($query) {
+//                            $query->whereHas('transaction', function ($query) {
+//                                $query->whereIn('status', ['issue-issue', 'release-receive', 'release-release']);
+//                            })->where('is_issued', true)->where('is_received', true)->whereNull('is_released');
+//                        })
+//                        ->when($stat == 'release-release', function ($query) {
+//                            $query->whereHas('transaction', function ($query) {
+//                                $query->whereIn('status', ['release-release', 'discharge-discharge']);
+//                            })->where('is_released', true);
+//                        })
+//                        ->when($stat == 'clear-pending', function ($query) {
+//                            $query->whereHas('transaction', function ($query) {
+//                                $query->whereIn('status', ['release-release', 'file-receive', 'file-file', 'discharge-receive', 'discharge-discharge']);
+//                            })->where('is_released', true)->whereNull('is_cleared');
+//                        })
+//                        ->when($stat == 'clear-clear', function ($query) {
+//                            $query->whereHas('transaction', function ($query) {
+//                                $query->whereIn('status', ['release-release', 'file-receive', 'file-file', 'discharge-receive', 'discharge-discharge']);
+//                            })->where('is_cleared', true);
+//                        })
+//                        ->groupBy('bank_id', 'cheque_no')->get();
+//
+//                    $counts = $counts->count();
+//
+//                    // Only assign the count to the result if the status exists in the database
+//                    if ($counts > 0) {
+//                        $result[$stat] = $counts;
+//                    }
+//                }
+//
+//                $response[] = [
+//                    'permission' => $permissionName,
+//                    'result' => $result
+//                ];
+//            }
+//        }
+//        return response()->json($response);
+//
+//    }
+
+    public function statusChequeCounter()
+    {
+        $permissions = auth()->user()->permissions;
+
+        $statusMap = [
+            5 => ['cheque-cheque'], //Auditing of Cheque
+            6 => ['issue-issue'], // External Releasing of Cheque
+            8 => ['release-release'], //Clearing of Cheque
+            9 => [], //Creation of Debit Memo
+            10 => [], //Reversal Request
+            16 => [], //Releasing of Confidential Cheque
+            21 => [], //Creation of Counter Receipt
+            22 => [], //Monitoring of Counter Receipt
+            23 => ['audit-audit'], //Transmittal of Cheque
+            24 => ['executive-executive'], //Internal Releasing of Cheque
+        ];
+
+        $response = [];
+
+        foreach ($permissions as $permission) {
+            if (isset($statusMap[$permission])) {
+                $status = $statusMap[$permission];
+                $permissionName = Permission::where('id', $permission)->first()->name;
+
+                // Initialize all status counts to zero
+//                $result = array_fill_keys($status, 0);
+                $result = [
+                    'pending' => 0,
+                    'return' => 0,
+                ];
+
+                // Count the total number of records for each status
+                foreach ($status as $stat) {
+                    $counts = Cheque::select('bank_id', 'cheque_no')
+//                        ->when(isset($statusMap[$stat]), function ($query) use ($statusMap, $stat) {
+//                            $query->whereHas('transaction', function ($query) use ($statusMap, $stat) {
+//                                $query->whereIn('status', $statusMap[$stat]);
+//                            });
+//                        })
+                        ->when($stat == 'cheque-cheque', function ($query) {
+                            $query->whereHas('transaction', function ($query) {
+                                return $query->whereIn('status', ['cheque-cheque', 'audit-receive', 'audit-audit']);
+                            })->whereNull('is_received')->whereNull('is_audited');
+                        })
+                        ->when($stat == 'audit-audit', function ($query) {
+                            $query->whereHas('transaction', function ($query) {
+                                $query->whereIn('status', ['cheque-cheque', 'audit-audit']);
+                            })->where('is_audited', true)->whereNull('is_received');
+                        })
+                        ->when($stat == 'executive-executive', function ($query) {
+                            $query->whereHas('transaction', function ($query) {
+                                $query->whereIn('status', ['audit-audit', 'executive-executive']);
+                            })->where('is_executived', true)->whereNull('is_received');
+                        })
+                        ->when($stat == 'issue-issue', function ($query) {
+                            $query->whereHas('transaction', function ($query) {
+                                $query->whereIn('status', ['executive-executive', 'issue-issue']);
+                            })->where('is_issued', true)->whereNull('is_received');
+                        })
+                        ->when($stat == 'release-release', function ($query) {
+                            $query->whereHas('transaction', function ($query) {
+                                $query->whereIn('status', ['release-release', 'file-receive', 'file-file', 'discharge-receive', 'discharge-discharge']);
+                            })->where('is_released', true)->whereNull('is_cleared');
+                        })
+//                        ->when($stat == 'clear-pending', function ($query) {
+//                            $query->whereHas('transaction', function ($query) {
+//                                $query->whereIn('status', ['release-release', 'file-receive', 'file-file', 'discharge-receive', 'discharge-discharge']);
+//                            })->where('is_released', true)->whereNull('is_cleared');
+//                        })
+
+
+//                        ->when($stat == 'cheque-cheque', function ($query) {
+//                            $query->whereNull('is_received')->whereNull('is_audited');
+//                        })
+//                        ->when($stat == 'audit-receive', function ($query) {
+//                            $query->where('is_received', true)->whereNull('is_audited');
+//                        })
+//                        ->when($stat == 'audit-audit', function ($query) {
+//                            $query->where('is_audited', true)->whereNull('is_received');
+//                        })
+//                        ->when($stat == 'executive-receive', function ($query) {
+//                            $query->where('is_audited', true)->whereNull('is_executived')->where('is_received', true);
+//                        })
+//                        ->when($stat == 'executive-executive', function ($query) {
+//                            $query->where('is_executived', true)->whereNull('is_received');
+//                        })
+//                        ->when($stat == 'issue-receive', function ($query) {
+//                            $query->where('is_audited', true)->where('is_executived', true)->where('is_received', true);
+//                        })
+//                        ->when($stat == 'issue-issue', function ($query) {
+//                            $query->where('is_issued', true)->whereNull('is_received');
+//                        })
+//                        ->when($stat == 'release-receive', function ($query) {
+//                            $query->where('is_issued', true)->where('is_received', true)->whereNull('is_released');
+//                        })
+//                        ->when($stat == 'release-release', function ($query) {
+//                            $query->where('is_released', true)->whereNull('is_cleared');
+//                        })
+//                        ->when($stat == 'clear-pending', function ($query) {
+//                            $query->where('is_released', true)->whereNull('is_cleared');
+//                        })
+//                        ->when($stat == 'clear-clear', function ($query) {
+//                            $query->where('is_cleared', true);
+//                        })
+                        ->groupBy('bank_id', 'cheque_no')->get();
+
+                    $counts = $counts->count();
+
+                    // Only assign the count to the result if the status exists in the database
+                    if ($counts > 0) {
+//                        $result[$stat] = $counts;
+
+                        switch ($stat) {
+                            case 'audit-audit':
+                            case 'cheque-cheque':
+                            case 'issue-issue':
+                            case 'release-release':
+                            case 'executive-executive':
+                                $result['pending'] = $counts;
+                                break;
+
+                            case 'voucher-return':
+                            case 'approve-return':
+                                $result['return'] = $counts;
+                                break;
+                        }
+                    }
                 }
 
                 $response[] = [
@@ -4002,8 +4356,6 @@ class TransactionController extends Controller
                 ];
             }
         }
-
         return response()->json($response);
-
     }
 }

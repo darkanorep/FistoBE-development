@@ -572,7 +572,8 @@ class TransactionResource1 extends JsonResource
         }
 
         //TAG
-        if ($this->tag()->count() > 0) {
+//        if ($this->tag()->count() > 0) {
+        if ($this->withCount('tag')) {
             $tag_transaction = $this->tag->first();
 
             if (isset($tag_transaction->status)) {
@@ -605,7 +606,8 @@ class TransactionResource1 extends JsonResource
         }
 
         //VOUCHER
-        if ($this->voucher()->count() > 0) {
+//        if ($this->voucher()->count() > 0) {
+        if ($this->withCount('voucher')) {
             $voucher_transaction = $this->voucher->first();
 
             if (empty($voucher_transaction->account_title)) {
@@ -699,7 +701,8 @@ class TransactionResource1 extends JsonResource
         }
 
         //APPROVE
-        if ($this->approve()->count() > 0) {
+//        if ($this->approve()->count() > 0) {
+        if ($this->withCount('approve')) {
             $approve_transaction = $this->approve->first();
 
             if (isset($approve_transaction->status)) {
@@ -716,7 +719,8 @@ class TransactionResource1 extends JsonResource
         }
 
         //TRANSMIT
-        if ($this->transmit()->count() > 0) {
+//        if ($this->transmit()->count() > 0) {
+        if ($this->withCount('transmit')) {
             $transmit_transaction = $this->transmit->first();
 
             if (isset($transmit_transaction->status)) {
@@ -729,6 +733,7 @@ class TransactionResource1 extends JsonResource
 
         //CHEQUE
         if ($this->cheques()->count() > 0) {
+//        if ($this->withCount('cheques')) {
             $cheque_transaction = $this->cheques->first();
             $clear_transaction = $this->accountTitleClear;
 
@@ -753,10 +758,15 @@ class TransactionResource1 extends JsonResource
                 $accounts = null;
             } else {
 
-                $cheque = $this->treasuryChequeTrashed()->count() === $this->chequeIssue()->count()
-                    ? $this->chequeIssue
-                        ? $this->chequeIssue
-                        : $cheque_transaction->cheques
+//                $cheque = $this->treasuryChequeTrashed()->count() === $this->chequeIssue()->count()
+//                    ? $this->chequeIssue
+//                        ? $this->chequeIssue
+//                        : $cheque_transaction->cheques
+//                    : $distinct;
+
+                $chequeIssue = $this->chequeIssue;
+                $cheque = $this->treasuryChequeTrashed()->count() === $chequeIssue->count()
+                    ? ($chequeIssue ?: $cheque_transaction->cheques)
                     : $distinct;
 
                 $cheques = $cheque->map(function ($item) {
@@ -1029,7 +1039,6 @@ class TransactionResource1 extends JsonResource
 
     function reason($model, $reason_id): ?array
     {
-
         if (isset($reason_id)) {
             return [
                 'id' => $model->reason_id,

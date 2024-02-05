@@ -13,60 +13,60 @@ class ReasonController extends Controller
 {
     public function index(Request $request)
     {
-        $status =  $request['status'];
-        $rows =  (int) $request->input('rows', 10);
-        $search =  $request['search'];
-        $paginate = $request->input('paginate', 1);
-
-        $reasons = Reason::withTrashed()->where(function ($query) use ($status) {
-            return $status ? $query->whereNull('deleted_at') : $query->whereNotNull('deleted_at');
-        })->where(function ($query) use ($search) {
-            $query->where('reason', 'like', '%' . $search . '%')
-                ->orWhere('remarks', 'like', '%' . $search . '%');
-        })->latest('updated_at');
-
-        if ($paginate == 1) {
-            $reasons = $reasons->paginate($rows);
-        } else if ($paginate == 0) {
-            $reasons = array("reasons"=>$reasons->get(['id','reason as description']));
-        }
-
-
-        if (count($reasons)) {
-            return $this->resultResponse('fetch', 'Reason', $reasons);
-        } else {
-            return $this->resultResponse('not-found', 'Reason', []);
-        }
-
-//      $status =  $request['status'];
-//      $rows =  (empty($request['rows']))?10:(int)$request['rows'];
-//      $search =  $request['search'];
-//      $paginate = (isset($request['paginate']))? $request['paginate']:$paginate = 1;
+//        $status =  $request['status'];
+//        $rows =  (int) $request->input('rows', 10);
+//        $search =  $request['search'];
+//        $paginate = $request->input('paginate', 1);
 //
-//      $reasons = Reason::withTrashed()
-//      ->where(function ($query) use ($status){
-//        return ($status==true)?$query->whereNull('deleted_at'):$query->whereNotNull('deleted_at');
-//      })
-//      ->where(function ($query) use ($search) {
-//        $query->where('reason', 'like', '%'.$search.'%')
-//          ->orWhere('remarks', 'like', '%'.$search.'%');
-//      })
-//      ->latest('updated_at');
-//      if ($paginate == 1){
-//        $reasons = $reasons
-//        ->paginate($rows);
-//      }else if ($paginate == 0){
-//        $reasons = $reasons
-//        ->get(['id','reason as description']);
-//        if(count($reasons)==true){
-//            $reasons = array("reasons"=>$reasons);
+//        $reasons = Reason::withTrashed()->where(function ($query) use ($status) {
+//            return $status ? $query->whereNull('deleted_at') : $query->whereNotNull('deleted_at');
+//        })->where(function ($query) use ($search) {
+//            $query->where('reason', 'like', '%' . $search . '%')
+//                ->orWhere('remarks', 'like', '%' . $search . '%');
+//        })->latest('updated_at');
+//
+//        if ($paginate == 1) {
+//            $reasons = $reasons->paginate($rows);
+//        } else if ($paginate == 0) {
+//            $reasons = array("reasons"=>$reasons->get(['id','reason as description']));
 //        }
-//      }
 //
-//      if(count($reasons)==true){
-//        return $this->resultResponse('fetch','Reason',$reasons);
-//      }
-//      return $this->resultResponse('not-found','Reason',[]);
+//
+//        if (count($reasons)) {
+//            return $this->resultResponse('fetch', 'Reason', $reasons);
+//        } else {
+//            return $this->resultResponse('not-found', 'Reason', []);
+//        }
+
+      $status =  $request['status'];
+      $rows =  (empty($request['rows']))?10:(int)$request['rows'];
+      $search =  $request['search'];
+      $paginate = (isset($request['paginate']))? $request['paginate']:$paginate = 1;
+
+      $reasons = Reason::withTrashed()
+      ->where(function ($query) use ($status){
+        return ($status==true)?$query->whereNull('deleted_at'):$query->whereNotNull('deleted_at');
+      })
+      ->where(function ($query) use ($search) {
+        $query->where('reason', 'like', '%'.$search.'%')
+          ->orWhere('remarks', 'like', '%'.$search.'%');
+      })
+      ->latest('updated_at');
+      if ($paginate == 1){
+        $reasons = $reasons
+        ->paginate($rows);
+      }else if ($paginate == 0){
+        $reasons = $reasons
+        ->get(['id','reason as description']);
+        if(count($reasons)==true){
+            $reasons = array("reasons"=>$reasons);
+        }
+      }
+
+      if(count($reasons)==true){
+        return $this->resultResponse('fetch','Reason',$reasons);
+      }
+      return $this->resultResponse('not-found','Reason',[]);
     }
 
     public function store(ReasonRequest $request)

@@ -1960,16 +1960,27 @@ class TransactionFlow
 
     //Release Cheque
     function releaseCheque($request, $transactionIds) {
+
+        $cheques = collect(Cheque::whereIn('transaction_id', $transactionIds)
+            ->pluck('is_received')->toArray());
+
+        if ($cheques->contains(null)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Other Cheque is not yet received.'
+            ], 400);
+        }
+
         for($i = 0; $i < count($transactionIds); $i++) {
 
             $transaction = Transaction::find($transactionIds[$i]);
-
-            if ($transaction->status != 'release-receive') {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Other Cheque is not yet received.'
-                ], 400);
-            }
+//
+//            if ($transaction->status != 'release-receive') {
+//                return response()->json([
+//                    'status' => 'error',
+//                    'message' => 'Other Cheque is not yet received.'
+//                ], 400);
+//            }
 
             $transaction->release()->create([
                 'status' => 'release-release',

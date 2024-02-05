@@ -14,56 +14,56 @@ class UtilityCategoryController extends Controller
 {
     public function index(Request $request)
     {
-        $status =  $request['status'];
-        $rows =  (int) $request->input('rows', 10);
-        $search =  $request['search'];
-        $paginate = $request->input('paginate', 1);
-
-        $utility_categories = UtilityCategory::withTrashed()->where(function ($query) use ($status) {
-            return $status ? $query->whereNull('deleted_at') : $query->whereNotNull('deleted_at');
-        })->where(function ($query) use ($search) {
-            $query->where('category', 'like', '%' . $search . '%');
-        })->latest('updated_at');
-
-        if ($paginate == 1) {
-            $utility_categories = $utility_categories->paginate($rows);
-        } else if ($paginate == 0) {
-            $utility_categories = array("utility_categories"=>$utility_categories->get(['id','category as name']));
-        }
-
-        if (count($utility_categories)) {
-            return $this->resultResponse('fetch', 'Utility Category', $utility_categories);
-        } else {
-            return $this->resultResponse('not-found', 'Utility Category', []);
-        }
-
-//      $status =  $request['status'];
-//      $rows =  (empty($request['rows']))?10:(int)$request['rows'];
-//      $search =  $request['search'];
-//      $paginate = (isset($request['paginate']))? $request['paginate']:$paginate = 1;
+//        $status =  $request['status'];
+//        $rows =  (int) $request->input('rows', 10);
+//        $search =  $request['search'];
+//        $paginate = $request->input('paginate', 1);
 //
-//      $utility_categories = UtilityCategory::withTrashed()
-//      ->where(function ($query) use ($status){
-//        ($status==true)?$query->whereNull('deleted_at'):$query->whereNotNull('deleted_at');
-//      })
-//      ->where('category', 'like', '%'.$search.'%')
-//      ->latest('updated_at');
+//        $utility_categories = UtilityCategory::withTrashed()->where(function ($query) use ($status) {
+//            return $status ? $query->whereNull('deleted_at') : $query->whereNotNull('deleted_at');
+//        })->where(function ($query) use ($search) {
+//            $query->where('category', 'like', '%' . $search . '%');
+//        })->latest('updated_at');
 //
-//    if ($paginate == 1){
-//      $utility_categories = $utility_categories
-//      ->paginate($rows);
-//    }else if ($paginate == 0){
-//      $utility_categories = $utility_categories
-//      ->get(['id','category as name']);
-//      if(count($utility_categories)==true){
-//          $utility_categories = array("utility_categories"=>$utility_categories);;
-//      }
-//    }
+//        if ($paginate == 1) {
+//            $utility_categories = $utility_categories->paginate($rows);
+//        } else if ($paginate == 0) {
+//            $utility_categories = array("utility_categories"=>$utility_categories->get(['id','category as name']));
+//        }
 //
-//      if(count($utility_categories)==true){
-//        return $this->resultResponse('fetch','Utility Category',$utility_categories);
-//      }
-//      return $this->resultResponse('not-found','Utility Category',[]);
+//        if (count($utility_categories)) {
+//            return $this->resultResponse('fetch', 'Utility Category', $utility_categories);
+//        } else {
+//            return $this->resultResponse('not-found', 'Utility Category', []);
+//        }
+
+      $status =  $request['status'];
+      $rows =  (empty($request['rows']))?10:(int)$request['rows'];
+      $search =  $request['search'];
+      $paginate = (isset($request['paginate']))? $request['paginate']:$paginate = 1;
+
+      $utility_categories = UtilityCategory::withTrashed()
+      ->where(function ($query) use ($status){
+        ($status==true)?$query->whereNull('deleted_at'):$query->whereNotNull('deleted_at');
+      })
+      ->where('category', 'like', '%'.$search.'%')
+      ->latest('updated_at');
+
+    if ($paginate == 1){
+      $utility_categories = $utility_categories
+      ->paginate($rows);
+    }else if ($paginate == 0){
+      $utility_categories = $utility_categories
+      ->get(['id','category as name']);
+      if(count($utility_categories)==true){
+          $utility_categories = array("utility_categories"=>$utility_categories);;
+      }
+    }
+
+      if(count($utility_categories)==true){
+        return $this->resultResponse('fetch','Utility Category',$utility_categories);
+      }
+      return $this->resultResponse('not-found','Utility Category',[]);
     }
 
     public function store(UtilityCategoryRequest $request)
