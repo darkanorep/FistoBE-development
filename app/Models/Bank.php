@@ -50,7 +50,7 @@ class Bank extends Model
         'location_id_2',
       'created_at'];
 
-  public function getCreatedAtAttribute($value){
+    public function getCreatedAtAttribute($value){
     $date = Carbon::parse($value);
     return $date->format('Y-m-d H:i');
   }
@@ -107,5 +107,6 @@ class Bank extends Model
     public function LocationTwo() {
         return $this->hasOne(Location::class, 'id', 'location_id_2')->select('id', 'location as name', 'code')->withTrashed();
     }
+
 
 }

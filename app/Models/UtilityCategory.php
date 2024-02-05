@@ -17,11 +17,11 @@ class UtilityCategory extends Model
   protected $fillable = ['category'];
   protected $hidden = ['pivot','created_at'];
 
-  public function getCreatedAtAttribute($value){
+  public function getCreatedAtAttribute($value): string {
     $date = Carbon::parse($value);
     return $date->format('Y-m-d H:i');
   }
-  public function getUpdatedAtAttribute($value){
+  public function getUpdatedAtAttribute($value): string{
     $date = Carbon::parse($value);
     return $date->format('Y-m-d H:i');
   }

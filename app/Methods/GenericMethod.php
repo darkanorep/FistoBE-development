@@ -4,6 +4,7 @@ namespace App\Methods;
 
 use App\Exceptions\FistoException;
 use App\Exceptions\FistoLaravelException;
+use App\Http\Controllers\TransactionController;
 use App\Models\AccountTitle;
 use App\Models\Approver;
 use App\Models\Associate;
@@ -255,8 +256,8 @@ class GenericMethod
 //      $model = new Approver();
 //      $field = "distributed_id";
     } elseif ($process == "cheque") {
-      $model = new Treasury();
-      $field = "cheque_no";
+//      $model = new Treasury();
+      $field = "transaction_id";
     } elseif ($process == "release") {
       $model = new Tagging();
       $field = "";
@@ -297,8 +298,11 @@ class GenericMethod
         return $status;
     }
       //---------------------------------------------------------------//
-    $is_exists = Cheque::where("transaction_id", $transaction["transaction_id"])->exists();
-    if ($process == "cheque" and $is_exists) {
+    $is_chequed = Treasury::where("transaction_id", $transaction["transaction_id"])
+        ->where('status', 'cheque-cheque')
+        ->exists();
+
+    if ($process == "cheque" and $is_chequed) {
       return $status;
     }
 
@@ -442,8 +446,9 @@ class GenericMethod
     $status,
     $distributed_to = []
   ) {
-    $distributed_id = null;
-    $distributed_name = null;
+      $transaction = Transaction::where('id', $transaction_id)->first();
+    $distributed_id = $transaction->distributed_id ?? null;
+    $distributed_name = $transaction->distributed_name ?? null;
     if (!empty($distributed_to)) {
       $distributed_id = $distributed_to["id"];
       $distributed_name = $distributed_to["name"];
@@ -484,16 +489,8 @@ class GenericMethod
       $transaction_type_id,
       $transaction_type_name
   ) {
-    $approver_id = isset($approver["id"])
-      ? $approver["id"]
-      : (isset($approver["approver"]["id"])
-        ? $approver["approver"]["id"]
-        : null);
-    $approver_name = isset($approver["name"])
-      ? $approver["name"]
-      : (isset($approver["approver"]["name"])
-        ? $approver["approver"]["name"]
-        : null);
+    $approver_id = $approver["id"] ?? ($approver["approver"]["id"] ?? Transaction::where("id", $transaction_id)->first()->approver_id) ?? null;
+    $approver_name = $approver["name"] ?? ($approver["approver"]["name"] ?? Transaction::where("id", $transaction_id)->first()->approver_name) ?? null;
 
     $voucher_transaction = $model::Create([
       "transaction_id" => $transaction_id,
@@ -515,6 +512,20 @@ class GenericMethod
         return GenericMethod::addAccountTitleEntry($process, $id, $account_titles);
       }
     }
+
+      if ($status == in_array($status, ["voucher-return", "voucher-hold", "voucher-voucher", "voucher-void"])) {
+//        $test = new Transaction();
+          $transaction = Transaction::where('id', $transaction_id)->first();
+          $transaction->account_titles()
+              ->update([
+                  'associate_id' => $voucher_transaction->id,
+              ]);
+//
+//          $transaction->treasuryAccountTitle()
+//              ->update([
+//                  'treasury_id' => $cheque_transaction->id
+//              ]);
+      }
   }
 
   public static function approveTransaction(
@@ -683,6 +694,9 @@ class GenericMethod
     $cheques,
     $account_titles
   ) {
+//      $model::where('transaction_id', $transaction_id)->where('status', $status)->delete();
+      $test = new TransactionController();
+      $batch_no = $test->generateBatchNo();
     $cheque_transaction = $model::Create([
       "transaction_id" => $transaction_id,
       "tag_id" => $tag_no,
@@ -690,6 +704,7 @@ class GenericMethod
       "date_status" => $date_now,
       "reason_id" => $reason_id,
       "remarks" => $reason_remarks,
+        "batch_no" => $batch_no,
     ]);
 
     if (isset($cheques)) {
@@ -706,6 +721,19 @@ class GenericMethod
         $process = "treasury";
         GenericMethod::addAccountTitleEntry($process, $id, $account_titles);
       }
+    }
+
+    if ($status == in_array($status, ["cheque-return", "cheque-hold", "cheque-cheque", "cheque-void", "cheque-unhold"])) {
+        $transaction = Transaction::where('id', $transaction_id)->first();
+        $transaction->treasuryCheque()
+            ->update([
+                'treasury_id' => $cheque_transaction->id,
+            ]);
+
+        $transaction->treasuryAccountTitle()
+            ->update([
+                'treasury_id' => $cheque_transaction->id
+            ]);
     }
   }
 
@@ -916,34 +944,88 @@ class GenericMethod
     return $duplicate_count;
   }
 
-  public static function addCheque($transaction_id, $id, $cheques)
-  {
-    foreach ($cheques as $specific_cheques) {
-      $entry_type = isset($specific_cheques["transaction_type"])
-        ? $specific_cheques["transaction_type"]
-        : $specific_cheques["type"];
-      $bank_id = $specific_cheques["bank"]["id"];
-      $bank_name = $specific_cheques["bank"]["name"];
-      $cheque_no = $specific_cheques["no"];
-      $cheque_date = $specific_cheques["date"];
-      $cheque_amount = $specific_cheques["amount"];
-      $transaction_type = isset($specific_cheques["transaction_type"]) ? $specific_cheques["transaction_type"] : "new";
+//  public static function addCheque($transaction_id, $id, $cheques)
+//  {
+//      Cheque::where("transaction_id", $transaction_id)->delete();
+//    foreach ($cheques as $specific_cheques) {
+//        if (request()->process == 'issue') {
+//            foreach ($specific_cheques as $specific_cheque) {
+//                $entry_type = isset($specific_cheque["transaction_type"])
+//                    ? $specific_cheque["transaction_type"]
+//                    : $specific_cheque["type"];
+//                $bank_id = $specific_cheque["bank"]["id"];
+//                $bank_name = $specific_cheque["bank"]["name"];
+//                $cheque_no = $specific_cheque["no"];
+//                $cheque_date = $specific_cheque["date"];
+//                $cheque_amount = $specific_cheque["amount"];
+//                $transaction_type = isset($specific_cheque["transaction_type"]) ? $specific_cheque["transaction_type"] : "new";
+//
+//                Cheque::Create([
+//                    "transaction_id" => $transaction_id,
+//                    "treasury_id" => $id,
+//                    "entry_type" => $specific_cheque['type'],
+//                    "bank_id" => $specific_cheque['bank']['id'],
+//                    "bank_name" => $specific_cheque['bank']['name'],
+//                    "cheque_no" => $specific_cheque['no'],
+//                    "cheque_date" => $specific_cheque['date'],
+//                    "cheque_amount" => $specific_cheque['amount'],
+//                    "transaction_type" => $specific_cheque['transaction_type'] ?? "new",
+//                ]);
+//            }
+//        } else {
+//            $entry_type = isset($specific_cheques["transaction_type"])
+//                ? $specific_cheques["transaction_type"]
+//                : $specific_cheques["type"];
+//            $bank_id = $specific_cheques["bank"]["id"];
+//            $bank_name = $specific_cheques["bank"]["name"];
+//            $cheque_no = $specific_cheques["no"];
+//            $cheque_date = $specific_cheques["date"];
+//            $cheque_amount = $specific_cheques["amount"];
+//            $transaction_type = isset($specific_cheques["transaction_type"]) ? $specific_cheques["transaction_type"] : "new";
+//
+//            Cheque::Create([
+//                "transaction_id" => $transaction_id,
+//                "treasury_id" => $id,
+//                "entry_type" => $specific_cheques['type'],
+//                "bank_id" => $specific_cheques['bank']['id'],
+//                "bank_name" => $specific_cheques['bank']['name'],
+//                "cheque_no" => $specific_cheques['no'],
+//                "cheque_date" => $specific_cheques['date'],
+//                "cheque_amount" => $specific_cheques['amount'],
+//                "transaction_type" => $specific_cheques['transaction_type'] ?? "new",
+//            ]);
+//        }
+//    }
+//  }
 
-      Cheque::Create([
-        "transaction_id" => $transaction_id,
-        "treasury_id" => $id,
-        "entry_type" => $entry_type,
-        "bank_id" => $bank_id,
-        "bank_name" => $bank_name,
-        "cheque_no" => $cheque_no,
-        "cheque_date" => $cheque_date,
-        "cheque_amount" => $cheque_amount,
-        "transaction_type" => $transaction_type,
-      ]);
+    public static function addCheque($transaction_id, $id, $cheques) {
+        Cheque::where("transaction_id", $transaction_id)->delete();
+        foreach ($cheques as $specific_cheques) {
+            $entry_type = isset($specific_cheques["transaction_type"])
+                ? $specific_cheques["transaction_type"]
+                : $specific_cheques["type"];
+            $bank_id = $specific_cheques["bank"]["id"];
+            $bank_name = $specific_cheques["bank"]["name"];
+            $cheque_no = $specific_cheques["no"];
+            $cheque_date = $specific_cheques["date"];
+            $cheque_amount = $specific_cheques["amount"];
+            $transaction_type = isset($specific_cheques["transaction_type"]) ? $specific_cheques["transaction_type"] : "new";
+
+            Cheque::Create([
+                "transaction_id" => $transaction_id,
+                "treasury_id" => $id,
+                "entry_type" => $specific_cheques['type'],
+                "bank_id" => $specific_cheques['bank']['id'],
+                "bank_name" => $specific_cheques['bank']['name'],
+                "cheque_no" => $specific_cheques['no'],
+                "cheque_date" => $specific_cheques['date'],
+                "cheque_amount" => $specific_cheques['amount'],
+                "transaction_type" => $specific_cheques['transaction_type'] ?? "new",
+            ]);
+        }
     }
-  }
 
-  public static function addAccountTitleEntry($process, $id, $account_titles)
+    public static function addAccountTitleEntry($process, $id, $account_titles)
   {
     $associate_id = null;
     $treasury_id = null;
@@ -2547,8 +2629,7 @@ class GenericMethod
     $approver_name,
     $input_tax,
     $transaction_type = "cheque",
-      $box_no = null,
-      $is_cleared = null
+      $box_no = null
   ) {
     // $voucher_no = isset($voucher_no) ? $voucher_no : null;
     // $voucher_month = isset($voucher_month) ? $voucher_month : null;
@@ -2633,7 +2714,6 @@ class GenericMethod
           $approver_name,
           $transaction_type,
             $box_no,
-            $is_cleared,
             $input_tax
         ) {
           $query->update([
@@ -2652,7 +2732,6 @@ class GenericMethod
             "approver_name" => $approver_name,
             "transaction_type" => $transaction_type,
               'box_no' => $box_no,
-              "is_cleared" => $is_cleared,
               'input_tax' => $input_tax
           ]);
         }
@@ -4636,238 +4715,238 @@ class GenericMethod
     return response($arrayResponse, $code);
   }
 
-  public static function resultResponse($action, $modelName, $data = [])
-  {
-    $modelName = ucfirst(strtolower($modelName));
-    switch ($action) {
-      case "not-equal":
-        return GenericMethod::error(422, $modelName . " amount not equal.", []);
-        break;
-      case "receive":
-        return GenericMethod::result(200, "Transaction has been received.", []);
-        break;
-      case "hold":
-        return GenericMethod::result(200, "Transaction has been hold.", []);
-        break;
-      case "unhold":
-        return GenericMethod::result(200, "Transaction has been unhold.", []);
-        break;
-      case "return":
-        return GenericMethod::result(200, "Transaction has been returned.", []);
-        break;
-      case "unreturn":
-        return GenericMethod::result(200, "Transaction has been unreturned.", []);
-        break;
-      case "void":
-        return GenericMethod::result(200, "Transaction has been voided.", []);
-        break;
-        case "gas":
-            return GenericMethod::result(200, "Transaction has been saved.", []);
-            break;
-        case "discharge":
-            return GenericMethod::result(200, "Transaction has been saved.", []);
-            break;
-      case "tag":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "voucher":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "approve":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "transmit":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "inspect":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "audit":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "cheque":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "executive":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "issue":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "release":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "reverse":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "file":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "clear":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "request":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "accept":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "receive-approver":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "receive-requestor":
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-        break;
-      case "transfer":
-        return GenericMethod::result(200, "Transaction has been transferred.", []);
-        break;
-      case "fetch":
-        return GenericMethod::result(200, Str::plural($modelName) . " has been fetched.", $data);
-        break;
+    public static function resultResponse($action, $modelName, $data = [])
+    {
+        $modelName = ucfirst(strtolower($modelName));
+        switch ($action) {
+            case "not-equal":
+                return GenericMethod::error(422, $modelName . " amount not equal.", []);
+                break;
+            case "receive":
+                return GenericMethod::result(200, "Transaction has been received.", []);
+                break;
+            case "hold":
+                return GenericMethod::result(200, "Transaction has been hold.", []);
+                break;
+            case "unhold":
+                return GenericMethod::result(200, "Transaction has been unhold.", []);
+                break;
+            case "return":
+                return GenericMethod::result(200, "Transaction has been returned.", []);
+                break;
+            case "unreturn":
+                return GenericMethod::result(200, "Transaction has been unreturned.", []);
+                break;
+            case "void":
+                return GenericMethod::result(200, "Transaction has been voided.", []);
+                break;
+            case "gas":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "discharge":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "tag":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "voucher":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "approve":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "transmit":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "inspect":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "audit":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "cheque":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "executive":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "issue":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "release":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "reverse":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "file":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "clear":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "request":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "accept":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "receive-approver":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "receive-requestor":
+                return GenericMethod::result(200, "Transaction has been saved.", []);
+                break;
+            case "transfer":
+                return GenericMethod::result(200, "Transaction has been transferred.", []);
+                break;
+            case "fetch":
+                return GenericMethod::result(200, Str::plural($modelName) . " has been fetched.", $data);
+                break;
 
-      case "save":
-        return GenericMethod::result(201, "New " . strtolower($modelName) . " has been saved.", $data);
-        break;
+            case "save":
+                return GenericMethod::result(201, "New " . strtolower($modelName) . " has been saved.", $data);
+                break;
 
-      case "counter-save":
-        return GenericMethod::result(201, $modelName . " has been saved.", $data);
-        break;
+            case "counter-save":
+                return GenericMethod::result(201, $modelName . " has been saved.", $data);
+                break;
 
-      case "import":
-        return GenericMethod::result(201, Str::plural($modelName) . " has been imported.", $data);
-        break;
+            case "import":
+                return GenericMethod::result(201, Str::plural($modelName) . " has been imported.", $data);
+                break;
 
-      case "update":
-        return GenericMethod::result(200, $modelName . " has been updated.", $data);
-        break;
+            case "update":
+                return GenericMethod::result(200, $modelName . " has been updated.", $data);
+                break;
 
-      case "archive":
-        return GenericMethod::result(200, $modelName . " has been archived.", $data);
-        break;
+            case "archive":
+                return GenericMethod::result(200, $modelName . " has been archived.", $data);
+                break;
 
-      case "restore":
-        return GenericMethod::result(200, $modelName . " has been restored.", $data);
-        break;
+            case "restore":
+                return GenericMethod::result(200, $modelName . " has been restored.", $data);
+                break;
 
-      case "registered":
-        throw new FistoException($modelName . " already registered.", 409, null, $data);
-        break;
+            case "registered":
+                throw new FistoException($modelName . " already registered.", 409, null, $data);
+                break;
 
-      case "not-registered":
-        throw new FistoException($modelName . " not registered.", 409, null, $data);
-        break;
+            case "not-registered":
+                throw new FistoException($modelName . " not registered.", 409, null, $data);
+                break;
 
-      case "registered-inactive":
-        throw new FistoException($modelName . " already registered but inactive.", 409, null, $data);
-        break;
+            case "registered-inactive":
+                throw new FistoException($modelName . " already registered but inactive.", 409, null, $data);
+                break;
 
-      case "exist":
-        throw new FistoException($modelName . " already exist.", 409, null, $data);
-        break;
+            case "exist":
+                throw new FistoException($modelName . " already exist.", 409, null, $data);
+                break;
 
-      case "transfer-invalid-process":
-        throw new FistoException(
-          $modelName . " Invalid, process inputted is not allowed to transfer.",
-          422,
-          null,
-          $data
-        );
-        break;
+            case "transfer-invalid-process":
+                throw new FistoException(
+                    $modelName . " Invalid, process inputted is not allowed to transfer.",
+                    422,
+                    null,
+                    $data
+                );
+                break;
 
-      case "transfer-invalid-subprocess":
-        throw new FistoException($modelName . " Invalid, subprocess must be transfer.", 422, null, $data);
-        break;
+            case "transfer-invalid-subprocess":
+                throw new FistoException($modelName . " Invalid, subprocess must be transfer.", 422, null, $data);
+                break;
 
-      case "exist-flow":
-        throw new FistoException("Transaction already " . strtolower($modelName) . ".", 409, null, $data);
-        break;
+            case "exist-flow":
+                throw new FistoException("Transaction already " . strtolower($modelName) . ".", 409, null, $data);
+                break;
 
-      case "import-error":
-        throw new FistoException(
-          "No " . Str::plural(strtolower($modelName)) . " were imported. Kindly check the errors.",
-          409,
-          null,
-          $data
-        );
-        break;
+            case "import-error":
+                throw new FistoException(
+                    "No " . Str::plural(strtolower($modelName)) . " were imported. Kindly check the errors.",
+                    409,
+                    null,
+                    $data
+                );
+                break;
 
-      case "ongoing":
-        return GenericMethod::result(422, "On-going Transaction encountered.", []);
-        break;
+            case "ongoing":
+                return GenericMethod::result(422, "On-going Transaction encountered.", []);
+                break;
 
-      case "upload-error":
-        return GenericMethod::result(422, "The given data was invalid..", $data);
-        break;
+            case "upload-error":
+                return GenericMethod::result(422, "The given data was invalid..", $data);
+                break;
 
-      case "import-format":
-        throw new FistoException("Invalid excel template, it should be " . $modelName . ".", 406, null, []);
-        break;
+            case "import-format":
+                throw new FistoException("Invalid excel template, it should be " . $modelName . ".", 406, null, []);
+                break;
 
-      case "nothing-has-changed":
-        return GenericMethod::result(200, "Nothing has changed.", $data);
-        break;
+            case "nothing-has-changed":
+                return GenericMethod::result(200, "Nothing has changed.", $data);
+                break;
 
-      case "not-found":
-        throw new FistoException("No records found.", 404, null, $data);
-        break;
+            case "not-found":
+                throw new FistoException("No records found.", 404, null, $data);
+                break;
 
-      case "password-changed":
-        return GenericMethod::result(200, "Password has been changed.", $data);
-        break;
+            case "password-changed":
+                return GenericMethod::result(200, "Password has been changed.", $data);
+                break;
 
-      case "password-incorrect":
-        throw new FistoException("The password you entered is incorrect.", 409, null, $data);
-        break;
+            case "password-incorrect":
+                throw new FistoException("The password you entered is incorrect.", 409, null, $data);
+                break;
 
-      case "password-error-cred":
-        throw new FistoException("You don't have the proper credentials to perform this action.", 401, null, $data);
-        break;
+            case "password-error-cred":
+                throw new FistoException("You don't have the proper credentials to perform this action.", 401, null, $data);
+                break;
 
-      case "login":
-        return GenericMethod::result(200, "Succesfully login.", $data);
-        break;
+            case "login":
+                return GenericMethod::result(200, "Succesfully login.", $data);
+                break;
 
-      case "logout":
-        return GenericMethod::result(200, "User has been logged out.", $data);
-        break;
+            case "logout":
+                return GenericMethod::result(200, "User has been logged out.", $data);
+                break;
 
-      case "logout-again":
-        throw new FistoException("User is already logged out.", 401, null, []);
-        break;
+            case "logout-again":
+                throw new FistoException("User is already logged out.", 401, null, []);
+                break;
 
-      case "login-error":
-        throw new FistoException("Invalid username or password.", 409, null, $data);
-        break;
+            case "login-error":
+                throw new FistoException("Invalid username or password.", 409, null, $data);
+                break;
 
-      case "available":
-        return GenericMethod::result(200, $modelName . " is available.", $data);
-        break;
+            case "available":
+                return GenericMethod::result(200, $modelName . " is available.", $data);
+                break;
 
-      case "password-reset":
-        return GenericMethod::result(200, "User's default password has been restored.", $data);
-        break;
+            case "password-reset":
+                return GenericMethod::result(200, "User's default password has been restored.", $data);
+                break;
 
-      case "invalid-access":
-        throw new FistoLaravelException("API cannot access by this user.", 422, null, $data);
-        break;
+            case "invalid-access":
+                throw new FistoLaravelException("API cannot access by this user.", 422, null, $data);
+                break;
 
-      case "invalid":
-        throw new FistoLaravelException("The given data was invalid.", 422, null, $data);
-        break;
+            case "invalid":
+                throw new FistoLaravelException("The given data was invalid.", 422, null, $data);
+                break;
 
-      case "voucher-no-exist":
-        throw new FistoLaravelException("Voucher number already exist.", 422, null, $data);
-        break;
+            case "voucher-no-exist":
+                throw new FistoLaravelException("Voucher number already exist.", 422, null, $data);
+                break;
 
-      case "cheque-no-exist":
-        throw new FistoLaravelException("Cheque number already exist.", 422, null, $data);
-        break;
+            case "cheque-no-exist":
+                throw new FistoLaravelException("Cheque number already exist.", 422, null, $data);
+                break;
 
-      case "success-no-content":
-        return GenericMethod::result(204, "Success.", []);
-        break;
+            case "success-no-content":
+                return GenericMethod::result(204, "Success.", []);
+                break;
+        }
     }
-  }
 
   public static function resultLaravelFormat($column, $message)
   {

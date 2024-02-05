@@ -6,6 +6,7 @@ use App\Http\Requests\SubUnitRequest;
 use App\Http\Resources\SubUnitResource;
 use App\Models\Department;
 use App\Models\SubUnit;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -17,37 +18,60 @@ class SubUnitController extends Controller
         $rows =  (int) $request->input('rows', 10);
         $search =  $request['search'];
         $paginate = $request->input('paginate', 1);
+        $api_for = $request->input('api_for', 'default');
 
-        $subunit = SubUnit::withTrashed()
-            ->where(function ($query) use ($status) {
-            return $status ? $query->whereNull('deleted_at') : $query->whereNotNull('deleted_at');
-        })->where(function ($query) use ($search) {
+        $subunits = SubUnit::withTrashed()
+//            ->where(function ($query) use ($status) {
+//            return $status ? $query->whereNull('deleted_at') : $query->whereNotNull('deleted_at');
+//        })
+                ->when(isset($status), function ($query) use ($status) {
+                    return $status ? $query->whereNull('deleted_at') : $query->whereNotNull('deleted_at');
+                })
+        ->where(function ($query) use ($search) {
             $query->where('subunit', 'like', '%' . $search . '%')
                 ->orWhere('code', 'like', '%' . $search . '%');
-        })->select(['id','code', 'subunit','updated_at', 'deleted_at', 'department_id'])
+        })
+//            ->select(['id','code', 'subunit','updated_at', 'deleted_at', 'department_id'])
             ->latest('updated_at');
 
         if ($paginate == 1) {
-            $subunit = $subunit->paginate($rows);
+            $subunits = $subunits->paginate($rows);
+            $subunits->transform(function ($value) {
+                return [
+                    'id' => $value->id,
+                    'code' => $value->code,
+                    'sub_unit' => $value->subunit,
+                    'department' => [
+                        'id' => $value->department->id,
+                        'name' => $value->department->department,
+                    ],
+                    'updated_at' => $value->updated_at,
+                    'deleted_at' => $value->deleted_at,
+                ];
+            });
         } else if ($paginate == 0) {
-            $subunit = $subunit->get(['id','code', 'subunit']);
-        }
-        $subunit->transform(function ($value) {
-            return [
-                'id' => $value->id,
-                'code' => $value->code,
-                'sub_unit' => $value->subunit,
-                'department' => [
-                    'id' => $value->department->id,
-                    'name' => $value->department->department,
-                ],
-                'updated_at' => $value->updated_at,
-                'deleted_at' => $value->deleted_at,
-            ];
-        });
+//            $subunits = $subunits->get();
+            $subunits = $subunits
+                ->when($api_for == 'vladimir', function ($query) {
+                    return $query
+                        ->with('department:id,code,department as department')
+                        ->get([
+                            "id",
+                            "code",
+                            "subunit as name",
+                            "department_id",
+                            DB::RAW("(CASE WHEN (ISNULL(deleted_at)) THEN 1 ELSE 0 END) as status")
+                        ]);
+                })
+                ->when($api_for == 'default', function ($query) {
+                    return $query->get();
+                });
 
-        if (count($subunit)) {
-            return $this->resultResponse('fetch', 'Sub Unit', $subunit);
+            $subunits = array('subunits' => $subunits);
+        }
+
+        if (count($subunits)) {
+            return $this->resultResponse('fetch', 'Sub Unit', $subunits);
         } else {
             return $this->resultResponse('not-found', 'Sub Unit', []);
         }
@@ -89,22 +113,23 @@ class SubUnitController extends Controller
 
     public function change_status($id)
     {
-        $data = SubUnit::withTrashed()->find($id);
-
-        if ($data) {
-            if ($data->trashed()) {
-                $data->restore();
-
-                return $this->resultResponse("restore", 'Sub unit', []);
-            } else {
-                $data->delete();
-
-                return $this->resultResponse("archive", 'Sub unit', []);
-            }
-        } else {
-
-            return $this->resultResponse('not-found','Sub Unit', []);
-        }
+        return $this->changeStatus($id, SubUnit::class, 'Sub Unit');
+//        $data = SubUnit::withTrashed()->find($id);
+//
+//        if ($data) {
+//            if ($data->trashed()) {
+//                $data->restore();
+//
+//                return $this->resultResponse("restore", 'Sub unit', []);
+//            } else {
+//                $data->delete();
+//
+//                return $this->resultResponse("archive", 'Sub unit', []);
+//            }
+//        } else {
+//
+//            return $this->resultResponse('not-found','Sub Unit', []);
+//        }
     }
 
     public function import(Request $request)

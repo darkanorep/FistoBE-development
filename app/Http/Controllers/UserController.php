@@ -242,7 +242,6 @@ class UserController extends Controller
 
     public function login(Request $request)
     {
-        // return $request;
         if(Auth::attempt($request->only('username', 'password'))){
             $user = Auth::user();
             $user= User::where('username', $request->username)->first();
@@ -269,7 +268,8 @@ class UserController extends Controller
 
     public function logout()
     {
-      $logout = auth()->user()->tokens()->delete();
+//      $logout = auth()->user()->tokens()->delete();
+      $logout = auth()->user()->currentAccessToken()->delete();
 
       if ($logout == true) {
         return $this->resultResponse('logout','User',[]);

@@ -12,7 +12,8 @@ class TransactionType extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'transaction_type', 'transaction_types_coa_id'
+        'transaction_type',
+        'transaction_types_coa_id'
     ];
 
     protected $casts = [
@@ -21,7 +22,7 @@ class TransactionType extends Model
 
     protected $hidden = [
         'created_at',
-        'deleted_at',
+//        'deleted_at',
         'transaction_types_coa_id',
     ];
 

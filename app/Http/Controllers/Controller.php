@@ -572,4 +572,62 @@ class Controller extends BaseController
       return strtolower((string) $q["$dbfield"]) === strtolower((string) $param);
     });
   }
+
+  public function changeStatus($id, $model, $modelName) {
+
+      $data = $model::withTrashed()->find($id);
+
+      if ($data) {
+
+          if ($data->trashed()) {
+              $data->restore();
+
+              return $this->resultResponse('restore', $modelName, $data);
+          } else {
+              $data->delete();
+
+              return $this->resultResponse('archive', $modelName, $data);
+          }
+
+      } else {
+          return $this->resultResponse('not-found', $modelName, []);
+      }
+  }
+
+    function stateChange($state)
+    {
+        switch ($state) {
+            case "tag":
+                $state = "Tagged";
+                break;
+            case "request":
+            case "pending":
+                $state = "Pending";
+                break;
+            case "hold":
+                $state = "Held";
+                break;
+            case "transmit":
+                $state = "Transmitted";
+                break;
+            case "receive-approver":
+                $state = "Received";
+                break;
+            case "receive-requestor":
+                $state = "Received";
+                break;
+
+            default:
+                if (str_ends_with($state, "e")) {
+                    $state = ucfirst($state . "d");
+                } elseif (str_ends_with($state, "g")) {
+                    $state = ucfirst($state);
+                } else {
+                    $state = ucfirst($state . "ed");
+                }
+        }
+
+        return $state;
+    }
+
 }

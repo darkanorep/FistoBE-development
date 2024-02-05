@@ -21,7 +21,7 @@ class AccountNumberController extends Controller
     $rows =  (empty($request['rows']))?10:(int)$request['rows'];
     $search =  $request['search'];
     $paginate = (isset($request['paginate']))? $request['paginate']:$paginate = 1;
-    
+
     $account_number = AccountNumber::withTrashed()
     ->when($paginate,function($q) use ($search){
       $q->with('location')
@@ -59,252 +59,407 @@ class AccountNumberController extends Controller
           $account_number = array("account_numbers"=>$account_number);;
       }
     }
-    
+
     if(count($account_number)==true){
       return $this->resultResponse('fetch','Account Number',$account_number);
     }
     return $this->resultResponse('not-found','Account Number',[]);
   }
-    
+
   public function store(AccountNumberRequest $request)
   {
-    $fields = $request->validated();
+      $account_number = AccountNumber::create([
+          'account_no' => $request->account_no,
+          'location_id' => $request->location_id,
+          'category_id' => $request->category_id,
+          'supplier_id' => $request->supplier_id,
+      ]);
 
-    $account_number_validateDuplicate = AccountNumber::withTrashed()->firstWhere([['supplier_id', $fields['supplier_id']],['location_id', $fields['location_id']],['account_no', $fields['account_no']],['category_id', $fields['category_id']]]);
-    if (empty($account_number_validateDuplicate)) {
-      $new_account_numbers = AccountNumber::create($fields);
-      return $this->resultResponse('save','Account Number',$new_account_numbers);
-    }
-    else
-      return $this->resultResponse('registered','Account Number',[]);
+      return $this->resultResponse('save','Account Number', $account_number);
+
+//    $fields = $request->validated();
+//
+//    $account_number_validateDuplicate = AccountNumber::withTrashed()->firstWhere([['supplier_id', $fields['supplier_id']],['location_id', $fields['location_id']],['account_no', $fields['account_no']],['category_id', $fields['category_id']]]);
+//    if (empty($account_number_validateDuplicate)) {
+//      $new_account_numbers = AccountNumber::create($fields);
+//      return $this->resultResponse('save','Account Number',$new_account_numbers);
+//    }
+//    else
+//      return $this->resultResponse('registered','Account Number',[]);
   }
-    
+
   public function update(AccountNumberRequest $request,$id)
   {
-    $model = new AccountNumber();
-    $account_number = AccountNumber::find($id);
-    $fields = $request->validated();
+      $account_number = AccountNumber::where('id', $id)->first();
 
-    if (empty($account_number)) 
-      return $this->resultResponse('not-found','Account Number',[]);
-      // $is_unique = $this->isUnique($model,'Account number',['account_no','category_id'],[$fields['account_no'],$fields['category_id']],$id);
+      if ($account_number) {
 
-      $account_number_validateDuplicate = AccountNumber::withTrashed()->firstWhere([['id', '<>', $id],['supplier_id', $fields['supplier_id']],['location_id', $fields['location_id']],['account_no', $fields['account_no']],['category_id', $fields['category_id']]]);
-      if (!empty($account_number_validateDuplicate)) 
-      return $this->resultResponse('registered','Account Number',[]);
-      
-      $account_number->account_no = $fields['account_no'];
-      $account_number->location_id = $fields['location_id'];
-      $account_number->category_id = $fields['category_id'];
-      $account_number->supplier_id = $fields['supplier_id'];
+          $account_number->account_no = $request->account_no;
+          $account_number->location_id = $request->location_id;
+          $account_number->category_id = $request->category_id;
+          $account_number->supplier_id = $request->supplier_id;
 
-      return $this->validateIfNothingChangeThenSave($account_number,'Account number');
+          return $this->validateIfNothingChangeThenSave($account_number, 'Account number');
+
+      } else {
+          return $this->resultResponse('not-found', 'Account Number', []);
+      }
+
+//    $model = new AccountNumber();
+//    $account_number = AccountNumber::find($id);
+//    $fields = $request->validated();
+//
+//    if (empty($account_number))
+//      return $this->resultResponse('not-found','Account Number',[]);
+////       $is_unique = $this->isUnique($model,'Account number',['account_no','category_id'],[$fields['account_no'],$fields['category_id']],$id);
+//
+//      $account_number_validateDuplicate = AccountNumber::withTrashed()->firstWhere([['id', '<>', $id],['supplier_id', $fields['supplier_id']],['location_id', $fields['location_id']],['account_no', $fields['account_no']],['category_id', $fields['category_id']]]);
+//      if (!empty($account_number_validateDuplicate))
+//      return $this->resultResponse('registered','Account Number',[]);
+//
+//      $account_number->account_no = $fields['account_no'];
+//      $account_number->location_id = $fields['location_id'];
+//      $account_number->category_id = $fields['category_id'];
+//      $account_number->supplier_id = $fields['supplier_id'];
+//
+//      return $this->validateIfNothingChangeThenSave($account_number,'Account number');
   }
 
-  public function change_status(Request $request,$id)
+  public function change_status($id)
   {
-    $status = $request['status'];
-    $model = new AccountNumber();
-    return $this->change_masterlist_status($status,$model,$id,'Account number');
+
+      return $this->changeStatus($id,  AccountNumber::class, 'Account number');
+
+//    $status = $request['status'];
+//    $model = new AccountNumber();
+//    return $this->change_masterlist_status($status,$model,$id,'Account number');
   }
 
-  public function import(Request $request)
-  {
-    $timezone = "Asia/Dhaka";
-    date_default_timezone_set($timezone);
-    $date = date("Y-m-d H:i:s", strtotime('now'));
+  public function import(Request $request) {
+      $account_numbers = $request->all();
+      $errorBag = [];
+      $account_numbers_list = AccountNumber::withTrashed()->pluck('account_no')->toArray();
+      $locations_list = UtilityLocation::withTrashed()->pluck('location')->toArray();
+      $categories_list = UtilityCategory::withTrashed()->pluck('category')->toArray();
+      $suppliers_list = Supplier::withTrashed()->pluck('name')->toArray();
 
-    $data = $request->all();
-    $data_validation_fields = $request->all();
-    $account_number_masterlist = AccountNumber::withTrashed()->get();
-    $utility_location_masterlist = UtilityLocation::withTrashed()->get();
-    $utility_category_masterlist = UtilityCategory::withTrashed()->get();
-    $supplier_masterlist = Supplier::get();
-    $errorBag = [];
-    $index = 2;
-    $template = ['account_no','location','supplier','category','status'];
-    $headers = 'Account No, Location, Supplier, Category, Status';
-    $keys = array_keys(current($data));
-    $this->validateHeader($template,$keys,$headers);
-    foreach($data as $account_number){
-      $account_no = $account_number['account_no'];
-      $category = $account_number['category'];
-      $location = $account_number['location'];
-      $supplier = $account_number['supplier'];
+      date_default_timezone_set('Asia/Manila');
 
-      foreach($account_number as $key=>$value){
-        if(empty($value)){
-          $errorBag[] = [
-            "error_type" => "empty",
-            "line" => $index,
-            "description" => $key." is empty."
-          ];
-        }
+      $headers = 'Account No, Location, Supplier, Category, Status';
+      $templates = ['account_no', 'location', 'supplier', 'category', 'status'];
+      $keys = array_keys(current($account_numbers));
+      $this->validateHeader($templates, $keys, $headers);
+
+      $index = 2;
+
+      foreach ($account_numbers as $account_number) {
+          $account_no = $account_number['account_no'];
+          $location = $account_number['location'];
+          $category = $account_number['category'];
+          $supplier = $account_number['supplier'];
+          $status = $account_number['status'];
+
+          if (in_array($account_no, $account_numbers_list)) {
+              $errorBag[] = [
+                  "error_type" => "existing",
+                  "line" => $index,
+                  "description" => $account_no . " is already registered."
+              ];
+          }
+
+          if (!in_array($location, $locations_list)) {
+              $errorBag[] = [
+                  "error_type" => "unregistered",
+                  "line" => $index,
+                  "description" => $location . " is not registered."
+              ];
+          }
+
+          if (!in_array($category, $categories_list)) {
+              $errorBag[] = [
+                  "error_type" => "unregistered",
+                  "line" => $index,
+                  "description" => $category . " is not registered."
+              ];
+          }
+
+          if(!in_array($supplier, $suppliers_list)) {
+              $errorBag[] = [
+                  "error_type" => "unregistered",
+                  "line" => $index,
+                  "description" => $supplier . " is not registered."
+              ];
+          }
+
+          if(!in_array($status, ['Active', 'Inactive'])) {
+              $errorBag[] = (object) [
+                  "error_type" => "wrong-format",
+                  "line" => $index,
+                  "description" => "Status must be Active or Inactive.",
+              ];
+          }
+
+          foreach ($account_number as $key => $value) {
+              if (empty($value)) {
+                  $errorBag[] = (object) [
+                      "error_type" => "empty",
+                      "line" => $index,
+                      "description" => $key . " is empty.",
+                  ];
+              }
+          }
+
+          $index++;
       }
 
-      $category_id = $utility_category_masterlist->filter(function ($query) use ($category){
-        return ((strtolower($query['category']) == strtolower($category))); 
-      });
+      if (count($errorBag) || !count($errorBag)) {
 
-      if(count($category_id)>0){
-        $category_id = $category_id->first()->id;
-      }else{
-        $category_id  = 0;
+          $input_account_no = array_column($account_numbers, 'account_no');
+          $duplicate_account_no = array_keys(array_filter(array_count_values($input_account_no), function ($value) {
+              return $value > 1;
+          }));
+
+          if (count($duplicate_account_no) > 0) {
+              $errorBag[] = (object) [
+                  'error_type' => 'duplicate',
+                  'line' => implode(', ', array_map(function ($value) {
+                      return $value + 2;
+                  }, (array_keys($input_account_no, $duplicate_account_no[0])))),
+                  'description' => 'Account No ' . $duplicate_account_no[0] . ' has a duplicate in your excel file.'
+              ];
+          }
       }
 
-      // if (!empty($account_no)) {
-      //   $duplicateAccountNo = $account_number_masterlist->filter(function ($query) use ($account_no,$category_id){
-      //     return ((strtolower($query['account_no']) == strtolower($account_no)) && (strtolower($query['category_id']) == strtolower($category_id))) ; 
-      //   });
-      //   if ($duplicateAccountNo->count() > 0)
-      //     $errorBag[] = (object) [
-      //       "error_type" => "existing",
-      //       "line" => $index,
-      //       "description" => $category. ", with ".$account_no. " account number is already registered."
-      //     ];
-      // }
+      if (!count($errorBag)) {
+          $account_numbers = array_map(function ($account_number) {
+              return [
+                  'account_no' => $account_number['account_no'],
+                  'location_id' => UtilityLocation::withTrashed()->where('location', $account_number['location'])->first()->id,
+                  'category_id' => UtilityCategory::withTrashed()->where('category', $account_number['category'])->first()->id,
+                  'supplier_id' => Supplier::withTrashed()->where('name', $account_number['supplier'])->first()->id,
+                  'created_at' => date('Y-m-d H:i:s'),
+                  'updated_at' => date('Y-m-d H:i:s'),
+                  'deleted_at' => ($account_number['status'] == 'Active') ? null : date('Y-m-d H:i:s'),
+              ];
+          }, $account_numbers);
 
+          $chunks = array_chunk($account_numbers, 100);
 
-      if (!empty($location)) {
-        $existingLocation = $utility_location_masterlist->filter(function ($query) use ($location){
-          return (strtolower($query['location']) == strtolower($location)); 
-        });
-        if ($existingLocation->count() == 0)
-          $errorBag[] = (object) [
-            "error_type" => "unregistered",
-            "line" => $index,
-            "description" => $location. " is not registered."
-          ];
+          foreach ($chunks as $chunk) {
+              AccountNumber::insert($chunk);
+          }
+
+          $account_numbers_collection = collect($account_numbers);
+          $active = $account_numbers_collection->whereNull('deleted_at')->count();
+          $inactive = $account_numbers_collection->whereNotNull('deleted_at')->count();
+
+          return response()->json([
+              'status' => 'imported',
+              'message' => 'Account Numbers successfully imported, '. $active . ' active rows and, ' . $inactive . ' inactive rows were added.',
+          ], 201);
+      } else {
+          return $this->resultResponse('import-error', 'Account Number', $errorBag);
       }
 
-
-      if (!empty($category)) {
-        $existingCagtegory= $utility_category_masterlist->filter(function ($query) use ($category){
-          return (strtolower($query['category']) == strtolower($category)); 
-        });
-        if ($existingCagtegory->count() == 0)
-          $errorBag[] = (object) [
-            "error_type" => "unregistered",
-            "line" => $index,
-            "description" => $category. " is not registered."
-          ];
-      }
-
-
-      if (!empty($supplier)) {
-        $existingSupplier = $supplier_masterlist->filter(function ($query) use ($supplier){
-          return (strtolower($query['name']) == strtolower($supplier)); 
-        });
-        if ($existingSupplier->count() == 0)
-          $errorBag[] = (object) [
-            "error_type" => "unregistered",
-            "line" => $index,
-            "description" => $supplier. " is not registered."
-          ];
-      }
-      $index++;
-    }
-    foreach ($data_validation_fields as $key => $subArr) {
-      unset($subArr['location']);
-      unset($subArr['supplier']);
-      $data_validation_fields[$key] = $subArr;  
-    }
-
-    $original_lines = array_keys($data_validation_fields);
-    $unique_lines = array_keys(array_unique($data_validation_fields,SORT_REGULAR));
-    $duplicate_lines = array_values(array_diff($original_lines,$unique_lines));
-
-    foreach($duplicate_lines as $line){
-      $input_account_no= $data_validation_fields[$line]['account_no'];
-      $input_category= $data_validation_fields[$line]['category'];
-
-      $duplicate_data =  array_filter($data_validation_fields, function ($query) use($input_account_no,$input_category){
-        return (($query['account_no'] == $input_account_no) && ($query['category'] == $input_category));
-      }); 
-      $duplicate_lines_imploded =  implode(",",array_map(function($query){
-        return $query+2;
-      },array_keys($duplicate_data)));
-
-      $firstDuplicateLine =  array_key_first($duplicate_data);
-      
-
-      if((empty($data_validation_fields[$line]['account_no'])) || (empty($data_validation_fields[$line]['category']))){
-      }else{
-        $errorBag[] = [
-          "error_type" => "duplicate",
-          "line" => (string) $duplicate_lines_imploded,
-          "description" =>  $data_validation_fields[$line]['account_no'].' with '.strtolower($data_validation_fields[$line]['category']).' category has a duplicate in your excel file.'
-        ];
-      }
-    }
-
-    $errorBag = array_values(array_unique($errorBag,SORT_REGULAR));
-    if(empty($errorBag)){
-      foreach($data as $account_no){
-        $status_date = (strtolower($account_no['status'])=="active"?NULL:$date);
-        $inputted_supplier = $account_no['supplier'];
-        $inputted_location = $account_no['location'];
-        $inputted_category = $account_no['category'];
-
-        $location = $utility_location_masterlist->filter(function ($query) use ($inputted_location){
-          return (strtolower($query['location']) == strtolower($inputted_location)); 
-        });
-
-        if(count($location)>0){
-          $location = $location->first()->id;
-        }else{
-          $location  = 0;
-        }
-
-        $category = $utility_category_masterlist->filter(function ($query) use ($inputted_category){
-          return (strtolower($query['category']) == strtolower($inputted_category)); 
-        });
-
-        if(count($category)>0){
-          $category = $category->first()->id;
-        }else{
-          $category  = 0;
-        }
-
-        $supplier = $supplier_masterlist->filter(function ($query) use ($inputted_supplier){
-          return (strtolower($query['name']) == strtolower($inputted_supplier)); 
-        });
-
-        if(count($supplier)>0){
-          $supplier = $supplier->first()->id;
-        }else{
-          $supplier  = 0;
-        }
-
-        $fields = [
-          "account_no"=>$account_no['account_no'],
-          "location_id"=>$location,
-          "category_id"=>$category,
-          "supplier_id"=>$supplier,
-          "created_at"=>\Carbon\Carbon::now(),
-          "updated_at"=>\Carbon\Carbon::now(),
-          'deleted_at' => $status_date
-        ];
-        $inputted_fields[] = $fields; 
-      }
-      $inputted_fields = collect($inputted_fields);
-      $chunks = $inputted_fields->chunk(100);
-      $count_upload = count($inputted_fields);
-      $active =  $inputted_fields->filter(function ($q){
-        return $q['deleted_at']==NULL;
-      })->count();
-
-      $inactive =  $inputted_fields->filter(function ($q){
-        return $q['deleted_at']!=NULL;
-      })->count();
-
-      foreach($chunks as $chunk)
-      {
-        AccountNumber::insert($chunk->toArray()) ;
-      }
-      return $this->resultResponse('import','Account Number',$count_upload,$active,$inactive);
-    }
-    else
-    return $this->resultResponse('import-error','Account Number',$errorBag);
   }
+
+//  public function import(Request $request)
+//  {
+//    $timezone = "Asia/Dhaka";
+//    date_default_timezone_set($timezone);
+//    $date = date("Y-m-d H:i:s", strtotime('now'));
+//
+//    $data = $request->all();
+//    $data_validation_fields = $request->all();
+//    $account_number_masterlist = AccountNumber::withTrashed()->get();
+//    $utility_location_masterlist = UtilityLocation::withTrashed()->get();
+//    $utility_category_masterlist = UtilityCategory::withTrashed()->get();
+//    $supplier_masterlist = Supplier::get();
+//    $errorBag = [];
+//    $index = 2;
+//    $template = ['account_no','location','supplier','category','status'];
+//    $headers = 'Account No, Location, Supplier, Category, Status';
+//    $keys = array_keys(current($data));
+//    $this->validateHeader($template,$keys,$headers);
+//    foreach($data as $account_number){
+//      $account_no = $account_number['account_no'];
+//      $category = $account_number['category'];
+//      $location = $account_number['location'];
+//      $supplier = $account_number['supplier'];
+//
+//      foreach($account_number as $key=>$value){
+//        if(empty($value)){
+//          $errorBag[] = [
+//            "error_type" => "empty",
+//            "line" => $index,
+//            "description" => $key." is empty."
+//          ];
+//        }
+//      }
+//
+//      $category_id = $utility_category_masterlist->filter(function ($query) use ($category){
+//        return ((strtolower($query['category']) == strtolower($category)));
+//      });
+//
+//      if(count($category_id)>0){
+//        $category_id = $category_id->first()->id;
+//      }else{
+//        $category_id  = 0;
+//      }
+//
+//      // if (!empty($account_no)) {
+//      //   $duplicateAccountNo = $account_number_masterlist->filter(function ($query) use ($account_no,$category_id){
+//      //     return ((strtolower($query['account_no']) == strtolower($account_no)) && (strtolower($query['category_id']) == strtolower($category_id))) ;
+//      //   });
+//      //   if ($duplicateAccountNo->count() > 0)
+//      //     $errorBag[] = (object) [
+//      //       "error_type" => "existing",
+//      //       "line" => $index,
+//      //       "description" => $category. ", with ".$account_no. " account number is already registered."
+//      //     ];
+//      // }
+//
+//
+//      if (!empty($location)) {
+//        $existingLocation = $utility_location_masterlist->filter(function ($query) use ($location){
+//          return (strtolower($query['location']) == strtolower($location));
+//        });
+//        if ($existingLocation->count() == 0)
+//          $errorBag[] = (object) [
+//            "error_type" => "unregistered",
+//            "line" => $index,
+//            "description" => $location. " is not registered."
+//          ];
+//      }
+//
+//
+//      if (!empty($category)) {
+//        $existingCagtegory= $utility_category_masterlist->filter(function ($query) use ($category){
+//          return (strtolower($query['category']) == strtolower($category));
+//        });
+//        if ($existingCagtegory->count() == 0)
+//          $errorBag[] = (object) [
+//            "error_type" => "unregistered",
+//            "line" => $index,
+//            "description" => $category. " is not registered."
+//          ];
+//      }
+//
+//
+//      if (!empty($supplier)) {
+//        $existingSupplier = $supplier_masterlist->filter(function ($query) use ($supplier){
+//          return (strtolower($query['name']) == strtolower($supplier));
+//        });
+//        if ($existingSupplier->count() == 0)
+//          $errorBag[] = (object) [
+//            "error_type" => "unregistered",
+//            "line" => $index,
+//            "description" => $supplier. " is not registered."
+//          ];
+//      }
+//      $index++;
+//    }
+//    foreach ($data_validation_fields as $key => $subArr) {
+//      unset($subArr['location']);
+//      unset($subArr['supplier']);
+//      $data_validation_fields[$key] = $subArr;
+//    }
+//
+//    $original_lines = array_keys($data_validation_fields);
+//    $unique_lines = array_keys(array_unique($data_validation_fields,SORT_REGULAR));
+//    $duplicate_lines = array_values(array_diff($original_lines,$unique_lines));
+//
+//    foreach($duplicate_lines as $line){
+//      $input_account_no= $data_validation_fields[$line]['account_no'];
+//      $input_category= $data_validation_fields[$line]['category'];
+//
+//      $duplicate_data =  array_filter($data_validation_fields, function ($query) use($input_account_no,$input_category){
+//        return (($query['account_no'] == $input_account_no) && ($query['category'] == $input_category));
+//      });
+//      $duplicate_lines_imploded =  implode(",",array_map(function($query){
+//        return $query+2;
+//      },array_keys($duplicate_data)));
+//
+//      $firstDuplicateLine =  array_key_first($duplicate_data);
+//
+//
+//      if((empty($data_validation_fields[$line]['account_no'])) || (empty($data_validation_fields[$line]['category']))){
+//      }else{
+//        $errorBag[] = [
+//          "error_type" => "duplicate",
+//          "line" => (string) $duplicate_lines_imploded,
+//          "description" =>  $data_validation_fields[$line]['account_no'].' with '.strtolower($data_validation_fields[$line]['category']).' category has a duplicate in your excel file.'
+//        ];
+//      }
+//    }
+//
+//    $errorBag = array_values(array_unique($errorBag,SORT_REGULAR));
+//    if(empty($errorBag)){
+//      foreach($data as $account_no){
+//        $status_date = (strtolower($account_no['status'])=="active"?NULL:$date);
+//        $inputted_supplier = $account_no['supplier'];
+//        $inputted_location = $account_no['location'];
+//        $inputted_category = $account_no['category'];
+//
+//        $location = $utility_location_masterlist->filter(function ($query) use ($inputted_location){
+//          return (strtolower($query['location']) == strtolower($inputted_location));
+//        });
+//
+//        if(count($location)>0){
+//          $location = $location->first()->id;
+//        }else{
+//          $location  = 0;
+//        }
+//
+//        $category = $utility_category_masterlist->filter(function ($query) use ($inputted_category){
+//          return (strtolower($query['category']) == strtolower($inputted_category));
+//        });
+//
+//        if(count($category)>0){
+//          $category = $category->first()->id;
+//        }else{
+//          $category  = 0;
+//        }
+//
+//        $supplier = $supplier_masterlist->filter(function ($query) use ($inputted_supplier){
+//          return (strtolower($query['name']) == strtolower($inputted_supplier));
+//        });
+//
+//        if(count($supplier)>0){
+//          $supplier = $supplier->first()->id;
+//        }else{
+//          $supplier  = 0;
+//        }
+//
+//        $fields = [
+//          "account_no"=>$account_no['account_no'],
+//          "location_id"=>$location,
+//          "category_id"=>$category,
+//          "supplier_id"=>$supplier,
+//          "created_at"=>\Carbon\Carbon::now(),
+//          "updated_at"=>\Carbon\Carbon::now(),
+//          'deleted_at' => $status_date
+//        ];
+//        $inputted_fields[] = $fields;
+//      }
+//      $inputted_fields = collect($inputted_fields);
+//      $chunks = $inputted_fields->chunk(100);
+//      $count_upload = count($inputted_fields);
+//      $active =  $inputted_fields->filter(function ($q){
+//        return $q['deleted_at']==NULL;
+//      })->count();
+//
+//      $inactive =  $inputted_fields->filter(function ($q){
+//        return $q['deleted_at']!=NULL;
+//      })->count();
+//
+//      foreach($chunks as $chunk)
+//      {
+//        AccountNumber::insert($chunk->toArray()) ;
+//      }
+//      return $this->resultResponse('import','Account Number',$count_upload,$active,$inactive);
+//    }
+//    else
+//    return $this->resultResponse('import-error','Account Number',$errorBag);
+//  }
 }

@@ -24,26 +24,26 @@ class UserControllerRequest extends FormRequest
     public function rules()
     {
         return [
-            'id_prefix' => 'string|required'
-            , 'id_no' => 'required'
-            , 'role' => 'required|string'
-            , 'first_name' => 'required|string'
-            , 'middle_name' => 'nullable'
-            , 'last_name' => 'required|string'
-            , 'suffix' => 'nullable'
-            , 'department' => 'required'
-            , 'position' => 'required|string'
-            , 'permissions' => 'required'
-            , 'document_types' => 'nullable'
-            , 'username' => 'required|string'
+            'id_prefix' => 'string|required',
+            'id_no' => 'required',
+            'role' => 'required|string',
+            'first_name' => 'required|string',
+            'middle_name' => 'nullable',
+            'last_name' => 'required|string',
+            'suffix' => 'nullable',
+            'department' => 'required',
+            'position' => 'required|string',
+            'permissions' => 'required',
+            'document_types' => 'nullable',
+            'username' => 'required|string',
         ];
     }
 
     public function messages()
     {
         return [
-            "id_prefix.required"=>"ID Prefix is required"
-            ,"id_no.required"=>"ID No is required"
+            "id_prefix.required" => "ID Prefix is required",
+            "id_no.required" => "ID No is required"
         ];
     }
 }

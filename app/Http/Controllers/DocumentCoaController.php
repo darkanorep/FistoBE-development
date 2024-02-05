@@ -12,7 +12,7 @@ class DocumentCoaController extends Controller
 
     public function index()
     {
-        return response('sheesh');
+        //
     }
 
     public function store(DocumentCoaRequest $request)

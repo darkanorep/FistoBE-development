@@ -19,7 +19,7 @@ class SubUnit extends Model
 
     protected $hidden = [
         'created_at',
-        'department_id'
+        'department_id',
     ];
 
     public function department()

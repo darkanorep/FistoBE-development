@@ -18,6 +18,7 @@ class BusinessUnit extends Model
     ];
 
     protected $hidden = [
+        'company_id',
         'updated_at',
         'deleted_at',
     ];
@@ -31,8 +32,10 @@ class BusinessUnit extends Model
         return $this->belongsToMany(User::class, 'business_unit_users', 'business_unit_id', 'user_id')->withTrashed();
     }
 
-public function company()
+    public function company()
     {
         return $this->belongsTo(Company::class)->withTrashed();
     }
+
 }
+
