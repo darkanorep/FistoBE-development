@@ -3498,6 +3498,11 @@ class TransactionController extends Controller
                     })
                     ->where("is_received", true);
             })
+            ->when($status == "return-release", function ($query) {
+                $query->whereHas("transaction", function ($query) {
+                    return $query->where("status", "release-return");
+                });
+            })
 
             //clearing of cheque
             ->when($status == "pending-clear", function ($query) {
@@ -4009,12 +4014,12 @@ class TransactionController extends Controller
                 }
 
                 $counts = Transaction::select('status', DB::raw('count(*) as count'))
-                    ->when($document_id, function ($query) use ($document_id, $status) {
-                        if ($status == 'transmit-transmit' && $document_id != 8) {
-                            $query->where('status', $status);
-                        }
-                        return $query->where('document_id', $document_id);
-                    })
+//                    ->when($document_id, function ($query) use ($document_id, $status) {
+//                        if ($status == 'transmit-transmit' && $document_id != 8) {
+//                            $query->where('status', $status);
+//                        }
+//                        return $query->where('document_id', $document_id);
+//                    })
                     ->when($user_id, function ($query) use ($user_id) {
                         $query->where(function ($query) use ($user_id) {
                             $query->where('distributed_id', $user_id)
@@ -4038,6 +4043,14 @@ class TransactionController extends Controller
                                 ->where('receipt_type', '!=', 'Official');
                         })->orWhere(function ($query) {
                             $query->where('status', 'discharge-discharge');
+                        });
+                    })
+                    ->when($permissionName == 'Creation of Cheque', function ($query) {
+                        $query->where(function ($query) {
+                            $query->where('status', 'transmit-transmit')
+                                ->where('document_id', '!=', 8);
+                        })->orWhere(function ($query) {
+                            $query->where('status', 'inspect-inspect');
                         });
                     })
                     ->whereIn('status', $status)

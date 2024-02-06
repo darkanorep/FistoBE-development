@@ -2,10 +2,11 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Document;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class PayrollClientRequest extends FormRequest
+class DocumentRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -25,11 +26,15 @@ class PayrollClientRequest extends FormRequest
     public function rules()
     {
         return [
-            'client' => [
+            'type' => [
                 'required',
-                'string',
-                Rule::unique('payroll_clients')->ignore($this->payroll_client)
-            ]
+                Rule::unique('documents', 'type')->ignore($this->document)
+            ],
+            'description' => [
+                'required',
+                Rule::unique('documents', 'description')->ignore($this->document)
+            ],
+            'categories' => 'required|array|min:1',
         ];
     }
 }
