@@ -56,10 +56,10 @@ class BankController extends Controller
             ->latest('updated_at');
 
         if ($paginate == 0) {
-            $banks = $banks
+            $banks = $banks->get();
                 //  ->without('AccountTitleOne')
                 //  ->without('AccountTitleTwo')
-                ->get(['account_title_1', 'account_title_2', 'id', 'name', 'branch', 'code', 'account_no', 'location', 'account_title_1', 'account_title_2', 'company_id_1', 'company_id_2', 'business_unit_id_1', 'business_unit_id_2', 'department_id_1', 'department_id_2', 'sub_unit_id_1', 'sub_unit_id_2', 'location_id_1', 'location_id_2']);
+//                ->get(['account_title_1', 'account_title_2', 'id', 'name', 'branch', 'code', 'account_no', 'location', 'account_title_1', 'account_title_2', 'company_id_1', 'company_id_2', 'business_unit_id_1', 'business_unit_id_2', 'department_id_1', 'department_id_2', 'sub_unit_id_1', 'sub_unit_id_2', 'location_id_1', 'location_id_2']);
             $banks = ["banks" => $banks];
         } else {
             $banks = $banks->paginate($rows);

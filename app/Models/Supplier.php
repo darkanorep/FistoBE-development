@@ -37,13 +37,14 @@ class Supplier extends Model
       return $date->format('Y-m-d H:i');
   }
 
-  public function references()
-  {
-    return $this->belongsToMany(Referrence::class, 'supplier_referrences', 'supplier_id', 'referrence_id')->select(['referrences.id','referrences.type'])->withTrashed();
-  }
+    public function references()
+    {
+        return $this->belongsToMany(Referrence::class, 'supplier_referrences', 'supplier_id', 'referrence_id')->select(['referrences.id', 'referrences.type']);
+    }
 
-  public function supplier_type()
-  {
-    return $this->hasOne(SupplierType::class,'id', 'supplier_type_id')->select(['id','type'])->withTrashed();
-  }
+    public function supplier_type()
+    {
+        return $this->hasOne(SupplierType::class, 'id', 'supplier_type_id')->select(['id', 'type']);
+    }
+
 }

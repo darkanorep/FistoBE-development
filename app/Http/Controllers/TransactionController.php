@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Resources\ChequeClearIndex;
 use App\Http\Resources\ChequeIndex;
 use App\Http\Resources\TransactionResource1;
+use App\Models\Audit;
 use App\Models\Cheque;
 use App\Models\Clear;
 use App\Models\ClearingAccountTitle;
@@ -3336,9 +3337,9 @@ class TransactionController extends Controller
                     "state" => "receive",
                 ]);
 
-            Cheque::whereIn("treasury_id", $treasuriesId)->forceDelete();
+            Cheque::whereIn("transaction_id", $transactionIds)->forceDelete();
             VoucherAccountTitle::whereIn("treasury_id", $treasuriesId)->forceDelete();
-            Treasury::whereIn("id", $treasuriesId)->delete();
+//            Treasury::whereIn("id", $treasuriesId)->delete();
             Treasury::whereIn("transaction_id", $transactionIds)->delete();
 
             $transactionIds->each(function ($transactionId) {
@@ -3914,6 +3915,7 @@ class TransactionController extends Controller
                     "state" => "return",
                 ]);
 
+            Audit::whereIn("transaction_id", $transactionIds)->where('type', 'cheque')->delete();
             Transaction::whereIn("id", $transactionIds)
                 ->where("state", "!=", "void")
                 ->update([
@@ -3962,7 +3964,7 @@ class TransactionController extends Controller
             9 => [], //Creation of Debit Memo
             10 => [], //Reversal Request
             11 => ["discharge-discharge", "release-release"], //Filing of Voucher
-            12 => ["gas-gas", "tag-tag", "approve-return", "cheque-return", "cheque-return"], //Creation of Voucher
+            12 => ["gas-gas", "tag-tag", "approve-return", "cheque-return"], //Creation of Voucher
             13 => [], //Transmittal of Confidential Document
             14 => [], //Filing of Confidential Voucher
             15 => [], //Tagging and Vouchering
@@ -4029,13 +4031,18 @@ class TransactionController extends Controller
                     ->when($receipt_type, function ($query) use ($receipt_type, $status) {
                         return $query->where('receipt_type', $receipt_type);
                     })
-                    ->when($permissionName == 'Creation of Voucher', function ($query) {
-                        $query->where(function ($query) {
-                            $query->where('status', 'tag-tag')
-                                ->where('receipt_type', '!=', 'Official');
-                        })->orWhere(function ($query) {
-                            $query->where('status', 'gas-gas');
-                        });
+                    ->when($permissionName == 'Creation of Voucher', function ($query) use ($status) {
+                        $query->when($status == 'tag-tag', function ($query) {
+                            $query->where(function ($query) {
+                                $query->where('status', 'tag-tag')
+                                    ->where('receipt_type', '!=', 'Official');
+                            })->orWhere(function ($query) {
+                                $query->where('status', 'gas-gas');
+                            });
+                        })
+                            ->when($status == 'approve-return' || $status == 'cheque-return', function ($query) {
+                                $query->whereIn('status', ['approve-return', 'cheque-return']);
+                            });
                     })
                     ->when($permissionName == 'Filing of Voucher', function ($query) {
                         $query->where(function ($query) {
@@ -4045,13 +4052,19 @@ class TransactionController extends Controller
                             $query->where('status', 'discharge-discharge');
                         });
                     })
-                    ->when($permissionName == 'Creation of Cheque', function ($query) {
-                        $query->where(function ($query) {
-                            $query->where('status', 'transmit-transmit')
-                                ->where('document_id', '!=', 8);
-                        })->orWhere(function ($query) {
-                            $query->where('status', 'inspect-inspect');
-                        });
+                    ->when($permissionName == 'Creation of Cheque', function ($query) use ($status) {
+                        $query->when($status == 'transmit-transmit', function ($query) {
+                            $query->where(function ($query) {
+                                $query->where('status', 'transmit-transmit')
+                                    ->where('document_id', '!=', 8);
+                            })->orWhere(function ($query) {
+                                $query->where('status', 'inspect-inspect');
+                            });
+                        })
+                            ->when($status == 'audit-return', function ($query) {
+                                $query->whereIn('status', ['audit-return']);
+                            });
+
                     })
                     ->whereIn('status', $status)
                     ->groupBy('status')
@@ -4093,9 +4106,10 @@ class TransactionController extends Controller
                             $result['pending'] = $count += $result['pending'];
                             break;
 
+                        case 'tag-return':
                         case 'voucher-return':
-                        case 'approve-return':
                         case 'cheque-return':
+                        case 'approve-return':
                         case 'audit-return':
                             $result['return'] = $count;
                             break;

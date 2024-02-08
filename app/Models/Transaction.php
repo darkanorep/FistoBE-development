@@ -420,7 +420,7 @@ class Transaction extends Model
 
     public function inspect() {
         return $this->hasMany(Audit::class, "transaction_id")
-//            ->whereIn("status", ["inspect-inspect", "inspect-receive"])
+            ->whereIn("status", ["inspect-inspect", "inspect-receive", "inspect-hold", "inspect-return"])
             ->latest()
             ->limit(1);
     }
@@ -501,7 +501,7 @@ class Transaction extends Model
     public function audit1()
     {
         return $this->hasMany(Audit::class, "transaction_id")
-//            ->whereIn("status", ["audit-receive", "audit-audit"])
+            ->whereIn("status", ["audit-receive", "audit-audit"])
             ->latest()
             ->limit(1);
     }
@@ -571,7 +571,7 @@ class Transaction extends Model
     public function gas1()
     {
         return $this->hasMany(Gas::class, "transaction_id")
-//            ->whereIn("status", ["gas-receive", "gas-gas", "gas-return", "gas-void"])
+            ->whereIn("status", ["gas-receive", "gas-gas", "gas-return", "gas-void"])
             ->latest()
             ->limit(1);
     }
@@ -620,7 +620,7 @@ class Transaction extends Model
     public function discharge1()
     {
         return $this->hasMany(Gas::class, "transaction_id")
-//            ->whereIn("status", ["discharge-receive", "discharge-discharge"])
+            ->whereIn("status", ["discharge-receive", "discharge-discharge"])
             ->latest()
             ->limit(1);
     }

@@ -852,6 +852,22 @@ class TransactionResource1 extends JsonResource
             }
         }
 
+//        if ($this->audit1()->count() > 0) {
+//            $audit_transaction = collect($this->audit1()->pluck('status')->toArray());
+//
+//            if ($audit_transaction->contains('audit-receive')) {
+//                $audit_transaction = $this->audit1->first();
+//
+//                if (isset($audit_transaction->status)) {
+//                    $audit = [
+//                        'dates' => $this->get_transaction_dates(Audit::class, $this->id, 'audit', ["receive", "audit"]),
+//                        'status' => $audit_transaction->status,
+//                        'reason' => $this->reason($audit_transaction, $audit_transaction->reason_id)
+//                    ];
+//                }
+//            }
+//        }
+
         //EXECUTIVE
         if ($this->executive1()->count() > 0) {
             $executive_transaction = $this->executive1->first();

@@ -1830,6 +1830,12 @@ class TransactionFlow
             "accounts" => $request->accounts,
             "bank_id" => $bankId,
             "cheque_no" => $chequeNo,
+
+            "reason" => [
+                "id" => data_get($request, 'reason.id'),
+                "description" => data_get($request, 'reason.description'),
+                "remarks" => data_get($request, 'reason.remarks')
+            ]
         ];
 
         $transactionIds = Cheque::where('bank_id', $bankId)
@@ -1868,19 +1874,15 @@ class TransactionFlow
                 case 'clear':
                     return $this->clearCheque($request, $transactionIds);
                     break;
-                case 'audit':
-                    return $this->chequeTransmit($request, $transactionIds);
-                    break;
                 case 'executive':
+                case 'audit':
                     return $this->chequeTransmit($request, $transactionIds);
                     break;
                 case 'receive':
                     return $this->chequeSingleReceive($request, $transactionIds);
                     break;
-                case 'unreturn':
-                    return $this->unreturnUnhold($transactionIds, $context);
-                    break;
                 case 'unhold':
+                case 'unreturn':
                     return $this->unreturnUnhold($transactionIds, $context);
                     break;
             }
@@ -2204,6 +2206,9 @@ class TransactionFlow
                 ->update([
                     'state' => $context['subprocess'],
                     'status' => $context['process'].'-receive',
+                    'reason_id' => null,
+                    'reason' => null,
+                    'reason_remarks' => null
                 ]);
         }
 
