@@ -246,6 +246,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
       //ACCOUNT TITLE PARENT
       Route::patch('account-title-parents/{id}', [\App\Http\Controllers\AccountTitleParentController::class, "change_status"]);
       Route::resource("account-title-parents", \App\Http\Controllers\AccountTitleParentController::class);
+
       //ACCOUNT TITLE CHILDREN
       Route::patch('account-title-children/{id}', [\App\Http\Controllers\AccountTitleChildController::class, "change_status"]);
       Route::resource("account-title-children", \App\Http\Controllers\AccountTitleChildController::class);

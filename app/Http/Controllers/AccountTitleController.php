@@ -119,6 +119,7 @@ class AccountTitleController extends Controller
         $account_title->account_title_parent_id = $request['account_title_parent_id'];
         $account_title->account_title_child_id = $request['account_title_child_id'];
         $account_title->account_title_pnl_id = $request['account_title_pnl_id'];
+        $account_title->account_title_unit_id = $request['account_title_unit_id'];
 
         return $this->validateIfNothingChangeThenSave($account_title,'Account Title');
 

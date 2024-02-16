@@ -42,9 +42,9 @@ class AccountTitleGreatGrandParentController extends Controller
         }
 
         if (count($account_title_ggp)) {
-            return $this->resultResponse("fetch", "Unit", $account_title_ggp);
+            return $this->resultResponse("fetch", "Account Type", $account_title_ggp);
         } else {
-            return $this->resultResponse("not-found", "Unit", []);
+            return $this->resultResponse("not-found", "Account Type", []);
         }
     }
 
@@ -52,7 +52,7 @@ class AccountTitleGreatGrandParentController extends Controller
     {
         $account_title_ggp = $this->genericServices->store(AccountTitleGreatGrandParent::class, $request->validated());
 
-        return $this->resultResponse('save', 'Account Title Grand Parent', $account_title_ggp);
+        return $this->resultResponse('save', 'Account Type', $account_title_ggp);
     }
 
     public function update($id, AccountTitleGreatGrandParentRequest $request)
@@ -62,14 +62,14 @@ class AccountTitleGreatGrandParentController extends Controller
         if ($greatGrandParent) {
             $greatGrandParent = $this->genericServices->update($greatGrandParent, $request->validated());
 
-            return $this->resultResponse('update', 'Account Title Grand Parent', $greatGrandParent);
+            return $this->resultResponse('update', 'Account Type', $greatGrandParent);
         } else {
-            return $this->resultResponse('not-found', 'Account Title Grand Parent');
+            return $this->resultResponse('not-found', 'Account Type');
         }
 
     }
 
     public function change_status($id) {
-        return $this->changeStatus($id, AccountTitleGreatGrandParent::class, 'Account Title Grand Parent');
+        return $this->changeStatus($id, AccountTitleGreatGrandParent::class, 'Account Type');
     }
 }
