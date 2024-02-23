@@ -50,7 +50,6 @@ Route::post("/login", [UserController::class, "login"])->name("login");
 Route::get("/coa", [MasterlistController::class, "coa"]);
 Route::get("/sedar", [MasterlistController::class, "sedar_employees"]);
 Route::get("/genus", [MasterlistController::class, "genus_orders"]);
-
 // Protected Routes
 // Route::middleware('auth:sanctum')->get('/authenticated', function (Request $request) {
 //     return $request->user();
@@ -61,6 +60,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
   Route::put("users/change-password", [UserController::class, "change_password"]);
   Route::post("users/username-validation", [UserController::class, "username_validation"]);
   Route::post("users/id-validation", [UserController::class, "id_validation"]);
+  Route::get("/official-transactions", [TransactionController::class, "officialTransactions"]); // GIZMO API
 
   Route::group(["prefix" => "dropdown"], function () {
     Route::get("payroll-categories/", [PayrollCategoryController::class, "index"]);
@@ -219,6 +219,11 @@ Route::group(["middleware" => "auth:sanctum"], function () {
       Route::patch('business-units/{id}', [BusinessUnitController::class, 'change_status']);
       Route::resource("business-units", BusinessUnitController::class);
 
+      //UNIT
+      Route::patch('units/{id}', [\App\Http\Controllers\UnitController::class, 'change_status']);
+      Route::resource("units", \App\Http\Controllers\UnitController::class);
+        Route::post("units/import", [\App\Http\Controllers\UnitController::class, "import"]);
+
       //SUB UNIT
       Route::patch("sub-units/{id}", [SubUnitController::class, "change_status"]);
       Route::resource("sub-units", SubUnitController::class);
@@ -258,6 +263,8 @@ Route::group(["middleware" => "auth:sanctum"], function () {
       //ACCOUNT TITLE UNIT
       Route::patch('account-title-units/{id}', [\App\Http\Controllers\AccountTitleUnitController::class, "change_status"]);
       Route::resource("account-title-units", \App\Http\Controllers\AccountTitleUnitController::class);
+
+
   });
 
   // USER

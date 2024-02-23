@@ -4385,4 +4385,14 @@ class TransactionController extends Controller
         }
         return response()->json($response);
     }
+
+    public function officialTransactions(): \Illuminate\Http\Resources\Json\AnonymousResourceCollection
+    {
+        $official = Transaction::where('receipt_type', 'Official')
+            ->where("status", "gas-receive")
+            ->latest("updated_at")
+            ->get();
+
+        return TransactionResource1::collection($official);
+    }
 }

@@ -33,11 +33,11 @@ class SubUnitRequest extends FormRequest
                 'required',
                 Rule::unique('sub_units', 'subunit')->ignore($this->route('sub_unit'))
             ],
-            'department_id' => [
+            'unit_id' => [
                 'required',
-                Rule::exists('departments', 'id')
+                Rule::exists('units', 'id')
                     ->where(function ($query) {
-                        $query->where('id', $this->department_id)->whereNull('deleted_at');
+                        $query->where('id', $this->unit_id)->whereNull('deleted_at');
                     })
             ]
         ];
@@ -46,7 +46,7 @@ class SubUnitRequest extends FormRequest
     public function messages()
     {
         return [
-            'department_id.exists' => 'Department is not exists.',
+            'unit_id.exists' => 'Unit is not exists.',
         ];
     }
 }
