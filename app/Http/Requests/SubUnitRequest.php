@@ -46,7 +46,7 @@ class SubUnitRequest extends FormRequest
     public function messages()
     {
         return [
-            'unit_id.exists' => 'Unit is not exists.',
+            'unit_id.exists' => 'Unit does not exist.',
         ];
     }
 }

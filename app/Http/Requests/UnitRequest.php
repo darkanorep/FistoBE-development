@@ -34,7 +34,7 @@ class UnitRequest extends FormRequest
     public function messages()
     {
         return [
-            'department_id.exists' => 'Department is not exists.',
+            'department_id.exists' => 'Department does not exist.',
         ];
     }
 }

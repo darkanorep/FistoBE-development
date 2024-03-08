@@ -23,6 +23,7 @@ class UnitController extends Controller
         $paginate = $request->input("paginate", 1);
 
         $units = Unit::withTrashed()
+            ->with('department:id,department as name')
             ->when(isset($status), function ($query) use ($status) {
                 return $status ? $query->whereNull("deleted_at") : $query->whereNotNull("deleted_at");
             })
@@ -42,20 +43,6 @@ class UnitController extends Controller
             $units = $units->get();
         }
 
-        $units->transform(function ($unit) {
-            return [
-                'id' => $unit->id,
-                'code' => $unit->code,
-                'name' => $unit->name,
-                'department' => [
-                    'id' => $unit->department_id,
-                    'name' => $unit->department->department
-                ],
-                'created_at' => $unit->created_at,
-                'updated_at' => $unit->updated_at,
-                'deleted_at' => $unit->deleted_at,
-            ];
-        });
 
         if (count($units)) {
             return $this->resultResponse("fetch", "Unit", $units);

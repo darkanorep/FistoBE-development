@@ -62,7 +62,22 @@ return [
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
         ],
-        
+
+        'mysqlSecondConnection' => [
+            'driver' => 'mysql',
+            'host' => env('DB_HOST1', '127.0.0.1'),
+            'port' => env('DB_PORT1', '3306'),
+            'database' => env('DB_DATABASE2', 'fisto'),
+            'username' => env('DB_USERNAME2', 'root'),
+            'password' => env('DB_PASSWORD2', ''),
+            'unix_socket' => env('DB_SOCKET2', ''),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'strict' => false,
+            'engine' => null,
+        ],
+
         'genus' => [
             'driver' => 'mysql',
             'host' => env('DB2_HOST', '127.0.0.1'),

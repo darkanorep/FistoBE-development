@@ -23,6 +23,14 @@ use Illuminate\Support\Arr;
 
 class TransactionFlowController extends Controller
 {
+    /**
+     * @var TransactionController
+     */
+    private $transactionController;
+
+    public function __construct(TransactionController $transactionController) {
+        $this->transactionController = $transactionController;
+    }
     public function updateInTransactionFlow(Request $request,$id){
         return TransactionFlow::updateInTransactionFlow($request,$id);
     }
@@ -188,11 +196,10 @@ class TransactionFlowController extends Controller
         $accounts = $request->accounts;
         $cheques = $request->cheques;
 
-        $test = new TransactionController();
-        $batch_no = $test->generateBatchNo();
+        $batch_no = $this->transactionController->generateBatchNo();
 
-        Treasury::whereIn('transaction_id', $transactions)->where('status', $process.'-'.$process)->delete();
-        Cheque::whereIn('transaction_id', $transactions)->forceDelete();
+//        Treasury::whereIn('transaction_id', $transactions)->where('status', $process.'-'.$process)->delete();
+//        Cheque::whereIn('transaction_id', $transactions)->forceDelete();
         foreach($transactions as $transaction) {
             $treasury = Treasury::create([
                 'transaction_id' => $transaction,
@@ -305,13 +312,6 @@ class TransactionFlowController extends Controller
                     ]);
                     break;
 
-                case 'executive':
-                    Executive::create([
-                        'transaction_id' => $transaction,
-                        'status' => $process . '-receive',
-                    ]);
-                    break;
-
                 case 'release':
 
                     Release::create([
@@ -325,7 +325,6 @@ class TransactionFlowController extends Controller
                     break;
             }
         }
-
     }
 
     function chequeIsReceivedChecker($process, $transactionIds) {
@@ -339,6 +338,26 @@ class TransactionFlowController extends Controller
             ]);
         }
 
+    }
+
+
+    public function updateReceiptTypeTransaction(Request $request, $id) {
+
+        $transaction = Transaction::find($id);
+
+        if ($transaction) {
+            $request->validate([
+                'receipt_type' => 'required'
+            ]);
+
+            $transaction->update([
+                'receipt_type' => $request->receipt_type
+            ]);
+
+            return $this->resultResponse("update", "Transaction", $transaction);
+        } else {
+            return $this->resultResponse("not-found", "Transaction", []);
+        }
     }
 
     // public function pullRequest(Request $request){

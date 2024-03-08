@@ -221,8 +221,8 @@ Route::group(["middleware" => "auth:sanctum"], function () {
 
       //UNIT
       Route::patch('units/{id}', [\App\Http\Controllers\UnitController::class, 'change_status']);
+      Route::post("units/import", [\App\Http\Controllers\UnitController::class, "import"]);
       Route::resource("units", \App\Http\Controllers\UnitController::class);
-        Route::post("units/import", [\App\Http\Controllers\UnitController::class, "import"]);
 
       //SUB UNIT
       Route::patch("sub-units/{id}", [SubUnitController::class, "change_status"]);
@@ -240,23 +240,23 @@ Route::group(["middleware" => "auth:sanctum"], function () {
       Route::patch('voucher-codes/{id}', [VoucherCodeController::class, "change_status"]);
       Route::resource("voucher-codes", VoucherCodeController::class);
 
-      //ACCOUNT TITLE GREAT GRAND PARENT
+      //ACCOUNT TITLE ACCOUNT TYPE
       Route::patch('account-title-great-grand-parents/{id}', [\App\Http\Controllers\AccountTitleGreatGrandParentController::class, "change_status"]);
       Route::resource("account-title-great-grand-parents", \App\Http\Controllers\AccountTitleGreatGrandParentController::class);
 
-      //ACCOUNT TITLE GRAND PARENT
+      //ACCOUNT TITLE ACCOUNT GROUP
       Route::patch('account-title-grand-parents/{id}', [\App\Http\Controllers\AccountTitleGrandParentController::class, "change_status"]);
       Route::resource("account-title-grand-parents", \App\Http\Controllers\AccountTitleGrandParentController::class);
 
-      //ACCOUNT TITLE PARENT
+      //ACCOUNT TITLE SUBGROUP
       Route::patch('account-title-parents/{id}', [\App\Http\Controllers\AccountTitleParentController::class, "change_status"]);
       Route::resource("account-title-parents", \App\Http\Controllers\AccountTitleParentController::class);
 
-      //ACCOUNT TITLE CHILDREN
+      //ACCOUNT TITLE FINANCIAL STATEMENT
       Route::patch('account-title-children/{id}', [\App\Http\Controllers\AccountTitleChildController::class, "change_status"]);
       Route::resource("account-title-children", \App\Http\Controllers\AccountTitleChildController::class);
 
-      //ACCOUNT TITLE P&L
+      //ACCOUNT TITLE NORMAL BALANCE
       Route::patch('account-title-pnls/{id}', [\App\Http\Controllers\AccountTitlePnLController::class, "change_status"]);
       Route::resource("account-title-pnls", \App\Http\Controllers\AccountTitlePnLController::class);
 
@@ -264,7 +264,9 @@ Route::group(["middleware" => "auth:sanctum"], function () {
       Route::patch('account-title-units/{id}', [\App\Http\Controllers\AccountTitleUnitController::class, "change_status"]);
       Route::resource("account-title-units", \App\Http\Controllers\AccountTitleUnitController::class);
 
-
+      //BANK SERIES
+      Route::patch('bank-series/{id}', [\App\Http\Controllers\BankSeriesController::class, "change_status"]);
+      Route::resource('bank-series', \App\Http\Controllers\BankSeriesController::class);
   });
 
   // USER
@@ -325,6 +327,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
 //    Route::post('transactions/flow/cheque-revert', [TransactionController::class, "chequeRevert1"]);
     //Cheque Flow
     Route::post('cheque/flow', [TransactionFlow::class, "chequeFlow"]);
+    Route::get('cheque/history/{id}',  [TransactionController::class, "chequeHistory"]);
     //Clear
 //    Route::post("cheque/clear", [TransactionController::class, "chequeClear1"]);
 
@@ -343,6 +346,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         Route::get("status_group/", [TransactionController::class, "status_group"]);
         Route::post("void/{id}", [TransactionController::class, "voidTransaction"]);
         Route::post("validate-po-no", [TransactionController::class, "getPODetails"]);
+//        Route::post("validate-po-no-v1", [TransactionController::class, "getPODetailsv1"]);
         Route::post("validate-document-no", [TransactionController::class, "validateDocumentNo"]);
         Route::post("validate-reference-no", [TransactionController::class, "validateReferenceNo"]);
         Route::post("validate-pcf-name/", [TransactionController::class, "validatePCFName"]);
@@ -351,6 +355,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         // TRANSACTION FLOW
         Route::group(["prefix" => "flow"], function () {
             Route::post("update-transaction/{id}", [TransactionFlowController::class, "updateInTransactionFlow"]);
+            Route::put("update-receipt/{id}", [TransactionFlowController::class, "updateReceiptTypeTransaction"]);
             Route::post("validate-voucher-no", [TransactionFlowController::class, "validateVoucherNo"]);
             Route::post("validate-cheque-no", [TransactionFlowController::class, "validateChequeNo"]);
             Route::put("transfer/{id}", [TransactionFlowController::class, "transfer"]);

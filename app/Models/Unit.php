@@ -13,7 +13,7 @@ class Unit extends Model
 
     protected $fillable = ['code', 'name', 'department_id'];
 
-    protected $hidden = ['created_at'];
+    protected $hidden = ['created_at', 'department_id'];
 
     public function department(): BelongsTo
     {

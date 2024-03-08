@@ -29,7 +29,6 @@ class TransactionResource1 extends JsonResource
      */
     public function toArray($request)
     {
-
         $autoDebit_group = [];
         $document = null;
         $prm_group = [];
@@ -562,11 +561,13 @@ class TransactionResource1 extends JsonResource
             // $po_details->first()->balance = $po_details->pluck("previous_balance")->sum() - $this->referrence_amount;
             switch ($this->document_id) {
                 case 1:
-                    $po_details->first()->balance = $po_details->pluck("previous_balance")->sum() - $this->document_amount;
+//                    $po_details->first()->balance = $po_details->pluck("previous_balance")->sum() - $this->document_amount;
+                    $po_details->first()->balance = $this->balance_po_ref_amount;
                     break;
 
                 default:
-                    $po_details->first()->balance = $po_details->pluck("previous_balance")->sum() - $this->referrence_amount;
+//                    $po_details->first()->balance = $po_details->pluck("previous_balance")->sum() - $this->referrence_amount;
+                    $po_details->first()->balance = $this->balance_po_ref_amount;
                     break;
             }
         }
@@ -592,9 +593,9 @@ class TransactionResource1 extends JsonResource
         }
 
         //GAS
-        if ($this->gas1()->count() > 0) {
+        if ($this->gas()->count() > 0) {
 //            $gas = $this->test(Gas::class, $this->receiveGas, $this->gas, $this->reasonGas, $this->statusGas, 'gas', ["receive", "gas"]);
-            $gas_transaction = $this->gas1->first();
+            $gas_transaction = $this->gas->first();
 
             if (isset($gas_transaction->status)) {
                 $gas = [
@@ -783,6 +784,29 @@ class TransactionResource1 extends JsonResource
                     ];
                 });
 
+                $chequeHistory = null;
+
+                if ($this->treasuryChequeHistory()->count() > 0) {
+                    $chequeHistoryMapper = function ($item) {
+                        return [
+                            'bank_name' => $item->bank_name,
+                            'cheque_no' => $item->cheque_no,
+                            'cheque_amount' => $item->cheque_amount,
+                            'reason_id' => $item->reason_id,
+                            'reason' => $item->reason,
+                        ];
+                    };
+
+                    [$valid, $void] = $this->treasuryChequeHistory()->partition(function ($item) {
+                        return $item->reason_id == null;
+                    });
+
+                    $chequeHistory = [
+                        'valid' => $valid->map($chequeHistoryMapper)->values(),
+                        'invalid' => $void->map($chequeHistoryMapper)->values(),
+                    ];
+                }
+
                 $account_titles = $clear_transaction->isEmpty()
                     ? $cheque_transaction->account_title
                     : $clear_transaction;
@@ -834,14 +858,15 @@ class TransactionResource1 extends JsonResource
                     'status' => $cheque_transaction->status,
                     'cheques' => $cheques,
                     'accounts' => $accounts,
+                    'cheque_history' => $chequeHistory,
                     'reason' => $this->reason($cheque_transaction, $cheque_transaction->reason_id)
                 ];
             }
         }
 
         //AUDIT CHEQUE
-        if ($this->audit1()->count() > 0) {
-            $audit_transaction = $this->audit1->first();
+        if ($this->audit()->count() > 0) {
+            $audit_transaction = $this->audit->first();
 
             if (isset($audit_transaction->status)) {
                 $audit = [
@@ -869,8 +894,8 @@ class TransactionResource1 extends JsonResource
 //        }
 
         //EXECUTIVE
-        if ($this->executive1()->count() > 0) {
-            $executive_transaction = $this->executive1->first();
+        if ($this->executive()->count() > 0) {
+            $executive_transaction = $this->executive->first();
 
             if (isset($executive_transaction->status)) {
                 $executive = [
@@ -918,8 +943,8 @@ class TransactionResource1 extends JsonResource
         }
 
         //DISCHARGE
-        if ($this->discharge1()->count() > 0) {
-            $discharge_transaction = $this->discharge1->first();
+        if ($this->discharge()->count() > 0) {
+            $discharge_transaction = $this->discharge->first();
 
             if (isset($discharge_transaction->status)) {
                 $discharge = [
