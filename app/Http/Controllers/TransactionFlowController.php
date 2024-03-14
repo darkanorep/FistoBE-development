@@ -20,6 +20,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use App\Methods\TransactionFlow;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 
 class TransactionFlowController extends Controller
 {
@@ -350,14 +351,34 @@ class TransactionFlowController extends Controller
                 'receipt_type' => 'required'
             ]);
 
-            $transaction->update([
-                'receipt_type' => $request->receipt_type
-            ]);
+            $transaction->timestamps = false;
+            $transaction->receipt_type = $request->receipt_type;
+            $transaction->save();
+
 
             return $this->resultResponse("update", "Transaction", $transaction);
         } else {
             return $this->resultResponse("not-found", "Transaction", []);
         }
+    }
+
+    public function updateTransactionRemarks(Request $request, $id) {
+
+            $transaction = Transaction::find($id);
+
+            if ($transaction) {
+                $request->validate([
+                    'remarks' => 'required'
+                ]);
+
+                $transaction->timestamps = false;
+                $transaction->remarks = $request->remarks;
+                $transaction->save();
+
+                return $this->resultResponse("update", "Transaction", $transaction);
+            } else {
+                return $this->resultResponse("not-found", "Transaction", []);
+            }
     }
 
     // public function pullRequest(Request $request){

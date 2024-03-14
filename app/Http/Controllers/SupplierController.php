@@ -309,8 +309,15 @@ class SupplierController extends Controller
                 })->toArray();
 
                 foreach ($transformChunk as $key => $value) {
-                    $supplier = Supplier::create($value);
-                    $supplier->references()->attach(Referrence::whereIn('type', explode(",", $suppliers[$key]['referrences']))->pluck('id'));
+//                    $supplier = Supplier::create($value);
+//                    $supplier->references()->attach(Referrence::whereIn('type', explode(",", $suppliers[$key]['referrences']))->pluck('id'));
+
+                    $supplier = Supplier::updateOrCreate([
+                        'code' => $value['code'],
+                        'name' => $value['name'],
+                    ], $value);
+
+                    $supplier->references()->sync(Referrence::whereIn('type', explode(",", $suppliers[$key]['referrences']))->pluck('id'));
                 }
             });
 

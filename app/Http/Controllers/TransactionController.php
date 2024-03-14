@@ -88,6 +88,7 @@ class TransactionController extends Controller
                 : $dateToday->endOfDay()->format("Y-m-d H:i:s");
 
         $search = $request["search"];
+        $tag_search = str_replace('tag#', '', $search);
         $state = isset($request["state"]) ? $request["state"] : "request";
         !empty($request["department"])
             ? ($department = json_decode($request["department"]))
@@ -142,11 +143,12 @@ class TransactionController extends Controller
                     });
                 }
             )
-            ->where(function ($query) use ($search) {
+            ->where(function ($query) use ($search, $tag_search) {
                 $query
                     ->where("date_requested", "like", "%" . $search . "%")
                     ->orWhere("remarks", "like", "%" . $search . "%")
-                    ->orWhere("tag_no", "like", "%" . $search . "%")
+//                    ->orWhere("tag_no", "like", "%" . $search . "%")
+                    ->orWhere("tag_no", "=", $tag_search)
                     ->orWhere("transaction_id", "like", "%" . $search . "%")
                     ->orWhere("document_amount", "like", "%" . $search . "%")
                     ->orWhere("document_type", "like", "%" . $search . "%")
@@ -250,6 +252,7 @@ class TransactionController extends Controller
                         "category",
                         "department_id",
                         "location_id",
+                        "input_tax"
                     ]);
             })
             ->when(in_array($role, $tag_window), function ($query) use ($status) {
@@ -360,6 +363,7 @@ class TransactionController extends Controller
                         "category",
                         "department_id",
                         "location_id",
+                        "input_tax"
                     ]);
             })
             ->when(in_array($role, $voucher_window), function ($query) use (
@@ -512,6 +516,7 @@ class TransactionController extends Controller
                         "category",
                         "department_id",
                         "location_id",
+                        "input_tax"
                     ])
                     ->when(
                         in_array(strtolower($status), ["pending-request", "reverse-receive-approver", "reverse-approve"]),
@@ -617,6 +622,7 @@ class TransactionController extends Controller
                         "category",
                         "department_id",
                         "location_id",
+                        "input_tax"
                     ])
                     ->where("approver_id", $users_id);
             })
@@ -833,6 +839,7 @@ class TransactionController extends Controller
                         "category",
                         "department_id",
                         "location_id",
+                        "input_tax"
                     ]);
             })
             ->when(in_array($role, $audit_window), function ($query) use ($status) {
@@ -926,6 +933,7 @@ class TransactionController extends Controller
                         "category",
                         "department_id",
                         "location_id",
+                        "input_tax"
                     ]);
             })
             ->when(in_array($role, $executive_assistant), function ($query) use ($status) {
@@ -986,6 +994,7 @@ class TransactionController extends Controller
                         "category",
                         "department_id",
                         "location_id",
+                        "input_tax"
                     ]);
             })
             ->when(in_array($role, $gas_window), function ($query) use ($status) {
@@ -1054,6 +1063,7 @@ class TransactionController extends Controller
                         "category",
                         "department_id",
                         "location_id",
+                        "input_tax"
                     ]);
             })
             ->latest('updated_at')
@@ -3172,6 +3182,7 @@ class TransactionController extends Controller
                 "gross_amount",
                 "referrence_no",
                 "referrence_amount",
+                "input_tax",
 
                 "date_requested",
 
@@ -3584,7 +3595,7 @@ class TransactionController extends Controller
             })
             ->when($status == "return-release", function ($query) {
                 $query
-//                    ->whereNull("issue_id")
+                    ->whereNull("issue_id")
                     ->whereHas("transaction", function ($query) {
                     return $query->where("status", "release-return");
                 });

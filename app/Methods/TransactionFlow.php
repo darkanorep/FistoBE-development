@@ -1814,8 +1814,9 @@ class TransactionFlow
   }
 
   public static function voidTransaction($request, $id) {
-      $void = new TransactionController();
-      $void->voidTransaction($request, $id);
+//      $void = new TransactionController();
+//      $void->voidTransaction($request, $id);
+      (new TransactionController())->voidTransaction($request, $id);
   }
 
     public function  chequeFlow(Request $request) {
@@ -1992,6 +1993,8 @@ class TransactionFlow
                     'is_issued' => true,
                     'cheque_date' => date('Y-m-d', strtotime(data_get($request, 'cheque.date'))),
                     'issue_id' => $issue->id,
+                    'reason_id' => null,
+                    'reason' => null
                 ]);
         }
 
@@ -2119,7 +2122,9 @@ class TransactionFlow
           case 'release':
               Cheque::whereIn('transaction_id', $transactionIds)
                   ->update([
-//                      'issue_id' => null,
+                      'issue_id' => null,
+                      'is_received' => null,
+                      'is_issued' => null,
                       'reason_id' => data_get($request, 'reason.id'),
                       'reason' => data_get($request, 'reason.remarks'),
                   ]);
