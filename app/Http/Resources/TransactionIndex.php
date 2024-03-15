@@ -101,6 +101,7 @@ class TransactionIndex extends JsonResource
             "users" => $this->users,
             "po_details" => in_array($this->document_id, [1, 4, 5]) ? $this->po_details : [],
             'receipt_type' => $this->receipt_type,
+            'input_tax' => $this->input_tax,
             'is_cleared' => $is_cleared,
             'cheques' => $this->treasuryCheque->map(function ($item) {
                 return [

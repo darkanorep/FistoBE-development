@@ -20,9 +20,18 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use App\Methods\TransactionFlow;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 
 class TransactionFlowController extends Controller
 {
+    /**
+     * @var TransactionController
+     */
+    private $transactionController;
+
+    public function __construct(TransactionController $transactionController) {
+        $this->transactionController = $transactionController;
+    }
     public function updateInTransactionFlow(Request $request,$id){
         return TransactionFlow::updateInTransactionFlow($request,$id);
     }
@@ -44,6 +53,7 @@ class TransactionFlowController extends Controller
         $process = $request->input('process');
         $transactions = $request->input('transactions');
 
+        $second = 1;
         foreach ($transactions as $transaction) {
             switch ($process) {
                 case 'tag':
@@ -138,13 +148,14 @@ class TransactionFlowController extends Controller
                     ]);
                     break;
             }
-        }
 
-        Transaction::whereIn('id', $transactions)
+            Transaction::where('id', $transaction)
             ->update([
                 'state' => 'receive',
                 'status' => $process . '-receive',
+                'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
             ]);
+        }
 
         return GenericMethod::resultResponse("receive", null, []);
     }
@@ -166,6 +177,7 @@ class TransactionFlowController extends Controller
             Tagging::create(array_merge(['transaction_id' => $transaction], $tagData));
         }
 
+        $second = 1;
         foreach ($transactions as $transaction) {
             Transaction::where('id', $transaction)
                 ->update([
@@ -174,7 +186,8 @@ class TransactionFlowController extends Controller
                     'receipt_type' => $receipt_type,
                     'distributed_id' => data_get($distributed_to, 'id'),
                     'distributed_name' => data_get($distributed_to, 'name'),
-                    'tag_no' => GenericMethod::generateTagNo($receipt_type, $transaction)
+                    'tag_no' => GenericMethod::generateTagNo($receipt_type, $transaction),
+                    'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
                 ]);
         }
 
@@ -188,11 +201,10 @@ class TransactionFlowController extends Controller
         $accounts = $request->accounts;
         $cheques = $request->cheques;
 
-        $test = new TransactionController();
-        $batch_no = $test->generateBatchNo();
+        $batch_no = $this->transactionController->generateBatchNo();
 
-        Treasury::whereIn('transaction_id', $transactions)->where('status', $process.'-'.$process)->delete();
-        Cheque::whereIn('transaction_id', $transactions)->forceDelete();
+//        Treasury::whereIn('transaction_id', $transactions)->where('status', $process.'-'.$process)->delete();
+//        Cheque::whereIn('transaction_id', $transactions)->forceDelete();
         foreach($transactions as $transaction) {
             $treasury = Treasury::create([
                 'transaction_id' => $transaction,
@@ -305,13 +317,6 @@ class TransactionFlowController extends Controller
                     ]);
                     break;
 
-                case 'executive':
-                    Executive::create([
-                        'transaction_id' => $transaction,
-                        'status' => $process . '-receive',
-                    ]);
-                    break;
-
                 case 'release':
 
                     Release::create([
@@ -325,7 +330,6 @@ class TransactionFlowController extends Controller
                     break;
             }
         }
-
     }
 
     function chequeIsReceivedChecker($process, $transactionIds) {
@@ -339,6 +343,46 @@ class TransactionFlowController extends Controller
             ]);
         }
 
+    }
+
+
+    public function updateReceiptTypeTransaction(Request $request, $id) {
+
+        $transaction = Transaction::find($id);
+
+        if ($transaction) {
+            $request->validate([
+                'receipt_type' => 'required'
+            ]);
+
+            $transaction->timestamps = false;
+            $transaction->receipt_type = $request->receipt_type;
+            $transaction->save();
+
+
+            return $this->resultResponse("update", "Transaction", $transaction);
+        } else {
+            return $this->resultResponse("not-found", "Transaction", []);
+        }
+    }
+
+    public function updateTransactionRemarks(Request $request, $id) {
+
+            $transaction = Transaction::find($id);
+
+            if ($transaction) {
+                $request->validate([
+                    'remarks' => 'required'
+                ]);
+
+                $transaction->timestamps = false;
+                $transaction->remarks = $request->remarks;
+                $transaction->save();
+
+                return $this->resultResponse("update", "Transaction", $transaction);
+            } else {
+                return $this->resultResponse("not-found", "Transaction", []);
+            }
     }
 
     // public function pullRequest(Request $request){

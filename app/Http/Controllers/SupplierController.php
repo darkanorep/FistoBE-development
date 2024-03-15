@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\SupplierEvent;
 use App\Exceptions\FistoException;
 
 use App\Http\Requests\SupplierRequest;
@@ -15,57 +16,50 @@ use Illuminate\Support\Facades\DB;
 class SupplierController extends Controller
 {
 
-  public function index(Request $request)
-  {
-//    $status =  $request['status'];
-//    $rows =  (empty($request['rows']))?10:(int)$request['rows'];
-//    $search =  $request['search'];
-//    $paginate = (isset($request['paginate']))? $request['paginate']:$paginate = 1;
-//    $api_for = strtolower((isset($request['api_for']))? $request['api_for']: "default");
+    public function index(Request $request)
+    {
+        $status =  $request['status'];
+        $rows =  (empty($request['rows'])) ? 10 : (int)$request['rows'];
+        $search =  $request['search'];
+        $paginate = (isset($request['paginate'])) ? $request['paginate'] : $paginate = 1;
+        $api_for = strtolower((isset($request['api_for'])) ? $request['api_for'] : "default");
 
-    $status = $request->status;
-    $rows = (int) $request->input('rows', 10);
-    $search = $request->search;
-    $paginate = (isset($request['paginate']))? $request['paginate']:$paginate = 1;
-    $api_for = $request->input('api_for', 'default');
+        $suppliers = Supplier::withTrashed()
+            ->with('references')
+            ->with('supplier_type')
+            ->where(function ($query) use ($status) {
+                if ($status == true) $query->whereNull('suppliers.deleted_at');
+                else  $query->whereNotNull('suppliers.deleted_at');
+            })
+            ->where(function ($query) use ($search) {
+                $query->where('suppliers.code', 'like', '%' . $search . '%')
+                    ->orWhere('suppliers.name', 'like', '%' . $search . '%')
+                    ->orWhere('suppliers.terms', 'like', '%' . $search . '%');
+            })
+            ->latest('suppliers.updated_at');
 
-    $suppliers = Supplier::withTrashed()
-      ->with('references')
-      ->with('supplier_type')
-      ->when(isset($status), function ($query) use ($status) {
-        return $status ? $query->whereNull('deleted_at') : $query->whereNotNull('deleted_at');
-      })
-      ->where(function ($query) use ($search) {
-        $query->where('suppliers.code', 'like', '%'.$search.'%')
-          ->orWhere('suppliers.name', 'like', '%'.$search.'%')
-          ->orWhere('suppliers.terms', 'like', '%'.$search.'%');
-      })
-      ->latest('updated_at');
-
-      if ($paginate == 1){
-        $suppliers = $suppliers->paginate($rows);
-      }else if ($paginate == 0){
-        $suppliers = $suppliers
-        ->with('references')
-        ->without('supplier_type')
-        ->when($api_for == 'vladimir', function ($query) {
-          return $query->without('references')
-              ->get(['id','code', 'name',DB::RAW('(CASE WHEN (ISNULL(deleted_at)) THEN 1 ELSE 0 END) as status')]);
+        if ($paginate == 1) {
+            $suppliers = $suppliers->paginate($rows);
+        } else if ($paginate == 0) {
+            $suppliers = $suppliers
+                ->with('references')
+                ->without('supplier_type')
+                ->when($api_for == 'vladimir', function ($query) {
+                    return $query->without('references')->get(['id', 'code', 'name', DB::RAW('(CASE WHEN (ISNULL(deleted_at)) THEN 1 ELSE 0 END) as status')]);
+                }, function ($query) {
+                    return $query->get(['id', 'name']);
+                });
+            if (count($suppliers)) {
+                $suppliers = array("suppliers" => $suppliers);;
+            }
         }
-        ,function ($query) {
-              return $query->get(['id','name']);
-        });
-        if(count($suppliers)){
-            $suppliers = array("suppliers"=>$suppliers);;
+
+        if (count($suppliers) == true) {
+            return $this->resultResponse('fetch', 'Supplier', $suppliers);
         }
-      }
 
-      if(count($suppliers)){
-          return $this->resultResponse('fetch','Supplier',$suppliers);
-      }
-
-      return $this->resultResponse('not-found','Supplier',[]);
-  }
+        return $this->resultResponse('not-found', 'Supplier', []);
+    }
 
   public function store(SupplierRequest $request)
   {
@@ -315,8 +309,15 @@ class SupplierController extends Controller
                 })->toArray();
 
                 foreach ($transformChunk as $key => $value) {
-                    $supplier = Supplier::create($value);
-                    $supplier->references()->attach(Referrence::whereIn('type', explode(",", $suppliers[$key]['referrences']))->pluck('id'));
+//                    $supplier = Supplier::create($value);
+//                    $supplier->references()->attach(Referrence::whereIn('type', explode(",", $suppliers[$key]['referrences']))->pluck('id'));
+
+                    $supplier = Supplier::updateOrCreate([
+                        'code' => $value['code'],
+                        'name' => $value['name'],
+                    ], $value);
+
+                    $supplier->references()->sync(Referrence::whereIn('type', explode(",", $suppliers[$key]['referrences']))->pluck('id'));
                 }
             });
 
@@ -534,4 +535,5 @@ class SupplierController extends Controller
 
       return $this->changeStatus($id, Supplier::class, 'Supplier');
   }
+
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\LocationRequest;
 use App\Models\Location;
 use App\Models\Company;
 use App\Models\Department;
@@ -145,14 +146,14 @@ class LocationController extends Controller
       }
   }
 
-  public function store(Request $request)
+  public function store(LocationRequest $request)
   {
       $location = Location::create([
           'code' => $request->code,
           'location' => $request->location
       ]);
 
-      $location->attach($request->departments);
+      $location->departments()->attach($request->departments);
 
       return $this->resultResponse("save", "Location", $location);
 
@@ -188,10 +189,10 @@ class LocationController extends Controller
 //    return $this->resultResponse("save", "Location", $new_location);
   }
 
-  public function update(Request $request, $id)
+  public function update(LocationRequest $request, $id)
   {
 
-      $location = Location::where('id', $id)->first();
+      $location = Location::find($id);
 
       if ($location) {
 

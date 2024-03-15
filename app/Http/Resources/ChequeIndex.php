@@ -39,9 +39,10 @@ class ChequeIndex extends JsonResource
 //                "document_amount" => $this->document_amount,
             'document_amount' => ($this->document_id == 3)
                 ? ($this->category == 'rental' ? $this->gross_amount : (($this->principal + $this->interest)))
-                : $this->document_amount,
+                : $this->document_amount ?? $this->referrence_amount,
             "reference_no" => $this->referrence_no,
-            "reference_amount" => $this->referrence_amount,
+            "input_tax" => $this->input_tax,
+//            "reference_amount" => $this->referrence_amount,
             "date_requested" => $this->date_requested,
 
             "company" => [

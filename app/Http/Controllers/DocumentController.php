@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\DocumentCoaRequest;
+use App\Http\Requests\DocumentRequest;
 use App\Http\Resources\DocumentResource;
 use App\Methods\GenericMethod;
 use App\Models\Document;
@@ -63,51 +64,60 @@ class DocumentController extends Controller
 
     }
 
-    public function store(Request $request)
+    public function store(DocumentRequest $request)
     {
-        $fields = $request->validate([
-            'type' => 'required|string',
-            'description' => 'required|string',
+        $document = Document::create([
+            'type' => $request->type,
+            'description' => $request->description
         ]);
 
-        $duplicateDocumentType =  GenericMethod::validateDuplicateDocumentType($fields['type']);
-        if(count($duplicateDocumentType)>0) {
-            return $this->resultResponse('registered','Document',[]);
-        }
 
-        $document_categories = DB::table('categories AS c')
-        ->whereNull('c.deleted_at')
-            ->select('c.name', 'c.id AS cid')
-            ->get();
-        $active_categories = $document_categories->pluck('cid');
+        $document->categories()->attach($request->categories);
 
-        $category_details = collect();
-        foreach ($request['categories'] as $cat) {
-
-            if ($active_categories->contains($cat)) {
-                $category_details->push(['category_is_active' => 1, 'cat_id' => $cat]);
-            } else {
-                $category_details->push(['category_is_active' => 0, 'cat_id' => $cat]);
-            }
-        }
-
-        $unregistered_category_detail = [];
-        foreach ($category_details as $specific_category_detail) {
-            if ($specific_category_detail['category_is_active'] == 0) {
-                array_push($unregistered_category_detail, $specific_category_detail['cat_id']);
-            }
-        }
-
-        if ($unregistered_category_detail) {
-            $unregistered_category = implode(',', $unregistered_category_detail);
-            return $this->resultResponse('not-registered','Category',$unregistered_category);
-        } else {
-            $new_document = Document::create([
-                'type' => $fields['type'],
-                'description' => $fields['description'],
-            ]);
-            $category_ids = $request['categories'];
-            $new_document->categories()->attach($category_ids);
+        return $this->resultResponse('save','Document', $document);
+//        $fields = $request->validate([
+//            'type' => 'required|string',
+//            'description' => 'required|string',
+//        ]);
+//
+//        $duplicateDocumentType =  GenericMethod::validateDuplicateDocumentType($fields['type']);
+//        if(count($duplicateDocumentType)>0) {
+//            return $this->resultResponse('registered','Document',[]);
+//        }
+//
+//        $document_categories = DB::table('categories AS c')
+//        ->whereNull('c.deleted_at')
+//            ->select('c.name', 'c.id AS cid')
+//            ->get();
+//        $active_categories = $document_categories->pluck('cid');
+//
+//        $category_details = collect();
+//        foreach ($request['categories'] as $cat) {
+//
+//            if ($active_categories->contains($cat)) {
+//                $category_details->push(['category_is_active' => 1, 'cat_id' => $cat]);
+//            } else {
+//                $category_details->push(['category_is_active' => 0, 'cat_id' => $cat]);
+//            }
+//        }
+//
+//        $unregistered_category_detail = [];
+//        foreach ($category_details as $specific_category_detail) {
+//            if ($specific_category_detail['category_is_active'] == 0) {
+//                array_push($unregistered_category_detail, $specific_category_detail['cat_id']);
+//            }
+//        }
+//
+//        if ($unregistered_category_detail) {
+//            $unregistered_category = implode(',', $unregistered_category_detail);
+//            return $this->resultResponse('not-registered','Category',$unregistered_category);
+//        } else {
+//            $new_document = Document::create([
+//                'type' => $fields['type'],
+//                'description' => $fields['description'],
+//            ]);
+//            $category_ids = $request['categories'];
+//            $new_document->categories()->attach($category_ids);
 
 //            $accounts = $documentCoaRequest['account'];
 //            if (isset($accounts)) {
@@ -125,39 +135,58 @@ class DocumentController extends Controller
 //                }
 //            }
 
-            return $this->resultResponse('save','Document',$new_document);
-         }
+//            return $this->resultResponse('save','Document',$new_document);
+//         }
     }
 
-    public function update(Request $request, $id)
+    public function update(DocumentRequest $request, $id)
     {
-        $specific_document = Document::find($id);
-        $fields = $request->validate([
-            'type' => [
-                'required',
-                Rule::unique('documents')->ignore($specific_document->id),
-            ],
-            'description' => 'required|string',
+        $document = Document::find($id);
 
-        ]);
+        if ($document) {
+
+            $document->categories()->detach();
+
+            $document->update([
+                'type' => $request->type,
+                'description' => $request->description
+            ]);
+
+            $document->categories()->attach($request->categories);
+            $document->touch();
+
+            return $this->resultResponse('update','Document', $document);
+
+        } else {
+            return $this->resultResponse('not-found','Document',[]);
+        }
+//        $specific_document = Document::find($id);
+//        $fields = $request->validate([
+//            'type' => [
+//                'required',
+//                Rule::unique('documents')->ignore($specific_document->id),
+//            ],
+//            'description' => 'required|string',
+//
+//        ]);
 
 //        $validateDuplicateDocumentTypeInUpdate =  GenericMethod::validateDuplicateDocumentTypeInUpdate($fields['type'],$id);
 //        if(count($validateDuplicateDocumentTypeInUpdate)>0) {
 //            return $this->resultResponse('registered','Document',[]);
 //        }
 
-        if (!$specific_document) {
-            return $this->resultResponse('not-found','Document',[]);
-        }
+//        if (!$specific_document) {
+//            return $this->resultResponse('not-found','Document',[]);
+//        }
 
-        $specific_document->type = $request->get('type');
-        $specific_document->description = $request->get('description');
-        $category_ids = $request['categories'];
-
-        $is_tagged_modified = $this->isTaggedArrayModified($category_ids,  $specific_document->categories()->get(),'id');
-
-        $specific_document->categories()->detach();
-        $specific_document->categories()->attach($category_ids);
+//        $specific_document->type = $request->get('type');
+//        $specific_document->description = $request->get('description');
+//        $category_ids = $request['categories'];
+//
+//        $is_tagged_modified = $this->isTaggedArrayModified($category_ids,  $specific_document->categories()->get(),'id');
+//
+//        $specific_document->categories()->detach();
+//        $specific_document->categories()->attach($category_ids);
 
 //        $accounts = $documentCoaRequest['account'];
 //
@@ -177,7 +206,7 @@ class DocumentController extends Controller
 //            }
 //        }
 //        return $this->validateIfNothingChangeThenSave($specific_document,'Document',$is_tagged_modified);
-        return $this->resultResponse('update','Document',$specific_document);
+//        return $this->resultResponse('update','Document',$specific_document);
     }
 
     public function change_status($id){

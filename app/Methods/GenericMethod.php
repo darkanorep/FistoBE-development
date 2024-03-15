@@ -695,8 +695,9 @@ class GenericMethod
     $account_titles
   ) {
 //      $model::where('transaction_id', $transaction_id)->where('status', $status)->delete();
-      $test = new TransactionController();
-      $batch_no = $test->generateBatchNo();
+//      $test = new TransactionController();
+//      $batch_no = $test->generateBatchNo();
+      $batch_no = (new TransactionController)->generateBatchNo();
     $cheque_transaction = $model::Create([
       "transaction_id" => $transaction_id,
       "tag_id" => $tag_no,
@@ -999,17 +1000,15 @@ class GenericMethod
 //  }
 
     public static function addCheque($transaction_id, $id, $cheques) {
-        Cheque::where("transaction_id", $transaction_id)->delete();
+        Cheque::where("transaction_id", $transaction_id)->whereNull('reason_id')->forceDelete();
         foreach ($cheques as $specific_cheques) {
-            $entry_type = isset($specific_cheques["transaction_type"])
-                ? $specific_cheques["transaction_type"]
-                : $specific_cheques["type"];
-            $bank_id = $specific_cheques["bank"]["id"];
-            $bank_name = $specific_cheques["bank"]["name"];
-            $cheque_no = $specific_cheques["no"];
-            $cheque_date = $specific_cheques["date"];
-            $cheque_amount = $specific_cheques["amount"];
-            $transaction_type = isset($specific_cheques["transaction_type"]) ? $specific_cheques["transaction_type"] : "new";
+//            $entry_type = $specific_cheques["transaction_type"] ?? $specific_cheques["type"];
+//            $bank_id = $specific_cheques["bank"]["id"];
+//            $bank_name = $specific_cheques["bank"]["name"];
+//            $cheque_no = $specific_cheques["no"];
+//            $cheque_date = $specific_cheques["date"];
+//            $cheque_amount = $specific_cheques["amount"];
+//            $transaction_type = $specific_cheques["transaction_type"] ?? "new";
 
             Cheque::Create([
                 "transaction_id" => $transaction_id,
@@ -2780,12 +2779,6 @@ class GenericMethod
     return $group_details;
   }
 
-  public static function generateTagNo($receipt_type, $id)
-  {
-//    return Transaction::max("tag_no") + 1;
-      return static::generateTagNoTest($receipt_type, $id);
-  }
-
   public static function countTableById($table, $id)
   {
     $table = DB::table($table)->where("id", $id);
@@ -4221,6 +4214,10 @@ class GenericMethod
       ->get("balance_po_ref_amount")
       ->first();
 
+    if (!$balance_po_ref_amount) {
+        return static::getAndValidatePOBalancev1($fields, $company_id, $po_no, $reference_amount, $po_group, $id);
+    }
+
     if (empty($balance_po_ref_amount)) {
       return;
     }
@@ -4304,6 +4301,41 @@ class GenericMethod
 
     $balance = $balance_po_ref_amount - $reference_amount;
     return $balance;
+  }
+
+  public static function getAndValidatePOBalancev1($fields, $company_id, $po_no, float $reference_amount, $po_group, $id = 0) {
+
+      $balance_po_ref_amount = DB::connection('mysqlSecondConnection')
+          ->table('transactions')
+          ->leftJoin('p_o_batches', 'transactions.request_id', '=', 'p_o_batches.request_id')
+          ->where('transactions.company_id', $company_id)
+          ->where('transactions.state', '!=', 'void')
+          ->where('p_o_batches.po_no', $po_no)
+            ->orderBy('transactions.id', 'desc')
+          ->get('balance_po_ref_amount')
+          ->first();
+
+        if (empty($balance_po_ref_amount)) {
+            return;
+        }
+
+        $total_new_balance = 0;
+
+        foreach ($po_group as $po) {
+            $exist_po = DB::connection('mysqlSecondConnection')
+                ->table('p_o_batches')
+                ->rightJoin('transactions', 'p_o_batches.request_id', '=', 'transactions.request_id')
+                ->where('transactions.company_id', $company_id)
+                ->where('transactions.state', '!=', 'void')
+                ->where('p_o_batches.po_no', $po)
+                ->exists();
+
+            if (!$exist_po) {
+                $total_new_balance += $po['previous_balance'];
+            }
+        }
+
+      return $balance_po_ref_amount->balance_po_ref_amount + $total_new_balance - $reference_amount;
   }
 
   public static function getBalancePORefAmount($company_id, $reference_no)
@@ -5044,7 +5076,7 @@ class GenericMethod
     return Transaction::where("voucher_no", $voucher)->exists();
   }
 
-  public static function generateTagNoTest($receipt_type, $id) {
+  public static function generateTagNo($receipt_type, $id) {
       $existingTag = Transaction::whereNotNull("tag_no")
           ->where("id", $id)->where("receipt_type", $receipt_type)
           ->first();

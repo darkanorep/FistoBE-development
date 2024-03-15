@@ -6,6 +6,7 @@ use App\Http\Requests\SubUnitRequest;
 use App\Http\Resources\SubUnitResource;
 use App\Models\Department;
 use App\Models\SubUnit;
+use App\Models\Unit;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\Request;
@@ -41,9 +42,10 @@ class SubUnitController extends Controller
                     'id' => $value->id,
                     'code' => $value->code,
                     'sub_unit' => $value->subunit,
-                    'department' => [
-                        'id' => $value->department->id,
-                        'name' => $value->department->department,
+                    'unit' => [
+                        'id' => $value->unit->id,
+                        'code' => $value->unit->code,
+                        'name' => $value->unit->name,
                     ],
                     'updated_at' => $value->updated_at,
                     'deleted_at' => $value->deleted_at,
@@ -59,7 +61,7 @@ class SubUnitController extends Controller
                             "id",
                             "code",
                             "subunit as name",
-                            "department_id",
+                            "unit_id",
                             DB::RAW("(CASE WHEN (ISNULL(deleted_at)) THEN 1 ELSE 0 END) as status")
                         ]);
                 })
@@ -80,7 +82,7 @@ class SubUnitController extends Controller
     public function store(SubUnitRequest $request)
     {
         $new_subunit = SubUnit::create([
-            'department_id' => $request->department_id,
+            'unit_id' => $request->unit_id,
             'code' => $request->code,
             'subunit' => $request->sub_unit,
         ]);
@@ -100,7 +102,7 @@ class SubUnitController extends Controller
 
         if ($subunit) {
             $subunit->update([
-                'department_id' => $request->department_id,
+                'unit_id' => $request->unit_id,
                 'code' => $request->code,
                 'subunit' => $request->sub_unit,
             ]);
@@ -136,14 +138,14 @@ class SubUnitController extends Controller
     {
         $subunit = $request->all();
         $errorBag = [];
-        $department_list = Department::withTrashed()->get()->pluck('department')->toArray();
+        $unit_list = Unit::withTrashed()->get()->pluck('name')->toArray();
         $code_list = SubUnit::withTrashed()->pluck('code')->toArray();
         $subunit_list = SubUnit::withTrashed()->pluck('subunit')->toArray();
 
         date_default_timezone_set('Asia/Manila');
 
-        $headers = "Code, Subunit, Department, Status";
-        $template = ["code", "subunit", "department", "status"];
+        $headers = "Code, Subunit, Unit, Status";
+        $template = ["code", "subunit", "unit", "status"];
         $keys = array_keys(current($subunit));
         $this->validateHeader($template, $keys, $headers);
 
@@ -152,7 +154,7 @@ class SubUnitController extends Controller
 
             $code = $sub['code'];
             $subunitName = $sub['subunit'];
-            $department = $sub['department'];
+            $unit = $sub['unit'];
             $status = $sub['status'];
 
             if (in_array($code, $code_list)) {
@@ -190,12 +192,12 @@ class SubUnitController extends Controller
                 }
             }
 
-            if (isset($department)) {
-                if (!in_array($department, $department_list)) {
+            if (isset($unit)) {
+                if (!in_array($unit, $unit_list)) {
                     $errorBag[] = (object) [
                         'error_type' => 'unregistered',
                         'line' => $index,
-                        'description' => 'Department ' . $department . ' not registered.'
+                        'description' => 'Department ' . $unit . ' not registered.'
                     ];
                 }
             }
@@ -269,7 +271,7 @@ class SubUnitController extends Controller
                     return [
                         'code' => $sub['code'],
                         'subunit' => $sub['subunit'],
-                        'department_id' => Department::where('department', $sub['department'])->first()->id,
+                        'unit_id' => Unit::where('unit', $sub['name'])->first()->id,
                         'created_at' => now(),
                         'updated_at' => now(),
                         'deleted_at' => $sub['status'] === "Active" ? NULL : now(),

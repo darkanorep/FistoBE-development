@@ -43,16 +43,16 @@ class AccountTitlePnLController extends Controller
         }
 
         if (count($account_title_pnls)) {
-            return $this->resultResponse("fetch", "Unit", $account_title_pnls);
+            return $this->resultResponse("fetch", "Normal Balance", $account_title_pnls);
         } else {
-            return $this->resultResponse("not-found", "Unit", []);
+            return $this->resultResponse("not-found", "Normal Balance", []);
         }
     }
 
     public function store(AccountTitlePnLRequest $request) {
         $account_title_pnl = $this->accountTitlePnLServices->store($request->validated());
 
-        return $this->resultResponse('save', 'Account Title P&L', $account_title_pnl);
+        return $this->resultResponse('save', 'Normal Balance', $account_title_pnl);
     }
 
     public function update($id, AccountTitlePnLRequest $request) {
@@ -60,14 +60,14 @@ class AccountTitlePnLController extends Controller
         if ($account_title_pnl) {
             $account_title_pnl = $this->accountTitlePnLServices->update($account_title_pnl, $request->validated());
 
-            return $this->resultResponse('update', 'Account Title P&L', $account_title_pnl);
+            return $this->resultResponse('update', 'Normal Balance', $account_title_pnl);
         } else {
-            return $this->resultResponse('not-found', 'Account Title P&L');
+            return $this->resultResponse('not-found', 'Normal Balance');
         }
     }
 
     public function change_status($id)
     {
-        return $this->changeStatus($id, AccountTitlePnL::class, 'Account Title P&L');
+        return $this->changeStatus($id, AccountTitlePnL::class, 'Normal Balance');
     }
 }

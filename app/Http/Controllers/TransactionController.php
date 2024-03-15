@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Resources\ChequeClearIndex;
 use App\Http\Resources\ChequeIndex;
 use App\Http\Resources\TransactionResource1;
+use App\Models\Audit;
+use App\Models\BankSeries;
 use App\Models\Cheque;
 use App\Models\Clear;
 use App\Models\ClearingAccountTitle;
@@ -43,6 +45,18 @@ class TransactionController extends Controller
         return $this->resultResponse("not-found", "Transaction", []);
     }
 
+    function getRequestData($request, $key, $default = []) {
+        return isset($request[$key]) && $request[$key]
+            ? array_map("intval", json_decode($request[$key]))
+            : $default;
+    }
+
+    function getTransactionDate($request, $key, $default) {
+        return isset($request[$key]) && $request[$key]
+            ? Carbon::createFromFormat("Y-m-d", $request[$key])->format("Y-m-d H:i:s")
+            : $default;
+    }
+
     public function index(Request $request)
     {
         $dateToday = Carbon::now()->timezone("Asia/Manila");
@@ -52,40 +66,46 @@ class TransactionController extends Controller
         $role = Auth::user()->role;
         $status = isset($request["state"]) && $request["state"] ? $request["state"] : "request";
         $rows = isset($request["rows"]) && $request["rows"] ? (int)$request["rows"] : 10;
-        $suppliers =
-            isset($request["suppliers"]) && $request["suppliers"]
-                ? array_map("intval", json_decode($request["suppliers"]))
-                : [];
-        $document_ids =
-            isset($request["document_ids"]) && $request["document_ids"]
-                ? array_map("intval", json_decode($request["document_ids"]))
-                : [];
-        $transaction_from =
-            isset($request["transaction_from"]) && $request["transaction_from"]
-                ? Carbon::createFromFormat("Y-m-d", $request["transaction_from"])
-                ->startOfDay()
-                ->format("Y-m-d H:i:s")
-                : $dateToday->startOfDay()->format("Y-m-d H:i:s");
-        $transaction_to =
-            isset($request["transaction_to"]) && $request["transaction_to"]
-                ? Carbon::createFromFormat("Y-m-d", $request["transaction_to"])
-                ->endOfDay()
-                ->format("Y-m-d H:i:s")
-                : $dateToday->endOfDay()->format("Y-m-d H:i:s");
-        $cheque_from =
-            isset($request["cheque_from"]) && $request["cheque_from"]
-                ? Carbon::createFromFormat("Y-m-d", $request["cheque_from"])
-                ->startOfDay()
-                ->format("Y-m-d H:i:s")
-                : $dateToday->startOfDay()->format("Y-m-d H:i:s");
-        $cheque_to =
-            isset($request["cheque_to"]) && $request["cheque_to"]
-                ? Carbon::createFromFormat("Y-m-d", $request["cheque_to"])
-                ->endOfDay()
-                ->format("Y-m-d H:i:s")
-                : $dateToday->endOfDay()->format("Y-m-d H:i:s");
-
+//        $suppliers =
+//            isset($request["suppliers"]) && $request["suppliers"]
+//                ? array_map("intval", json_decode($request["suppliers"]))
+//                : [];
+//        $document_ids =
+//            isset($request["document_ids"]) && $request["document_ids"]
+//                ? array_map("intval", json_decode($request["document_ids"]))
+//                : [];
+//        $transaction_from =
+//            isset($request["transaction_from"]) && $request["transaction_from"]
+//                ? Carbon::createFromFormat("Y-m-d", $request["transaction_from"])
+//                ->startOfDay()
+//                ->format("Y-m-d H:i:s")
+//                : $dateToday->startOfDay()->format("Y-m-d H:i:s");
+//        $transaction_to =
+//            isset($request["transaction_to"]) && $request["transaction_to"]
+//                ? Carbon::createFromFormat("Y-m-d", $request["transaction_to"])
+//                ->endOfDay()
+//                ->format("Y-m-d H:i:s")
+//                : $dateToday->endOfDay()->format("Y-m-d H:i:s");
+//        $cheque_from =
+//            isset($request["cheque_from"]) && $request["cheque_from"]
+//                ? Carbon::createFromFormat("Y-m-d", $request["cheque_from"])
+//                ->startOfDay()
+//                ->format("Y-m-d H:i:s")
+//                : $dateToday->startOfDay()->format("Y-m-d H:i:s");
+//        $cheque_to =
+//            isset($request["cheque_to"]) && $request["cheque_to"]
+//                ? Carbon::createFromFormat("Y-m-d", $request["cheque_to"])
+//                ->endOfDay()
+//                ->format("Y-m-d H:i:s")
+//                : $dateToday->endOfDay()->format("Y-m-d H:i:s");
+        $suppliers = $this->getRequestData($request, "suppliers");
+        $document_ids = $this->getRequestData($request, "document_ids");
+        $transaction_from = $this->getTransactionDate($request, "transaction_from", $dateToday->startOfMonth()->format("Y-m-d H:i:s"));
+        $transaction_to = $this->getTransactionDate($request, "transaction_to", $dateToday->endOfMonth()->format("Y-m-d H:i:s"));
+        $cheque_from = $this->getTransactionDate($request, "cheque_from", $dateToday->startOfMonth()->format("Y-m-d H:i:s"));
+        $cheque_to = $this->getTransactionDate($request, "cheque_to", $dateToday->endOfMonth()->format("Y-m-d H:i:s"));
         $search = $request["search"];
+        $tag_search = str_replace('tag#', '', $search);
         $state = isset($request["state"]) ? $request["state"] : "request";
         !empty($request["department"])
             ? ($department = json_decode($request["department"]))
@@ -105,6 +125,19 @@ class TransactionController extends Controller
         $is_voucher_transfered = $status == "voucher-transfer";
         $is_transmit_transfered = $status == "transmit-transfer";
         $is_file_transfered = $status == "file-transfer";
+
+//        $transactions = Transaction::where(function ($query) use ($suppliers, $document_ids) {
+//                $query->whereIn('supplier_id', $suppliers)
+//                    ->orWhereIn('document_id', $document_ids);
+//            })
+//            ->paginate($rows);
+//
+//        TransactionIndex::collection($transactions);
+//
+//        if (count($transactions)) {
+//            return $this->resultResponse("fetch", "Transaction", $transactions);
+//        }
+//        return $this->resultResponse("not-found", "Transaction", []);
 
         $transactions = Transaction::select([
             "id",
@@ -127,7 +160,7 @@ class TransactionController extends Controller
             ->when(
                 isset($request["cheque_from"]) || isset($request["cheque_to"]),
                 function ($query) use ($cheque_from, $cheque_to) {
-                    $query->whereHas("cheques.cheques", function ($query) use ($cheque_from, $cheque_to) {
+                    $query->whereHas("cheques.cheques",  function ($query) use ($cheque_from, $cheque_to) {
                         $query->where("cheque_date", ">=", $cheque_from)->where("cheque_date", "<=", $cheque_to);
                     });
                 },
@@ -140,11 +173,12 @@ class TransactionController extends Controller
                     });
                 }
             )
-            ->where(function ($query) use ($search) {
+            ->where(function ($query) use ($search, $tag_search) {
                 $query
                     ->where("date_requested", "like", "%" . $search . "%")
                     ->orWhere("remarks", "like", "%" . $search . "%")
-                    ->orWhere("tag_no", "like", "%" . $search . "%")
+//                    ->orWhere("tag_no", "like", "%" . $search . "%")
+                    ->orWhere("tag_no", "=", $tag_search)
                     ->orWhere("transaction_id", "like", "%" . $search . "%")
                     ->orWhere("document_amount", "like", "%" . $search . "%")
                     ->orWhere("document_type", "like", "%" . $search . "%")
@@ -248,6 +282,7 @@ class TransactionController extends Controller
                         "category",
                         "department_id",
                         "location_id",
+                        "input_tax"
                     ]);
             })
             ->when(in_array($role, $tag_window), function ($query) use ($status) {
@@ -358,6 +393,7 @@ class TransactionController extends Controller
                         "category",
                         "department_id",
                         "location_id",
+                        "input_tax"
                     ]);
             })
             ->when(in_array($role, $voucher_window), function ($query) use (
@@ -510,6 +546,7 @@ class TransactionController extends Controller
                         "category",
                         "department_id",
                         "location_id",
+                        "input_tax"
                     ])
                     ->when(
                         in_array(strtolower($status), ["pending-request", "reverse-receive-approver", "reverse-approve"]),
@@ -615,6 +652,7 @@ class TransactionController extends Controller
                         "category",
                         "department_id",
                         "location_id",
+                        "input_tax"
                     ])
                     ->where("approver_id", $users_id);
             })
@@ -831,6 +869,7 @@ class TransactionController extends Controller
                         "category",
                         "department_id",
                         "location_id",
+                        "input_tax"
                     ]);
             })
             ->when(in_array($role, $audit_window), function ($query) use ($status) {
@@ -924,6 +963,7 @@ class TransactionController extends Controller
                         "category",
                         "department_id",
                         "location_id",
+                        "input_tax"
                     ]);
             })
             ->when(in_array($role, $executive_assistant), function ($query) use ($status) {
@@ -984,6 +1024,7 @@ class TransactionController extends Controller
                         "category",
                         "department_id",
                         "location_id",
+                        "input_tax"
                     ]);
             })
             ->when(in_array($role, $gas_window), function ($query) use ($status) {
@@ -1052,9 +1093,10 @@ class TransactionController extends Controller
                         "category",
                         "department_id",
                         "location_id",
+                        "input_tax"
                     ]);
             })
-            ->latest("updated_at")
+            ->latest('updated_at')
             ->paginate($rows);
 
         TransactionIndex::collection($transactions);
@@ -2678,7 +2720,60 @@ class TransactionController extends Controller
             $po_object = (object)["po_group" => $po_details];
             return $this->resultResponse("fetch", "PO number", $po_object);
         }
+
+        if ($po_details->isEmpty()) {
+            return $this->getPODetailsv1($request);
+        }
+
         return $this->resultResponse("success-no-content", "", []);
+    }
+
+    public function getPODetailsv1(PODetailsRequest $request) {
+        $po_details = DB::connection('mysqlSecondConnection')->table('p_o_batches')
+            ->rightJoin('transactions', 'p_o_batches.request_id', '=', 'transactions.request_id')
+            ->where('transactions.company_id', $request->company_id)
+            ->where('p_o_batches.po_no', $request->po_no)
+            ->where('transactions.state', '!=', 'void')
+            ->get();
+
+//        $po_object = null;
+
+        if (count($po_details) > 0) {
+            if (strtoupper($request->payment_type) == 'FULL') {
+                $errorMessage = GenericMethod::resultLaravelFormat('po_group.no', ['PO number already exist.']);
+                return $this->resultResponse('invalid', '', $errorMessage);
+            }
+
+            if ($po_details->last()->balance_po_ref_amount <= 0 || $po_details->last()->balance_po_ref_amount == null) {
+                $errorMessage = GenericMethod::resultLaravelFormat('po_group.no', ['No available balance.']);
+                return $this->resultResponse('invalid', '', $errorMessage);
+            }
+
+            $po_group = collect();
+            $balance = $po_details->last()->balance_po_ref_amount;
+            $po_details = DB::connection('mysqlSecondConnection')->table('p_o_batches')
+                ->where('request_id', $po_details->last()->request_id)
+                ->orderByDesc('id')
+                ->get(['request_id as batch', 'po_no as no', 'po_amount as amount', 'rr_group as rr_no']);
+
+            $po_details->mapToGroups(function ($item, $v) use ($balance) {
+                $item->balance = 0;
+                $item->rr_no = json_decode($item->rr_no, true);
+                return $item;
+            });
+
+            $po_details = $po_details->reverse()->values();
+            $po_details->first()->balance = $balance;
+            $po_object = (object)['po_group' => $po_details];
+            return $this->resultResponse('fetch', 'PO number', $po_object);
+        }
+
+//        if (!$po_object) {
+//            $this->getPODetailsv1($request);
+//        }
+
+        return $this->resultResponse('success-no-content', '', []);
+
     }
 
     public function validateDocumentNo(Request $request)
@@ -3117,6 +3212,7 @@ class TransactionController extends Controller
                 "gross_amount",
                 "referrence_no",
                 "referrence_amount",
+                "input_tax",
 
                 "date_requested",
 
@@ -3317,6 +3413,36 @@ class TransactionController extends Controller
         return Treasury::where("batch_no", $batch_no)->exists();
     }
 
+//    public function getAvailableBankSeries($bank_id = null) {
+//        $year = date("Y");
+//
+//        $bank_series = BankSeries::where('bank_id', $bank_id)
+//            ->where('year', $year)
+//            ->select(['from', 'to'])
+//            ->first();
+//
+//        if (!$bank_series) {
+//            return null; // or handle this case as you need
+//        }
+//
+//        $start_bank_series = $bank_series->from;
+//        $end_bank_series = $bank_series->to;
+//
+//        for ($i = $start_bank_series; $i <= $end_bank_series; $i++) {
+//            if (!$this->checkBankSeries($bank_id, $i)) {
+//                return $i;
+//            }
+//        }
+//
+//        return null; // or handle this case as you need, when all bank series numbers are used
+//    }
+//
+//    function checkBankSeries($bank_id, $bank_series) {
+//        return Cheque::where('bank_id', $bank_id)
+//            ->where('cheque_no', $bank_series)
+//            ->exists();
+//    }
+
     public function chequeRevert($id)
     {
         $batchNo = Treasury::where("transaction_id", $id)
@@ -3336,9 +3462,8 @@ class TransactionController extends Controller
                     "state" => "receive",
                 ]);
 
-            Cheque::whereIn("treasury_id", $treasuriesId)->forceDelete();
+            Cheque::whereIn("transaction_id", $transactionIds)->forceDelete();
             VoucherAccountTitle::whereIn("treasury_id", $treasuriesId)->forceDelete();
-            Treasury::whereIn("id", $treasuriesId)->delete();
             Treasury::whereIn("transaction_id", $transactionIds)->delete();
 
             $transactionIds->each(function ($transactionId) {
@@ -3498,6 +3623,13 @@ class TransactionController extends Controller
                     })
                     ->where("is_received", true);
             })
+            ->when($status == "return-release", function ($query) {
+                $query
+                    ->whereNull("issue_id")
+                    ->whereHas("transaction", function ($query) {
+                    return $query->where("status", "release-return");
+                });
+            })
 
             //clearing of cheque
             ->when($status == "pending-clear", function ($query) {
@@ -3606,7 +3738,7 @@ class TransactionController extends Controller
                         //                            });
                         //                        }
                         )
-                        ->when(in_array($status, ["audit-hold", "release-return"]), function ($query) use ($status) {
+                        ->when(in_array($status, ["audit-hold", "release-return", "hold-release"]), function ($query) use ($status) {
                             $query->whereHas("transaction", function ($query) use ($status) {
                                 return $query->where("status", preg_replace("/\s+/", "", $status));
                             });
@@ -3872,17 +4004,21 @@ class TransactionController extends Controller
         return $collection->values();
     }
 
-    public function chequeRevert1($bank_id, $cheque_no, $process)
+    public function chequeRevert1($bank_id, $cheque_no, $process, $request)
     {
         // $bank_id = $request->bank_id;
         // $cheque_no = $request->cheque_no;
 
         $cheque = Cheque::where("bank_id", $bank_id)
-            ->where("cheque_no", $cheque_no)
-            ->first();
+            ->where("cheque_no", $cheque_no)->get();
 
         if ($cheque) {
-            $treasury_id = Cheque::where("bank_id", $bank_id)
+            $cheque->each(function ($item) use ($request) {
+                $item->reason_id = data_get($request, "reason.id");
+                $item->reason = data_get($request, "reason.remarks");
+                $item->save();
+            });
+            $treasury_id = Cheque::withTrashed()->where("bank_id", $bank_id)
                 ->where("cheque_no", $cheque_no)
                 ->first()->treasury_id;
 
@@ -3891,24 +4027,22 @@ class TransactionController extends Controller
             $treasuryIds = Treasury::where("batch_no", $batch_no)->pluck("id");
             $transactionIds = Treasury::whereIn("id", $treasuryIds)->pluck("transaction_id");
 
+            Cheque::whereIn("treasury_id", $treasuryIds)->delete();
             VoucherAccountTitle::whereIn("treasury_id", $treasuryIds)->forceDelete();
-            Treasury::whereIn("id", $treasuryIds)->delete();
-            Cheque::whereIn("treasury_id", $treasuryIds)
-                // ->where("cheque_no", $cheque_no)
-                ->forceDelete();
+            Audit::whereIn("transaction_id", $transactionIds)->where('type', 'cheque')->delete();
+//            Treasury::whereIn("id", $treasuryIds)->delete();
 
             $process == "cheque"
-                ? // ? ($status = "cheque-receive")
+                ?
                 ($status[] = [
                     "status" => "cheque-receive",
                     "state" => "receive",
                 ])
-                : // : ($status = "audit-return");
+                :
                 ($status[] = [
                     "status" => "audit-return",
                     "state" => "return",
                 ]);
-
             Transaction::whereIn("id", $transactionIds)
                 ->where("state", "!=", "void")
                 ->update([
@@ -3916,28 +4050,8 @@ class TransactionController extends Controller
                     "state" => $status[0]["state"],
                 ]);
 
-//            if ($process == "cheque") {
-//                Transaction::whereIn("id", $transactionIds)
-//                    ->where("state", "!=", "void")
-//                    ->update([
-//                        "status" => "cheque-receive",
-//                        "state" => "receive",
-//                    ]);
-//            } else {
-//                Transaction::whereIn("id", $transactionIds)
-//                    ->where("state", "!=", "void")
-//                    ->update([
-//                        "status" => "audit-return",
-//                        "state" => "return",
-//                    ]);
-//            }
-
             return $this->resultResponse("update", "Transaction", []);
         }
-
-//        else {
-//            return $this->resultResponse("not-found", "Transaction", []);
-//        }
     }
 
     public function statusTransactionCounter()
@@ -3957,7 +4071,7 @@ class TransactionController extends Controller
             9 => [], //Creation of Debit Memo
             10 => [], //Reversal Request
             11 => ["discharge-discharge", "release-release"], //Filing of Voucher
-            12 => ["gas-gas", "tag-tag", "approve-return", "cheque-return", "cheque-return"], //Creation of Voucher
+            12 => ["gas-gas", "tag-tag", "approve-return", "cheque-return"], //Creation of Voucher
             13 => [], //Transmittal of Confidential Document
             14 => [], //Filing of Confidential Voucher
             15 => [], //Tagging and Vouchering
@@ -4000,6 +4114,7 @@ class TransactionController extends Controller
                     case 'Creation of Voucher':
                     case 'Transmittal of Document':
                     case 'Approval of Voucher':
+                    case 'Filing of Voucher':
                         $user_id = auth()->user()->id;
                         break;
 
@@ -4009,12 +4124,12 @@ class TransactionController extends Controller
                 }
 
                 $counts = Transaction::select('status', DB::raw('count(*) as count'))
-                    ->when($document_id, function ($query) use ($document_id, $status) {
-                        if ($status == 'transmit-transmit' && $document_id != 8) {
-                            $query->where('status', $status);
-                        }
-                        return $query->where('document_id', $document_id);
-                    })
+//                    ->when($document_id, function ($query) use ($document_id, $status) {
+//                        if ($status == 'transmit-transmit' && $document_id != 8) {
+//                            $query->where('status', $status);
+//                        }
+//                        return $query->where('document_id', $document_id);
+//                    })
                     ->when($user_id, function ($query) use ($user_id) {
                         $query->where(function ($query) use ($user_id) {
                             $query->where('distributed_id', $user_id)
@@ -4024,13 +4139,18 @@ class TransactionController extends Controller
                     ->when($receipt_type, function ($query) use ($receipt_type, $status) {
                         return $query->where('receipt_type', $receipt_type);
                     })
-                    ->when($permissionName == 'Creation of Voucher', function ($query) {
-                        $query->where(function ($query) {
-                            $query->where('status', 'tag-tag')
-                                ->where('receipt_type', '!=', 'Official');
-                        })->orWhere(function ($query) {
-                            $query->where('status', 'gas-gas');
-                        });
+                    ->when($permissionName == 'Creation of Voucher', function ($query) use ($status) {
+                        $query->when($status == 'tag-tag', function ($query) {
+                            $query->where(function ($query) {
+                                $query->where('status', 'tag-tag')
+                                    ->where('receipt_type', '!=', 'Official');
+                            })->orWhere(function ($query) {
+                                $query->where('status', 'gas-gas');
+                            });
+                        })
+                            ->when($status == 'approve-return' || $status == 'cheque-return', function ($query) {
+                                $query->whereIn('status', ['approve-return', 'cheque-return']);
+                            });
                     })
                     ->when($permissionName == 'Filing of Voucher', function ($query) {
                         $query->where(function ($query) {
@@ -4039,6 +4159,20 @@ class TransactionController extends Controller
                         })->orWhere(function ($query) {
                             $query->where('status', 'discharge-discharge');
                         });
+                    })
+                    ->when($permissionName == 'Creation of Cheque', function ($query) use ($status) {
+                        $query->when($status == 'transmit-transmit', function ($query) {
+                            $query->where(function ($query) {
+                                $query->where('status', 'transmit-transmit')
+                                    ->where('document_id', '!=', 8);
+                            })->orWhere(function ($query) {
+                                $query->where('status', 'inspect-inspect');
+                            });
+                        })
+                            ->when($status == 'audit-return', function ($query) {
+                                $query->whereIn('status', ['audit-return']);
+                            });
+
                     })
                     ->whereIn('status', $status)
                     ->groupBy('status')
@@ -4080,9 +4214,10 @@ class TransactionController extends Controller
                             $result['pending'] = $count += $result['pending'];
                             break;
 
+                        case 'tag-return':
                         case 'voucher-return':
-                        case 'approve-return':
                         case 'cheque-return':
+                        case 'approve-return':
                         case 'audit-return':
                             $result['return'] = $count;
                             break;
@@ -4235,7 +4370,7 @@ class TransactionController extends Controller
             21 => [], //Creation of Counter Receipt
             22 => [], //Monitoring of Counter Receipt
             23 => ['audit-audit'], //Transmittal of Cheque
-            24 => ['executive-executive'], //Internal Releasing of Cheque
+            24 => ['executive-executive', 'release-return'], //Internal Releasing of Cheque
         ];
 
         $response = [];
@@ -4284,6 +4419,11 @@ class TransactionController extends Controller
                             $query->whereHas('transaction', function ($query) {
                                 $query->whereIn('status', ['release-release', 'file-receive', 'file-file', 'discharge-receive', 'discharge-discharge']);
                             })->where('is_released', true)->whereNull('is_cleared');
+                        })
+                        ->when($stat == 'release-return', function ($query) {
+                            $query->whereHas('transaction', function ($query) {
+                                $query->whereIn('status', ['release-return']);
+                            });
                         })
 //                        ->when($stat == 'clear-pending', function ($query) {
 //                            $query->whereHas('transaction', function ($query) {
@@ -4344,6 +4484,7 @@ class TransactionController extends Controller
 
                             case 'voucher-return':
                             case 'approve-return':
+                            case 'release-return':
                                 $result['return'] = $counts;
                                 break;
                         }
@@ -4358,4 +4499,48 @@ class TransactionController extends Controller
         }
         return response()->json($response);
     }
+
+    public function chequeHistory($id) {
+        $transactionIds = Treasury::where('transaction_id', $id)
+            ->latest('updated_at')
+            ->pluck('transaction_id');
+
+        if ($transactionIds->isEmpty()) {
+            return $this->resultResponse('not-found', 'Transaction', []);
+        }
+
+        $cheques = Cheque::onlyTrashed()
+            ->whereIn('transaction_id', $transactionIds)
+            ->select('bank_id', 'bank_name', 'cheque_no', 'cheque_amount', 'reason_id', 'reason')
+            ->get();
+
+        [$valid, $invalid] = $cheques->partition(function ($item) {
+            return $item->reason_id == null;
+        });
+
+        return [
+            'valid' => $valid->values(),
+            'void' => $invalid->values(),
+        ];
+    }
+
+    public function officialTransactions(Request $request): \Illuminate\Http\Resources\Json\AnonymousResourceCollection
+    {
+        $transaction_from = date_format(date_create($request->input('transaction_from', Carbon::now()->format('Y-m-d'))), "Y-m-d");
+        $transaction_to = date_format(date_create($request->input('transaction_to', Carbon::now()->format('Y-m-d'))), "Y-m-d");
+
+        $official = Transaction::where('receipt_type', 'Official')
+            ->when($transaction_from, function ($query) use ($transaction_from) {
+                return $query->whereDate('date_requested', '>=', $transaction_from);
+            })
+            ->when($transaction_to, function ($query) use ($transaction_to) {
+                return $query->whereDate('date_requested', '<=', $transaction_to);
+            })
+            ->where("status", "gas-receive")
+            ->latest("updated_at")
+            ->get();
+
+        return TransactionResource1::collection($official);
+    }
+
 }

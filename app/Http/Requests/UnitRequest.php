@@ -5,7 +5,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class PayrollClientRequest extends FormRequest
+class UnitRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -25,11 +25,16 @@ class PayrollClientRequest extends FormRequest
     public function rules()
     {
         return [
-            'client' => [
-                'required',
-                'string',
-                Rule::unique('payroll_clients')->ignore($this->payroll_client)
-            ]
+            'code' => 'required|unique:units,code,' . $this->route('unit'),
+            'name' => 'required|unique:units,name,' . $this->route('unit'),
+            'department_id' => Rule::exists('departments', 'id')->whereNull('deleted_at'),
+        ];
+    }
+
+    public function messages()
+    {
+        return [
+            'department_id.exists' => 'Department does not exist.',
         ];
     }
 }

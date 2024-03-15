@@ -42,16 +42,16 @@ class AccountTitleChildController extends Controller
         }
 
         if (count($account_title_childs)) {
-            return $this->resultResponse("fetch", "Unit", $account_title_childs);
+            return $this->resultResponse("fetch", "Financial Statement", $account_title_childs);
         } else {
-            return $this->resultResponse("not-found", "Unit", []);
+            return $this->resultResponse("not-found", "Financial Statement", []);
         }
     }
 
     public function store(AccountTitleChildRequest $request) {
         $account_title_child = $this->genericServices->store(AccountTitleChild::class, $request->validated());
 
-        return $this->resultResponse('save', 'Account Title Child', $account_title_child);
+        return $this->resultResponse('save', 'Financial Statement', $account_title_child);
     }
 
     public function update($id, AccountTitleChildRequest $request) {
@@ -60,15 +60,15 @@ class AccountTitleChildController extends Controller
         if ($account_title_child) {
             $account_title_child = $this->genericServices->update($account_title_child, $request->validated());
 
-            return $this->resultResponse('update', 'Account Title Child', $account_title_child);
+            return $this->resultResponse('update', 'Financial Statement', $account_title_child);
         } else {
-            return $this->resultResponse('not-found', 'Account Title Child');
+            return $this->resultResponse('not-found', 'Financial Statement');
         }
 
     }
 
     public function change_status($id)
     {
-        return $this->changeStatus($id, AccountTitleChild::class, 'Account Title Child');
+        return $this->changeStatus($id, AccountTitleChild::class, 'Financial Statement');
     }
 }

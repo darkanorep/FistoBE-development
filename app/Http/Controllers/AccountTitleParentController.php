@@ -42,9 +42,9 @@ class AccountTitleParentController extends Controller
         }
 
         if (count($account_title_parents)) {
-            return $this->resultResponse("fetch", "Account Title Parents", $account_title_parents);
+            return $this->resultResponse("fetch", "Account Sub Group", $account_title_parents);
         } else {
-            return $this->resultResponse("not-found", "Account Title Parents", []);
+            return $this->resultResponse("not-found", "Account Sub Group", []);
         }
     }
 
@@ -52,7 +52,7 @@ class AccountTitleParentController extends Controller
     {
         $account_title_parent = $this->genericServices->store(AccountTitleParent::class, $request->validated());
 
-        return $this->resultResponse('save', 'Account Title Parent', $account_title_parent);
+        return $this->resultResponse('save', 'Account Sub Group', $account_title_parent);
     }
 
     public function update($id, AccountTitleParentRequest $request)
@@ -62,13 +62,13 @@ class AccountTitleParentController extends Controller
         if ($account_title_parent) {
             $account_title_parent = $this->genericServices->update($account_title_parent, $request->validated());
 
-            return $this->resultResponse('update', 'Account Title Parent', $account_title_parent);
+            return $this->resultResponse('update', 'Account Sub Group', $account_title_parent);
         } else {
-            return $this->resultResponse('not-found', 'Account Title Parent');
+            return $this->resultResponse('not-found', 'Account Sub Group');
         }
     }
 
     public function change_status($id) {
-        return $this->changeStatus($id, AccountTitleParent::class, 'Account Title Parent');
+        return $this->changeStatus($id, AccountTitleParent::class, 'Account Sub Group');
     }
 }

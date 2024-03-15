@@ -44,7 +44,7 @@ class UtilityCategoryController extends Controller
 
       $utility_categories = UtilityCategory::withTrashed()
       ->where(function ($query) use ($status){
-        ($status==true)?$query->whereNull('deleted_at'):$query->whereNotNull('deleted_at');
+        $status ?$query->whereNull('deleted_at'):$query->whereNotNull('deleted_at');
       })
       ->where('category', 'like', '%'.$search.'%')
       ->latest('updated_at');
@@ -55,12 +55,12 @@ class UtilityCategoryController extends Controller
     }else if ($paginate == 0){
       $utility_categories = $utility_categories
       ->get(['id','category as name']);
-      if(count($utility_categories)==true){
+      if(count($utility_categories)){
           $utility_categories = array("utility_categories"=>$utility_categories);;
       }
     }
 
-      if(count($utility_categories)==true){
+      if(count($utility_categories)){
         return $this->resultResponse('fetch','Utility Category',$utility_categories);
       }
       return $this->resultResponse('not-found','Utility Category',[]);
