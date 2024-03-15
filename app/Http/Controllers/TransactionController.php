@@ -45,6 +45,18 @@ class TransactionController extends Controller
         return $this->resultResponse("not-found", "Transaction", []);
     }
 
+    function getRequestData($request, $key, $default = []) {
+        return isset($request[$key]) && $request[$key]
+            ? array_map("intval", json_decode($request[$key]))
+            : $default;
+    }
+
+    function getTransactionDate($request, $key, $default) {
+        return isset($request[$key]) && $request[$key]
+            ? Carbon::createFromFormat("Y-m-d", $request[$key])->format("Y-m-d H:i:s")
+            : $default;
+    }
+
     public function index(Request $request)
     {
         $dateToday = Carbon::now()->timezone("Asia/Manila");
@@ -54,39 +66,44 @@ class TransactionController extends Controller
         $role = Auth::user()->role;
         $status = isset($request["state"]) && $request["state"] ? $request["state"] : "request";
         $rows = isset($request["rows"]) && $request["rows"] ? (int)$request["rows"] : 10;
-        $suppliers =
-            isset($request["suppliers"]) && $request["suppliers"]
-                ? array_map("intval", json_decode($request["suppliers"]))
-                : [];
-        $document_ids =
-            isset($request["document_ids"]) && $request["document_ids"]
-                ? array_map("intval", json_decode($request["document_ids"]))
-                : [];
-        $transaction_from =
-            isset($request["transaction_from"]) && $request["transaction_from"]
-                ? Carbon::createFromFormat("Y-m-d", $request["transaction_from"])
-                ->startOfDay()
-                ->format("Y-m-d H:i:s")
-                : $dateToday->startOfDay()->format("Y-m-d H:i:s");
-        $transaction_to =
-            isset($request["transaction_to"]) && $request["transaction_to"]
-                ? Carbon::createFromFormat("Y-m-d", $request["transaction_to"])
-                ->endOfDay()
-                ->format("Y-m-d H:i:s")
-                : $dateToday->endOfDay()->format("Y-m-d H:i:s");
-        $cheque_from =
-            isset($request["cheque_from"]) && $request["cheque_from"]
-                ? Carbon::createFromFormat("Y-m-d", $request["cheque_from"])
-                ->startOfDay()
-                ->format("Y-m-d H:i:s")
-                : $dateToday->startOfDay()->format("Y-m-d H:i:s");
-        $cheque_to =
-            isset($request["cheque_to"]) && $request["cheque_to"]
-                ? Carbon::createFromFormat("Y-m-d", $request["cheque_to"])
-                ->endOfDay()
-                ->format("Y-m-d H:i:s")
-                : $dateToday->endOfDay()->format("Y-m-d H:i:s");
-
+//        $suppliers =
+//            isset($request["suppliers"]) && $request["suppliers"]
+//                ? array_map("intval", json_decode($request["suppliers"]))
+//                : [];
+//        $document_ids =
+//            isset($request["document_ids"]) && $request["document_ids"]
+//                ? array_map("intval", json_decode($request["document_ids"]))
+//                : [];
+//        $transaction_from =
+//            isset($request["transaction_from"]) && $request["transaction_from"]
+//                ? Carbon::createFromFormat("Y-m-d", $request["transaction_from"])
+//                ->startOfDay()
+//                ->format("Y-m-d H:i:s")
+//                : $dateToday->startOfDay()->format("Y-m-d H:i:s");
+//        $transaction_to =
+//            isset($request["transaction_to"]) && $request["transaction_to"]
+//                ? Carbon::createFromFormat("Y-m-d", $request["transaction_to"])
+//                ->endOfDay()
+//                ->format("Y-m-d H:i:s")
+//                : $dateToday->endOfDay()->format("Y-m-d H:i:s");
+//        $cheque_from =
+//            isset($request["cheque_from"]) && $request["cheque_from"]
+//                ? Carbon::createFromFormat("Y-m-d", $request["cheque_from"])
+//                ->startOfDay()
+//                ->format("Y-m-d H:i:s")
+//                : $dateToday->startOfDay()->format("Y-m-d H:i:s");
+//        $cheque_to =
+//            isset($request["cheque_to"]) && $request["cheque_to"]
+//                ? Carbon::createFromFormat("Y-m-d", $request["cheque_to"])
+//                ->endOfDay()
+//                ->format("Y-m-d H:i:s")
+//                : $dateToday->endOfDay()->format("Y-m-d H:i:s");
+        $suppliers = $this->getRequestData($request, "suppliers");
+        $document_ids = $this->getRequestData($request, "document_ids");
+        $transaction_from = $this->getTransactionDate($request, "transaction_from", $dateToday->startOfMonth()->format("Y-m-d H:i:s"));
+        $transaction_to = $this->getTransactionDate($request, "transaction_to", $dateToday->endOfMonth()->format("Y-m-d H:i:s"));
+        $cheque_from = $this->getTransactionDate($request, "cheque_from", $dateToday->startOfMonth()->format("Y-m-d H:i:s"));
+        $cheque_to = $this->getTransactionDate($request, "cheque_to", $dateToday->endOfMonth()->format("Y-m-d H:i:s"));
         $search = $request["search"];
         $tag_search = str_replace('tag#', '', $search);
         $state = isset($request["state"]) ? $request["state"] : "request";
@@ -109,6 +126,19 @@ class TransactionController extends Controller
         $is_transmit_transfered = $status == "transmit-transfer";
         $is_file_transfered = $status == "file-transfer";
 
+//        $transactions = Transaction::where(function ($query) use ($suppliers, $document_ids) {
+//                $query->whereIn('supplier_id', $suppliers)
+//                    ->orWhereIn('document_id', $document_ids);
+//            })
+//            ->paginate($rows);
+//
+//        TransactionIndex::collection($transactions);
+//
+//        if (count($transactions)) {
+//            return $this->resultResponse("fetch", "Transaction", $transactions);
+//        }
+//        return $this->resultResponse("not-found", "Transaction", []);
+
         $transactions = Transaction::select([
             "id",
             "company_id",
@@ -130,7 +160,7 @@ class TransactionController extends Controller
             ->when(
                 isset($request["cheque_from"]) || isset($request["cheque_to"]),
                 function ($query) use ($cheque_from, $cheque_to) {
-                    $query->whereHas("cheques.cheques", function ($query) use ($cheque_from, $cheque_to) {
+                    $query->whereHas("cheques.cheques",  function ($query) use ($cheque_from, $cheque_to) {
                         $query->where("cheque_date", ">=", $cheque_from)->where("cheque_date", "<=", $cheque_to);
                     });
                 },

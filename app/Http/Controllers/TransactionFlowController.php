@@ -53,6 +53,7 @@ class TransactionFlowController extends Controller
         $process = $request->input('process');
         $transactions = $request->input('transactions');
 
+        $second = 1;
         foreach ($transactions as $transaction) {
             switch ($process) {
                 case 'tag':
@@ -147,13 +148,14 @@ class TransactionFlowController extends Controller
                     ]);
                     break;
             }
-        }
 
-        Transaction::whereIn('id', $transactions)
+            Transaction::where('id', $transaction)
             ->update([
                 'state' => 'receive',
                 'status' => $process . '-receive',
+                'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
             ]);
+        }
 
         return GenericMethod::resultResponse("receive", null, []);
     }
@@ -175,6 +177,7 @@ class TransactionFlowController extends Controller
             Tagging::create(array_merge(['transaction_id' => $transaction], $tagData));
         }
 
+        $second = 1;
         foreach ($transactions as $transaction) {
             Transaction::where('id', $transaction)
                 ->update([
@@ -183,7 +186,8 @@ class TransactionFlowController extends Controller
                     'receipt_type' => $receipt_type,
                     'distributed_id' => data_get($distributed_to, 'id'),
                     'distributed_name' => data_get($distributed_to, 'name'),
-                    'tag_no' => GenericMethod::generateTagNo($receipt_type, $transaction)
+                    'tag_no' => GenericMethod::generateTagNo($receipt_type, $transaction),
+                    'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
                 ]);
         }
 

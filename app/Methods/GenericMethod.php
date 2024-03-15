@@ -2779,12 +2779,6 @@ class GenericMethod
     return $group_details;
   }
 
-  public static function generateTagNo($receipt_type, $id)
-  {
-//    return Transaction::max("tag_no") + 1;
-      return static::generateTagNoTest($receipt_type, $id);
-  }
-
   public static function countTableById($table, $id)
   {
     $table = DB::table($table)->where("id", $id);
@@ -5082,7 +5076,7 @@ class GenericMethod
     return Transaction::where("voucher_no", $voucher)->exists();
   }
 
-  public static function generateTagNoTest($receipt_type, $id) {
+  public static function generateTagNo($receipt_type, $id) {
       $existingTag = Transaction::whereNotNull("tag_no")
           ->where("id", $id)->where("receipt_type", $receipt_type)
           ->first();
