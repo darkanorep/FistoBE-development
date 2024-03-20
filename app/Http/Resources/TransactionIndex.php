@@ -21,6 +21,20 @@ class TransactionIndex extends JsonResource
 
     public function toArray($request)
     {
+        $rental = [
+            'stall a rental',
+            'stall b rental',
+            'stall c rental',
+            'stall d rental',
+            'cusa rental',
+            'dorm rental',
+            'additional rental',
+            'lounge rental',
+            'corporate special program - education',
+            'official store rental',
+            'unofficial store rental',
+            'rental'
+        ];
         $this->state = $this->stateChange($this->state);
 
         $is_editable_prm = 0;
@@ -91,7 +105,7 @@ class TransactionIndex extends JsonResource
             "location" => $this->location,
             "document_no" => $this->document_no,
             'document_amount' => ($this->document_id == 3)
-                ? ($this->category == 'rental' ? $this->gross_amount : (($this->principal + $this->interest)))
+                ? ($this->category == in_array($this->category, $rental) ? $this->gross_amount : (($this->principal + $this->interest)))
                 : $this->document_amount,
             "cheque_date" => $this->document_id == 3 ? $this->cheque_date : null,
             "referrence_no" => $this->referrence_no,

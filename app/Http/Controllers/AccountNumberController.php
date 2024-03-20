@@ -145,8 +145,8 @@ class AccountNumberController extends Controller
 
       date_default_timezone_set('Asia/Manila');
 
-      $headers = 'Account No, Location, Supplier, Category, Status';
-      $templates = ['account_no', 'location', 'supplier', 'category', 'status'];
+      $headers = 'Account No, Category, Location, Status, Supplier';
+      $templates = ['account_no', 'category', 'location', 'status', 'supplier'];
       $keys = array_keys(current($account_numbers));
       $this->validateHeader($templates, $keys, $headers);
 
@@ -159,13 +159,13 @@ class AccountNumberController extends Controller
           $supplier = $account_number['supplier'];
           $status = $account_number['status'];
 
-          if (in_array($account_no, $account_numbers_list)) {
-              $errorBag[] = [
-                  "error_type" => "existing",
-                  "line" => $index,
-                  "description" => $account_no . " is already registered."
-              ];
-          }
+//          if (in_array($account_no, $account_numbers_list)) {
+//              $errorBag[] = [
+//                  "error_type" => "existing",
+//                  "line" => $index,
+//                  "description" => $account_no . " is already registered."
+//              ];
+//          }
 
           if (!in_array($location, $locations_list)) {
               $errorBag[] = [

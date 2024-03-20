@@ -36,10 +36,10 @@ class LocationRequest extends FormRequest
             'departments' => [
                 'required',
                 'array',
-                Rule::exists('departments', 'id')
-                    ->where(function ($query) {
-                    $query->whereNull('deleted_at');
-                })
+//                Rule::exists('departments', 'id')
+//                    ->where(function ($query) {
+//                    $query->whereNull('deleted_at');
+//                })
             ]
         ];
     }

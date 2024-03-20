@@ -28,7 +28,11 @@ class AccountNumberRequest extends FormRequest
             "account_no" => [
                 'required',
                 'string',
-                Rule::unique('account_numbers','account_no')->ignore($this->route('account_number'))
+                Rule::unique('account_numbers','account_no')
+                    ->where(function ($query) {
+                        $query->where('account_no', '<>', 'n/a');
+                    })
+                    ->ignore($this->route('account_number'))
             ],
             "location_id" => [
                 'required',
@@ -62,6 +66,16 @@ class AccountNumberRequest extends FormRequest
             "location_id.required"=>'Location ID must be in number format',
             "category_id.required"=>'Category ID must be in number format',
             "supplier_id.required"=>'Supplier ID must be in number format'
+        ];
+    }
+
+    public function attributes()
+    {
+        return [
+            "account_no"=>"Account Number",
+            "location_id"=>"Location",
+            "category_id"=>"Category",
+            "supplier_id"=>"Supplier"
         ];
     }
 }

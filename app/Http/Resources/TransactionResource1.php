@@ -29,6 +29,21 @@ class TransactionResource1 extends JsonResource
      */
     public function toArray($request)
     {
+        $rental = [
+            'stall a rental',
+            'stall b rental',
+            'stall c rental',
+            'stall d rental',
+            'cusa rental',
+            'dorm rental',
+            'additional rental',
+            'lounge rental',
+            'corporate special program - education',
+            'official store rental',
+            'unofficial store rental',
+            'rental'
+        ];
+
         $autoDebit_group = [];
         $document = null;
         $prm_group = [];
@@ -119,7 +134,7 @@ class TransactionResource1 extends JsonResource
                     "payment_type" => $this->payment_type,
 //          "amount" => $this->document_amount,
                     'amount' => ($this->document_id == 3)
-                        ? ($this->category == 'rental' ? $this->gross_amount : floatval((number_format(($this->principal + $this->interest), 2, '.', ''))))
+                        ? ($this->category == in_array($this->category, $rental) ? $this->gross_amount : floatval((number_format(($this->principal + $this->interest), 2, '.', ''))))
                         : $this->document_amount,
                     "net_amount" => $this->net_amount,
                     "release_date" => $this->release_date,

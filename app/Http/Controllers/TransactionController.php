@@ -11,6 +11,7 @@ use App\Models\Cheque;
 use App\Models\Clear;
 use App\Models\ClearingAccountTitle;
 use App\Models\Permission;
+use App\Models\Release;
 use App\Models\Supplier;
 use App\Models\Treasury;
 use App\Models\VoucherAccountTitle;
@@ -45,13 +46,15 @@ class TransactionController extends Controller
         return $this->resultResponse("not-found", "Transaction", []);
     }
 
-    function getRequestData($request, $key, $default = []) {
+    function getRequestData($request, $key, $default = [])
+    {
         return isset($request[$key]) && $request[$key]
             ? array_map("intval", json_decode($request[$key]))
             : $default;
     }
 
-    function getTransactionDate($request, $key, $default) {
+    function getTransactionDate($request, $key, $default)
+    {
         return isset($request[$key]) && $request[$key]
             ? Carbon::createFromFormat("Y-m-d", $request[$key])->format("Y-m-d H:i:s")
             : $default;
@@ -66,38 +69,6 @@ class TransactionController extends Controller
         $role = Auth::user()->role;
         $status = isset($request["state"]) && $request["state"] ? $request["state"] : "request";
         $rows = isset($request["rows"]) && $request["rows"] ? (int)$request["rows"] : 10;
-//        $suppliers =
-//            isset($request["suppliers"]) && $request["suppliers"]
-//                ? array_map("intval", json_decode($request["suppliers"]))
-//                : [];
-//        $document_ids =
-//            isset($request["document_ids"]) && $request["document_ids"]
-//                ? array_map("intval", json_decode($request["document_ids"]))
-//                : [];
-//        $transaction_from =
-//            isset($request["transaction_from"]) && $request["transaction_from"]
-//                ? Carbon::createFromFormat("Y-m-d", $request["transaction_from"])
-//                ->startOfDay()
-//                ->format("Y-m-d H:i:s")
-//                : $dateToday->startOfDay()->format("Y-m-d H:i:s");
-//        $transaction_to =
-//            isset($request["transaction_to"]) && $request["transaction_to"]
-//                ? Carbon::createFromFormat("Y-m-d", $request["transaction_to"])
-//                ->endOfDay()
-//                ->format("Y-m-d H:i:s")
-//                : $dateToday->endOfDay()->format("Y-m-d H:i:s");
-//        $cheque_from =
-//            isset($request["cheque_from"]) && $request["cheque_from"]
-//                ? Carbon::createFromFormat("Y-m-d", $request["cheque_from"])
-//                ->startOfDay()
-//                ->format("Y-m-d H:i:s")
-//                : $dateToday->startOfDay()->format("Y-m-d H:i:s");
-//        $cheque_to =
-//            isset($request["cheque_to"]) && $request["cheque_to"]
-//                ? Carbon::createFromFormat("Y-m-d", $request["cheque_to"])
-//                ->endOfDay()
-//                ->format("Y-m-d H:i:s")
-//                : $dateToday->endOfDay()->format("Y-m-d H:i:s");
         $suppliers = $this->getRequestData($request, "suppliers");
         $document_ids = $this->getRequestData($request, "document_ids");
         $transaction_from = $this->getTransactionDate($request, "transaction_from", $dateToday->startOfMonth()->format("Y-m-d H:i:s"));
@@ -126,25 +97,48 @@ class TransactionController extends Controller
         $is_transmit_transfered = $status == "transmit-transfer";
         $is_file_transfered = $status == "file-transfer";
 
-//        $transactions = Transaction::where(function ($query) use ($suppliers, $document_ids) {
-//                $query->whereIn('supplier_id', $suppliers)
-//                    ->orWhereIn('document_id', $document_ids);
-//            })
-//            ->paginate($rows);
-//
-//        TransactionIndex::collection($transactions);
-//
-//        if (count($transactions)) {
-//            return $this->resultResponse("fetch", "Transaction", $transactions);
-//        }
-//        return $this->resultResponse("not-found", "Transaction", []);
-
-        $transactions = Transaction::select([
+        $dataToFetch = [
             "id",
+            "users_id",
+            "request_id",
+            "supplier_id",
+            "document_id",
+            "tag_no",
+            "transaction_id",
+            "document_type",
+            "payment_type",
+            "remarks",
+            "date_requested",
             "company_id",
-            // ,'tag_no'
-        ])
-            ->with([
+            "company",
+            "department",
+            "location",
+            "document_no",
+            "document_amount",
+            "referrence_no",
+            "referrence_amount",
+            "net_amount",
+            "cheque_date",
+            "receipt_type",
+            "is_not_editable",
+            "approver_id",
+            "approver_name",
+            "status",
+            "state",
+            "principal",
+            "interest",
+            "gross_amount",
+            "category",
+            "department_id",
+            "location_id",
+            "input_tax",
+            "voucher_no",
+            "voucher_month",
+            "distributed_id",
+            "distributed_name"
+        ];
+
+        $transactions = Transaction::with([
                 "users:id,first_name,middle_name,last_name,department,position",
                 //          "supplier:id,name,supplier_type_id",
                 "supplier.supplier_type:id,type as name,transaction_days",
@@ -160,7 +154,7 @@ class TransactionController extends Controller
             ->when(
                 isset($request["cheque_from"]) || isset($request["cheque_to"]),
                 function ($query) use ($cheque_from, $cheque_to) {
-                    $query->whereHas("cheques.cheques",  function ($query) use ($cheque_from, $cheque_to) {
+                    $query->whereHas("cheques.cheques", function ($query) use ($cheque_from, $cheque_to) {
                         $query->where("cheque_date", ">=", $cheque_from)->where("cheque_date", "<=", $cheque_to);
                     });
                 },
@@ -245,45 +239,7 @@ class TransactionController extends Controller
                             );
                         }
                     )
-                    ->whereIn("department_details", $department)
-                    ->select([
-                        "id",
-                        "users_id",
-                        "request_id",
-                        "supplier_id",
-                        "document_id",
-                        "tag_no",
-
-                        "transaction_id",
-                        "document_type",
-                        "payment_type",
-                        "remarks",
-                        "date_requested",
-
-                        "company_id",
-                        "company",
-                        "department",
-                        "location",
-
-                        "document_no",
-                        "document_amount",
-                        "referrence_no",
-                        "referrence_amount",
-                        "net_amount",
-                        "cheque_date",
-                        "receipt_type",
-                        "is_not_editable",
-
-                        "status",
-                        "state",
-                        "principal",
-                        "interest",
-                        "gross_amount",
-                        "category",
-                        "department_id",
-                        "location_id",
-                        "input_tax"
-                    ]);
+                    ->whereIn("department_details", $department);
             })
             ->when(in_array($role, $tag_window), function ($query) use ($status) {
                 $query
@@ -356,45 +312,7 @@ class TransactionController extends Controller
                                 }
                             );
                         }
-                    )
-                    ->select([
-                        "id",
-                        "users_id",
-                        "request_id",
-                        "supplier_id",
-                        "document_id",
-                        "tag_no",
-
-                        "transaction_id",
-                        "document_type",
-                        "payment_type",
-                        "remarks",
-                        "date_requested",
-
-                        "company_id",
-                        "company",
-                        "department",
-                        "location",
-
-                        "document_no",
-                        "document_amount",
-                        "referrence_no",
-                        "referrence_amount",
-                        "net_amount",
-                        "cheque_date",
-                        "receipt_type",
-                        "is_not_editable",
-
-                        "status",
-                        "state",
-                        "principal",
-                        "interest",
-                        "gross_amount",
-                        "category",
-                        "department_id",
-                        "location_id",
-                        "input_tax"
-                    ]);
+                    );
             })
             ->when(in_array($role, $voucher_window), function ($query) use (
                 $users_id,
@@ -506,48 +424,6 @@ class TransactionController extends Controller
                             );
                         }
                     )
-                    ->select([
-                        "id",
-                        "users_id",
-                        "request_id",
-                        "supplier_id",
-                        "document_id",
-                        "tag_no",
-
-                        "transaction_id",
-                        "document_type",
-                        "payment_type",
-                        "remarks",
-                        "date_requested",
-
-                        "company_id",
-                        "company",
-                        "department",
-                        "location",
-
-                        "document_no",
-                        "document_amount",
-                        "referrence_no",
-                        "referrence_amount",
-                        "net_amount",
-                        "cheque_date",
-                        "receipt_type",
-                        "is_not_editable",
-
-                        "status",
-                        "state",
-
-                        "distributed_id",
-                        "distributed_name",
-                        //              "is_cleared",
-                        "principal",
-                        "interest",
-                        "gross_amount",
-                        "category",
-                        "department_id",
-                        "location_id",
-                        "input_tax"
-                    ])
                     ->when(
                         in_array(strtolower($status), ["pending-request", "reverse-receive-approver", "reverse-approve"]),
                         function ($query) use ($users_id) {
@@ -613,47 +489,6 @@ class TransactionController extends Controller
                             );
                         }
                     )
-                    ->select([
-                        "id",
-                        "users_id",
-                        "request_id",
-                        "supplier_id",
-                        "document_id",
-                        "tag_no",
-
-                        "transaction_id",
-                        "document_type",
-                        "payment_type",
-                        "remarks",
-                        "date_requested",
-
-                        "company_id",
-                        "company",
-                        "department",
-                        "location",
-
-                        "document_no",
-                        "document_amount",
-                        "referrence_no",
-                        "referrence_amount",
-                        "net_amount",
-                        "cheque_date",
-                        "receipt_type",
-                        "is_not_editable",
-
-                        "approver_id",
-                        "approver_name",
-
-                        "status",
-                        "state",
-                        "principal",
-                        "interest",
-                        "gross_amount",
-                        "category",
-                        "department_id",
-                        "location_id",
-                        "input_tax"
-                    ])
                     ->where("approver_id", $users_id);
             })
             ->when(in_array($role, $cheque_window), function ($query) use ($status, $is_auto_debit, $search) {
@@ -827,50 +662,7 @@ class TransactionController extends Controller
                                 }
                             );
                         }
-                    )
-                    ->select([
-                        "id",
-                        "users_id",
-                        "request_id",
-                        "supplier_id",
-                        "document_id",
-                        "tag_no",
-
-                        "transaction_id",
-                        "document_type",
-                        "payment_type",
-                        "remarks",
-                        "date_requested",
-
-                        "company_id",
-                        "company",
-                        "department_id",
-                        "department",
-                        "location_id",
-                        "location",
-
-                        "document_no",
-                        "document_amount",
-                        "referrence_no",
-                        "referrence_amount",
-                        "net_amount",
-                        "cheque_date",
-                        "receipt_type",
-                        "is_not_editable",
-
-                        "status",
-                        "state",
-                        "voucher_no",
-                        "voucher_month",
-                        //              "is_cleared",
-                        "principal",
-                        "interest",
-                        "gross_amount",
-                        "category",
-                        "department_id",
-                        "location_id",
-                        "input_tax"
-                    ]);
+                    );
             })
             ->when(in_array($role, $audit_window), function ($query) use ($status) {
                 $query
@@ -923,48 +715,7 @@ class TransactionController extends Controller
                                 }
                             );
                         }
-                    )
-                    ->select([
-                        "id",
-                        "users_id",
-                        "request_id",
-                        "supplier_id",
-                        "document_id",
-                        "tag_no",
-
-                        "transaction_id",
-                        "document_type",
-                        "payment_type",
-                        "remarks",
-                        "date_requested",
-
-                        "company_id",
-                        "company",
-                        "department",
-                        "location",
-
-                        "document_no",
-                        "document_amount",
-                        "referrence_no",
-                        "referrence_amount",
-                        "net_amount",
-                        "cheque_date",
-                        "receipt_type",
-                        "is_not_editable",
-
-                        "approver_id",
-                        "approver_name",
-
-                        "status",
-                        "state",
-                        "principal",
-                        "interest",
-                        "gross_amount",
-                        "category",
-                        "department_id",
-                        "location_id",
-                        "input_tax"
-                    ]);
+                    );
             })
             ->when(in_array($role, $executive_assistant), function ($query) use ($status) {
                 $query
@@ -984,48 +735,7 @@ class TransactionController extends Controller
                                 }
                             );
                         }
-                    )
-                    ->select([
-                        "id",
-                        "users_id",
-                        "request_id",
-                        "supplier_id",
-                        "document_id",
-                        "tag_no",
-
-                        "transaction_id",
-                        "document_type",
-                        "payment_type",
-                        "remarks",
-                        "date_requested",
-
-                        "company_id",
-                        "company",
-                        "department",
-                        "location",
-
-                        "document_no",
-                        "document_amount",
-                        "referrence_no",
-                        "referrence_amount",
-                        "net_amount",
-                        "cheque_date",
-                        "receipt_type",
-                        "is_not_editable",
-
-                        "approver_id",
-                        "approver_name",
-
-                        "status",
-                        "state",
-                        "principal",
-                        "interest",
-                        "gross_amount",
-                        "category",
-                        "department_id",
-                        "location_id",
-                        "input_tax"
-                    ]);
+                    );
             })
             ->when(in_array($role, $gas_window), function ($query) use ($status) {
                 $query
@@ -1053,49 +763,9 @@ class TransactionController extends Controller
                                 }
                             );
                         }
-                    )
-                    ->select([
-                        "id",
-                        "users_id",
-                        "request_id",
-                        "supplier_id",
-                        "document_id",
-                        "tag_no",
-
-                        "transaction_id",
-                        "document_type",
-                        "payment_type",
-                        "remarks",
-                        "date_requested",
-
-                        "company_id",
-                        "company",
-                        "department",
-                        "location",
-
-                        "document_no",
-                        "document_amount",
-                        "referrence_no",
-                        "referrence_amount",
-                        "net_amount",
-                        "cheque_date",
-                        "receipt_type",
-                        "is_not_editable",
-
-                        "approver_id",
-                        "approver_name",
-
-                        "status",
-                        "state",
-                        "principal",
-                        "interest",
-                        "gross_amount",
-                        "category",
-                        "department_id",
-                        "location_id",
-                        "input_tax"
-                    ]);
+                    );
             })
+            ->select($dataToFetch)
             ->latest('updated_at')
             ->paginate($rows);
 
@@ -2728,7 +2398,8 @@ class TransactionController extends Controller
         return $this->resultResponse("success-no-content", "", []);
     }
 
-    public function getPODetailsv1(PODetailsRequest $request) {
+    public function getPODetailsv1(PODetailsRequest $request)
+    {
         $po_details = DB::connection('mysqlSecondConnection')->table('p_o_batches')
             ->rightJoin('transactions', 'p_o_batches.request_id', '=', 'transactions.request_id')
             ->where('transactions.company_id', $request->company_id)
@@ -3117,7 +2788,7 @@ class TransactionController extends Controller
                 return $query->whereIn("status", ["cheque-receive", "cheque-unhold", "cheque-unreturn"]);
             })
             ->when($status == "return-cheque", function ($query) {
-                return $query->where("status", "audit-return");
+                return $query->whereIn("status", ["audit-return", "release-return"]);
             })
             ->when($status == "hold-cheque", function ($query) {
                 return $query->where("status", "audit-hold");
@@ -3147,9 +2818,9 @@ class TransactionController extends Controller
             ->when($status == "issue-receive", function ($query) {
                 return $query->whereIn("status", ["issue-receive", "issue-unhold", "issue-unreturn"]);
             })
-            ->when($status == "return-issue", function ($query) {
-                return $query->where("status", "release-return");
-            })
+//            ->when($status == "return-issue", function ($query) {
+//                return $query->where("status", "release-return");
+//            })
             ->when($status == "hold-issue", function ($query) {
                 return $query->where("status", "release-hold");
             })
@@ -3627,8 +3298,8 @@ class TransactionController extends Controller
                 $query
                     ->whereNull("issue_id")
                     ->whereHas("transaction", function ($query) {
-                    return $query->where("status", "release-return");
-                });
+                        return $query->where("status", "release-return");
+                    });
             })
 
             //clearing of cheque
@@ -3773,6 +3444,7 @@ class TransactionController extends Controller
                     "id" => $item->id,
                     "tag_no" => $item->tag_no,
                     "transaction_no" => $item->transaction_id,
+                    "input_tax" => $item->input_tax,
                     "receipt_type" => $item->receipt_type,
                     "payment_type" => $item->payment_type,
                     "document" => [
@@ -4048,6 +3720,7 @@ class TransactionController extends Controller
                 ->update([
                     "status" => $status[0]["status"],
                     "state" => $status[0]["state"],
+                    "is_for_releasing" => false,
                 ]);
 
             return $this->resultResponse("update", "Transaction", []);
@@ -4060,18 +3733,18 @@ class TransactionController extends Controller
 //        $user_id = $request->input('user_id', null);
 
         $statusMap = [
-            1 => ["tag-return", "pending"], //Creation of Request
+            1 => ["tag-return"], //Creation of Request
             2 => [], //Creation of Confidential Request
             3 => ["transmit-transmit"], //Auditing of Voucher
             4 => [], //Received Receipt Report
 //            5 => [], //Auditing of Cheque
 //            6 => [], //External Releasing of Cheque
-            7 => ["transmit-transmit", "audit-return", "inspect-inspect"], //Creation of Cheque
+            7 => ["transmit-transmit", "audit-return", "inspect-inspect", "release-return"], //Creation of Cheque
 //            8 => [], //Clearing of Cheque
             9 => [], //Creation of Debit Memo
             10 => [], //Reversal Request
             11 => ["discharge-discharge", "release-release"], //Filing of Voucher
-            12 => ["gas-gas", "tag-tag", "approve-return", "cheque-return"], //Creation of Voucher
+            12 => ["gas-gas", "tag-tag", "approve-return", "cheque-return", "inspect-return"], //Creation of Voucher
             13 => [], //Transmittal of Confidential Document
             14 => [], //Filing of Confidential Voucher
             15 => [], //Tagging and Vouchering
@@ -4079,7 +3752,7 @@ class TransactionController extends Controller
             17 => ["voucher-voucher"], //Approval of Voucher
             18 => [], //Approval of Confidential Voucher
             19 => ["approve-approve"], //Transmittal of Document
-            20 => ["pending", "voucher-return"], //Tagging of Document
+            20 => ["pending", "voucher-return", "gas-return"], //Tagging of Document
             21 => [], //Creation of Counter Receipt
             22 => [], //Monitoring of Counter Receipt
 //            23 => [],  //Transmittal of Cheque
@@ -4111,6 +3784,7 @@ class TransactionController extends Controller
                         $receipt_type = 'Official';
                         break;
 
+                    case 'Creation of Request':
                     case 'Creation of Voucher':
                     case 'Transmittal of Document':
                     case 'Approval of Voucher':
@@ -4124,57 +3798,68 @@ class TransactionController extends Controller
                 }
 
                 $counts = Transaction::select('status', DB::raw('count(*) as count'))
-//                    ->when($document_id, function ($query) use ($document_id, $status) {
-//                        if ($status == 'transmit-transmit' && $document_id != 8) {
-//                            $query->where('status', $status);
-//                        }
-//                        return $query->where('document_id', $document_id);
-//                    })
                     ->when($user_id, function ($query) use ($user_id) {
                         $query->where(function ($query) use ($user_id) {
                             $query->where('distributed_id', $user_id)
-                                ->orWhere('approver_id', $user_id);
+                                ->orWhere('approver_id', $user_id)
+                                ->orWhere('users_id', $user_id);
                         });
                     })
                     ->when($receipt_type, function ($query) use ($receipt_type, $status) {
                         return $query->where('receipt_type', $receipt_type);
                     })
-                    ->when($permissionName == 'Creation of Voucher', function ($query) use ($status) {
-                        $query->when($status == 'tag-tag', function ($query) {
-                            $query->where(function ($query) {
-                                $query->where('status', 'tag-tag')
-                                    ->where('receipt_type', '!=', 'Official');
-                            })->orWhere(function ($query) {
-                                $query->where('status', 'gas-gas');
-                            });
-                        })
-                            ->when($status == 'approve-return' || $status == 'cheque-return', function ($query) {
-                                $query->whereIn('status', ['approve-return', 'cheque-return']);
-                            });
-                    })
-                    ->when($permissionName == 'Filing of Voucher', function ($query) {
-                        $query->where(function ($query) {
-                            $query->where('status', 'release-release')
-                                ->where('receipt_type', '!=', 'Official');
-                        })->orWhere(function ($query) {
-                            $query->where('status', 'discharge-discharge');
-                        });
-                    })
-                    ->when($permissionName == 'Creation of Cheque', function ($query) use ($status) {
-                        $query->when($status == 'transmit-transmit', function ($query) {
-                            $query->where(function ($query) {
-                                $query->where('status', 'transmit-transmit')
-                                    ->where('document_id', '!=', 8);
-                            })->orWhere(function ($query) {
-                                $query->where('status', 'inspect-inspect');
-                            });
-                        })
-                            ->when($status == 'audit-return', function ($query) {
-                                $query->whereIn('status', ['audit-return']);
-                            });
-
-                    })
                     ->whereIn('status', $status)
+//                    ->when($document_id, function ($query) use ($document_id, $status) {
+//                        return $query->where('document_id', $document_id);
+//                    })
+//                    ->when($permissionName == in_array($permissionName, [
+//                            'Tagging of Document',
+//                            'Creation of Voucher',
+//                        ]), function ($query) use ($status) {
+//                        $query->where('status', $status);
+//                    }, function ($query) use ($permissionName, $status, $document_id) {
+//                        $query->whereIn('status', $status);
+//                    })
+//                    ->where(function ($query) use ($permissionName) {
+//                        if ($permissionName == 'Auditing of Voucher') {
+//                            $query->where(function ($query) {
+//                                $query->where('status', '<>', 'transmit-transmit')
+//                                    ->orWhere(function ($query) {
+//                                        $query->where('status', '=', 'transmit-transmit')
+//                                            ->where('document_id', '=', 8);
+//                                    });
+//                            });
+//                        } else {
+//                            $query->where(function ($query) {
+//                                $query->where('status', '<>', 'transmit-transmit')
+//                                    ->orWhere(function ($query) {
+//                                        $query->where('status', '=', 'transmit-transmit')
+//                                            ->where('document_id', '<>', 8);
+//                                    });
+//                            });
+//                        }
+//                    })
+                    ->where(function ($query) use ($permissionName) {
+                        $query->where('status', '<>', 'tag-tag')
+                            ->orWhere(function ($query) use ($permissionName) {
+                                $query->where('status', '=', 'tag-tag')
+                                    ->where('receipt_type', $permissionName == 'Creation of Voucher' ? '=' : '<>', 'Unofficial');
+                            });
+                    })
+                    ->where(function ($query) use ($permissionName) {
+                        $query->where('status', '<>', 'transmit-transmit')
+                            ->orWhere(function ($query) use ($permissionName) {
+                                $query->where('status', '=', 'transmit-transmit')
+                                    ->where('document_id', $permissionName == 'Auditing of Voucher' ? '=' : '<>', 8);
+                            });
+                    })
+                    ->where(function ($query) use ($permissionName) {
+                        $query->where('status', '<>', 'release-release')
+                            ->orWhere(function ($query) use ($permissionName) {
+                                $query->where('status', '=', 'release-release')
+                                    ->where('receipt_type', $permissionName == 'Filing of Voucher' ? '=' : '<>', 'Unofficial');
+                            });
+                    })
                     ->groupBy('status')
                     ->get()
                     ->pluck('count', 'status')
@@ -4211,15 +3896,18 @@ class TransactionController extends Controller
                         case 'inspect-inspect':
                         case 'release-release':
                         case 'discharge-discharge':
-                            $result['pending'] = $count += $result['pending'];
+                            $result['pending'] = $count + $result['pending'];
                             break;
 
                         case 'tag-return':
+                        case 'gas-return':
                         case 'voucher-return':
                         case 'cheque-return':
                         case 'approve-return':
                         case 'audit-return':
-                            $result['return'] = $count;
+                        case 'release-return':
+                        case 'inspect-return':
+                            $result['return'] += $count;
                             break;
                     }
                 }
@@ -4370,7 +4058,7 @@ class TransactionController extends Controller
             21 => [], //Creation of Counter Receipt
             22 => [], //Monitoring of Counter Receipt
             23 => ['audit-audit'], //Transmittal of Cheque
-            24 => ['executive-executive', 'release-return'], //Internal Releasing of Cheque
+            24 => ['executive-executive'], //Internal Releasing of Cheque
         ];
 
         $response = [];
@@ -4500,7 +4188,8 @@ class TransactionController extends Controller
         return response()->json($response);
     }
 
-    public function chequeHistory($id) {
+    public function chequeHistory($id)
+    {
         $transactionIds = Treasury::where('transaction_id', $id)
             ->latest('updated_at')
             ->pluck('transaction_id');

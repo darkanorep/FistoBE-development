@@ -437,21 +437,21 @@ class LocationController extends Controller
             $department = $loc['department'];
             $status = $loc['status'];
 
-            if(in_array($code, $code_list)) {
-                $errorBag[] = (object) [
-                    "error_type" => "existing",
-                    "line" => $index,
-                    "description" => $code . " is already registered.",
-                ];
-            }
-
-            if(in_array($location, $location_list)) {
-                $errorBag[] = (object) [
-                    "error_type" => "existing",
-                    "line" => $index,
-                    "description" => $location . " is already registered.",
-                ];
-            }
+//            if(in_array($code, $code_list)) {
+//                $errorBag[] = (object) [
+//                    "error_type" => "existing",
+//                    "line" => $index,
+//                    "description" => $code . " is already registered.",
+//                ];
+//            }
+//
+//            if(in_array($location, $location_list)) {
+//                $errorBag[] = (object) [
+//                    "error_type" => "existing",
+//                    "line" => $index,
+//                    "description" => $location . " is already registered.",
+//                ];
+//            }
 
             if(!in_array($department, $department_list)) {
                 $errorBag[] = (object) [
@@ -482,38 +482,38 @@ class LocationController extends Controller
             $index++;
         }
 
-        if (count($errorBag) || !count($errorBag)) {
-
-            $input_code = array_column($locations, 'code');
-            $duplicate_code = array_keys(array_filter(array_count_values($input_code), function ($value) {
-                return $value > 1;
-            }));
-
-            if (count($duplicate_code) > 0) {
-                $errorBag[] = (object) [
-                    'error_type' => 'duplicate',
-                    'line' => implode(', ', array_map(function ($value) {
-                        return $value + 2;
-                    }, (array_keys($input_code, $duplicate_code[0])))),
-                    'description' => 'Code ' . $duplicate_code[0] . ' has a duplicate in your excel file.'
-                ];
-            }
-
-            $input_location = array_column($locations, 'location');
-            $duplicate_location = array_keys(array_filter(array_count_values($input_location), function ($value) {
-                return $value > 1;
-            }));
-
-            if (count($duplicate_location) > 0) {
-                $errorBag[] = (object) [
-                    'error_type' => 'duplicate',
-                    'line' => implode(', ', array_map(function ($value) {
-                        return $value + 2;
-                    }, array_keys($input_location, $duplicate_location[0]))),
-                    'description' => 'Location ' . $duplicate_location[0] . ' has a duplicate in your excel file.'
-                ];
-            }
-        }
+//        if (count($errorBag) || !count($errorBag)) {
+//
+//            $input_code = array_column($locations, 'code');
+//            $duplicate_code = array_keys(array_filter(array_count_values($input_code), function ($value) {
+//                return $value > 1;
+//            }));
+//
+//            if (count($duplicate_code) > 0) {
+//                $errorBag[] = (object) [
+//                    'error_type' => 'duplicate',
+//                    'line' => implode(', ', array_map(function ($value) {
+//                        return $value + 2;
+//                    }, (array_keys($input_code, $duplicate_code[0])))),
+//                    'description' => 'Code ' . $duplicate_code[0] . ' has a duplicate in your excel file.'
+//                ];
+//            }
+//
+//            $input_location = array_column($locations, 'location');
+//            $duplicate_location = array_keys(array_filter(array_count_values($input_location), function ($value) {
+//                return $value > 1;
+//            }));
+//
+//            if (count($duplicate_location) > 0) {
+//                $errorBag[] = (object) [
+//                    'error_type' => 'duplicate',
+//                    'line' => implode(', ', array_map(function ($value) {
+//                        return $value + 2;
+//                    }, array_keys($input_location, $duplicate_location[0]))),
+//                    'description' => 'Location ' . $duplicate_location[0] . ' has a duplicate in your excel file.'
+//                ];
+//            }
+//        }
 
         if (!count($errorBag)) {
             $locationChunks = collect($locations)->chunk(300);
@@ -530,14 +530,20 @@ class LocationController extends Controller
                 })->toArray();
 
                 foreach ($transformChunk as $chunk) {
-                    $new_location = Location::create([
+//                    $new_location = Location::create([
+//                        'code' => $chunk['code'],
+//                        'location' => $chunk['location'],
+//                        'created_at' => $chunk['created_at'],
+//                        'updated_at' => $chunk['updated_at'],
+//                        'deleted_at' => $chunk['deleted_at'],
+//                    ]);
+//                    $new_location->departments()->attach($chunk['department']);
+
+                    $new_location = Location::updateOrCreate([
                         'code' => $chunk['code'],
                         'location' => $chunk['location'],
-                        'created_at' => $chunk['created_at'],
-                        'updated_at' => $chunk['updated_at'],
-                        'deleted_at' => $chunk['deleted_at'],
-                    ]);
-                    $new_location->departments()->attach($chunk['department']);
+                    ], $chunk);
+                    $new_location->departments()->syncWithoutDetaching($chunk['department']);
                 }
             });
             $locationCollection = collect($locations);

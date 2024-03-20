@@ -1223,6 +1223,7 @@ class TransactionFlow
         $status = "release-receive";
       } elseif ($subprocess == "return") {
         $status = "release-return";
+          (new TransactionController())->chequeRevert1($request["bank_id"], $request["cheque_no"], $process, $request);
       } elseif ($subprocess == "release") {
         $status = "release-release";
       } elseif (in_array($subprocess, ["unreturn"])) {
