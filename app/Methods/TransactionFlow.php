@@ -463,43 +463,43 @@ class TransactionFlow
           $debit_amount = array_sum(array_column($debit_entries_amount, "amount"));
           $credit_amount = array_sum(array_column($credit_entries_amount, "amount"));
 
-          switch ($transaction->document_id) {
-            case 3: //PRM Multiple
-              if ($debit_amount != $credit_amount) {
-                return GenericMethod::resultResponse("not-equal", "Total debit and credit", []);
-              }
-//              if ($transaction->net_amount != $debit_amount) {
-//                return GenericMethod::resultResponse("not-equal", "Net amount and account title", []);
-//              }
-
-              switch ($transaction->category) {
-                  case 'rental':
-                        if ($transaction->gross_amount != $debit_amount) {
-                            return GenericMethod::resultResponse("not-equal", "Document and account title", []);
-                        }
-                      break;
-
-                  default:
-//                      if (($transaction->principal + $transaction->interest) != $debit_amount) {
-//                          return GenericMethod::resultResponse("not-equal", "Document and account title", []);
-//                      }
-
-                      if (floatval((number_format(($transaction->principal + $transaction->interest), 2, '.', ''))) != $debit_amount) {
-                          return GenericMethod::resultResponse("not-equal", "Document and account title", []);
-                      }
-              }
-
-              break;
-
-//            default:
+//          switch ($transaction->document_id) {
+//            case 3: //PRM Multiple
 //              if ($debit_amount != $credit_amount) {
 //                return GenericMethod::resultResponse("not-equal", "Total debit and credit", []);
 //              }
+////              if ($transaction->net_amount != $debit_amount) {
+////                return GenericMethod::resultResponse("not-equal", "Net amount and account title", []);
+////              }
 //
-//              if ($document_amount != $debit_amount) {
-//                return GenericMethod::resultResponse("not-equal", "Document and account title", []);
+//              switch ($transaction->category) {
+//                  case 'rental':
+//                        if ($transaction->gross_amount != $debit_amount) {
+//                            return GenericMethod::resultResponse("not-equal", "Document and account title", []);
+//                        }
+//                      break;
+//
+//                  default:
+////                      if (($transaction->principal + $transaction->interest) != $debit_amount) {
+////                          return GenericMethod::resultResponse("not-equal", "Document and account title", []);
+////                      }
+//
+//                      if (floatval((number_format(($transaction->principal + $transaction->interest), 2, '.', ''))) != $debit_amount) {
+//                          return GenericMethod::resultResponse("not-equal", "Document and account title", []);
+//                      }
 //              }
-          }
+//
+//              break;
+//
+////            default:
+////              if ($debit_amount != $credit_amount) {
+////                return GenericMethod::resultResponse("not-equal", "Total debit and credit", []);
+////              }
+////
+////              if ($document_amount != $debit_amount) {
+////                return GenericMethod::resultResponse("not-equal", "Document and account title", []);
+////              }
+//          }
 
             $department_id = null;
             foreach ($account_titles as $account_title) {
