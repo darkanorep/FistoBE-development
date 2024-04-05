@@ -44,7 +44,7 @@ class Supplier extends Model
 
     public function supplier_type()
     {
-        return $this->hasOne(SupplierType::class, 'id', 'supplier_type_id')->select(['id', 'type']);
+        return $this->hasOne(SupplierType::class, 'id', 'supplier_type_id')->select(['id', 'type', 'transaction_days']);
     }
 
 }

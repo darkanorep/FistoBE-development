@@ -35,6 +35,7 @@ use App\Models\User;
 use App\Models\UserDocumentCategory;
 use App\Models\VoucherAccountTitle;
 use Carbon\Carbon;
+use DateTime;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Collection;
@@ -2088,7 +2089,7 @@ class GenericMethod
         // GenericMethod::insert_debit_attachment($request_id, $fields["autoDebit_group"]);
 
           if (isset($fields["autoDebit_group"])) {
-              GenericMethod::insert_debit_attachment($request_id, $fields["autoDebit_group"]);
+              GenericMethod::insert_debit_attachment($new_transaction->id, $fields["autoDebit_group"]);
           }
       }
     } elseif ($fields["document"]["id"] == 1 && $fields["document"]["payment_type"] == "Partial") {
@@ -5046,19 +5047,20 @@ class GenericMethod
   }
   ##########################################################################################################
 
-  public function generateVoucherNo($id, $code)
+  public function generateVoucherNo($id, $code, $voucher_month)
   {
-    $existingVoucher = Transaction::whereNotNull("voucher_no")
-      ->where("id", $id)
-      ->first();
-
-    if ($existingVoucher) {
-      return $existingVoucher->voucher_no;
-    }
+//    $existingVoucher = Transaction::whereNotNull("voucher_no")
+//      ->where("id", $id)
+//      ->first();
+//
+//    if ($existingVoucher) {
+//      return $existingVoucher->voucher_no;
+//    }
 
     $series = 1;
     $code = Department::where('id', $code)->first()->voucherCode->code;
-    $date = Carbon::now("Asia/Manila")->format("ym");
+//    $date = Carbon::now("Asia/Manila")->format("ym");
+    $date = DateTime::createFromFormat('Y-m-d', $voucher_month)->format('ym');
 
     do {
       $formattedSeries = str_pad($series, 3, "0", STR_PAD_LEFT);

@@ -108,12 +108,29 @@ class TransactionIndex extends JsonResource
                 ? ($this->category == in_array($this->category, $rental) ? $this->gross_amount : (($this->principal + $this->interest)))
                 : $this->document_amount,
             "cheque_date" => $this->document_id == 3 ? $this->cheque_date : null,
+            "period_covered" => $this->document_id == 3 ? $this->period_covered : null,
             "referrence_no" => $this->referrence_no,
             "referrence_amount" => $this->referrence_amount,
             "status" => $this->state,
             "state" => $this->status == 'cheque-cheque' ? 'cheque-create' : $this->status,
-            "users" => $this->users,
-            "po_details" => in_array($this->document_id, [1, 4, 5]) ? $this->po_details : [],
+            "users" => [
+                "id" => $this->users->id,
+                "first_name" => $this->users->first_name,
+                "middle_name" => $this->users->middle_name,
+                "last_name" => $this->users->last_name,
+                "department" => $this->users->department,
+                "position" => $this->users->position,
+            ],
+            "po_details" => in_array($this->document_id, [1, 4, 5])
+                ? $this->po_details->map(function ($po) {
+                    return [
+                        "id" => $po->id,
+                        "request_id" => $po->request_id,
+                        "po_no" => $po->po_no,
+                        "po_total_amount" => $po->po_total_amount
+                    ];
+                })
+                : [],
             'receipt_type' => $this->receipt_type,
             'input_tax' => $this->input_tax,
             'is_cleared' => $is_cleared,

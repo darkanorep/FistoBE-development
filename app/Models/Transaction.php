@@ -175,7 +175,13 @@ class Transaction extends Model
 
     public function cheque()
     {
-        return $this->hasMany(Cheque::class, "transaction_id", "transaction_id")->latest();
+//        return $this->hasMany(Cheque::class, "transaction_id", "transaction_id")->latest();
+        return $this->hasMany(Cheque::class, "transaction_id", "id")->latest();
+    }
+
+
+    public function chequeRelatedTransactions() {
+        return $this->hasMany(Cheque::class, "transaction_id", "id")->latest();
     }
 
     public function transaction_voucher()
@@ -224,17 +230,6 @@ class Transaction extends Model
     public function tag()
     {
         return $this->hasMany(Tagging::class)
-//      ->select(
-//        "request_id",
-//        "tag_id",
-//        "transaction_id",
-//        "date_status as date",
-//        "status",
-//        "distributed_id",
-//        "distributed_name",
-//        "reason_id",
-//        "remarks"
-//      )
             ->latest()
             ->limit(1);
     }
@@ -518,6 +513,12 @@ class Transaction extends Model
 
     public function treasuryChequeHistory() {
         return $this->treasuryCheque()->onlyTrashed()->get();
+    }
+
+    public function treasuryChequeRelatedTransactions($bankId, $chequeNo) {
+        return $this->treasuryCheque()->where('bank_id', $bankId)
+            ->where('cheque_no', $chequeNo)
+            ->get();
     }
 
     public function accountTitleClear()
