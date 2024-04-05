@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\UniqueEntryAndTitle;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -107,11 +108,34 @@ class DocumentCoaRequest extends FormRequest
 //                    $query->whereNull('deleted_at');
 //                })
             ],
+//            'account.*.account_title_id' => [
+//                'nullable',
+////                Rule::exists('account_titles', 'id')->where(function ($query) {
+////                    $query->whereNull('deleted_at');
+////                })
+//            ]
             'account.*.account_title_id' => [
                 'nullable',
-//                Rule::exists('account_titles', 'id')->where(function ($query) {
-//                    $query->whereNull('deleted_at');
-//                })
+                function ($attribute, $value, $fail) {
+                    $accounts = $this->input('account');
+                    $index = str_replace('account.', '', str_replace('.account_title_id', '', $attribute));
+
+                    // Skip if not the last element
+                    if ($index != count($accounts) - 1) {
+                        return;
+                    }
+
+                    $account_title_id = $value;
+                    $entry = $accounts[$index]['entry'];
+
+                    $count = collect($accounts)->filter(function ($account) use ($entry, $account_title_id) {
+                        return $account['entry'] == $entry && $account['account_title_id'] == $account_title_id;
+                    })->count();
+
+                    if ($count > 1) {
+                        $fail('Entry and Title combination already exists.');
+                    }
+                }
             ]
         ];
     }

@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Models\Approver;
 use App\Models\Associate;
 use App\Models\Audit;
+use App\Models\Cheque;
 use App\Models\Executive;
 use App\Models\File;
 use App\Models\Gas;
@@ -43,7 +44,6 @@ class TransactionResource1 extends JsonResource
             'unofficial store rental',
             'rental'
         ];
-
         $autoDebit_group = [];
         $document = null;
         $prm_group = [];
@@ -864,6 +864,40 @@ class TransactionResource1 extends JsonResource
                         'is_default' => $item->is_default
                     ];
                 });
+
+                $related = $this->cheque->map(function ($item) {
+                    return [
+                        'bank_name' => $item->bank_name,
+                        'cheque_no' => $item->cheque_no,
+                        'cheque_amount' => $item->cheque_amount,
+                    ];
+                })->unique()->first();
+
+                if (empty($related)) {
+                    $relatedVouchers = null;
+                } else {
+
+                    $relatedVouchers = Cheque::where('cheque_no', $related['cheque_no'])
+                        ->where('cheque_amount', $related['cheque_amount'])
+                        ->where('bank_name', $related['bank_name'])
+                        ->get()
+                        ->pluck('transaction_id');
+
+                    $relatedVouchers = Transaction::whereIn('id', $relatedVouchers)->get()->map(function ($item) use ($rental) {
+                        return [
+                            'id' => $item->id,
+                            'document_amount' => ($item->document_id == 3)
+                                ? ($item->category == in_array($item->category, $rental) ? $item->gross_amount : floatval((number_format(($item->principal + $item->interest), 2, '.', ''))))
+                                : $item->document_amount,
+                            'voucher_no' => $item->voucher_no,
+                            'input_tax' => $item->input_tax ?? 0
+                        ];
+                    });
+
+                    $relatedVouchers = $relatedVouchers->filter(function ($item) {
+                        return $item['id'] != $this->id;
+                    })->values();
+                }
             }
 
             if (isset($cheque_transaction->status)) {
@@ -873,7 +907,8 @@ class TransactionResource1 extends JsonResource
                     'cheques' => $cheques,
                     'accounts' => $accounts,
                     'cheque_history' => $chequeHistory,
-                    'reason' => $this->reason($cheque_transaction, $cheque_transaction->reason_id)
+                    'vouchers' => $relatedVouchers,
+                    'reason' => $this->reason($cheque_transaction, $cheque_transaction->reason_id),
                 ];
             }
         }
