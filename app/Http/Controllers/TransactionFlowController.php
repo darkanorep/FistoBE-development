@@ -57,6 +57,7 @@ class TransactionFlowController extends Controller
         foreach ($transactions as $transaction) {
             switch ($process) {
                 case 'tag':
+                case 'extract':
                     Tagging::create([
                         'transaction_id' => $transaction ,
                         'status' => $process . '-receive',

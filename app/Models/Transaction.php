@@ -230,6 +230,14 @@ class Transaction extends Model
     public function tag()
     {
         return $this->hasMany(Tagging::class)
+            ->whereIn('status', ['tag-receive', 'tag-tag', 'tag-return', 'tag-hold', 'tag-void'])
+            ->latest()
+            ->limit(1);
+    }
+
+    public function extract() {
+        return $this->hasMany(Tagging::class, "transaction_id")
+            ->whereIn("status", ["extract-extract", "extract-receive"])
             ->latest()
             ->limit(1);
     }

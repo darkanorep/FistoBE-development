@@ -49,6 +49,7 @@ class TransactionResource1 extends JsonResource
         $prm_group = [];
         $po_details = [];
         $tag = null;
+        $extract = null;
         $gas = null;
         $voucher = null;
         $inspect = null;
@@ -606,6 +607,17 @@ class TransactionResource1 extends JsonResource
             }
         }
 
+        if ($this->withCount('extract')) {
+            $extract_transaction = $this->extract->first();
+
+            if (isset($extract_transaction->status)) {
+                $extract = [
+                    'status' => $extract_transaction->status,
+                    'dates' => $this->get_transaction_dates(Tagging::class, $this->id, 'extract', ["receive", "extract"]),
+                ];
+            }
+        }
+
         //GAS
         if ($this->gas()->count() > 0) {
 //            $gas = $this->test(Gas::class, $this->receiveGas, $this->gas, $this->reasonGas, $this->statusGas, 'gas', ["receive", "gas"]);
@@ -1029,6 +1041,7 @@ class TransactionResource1 extends JsonResource
             'autoDebit_group' => $autoDebit_group,
             'tag' => $tag,
             'gas' => $gas,
+            'extract' => $extract,
             'voucher' => $voucher,
             'inspect' => $inspect,
             'approve' => $approve,
