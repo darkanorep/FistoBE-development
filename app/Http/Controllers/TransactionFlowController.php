@@ -168,28 +168,44 @@ class TransactionFlowController extends Controller
         $distributed_to = $request->input('distributed_to');
 
         $tagData = [
-            'status' => $process . '-tag',
+//            'status' => $process . '-tag',
+            'status' => $process . '-'. $process,
             'date_status' => date('Y-m-d'),
-            'distributed_id' => data_get($distributed_to, 'id'),
-            'distributed_name' => data_get($distributed_to, 'name'),
+            'distributed_id' => data_get($distributed_to, 'id') ?? null,
+            'distributed_name' => data_get($distributed_to, 'name') ?? null
         ];
 
-        foreach ($transactions as $transaction) {
-            Tagging::create(array_merge(['transaction_id' => $transaction], $tagData));
-        }
+//        foreach ($transactions as $transaction) {
+//            Tagging::create(array_merge(['transaction_id' => $transaction], $tagData));
+//        }
 
         $second = 1;
         foreach ($transactions as $transaction) {
-            Transaction::where('id', $transaction)
-                ->update([
-                    'state' => 'tag',
-                    'status' => $process . '-tag',
-                    'receipt_type' => $receipt_type,
-                    'distributed_id' => data_get($distributed_to, 'id'),
-                    'distributed_name' => data_get($distributed_to, 'name'),
-                    'tag_no' => GenericMethod::generateTagNo($receipt_type, $transaction),
-                    'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
-                ]);
+            Tagging::create(array_merge(['transaction_id' => $transaction], $tagData));
+
+            switch ($process) {
+                case 'tag':
+                    Transaction::where('id', $transaction)
+                        ->update([
+                            'state' => $process,
+                            'status' => $process . '-'. $process,
+                            'receipt_type' => $receipt_type ?? $transaction->receipt_type,
+                            'distributed_id' => data_get($distributed_to, 'id'),
+                            'distributed_name' => data_get($distributed_to, 'name'),
+                            'tag_no' => GenericMethod::generateTagNo($receipt_type, $transaction),
+                            'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
+                        ]);
+                    break;
+
+                case 'extract':
+                    Transaction::where('id', $transaction)
+                        ->update([
+                            'state' => 'transmit',
+                            'status' => $process . '-'. $process,
+                            'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
+                        ]);
+                    break;
+            }
         }
 
         return GenericMethod::result(200, "Transaction has been saved.", []);

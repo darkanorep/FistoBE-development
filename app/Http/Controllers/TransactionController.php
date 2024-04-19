@@ -802,6 +802,58 @@ class TransactionController extends Controller
         $search = $request->input('search');
         $tag_search = str_replace('tag#', '', $search);
         $department = $request->input('department', [auth()->user()->department[0]['name']]);
+        $user_id = null;
+
+        $userRole = auth()->user()->role;
+        if (in_array($userRole, ['AP Associate', 'AP Specialist', 'Approver'])) {
+            $user_id = auth()->user()->id;
+        }
+
+        $declaredStatus = [
+            //Requesting of Documents
+            'pending',
+            'return-request',
+            'requestor-void',
+
+            //Tagging of Documents
+            'pending-tag',
+            'tag-receive',
+            'return-tag',
+            'hold-tag',
+
+            //Transmittal of Official Receipt
+            'pending-gas',
+            'gas-receive',
+
+            //Transmittal of GAS Documents
+            'pending-extract',
+
+            //Creation of Voucher
+            'pending-voucher',
+            'return-voucher',
+            'hold-voucher',
+
+            //Transaction Approval
+            'pending-approve',
+            'approve-receive',
+            'approve-approve',
+            'approve-hold',
+            'approve-return',
+
+            //Transmittal of Voucher
+            'pending-transmit',
+            'transmit-receive',
+            'transmit-transmit',
+
+            //Auditing of Voucher
+            'pending-inspect',
+
+            //Filing of Official Receipt
+            'pending-discharge',
+
+            //Filing of Voucher
+            'pending-file'
+        ];
 
         $transactions = Transaction::
         with([
@@ -809,6 +861,152 @@ class TransactionController extends Controller
             "supplier.supplier_type:id,type as name,transaction_days",
             "po_details:id,request_id,po_no,po_total_amount",
         ])
+            //Requesting of Documents
+            ->when($status == 'pending', function ($query) use ($department) {
+                $query->whereNotIn('status', ['requestor-void', 'tag-return'])
+                    ->whereIn('department_details', $department);
+            })
+            ->when($status == 'return-request', function ($query) use ($department) {
+                $query->where('status', 'tag-return')
+                    ->whereIn('department_details', $department);
+            })
+            ->when($status == 'requestor-void', function ($query) use ($department) {
+                $query->where('status', 'requestor-void')
+                    ->whereIn('department_details', $department);
+            })
+
+            //Tagging of Documents
+            ->when($status == 'pending-tag', function ($query) {
+                $query->where('status', ['pending']);
+            })
+            ->when($status == 'tag-receive', function ($query) {
+                $query->whereIn('status', ['tag-receive', 'tag-unhold', 'tag-unreturn']);
+            })
+            ->when($status == 'return-tag', function ($query) {
+                $query->whereIn('status', ['voucher-return', 'gas-return']);
+            })
+            ->when($status == 'hold-tag', function ($query) {
+                $query->whereIn('status', ['voucher-hold', 'gas-hold']);
+            })
+
+            //Transmittal of Official Receipt
+            ->when($status == 'pending-gas', function ($query) {
+                $query->where('status', 'tag-tag')
+                    ->where('receipt_type', 'official');
+            })
+            ->when($status == 'gas-receive', function ($query) {
+                $query->whereIn('status', ['gas-receive', 'gas-unhold', 'gas-unreturn']);
+            })
+
+            //Transmittal of GAS Documents
+            ->when($status == 'pending-extract', function ($query) {
+                $query->where('status', 'gas-gas');
+            })
+
+            //Creation of Voucher
+            ->when($status == 'pending-voucher', function ($query) use ($user_id) {
+                $query->where('distributed_id', $user_id)
+                    ->where(function ($query) {
+                        $query->whereIn("status", ["tag-tag", "voucher-transfer"])
+                            ->where("receipt_type", "unofficial")
+                            ->orWhere(function ($query) {
+                                $query->where('status', 'extract-extract');
+                            });
+                    });
+            })
+            ->when($status == 'return-voucher', function ($query) use ($user_id) {
+                $query->where('distributed_id', $user_id)
+                    ->whereIn("status", [
+                        "cheque-return",
+                        "approve-return",
+                        "inspect-return",
+                        "issue-return",
+                        "debit-return",
+                    ]);
+            })
+            ->when($status == 'hold-voucher', function ($query) use ($user_id) {
+                $query->where('distributed_id', $user_id)
+                    ->whereIn("status", [
+                        "cheque-hold",
+                        "approve-hold",
+                        "inspect-hold",
+                        "issue-hold",
+                        "debit-hold",
+                    ]);
+            })
+
+            //Transaction Approval
+            ->when($status == 'pending-approve', function ($query) use ($user_id) {
+                $query->where('approver_id', $user_id)
+                    ->where('status', 'voucher-voucher');
+            })
+            ->when($status == 'approve-receive', function ($query) use ($user_id) {
+                $query->where('approver_id', $user_id)
+                    ->whereIn('status', ['approve-receive']);
+            })
+            ->when($status == 'approve-approve', function ($query) use ($user_id) {
+                $query->where('approver_id', $user_id)
+                    ->where('status', 'approve-approve');
+            })
+            ->when($status == 'approve-hold', function ($query) use ($user_id) {
+                $query->where('approver_id', $user_id)
+                    ->where('status', 'approve-hold');
+
+            })
+            ->when($status == 'approve-return', function ($query) use ($user_id) {
+                $query->where('approver_id', $user_id)
+                    ->where('status', 'approve-return');
+            })
+
+            //Transmittal of Voucher
+            ->when($status == 'pending-transmit', function ($query) use ($user_id) {
+                $query->where('distributed_id', $user_id)
+                    ->whereIn('status', ['approve-approve', 'transmit-transfer'])
+                    ->whereNull('is_for_releasing');
+            })
+            ->when($status == 'transmit-receive', function ($query) use ($user_id) {
+                $query->where('distributed_id', $user_id)
+                    ->whereIn('status', ['transmit-receive']);
+            })
+            ->when($status == 'transmit-transmit', function ($query) use ($user_id) {
+                $query->where('distributed_id', $user_id)
+                    ->where('status', 'transmit-transmit');
+            })
+
+            //Auditing of Voucher
+            ->when($status == 'pending-inspect', function ($query) {
+                $query->where('status', 'transmit-transmit')
+                    ->where('is_for_voucher_audit', true);
+            })
+
+            //Filing of Official Receipt (GAS)
+            ->when($status == 'pending-discharge', function ($query) {
+                $query->whereIn("status", ["release-release"])->where("receipt_type", "official");
+            })
+
+            //Filing of Voucher
+            ->when($status == 'pending-file', function ($query) {
+                $query
+                    ->where(function ($query) {
+                        $query->whereIn("status", ["release-release"])->where("receipt_type", "unofficial");
+                    })
+                    ->orWhere(function ($query) {
+                        $query->where("status", "discharge-discharge");
+                    });
+            })
+
+            ->when(!in_array($status, $declaredStatus), function ($query) use ($status, $user_id, $userRole) {
+                $query->where('status', preg_replace('/\s+/', '', $status))
+                    ->when(isset($user_id), function ($query) use ($user_id, $userRole) {
+                        $query->where(function ($query) use ($user_id, $userRole) {
+                            if (in_array($userRole, ['AP Associate', 'AP Specialist'])) {
+                                $query->where('distributed_id', $user_id);
+                            } else if ($userRole == 'Approver') {
+                                $query->where('approver_id', $user_id);
+                            }
+                        });
+                    });
+            })
             ->select([
                 "id",
                 "users_id",
@@ -852,7 +1050,13 @@ class TransactionController extends Controller
             ->latest('updated_at')
             ->paginate($rows);
 
-        return $this->resultResponse("fetch", "Transaction", TransactionIndex::collection($transactions));
+        TransactionIndex::collection($transactions);
+
+        if (count($transactions)) {
+            return $this->resultResponse("fetch", "Transaction", $transactions);
+        }
+        return $this->resultResponse("not-found", "Transaction", []);
+
     }
 
     public function showTransaction($id)
@@ -4241,7 +4445,6 @@ class TransactionController extends Controller
         $rows = $request->rows;
         $search = $request->search;
         $tag_search = str_replace('tag#', '', $search);
-        $unofficial_tag_search = str_replace('tag#', '', $search . '-U');
         $suppliers = $this->getRequestData($request, "suppliers");
         $document_ids = $this->getRequestData($request, "document_ids");
         $companies = $this->getRequestData($request, "companies");
@@ -4274,7 +4477,7 @@ class TransactionController extends Controller
             ->when(isset($transaction_from) || isset($transaction_to), function ($query) use ($transaction_from, $transaction_to) {
                 $query->where("date_requested", ">=", $transaction_from)->where("date_requested", "<=", $transaction_to);
             })
-            ->where(function ($query) use ($search, $tag_search, $unofficial_tag_search) {
+            ->where(function ($query) use ($search, $tag_search) {
                 $query
                     ->where("date_requested", "like", "%" . $search . "%")
                     ->orWhere("remarks", "like", "%" . $search . "%")
@@ -4318,6 +4521,46 @@ class TransactionController extends Controller
                     $query->where('status', $statusMapping[$status]['status']);
                 });
             })
+            ->select([
+                "id",
+                "users_id",
+                "request_id",
+                "supplier_id",
+                "document_id",
+                "tag_no",
+                "transaction_id",
+                "document_type",
+                "payment_type",
+                "remarks",
+                "date_requested",
+                "company_id",
+                "company",
+                "department",
+                "location",
+                "document_no",
+                "document_amount",
+                "referrence_no",
+                "referrence_amount",
+                "net_amount",
+                "cheque_date",
+                "receipt_type",
+                "is_not_editable",
+                "approver_id",
+                "approver_name",
+                "status",
+                "state",
+                "principal",
+                "interest",
+                "gross_amount",
+                "category",
+                "department_id",
+                "location_id",
+                "input_tax",
+                "voucher_no",
+                "voucher_month",
+                "distributed_id",
+                "distributed_name"
+            ])
             ->orderBy(DB::raw("(SELECT t.created_at FROM " . $statusMapping[$status]['table'] . " as t WHERE t.transaction_id = transactions.id ORDER BY t.created_at DESC LIMIT 1)"), 'desc')
             ->paginate($rows);
 
