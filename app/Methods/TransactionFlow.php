@@ -806,6 +806,7 @@ class TransactionFlow
                 $status = "cheque-hold";
             } elseif ($subprocess == "return") {
                 $status = "cheque-return";
+                (new TransactionController())->chequeRevert1($request["bank_id"], $request["cheque_no"], $process, $request);
             } elseif ($subprocess == "void") {
                 $status = "cheque-void";
             } elseif ($subprocess == "cheque") {
@@ -1944,9 +1945,9 @@ class TransactionFlow
                 case 'receive':
                     return $this->chequeSingleReceive($request, $transactionIds);
                     break;
-                case 'return':
-                    $this->chequeReturn($request, $transactionIds);
-                    break;
+//                case 'return':
+//                    $this->chequeReturn($request, $transactionIds);
+//                    break;
                 case 'unhold':
                 case 'unreturn':
                     return $this->unreturnUnhold($transactionIds, $context);

@@ -342,7 +342,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
     Route::group(["prefix" => "transactions"], function () {
         //TRANSACTION
 //        Route::get("/refactor", [TransactionController::class, "indexRefactor"]);
-        Route::put("{id}", [TransactionController::class, "update"]);
+//        Route::put("{id}", [TransactionController::class, "update"]);
         Route::resource("", TransactionController::class);
         Route::get("logs/request", [TransactionController::class, "viewRequestorLogs"]);
         Route::get("{id}", [TransactionController::class, "showTransaction"]);
