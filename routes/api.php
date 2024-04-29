@@ -338,11 +338,12 @@ Route::group(["middleware" => "auth:sanctum"], function () {
     Route::get('/status-cheques-count', [TransactionController::class, 'statusChequeCounter']);
     Route::get("transactions-history", [TransactionController::class, "history"]);
     Route::get("cheques-history", [TransactionController::class, "historyChequeIndex"]);
+    Route::get("voucher-transaction/{id}", [TransactionController::class, 'voucher']);
 
     Route::group(["prefix" => "transactions"], function () {
         //TRANSACTION
 //        Route::get("/refactor", [TransactionController::class, "indexRefactor"]);
-        Route::put("{id}", [TransactionController::class, "update"]);
+//        Route::put("{id}", [TransactionController::class, "update"]);
         Route::resource("", TransactionController::class);
         Route::get("logs/request", [TransactionController::class, "viewRequestorLogs"]);
         Route::get("{id}", [TransactionController::class, "showTransaction"]);
