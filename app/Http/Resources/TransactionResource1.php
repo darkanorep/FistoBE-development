@@ -49,6 +49,7 @@ class TransactionResource1 extends JsonResource
         $prm_group = [];
         $po_details = [];
         $tag = null;
+        $extract = null;
         $gas = null;
         $voucher = null;
         $inspect = null;
@@ -606,6 +607,17 @@ class TransactionResource1 extends JsonResource
             }
         }
 
+        if ($this->withCount('extract')) {
+            $extract_transaction = $this->extract->first();
+
+            if (isset($extract_transaction->status)) {
+                $extract = [
+                    'status' => $extract_transaction->status,
+                    'dates' => $this->get_transaction_dates(Tagging::class, $this->id, 'extract', ["receive", "extract"]),
+                ];
+            }
+        }
+
         //GAS
         if ($this->gas()->count() > 0) {
 //            $gas = $this->test(Gas::class, $this->receiveGas, $this->gas, $this->reasonGas, $this->statusGas, 'gas', ["receive", "gas"]);
@@ -884,13 +896,23 @@ class TransactionResource1 extends JsonResource
                         ->pluck('transaction_id');
 
                     $relatedVouchers = Transaction::whereIn('id', $relatedVouchers)->get()->map(function ($item) use ($rental) {
+                        $voucher_account_title = collect($item->voucher->first()->account_title->map(function ($item) {
+                            return [
+                                'account_title' => $item->account_title_name,
+                                'amount' => $item->amount,
+                            ];
+                        }));
+
                         return [
                             'id' => $item->id,
                             'document_amount' => ($item->document_id == 3)
                                 ? ($item->category == in_array($item->category, $rental) ? $item->gross_amount : floatval((number_format(($item->principal + $item->interest), 2, '.', ''))))
                                 : $item->document_amount,
                             'voucher_no' => $item->voucher_no,
-                            'input_tax' => $item->input_tax ?? 0
+                            'input_tax' => $item->input_tax ?? 0,
+                            'voucher_account_title' => $voucher_account_title->filter(function ($item) {
+                                return $item['account_title'] == 'Accounts Payable' || $item['account_title'] == 'Accounts Payable - RHL';
+                            })->values(),
                         ];
                     });
 
@@ -1029,6 +1051,7 @@ class TransactionResource1 extends JsonResource
             'autoDebit_group' => $autoDebit_group,
             'tag' => $tag,
             'gas' => $gas,
+            'extract' => $extract,
             'voucher' => $voucher,
             'inspect' => $inspect,
             'approve' => $approve,
