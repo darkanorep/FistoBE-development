@@ -862,6 +862,68 @@ class TransactionController extends Controller
             "supplier.supplier_type:id,type as name,transaction_days",
             "po_details:id,request_id,po_no,po_total_amount",
         ])
+            ->when(!empty($document_ids), function ($query) use ($document_ids) {
+                $query->whereIn("document_id", $document_ids);
+            })
+            ->when(!empty($suppliers), function ($query) use ($suppliers) {
+                $query->whereIn("supplier_id", $suppliers);
+            })
+            ->when(!empty($companies), function ($query) use ($companies) {
+                $query->whereIn("company_id", $companies);
+            })
+            ->when(
+                isset($request["cheque_from"]) || isset($request["cheque_to"]),
+                function ($query) use ($cheque_from, $cheque_to) {
+                    $query->whereHas("cheques.cheques", function ($query) use ($cheque_from, $cheque_to) {
+                        $query->where("cheque_date", ">=", $cheque_from)->where("cheque_date", "<=", $cheque_to);
+                    });
+                },
+                function ($query) use ($document_ids, $suppliers, $transaction_from, $transaction_to) {
+                    $query->when(!empty($document_ids) || !empty($suppliers), function ($query) use (
+                        $transaction_from,
+                        $transaction_to
+                    ) {
+                        $query->where("date_requested", ">=", $transaction_from)->where("date_requested", "<=", $transaction_to);
+                    });
+                }
+            )
+            ->where(function ($query) use ($search, $tag_search) {
+                $query
+                    ->where("date_requested", "like", "%" . $search . "%")
+                    ->orWhere("remarks", "like", "%" . $search . "%")
+//                    ->orWhere("tag_no", "like", "%" . $search . "%")
+                    ->orWhere("tag_no", "=", $tag_search)
+                    ->orWhere("transaction_id", "like", "%" . $search . "%")
+                    ->orWhere("document_amount", "like", "%" . $search . "%")
+                    ->orWhere("document_type", "like", "%" . $search . "%")
+                    ->orWhere("payment_type", "like", "%" . $search . "%")
+                    ->orWhere("company", "like", "%" . $search . "%")
+                    ->orWhere("department", "like", "%" . $search . "%")
+                    ->orWhere("location", "like", "%" . $search . "%")
+                    ->orWhere("supplier", "like", "%" . $search . "%")
+                    ->orWhere("document_no", "like", "%" . $search . "%")
+                    ->orWhere("referrence_no", "like", "%" . $search . "%")
+                    ->orWhere("po_total_amount", "like", "%" . $search . "%")
+                    ->orWhere("referrence_total_amount", "like", "%" . $search . "%")
+                    ->orWhereHas("po_details", function ($query) use ($search) {
+                        $query->where("po_no", "like", "%" . $search . "%");
+                    })
+                    ->orWhereHas("users", function ($query) use ($search) {
+                        $query->where(
+                            DB::raw(
+                                "REPLACE(
+                        CONCAT(
+                            COALESCE(first_name,''),' ',
+                            COALESCE(last_name,''),
+                            COALESCE(suffix,'')
+                        ),
+                    '  ',' ')"
+                            ),
+                            "like",
+                            "%" . $search . "%"
+                        );
+                    });
+            })
             //Requesting of Documents
             ->when($status == 'pending', function ($query) use ($department) {
                 $query->whereNotIn('status', ['requestor-void', 'tag-return'])
