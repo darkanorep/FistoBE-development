@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Resources\ChequeClearIndex;
 use App\Http\Resources\ChequeIndex;
 use App\Http\Resources\TransactionResource1;
+use App\Http\Resources\TransactionVoucherResource;
 use App\Models\Audit;
 use App\Models\BankSeries;
 use App\Models\Cheque;
@@ -60,93 +61,808 @@ class TransactionController extends Controller
             : $default;
     }
 
-    public function index(Request $request)
-    {
-        $dateToday = Carbon::now()->timezone("Asia/Manila");
-        $department = [];
-        $users_id = Auth::user()->id;
-        $role = Auth::user()->role;
-        $status = isset($request["state"]) && $request["state"] ? $request["state"] : "request";
-        $rows = isset($request["rows"]) && $request["rows"] ? (int)$request["rows"] : 10;
-        $suppliers = $this->getRequestData($request, "suppliers");
-        $document_ids = $this->getRequestData($request, "document_ids");
-        $companies = $this->getRequestData($request, "companies");
-        $transaction_from = $this->getTransactionDate($request, "transaction_from", $dateToday->startOfMonth()->format("Y-m-d H:i:s"));
-        $transaction_to = $this->getTransactionDate($request, "transaction_to", $dateToday->endOfMonth()->format("Y-m-d H:i:s"));
-        $cheque_from = $this->getTransactionDate($request, "cheque_from", $dateToday->startOfMonth()->format("Y-m-d H:i:s"));
-        $cheque_to = $this->getTransactionDate($request, "cheque_to", $dateToday->endOfMonth()->format("Y-m-d H:i:s"));
-        $search = $request["search"];
+//    public function index(Request $request)
+//    {
+//        $dateToday = Carbon::now()->timezone("Asia/Manila");
+//        $department = [];
+//        $users_id = Auth::user()->id;
+//        $role = Auth::user()->role;
+//        $status = isset($request["state"]) && $request["state"] ? $request["state"] : "request";
+//        $rows = isset($request["rows"]) && $request["rows"] ? (int)$request["rows"] : 10;
+//        $suppliers = $this->getRequestData($request, "suppliers");
+//        $document_ids = $this->getRequestData($request, "document_ids");
+//        $companies = $this->getRequestData($request, "companies");
+//        $transaction_from = $this->getTransactionDate($request, "transaction_from", $dateToday->startOfMonth()->format("Y-m-d H:i:s"));
+//        $transaction_to = $this->getTransactionDate($request, "transaction_to", $dateToday->endOfMonth()->format("Y-m-d H:i:s"));
+//        $cheque_from = $this->getTransactionDate($request, "cheque_from", $dateToday->startOfMonth()->format("Y-m-d H:i:s"));
+//        $cheque_to = $this->getTransactionDate($request, "cheque_to", $dateToday->endOfMonth()->format("Y-m-d H:i:s"));
+//        $search = $request["search"];
+//        $tag_search = str_replace('tag#', '', $search);
+//        $state = isset($request["state"]) ? $request["state"] : "request";
+//        !empty($request["department"])
+//            ? ($department = json_decode($request["department"]))
+//            : array_push($department, Auth::user()->department[0]["name"]);
+//        $is_auto_debit = isset($request["is_auto_debit"]) && $request["is_auto_debit"] ? 1 : 0;
+//
+//        $request_window = ["Requestor"];
+//        $admin_window = ["Administrator"];
+//        $tag_window = ["AP Tagging"];
+//        $voucher_window = ["AP Associate", "AP Specialist"];
+//        $approve_window = ["Approver"];
+//        $cheque_window = ["Treasury Associate"];
+//        $audit_window = ["Audit Associate"];
+//        $executive_assistant = ["Executive Assistant"];
+//        $gas_window = ["GAS Associate"];
+//
+//        $is_voucher_transfered = $status == "voucher-transfer";
+//        $is_transmit_transfered = $status == "transmit-transfer";
+//        $is_file_transfered = $status == "file-transfer";
+//
+//        $dataToFetch = [
+//            "id",
+//            "users_id",
+//            "request_id",
+//            "supplier_id",
+//            "document_id",
+//            "tag_no",
+//            "transaction_id",
+//            "document_type",
+//            "payment_type",
+//            "remarks",
+//            "date_requested",
+//            "company_id",
+//            "company",
+//            "department",
+//            "location",
+//            "document_no",
+//            "document_amount",
+//            "referrence_no",
+//            "referrence_amount",
+//            "net_amount",
+//            "cheque_date",
+//            "receipt_type",
+//            "is_not_editable",
+//            "approver_id",
+//            "approver_name",
+//            "status",
+//            "state",
+//            "principal",
+//            "interest",
+//            "gross_amount",
+//            "category",
+//            "department_id",
+//            "location_id",
+//            "input_tax",
+//            "voucher_no",
+//            "voucher_month",
+//            "distributed_id",
+//            "distributed_name",
+//            "period_covered"
+//        ];
+//
+//        $transactions = Transaction::with([
+//                "users:id,first_name,middle_name,last_name,department,position",
+//                //          "supplier:id,name,supplier_type_id",
+//                "supplier.supplier_type:id,type as name,transaction_days",
+//                "po_details:id,request_id,po_no,po_total_amount",
+////                "cheques.cheques",
+//            ])
+//            ->when(!empty($document_ids), function ($query) use ($document_ids) {
+//                $query->whereIn("document_id", $document_ids);
+//            })
+//            ->when(!empty($suppliers), function ($query) use ($suppliers) {
+//                $query->whereIn("supplier_id", $suppliers);
+//            })
+//            ->when(!empty($companies), function ($query) use ($companies) {
+//                $query->whereIn("company_id", $companies);
+//            })
+//            ->when(
+//                isset($request["cheque_from"]) || isset($request["cheque_to"]),
+//                function ($query) use ($cheque_from, $cheque_to) {
+//                    $query->whereHas("cheques.cheques", function ($query) use ($cheque_from, $cheque_to) {
+//                        $query->where("cheque_date", ">=", $cheque_from)->where("cheque_date", "<=", $cheque_to);
+//                    });
+//                },
+//                function ($query) use ($document_ids, $suppliers, $transaction_from, $transaction_to) {
+//                    $query->when(!empty($document_ids) || !empty($suppliers), function ($query) use (
+//                        $transaction_from,
+//                        $transaction_to
+//                    ) {
+//                        $query->where("date_requested", ">=", $transaction_from)->where("date_requested", "<=", $transaction_to);
+//                    });
+//                }
+//            )
+//            ->where(function ($query) use ($search, $tag_search) {
+//                $query
+//                    ->where("date_requested", "like", "%" . $search . "%")
+//                    ->orWhere("remarks", "like", "%" . $search . "%")
+////                    ->orWhere("tag_no", "like", "%" . $search . "%")
+//                    ->orWhere("tag_no", "=", $tag_search)
+//                    ->orWhere("transaction_id", "like", "%" . $search . "%")
+//                    ->orWhere("document_amount", "like", "%" . $search . "%")
+//                    ->orWhere("document_type", "like", "%" . $search . "%")
+//                    ->orWhere("payment_type", "like", "%" . $search . "%")
+//                    ->orWhere("company", "like", "%" . $search . "%")
+//                    ->orWhere("department", "like", "%" . $search . "%")
+//                    ->orWhere("location", "like", "%" . $search . "%")
+//                    ->orWhere("supplier", "like", "%" . $search . "%")
+//                    ->orWhere("document_no", "like", "%" . $search . "%")
+//                    ->orWhere("referrence_no", "like", "%" . $search . "%")
+//                    ->orWhere("po_total_amount", "like", "%" . $search . "%")
+//                    ->orWhere("referrence_total_amount", "like", "%" . $search . "%")
+//                    ->orWhereHas("po_details", function ($query) use ($search) {
+//                        $query->where("po_no", "like", "%" . $search . "%");
+//                    })
+//                    ->orWhereHas("users", function ($query) use ($search) {
+//                        $query->where(
+//                            DB::raw(
+//                                "REPLACE(
+//                        CONCAT(
+//                            COALESCE(first_name,''),' ',
+//                            COALESCE(last_name,''),
+//                            COALESCE(suffix,'')
+//                        ),
+//                    '  ',' ')"
+//                            ),
+//                            "like",
+//                            "%" . $search . "%"
+//                        );
+//                    });
+//            })
+//            ->when(in_array($role, $request_window), function ($query) use ($status, $department) {
+//                $query
+//                    ->when(
+//                        strtoupper($status) == "PENDING",
+//                        function ($query) {
+//                            $query->whereNotIn("status", ["requestor-void", "tag-return"]);
+//                        },
+//                        function ($query) use ($status) {
+//                            $query->when(
+//                                strtolower($status) == "return-request",
+//                                function ($query) use ($status) {
+//                                    $query->whereIn("status", ["tag-return"]);
+//                                },
+//                                function ($query) use ($status) {
+//                                    $query->when(
+//                                        strtolower($status) == "return-hold",
+//                                        function ($query) use ($status) {
+//                                            $query->whereIn("status", ["tag-hold"]);
+//                                        },
+//                                        function ($query) use ($status) {
+//                                            $query->when(
+//                                                strtolower($status) == "return-void",
+//                                                function ($query) use ($status) {
+//                                                    $query->whereIn("status", ["tag-void"]);
+//                                                },
+//                                                function ($query) use ($status) {
+//                                                    $query->where("status", preg_replace("/\s+/", "", $status));
+//                                                }
+//                                            );
+//                                        }
+//                                    );
+//                                }
+//                            );
+//                        }
+//                    )
+//                    ->whereIn("department_details", $department);
+//            })
+//            ->when(in_array($role, $tag_window), function ($query) use ($status) {
+//                $query
+//                    ->when(
+//                        strtolower($status) == "tag-receive",
+//                        function ($query) {
+//                            $query->whereIn("status", ["tag-receive", "tag-unhold", "tag-unreturn"]);
+//                        },
+//                        function ($query) use ($status) {
+//                            $query->when(
+//                                strtolower($status) == "pending",
+//                                function ($query) {
+//                                    $query->whereIn("status", ["pending"]);
+//                                },
+//                                function ($query) use ($status) {
+//                                    $query->when(
+//                                        strtolower($status) == "pending-release", //remove this
+//                                        function ($query) use ($status) {
+//                                            $query->whereIn("status", ["issue-issue"])->where("is_for_releasing", "=", true);
+//                                            //                        $query->where(function ($query) {
+//                                            //                            $query->whereIn('status', ["issue-issue"])->where('receipt_type', 'unofficial')->where("is_for_releasing", "=", true);
+//                                            //                        })->orWhere(function ($query) {
+//                                            //                            $query->where('status', 'discharge-discharge');
+//                                            //                        });
+//                                        },
+//                                        function ($query) use ($status) {
+//                                            $query->when(
+//                                                strtolower($status) == "pending-file",
+//                                                function ($query) {
+//                                                    $query->whereIn("status", ["file-file"]);
+//                                                },
+//                                                function ($query) use ($status) {
+//                                                    $query->when(
+//                                                        strtolower($status) == "reverse-request",
+//                                                        function ($query) use ($status) {
+//                                                            $query->whereIn("status", ["reverse-request"]);
+//                                                        },
+//                                                        function ($query) use ($status) {
+//                                                            $query->when(
+//                                                                strtolower($status) == "return-tag",
+//                                                                function ($query) use ($status) {
+//                                                                    $query->whereIn("status", ["voucher-return", "gas-return"]);
+//                                                                },
+//                                                                function ($query) use ($status) {
+//                                                                    $query->when(
+//                                                                        strtolower($status) == "hold-tag",
+//                                                                        function ($query) use ($status) {
+//                                                                            $query->whereIn("status", ["voucher-hold", "gas-hold"]);
+//                                                                        },
+//                                                                        function ($query) use ($status) {
+//                                                                            $query->when(
+//                                                                                strtolower($status) == "return-void",
+//                                                                                function ($query) use ($status) {
+//                                                                                    $query->whereIn("status", ["voucher-void"]);
+//                                                                                },
+//                                                                                function ($query) use ($status) {
+//                                                                                   $query->when($status == 'pending-extract', function ($query) {
+//                                                                                       $query->where('status', 'gas-gas');
+//                                                                                   }, function ($query) use ($status) {
+//                                                                                        $query->where("status", preg_replace("/\s+/", "", $status));
+//                                                                                   });
+//                                                                                }
+//                                                                            );
+//                                                                        }
+//                                                                    );
+//                                                                }
+//                                                            );
+//                                                        }
+//                                                    );
+//                                                }
+//                                            );
+//                                        }
+//                                    );
+//                                }
+//                            );
+//                        }
+//                    );
+//            })
+//            ->when(in_array($role, $voucher_window), function ($query) use (
+//                $users_id,
+//                $status,
+//                $is_voucher_transfered,
+//                $is_transmit_transfered,
+//                $is_file_transfered
+//            ) {
+//                $query
+//                    ->where("distributed_id", $users_id)
+//                    ->when(
+//                        strtolower($status) == "voucher-receive",
+//                        function ($query) {
+//                            $query->whereIn("status", ["voucher-receive", "voucher-unhold", "voucher-unreturn"]);
+//                        },
+//                        function ($query) use ($users_id, $status) {
+//                            $query->when(
+//                                strtolower($status) == "pending",
+//                                function ($query) {
+//                                    //                  $query->whereIn("status", ["tag-tag", "voucher-transfer"])->where('receipt_type', 'unofficial');
+//                                    $query
+//                                        ->where(function ($query) {
+//                                            $query->whereIn("status", ["tag-tag", "voucher-transfer"])->where("receipt_type", "unofficial");
+//                                        })
+////                                        ->orWhere(function ($query) {
+////                                            $query->where("status", "gas-gas")->where("receipt_type", "official");
+////                                        });
+//                                        ->orWhere(function ($query) {
+//                                            $query->where('status', 'extract-extract');
+//                                        });
+//                                },
+//                                function ($query) use ($users_id, $status) {
+//                                    $query->when(
+//                                        strtolower($status) == "pending-transmit",
+//                                        function ($query) {
+//                                            $query
+//                                                ->whereIn("status", ["approve-approve", "transmit-transfer"])
+//                                                ->whereNull("is_for_releasing");
+//                                        },
+//                                        function ($query) use ($users_id, $status) {
+//                                            $query->when(
+//                                                strtolower($status) == "pending-file",
+//                                                function ($query) {
+//                                                    //                          $query->whereIn("status", ["release-release", "file-transfer"]);
+//                                                    $query
+//                                                        ->where(function ($query) {
+//                                                            $query->whereIn("status", ["release-release"])->where("receipt_type", "unofficial");
+//                                                        })
+//                                                        ->orWhere(function ($query) {
+//                                                            $query->where("status", "discharge-discharge");
+//                                                        });
+//                                                },
+//                                                function ($query) use ($users_id, $status) {
+//                                                    $query->when(
+//                                                        strtolower($status) == "pending-request",
+//                                                        function ($query) use ($users_id) {
+//                                                            $query->whereIn("status", ["reverse-request"]);
+//                                                        },
+//                                                        function ($query) use ($users_id, $status) {
+//                                                            $query->when(
+//                                                                strtolower($status) == "reverse-receive-approver",
+//                                                                function ($query) {
+//                                                                    $query->whereIn("status", ["reverse-receive-approver"]);
+//                                                                },
+//                                                                function ($query) use ($status) {
+//                                                                    $query->when(
+//                                                                        strtolower($status) == "return-voucher",
+//                                                                        function ($query) use ($status) {
+//                                                                            $query->whereIn("status", [
+//                                                                                "cheque-return",
+//                                                                                "approve-return",
+//                                                                                "inspect-return",
+//                                                                                "issue-return",
+//                                                                                "debit-return",
+//                                                                            ]);
+//                                                                        },
+//                                                                        function ($query) use ($status) {
+//                                                                            $query->when(
+//                                                                                strtolower($status) == "hold-voucher",
+//                                                                                function ($query) use ($status) {
+//                                                                                    $query->whereIn("status", [
+//                                                                                        "cheque-hold",
+//                                                                                        "approve-hold",
+//                                                                                        "inspect-hold",
+//                                                                                        "issue-hold",
+//                                                                                        "debit-hold",
+//                                                                                    ]);
+//                                                                                },
+//                                                                                function ($query) use ($status) {
+//                                                                                    $query->when(
+//                                                                                        strtolower($status) == "return-void",
+//                                                                                        function ($query) use ($status) {
+//                                                                                            $query->whereIn("status", ["cheque-void", "approve-void"]);
+//                                                                                        },
+//                                                                                        function ($query) use ($status) {
+//                                                                                            $query->where("status", preg_replace("/\s+/", "", $status));
+//                                                                                        }
+//                                                                                    );
+//                                                                                }
+//                                                                            );
+//                                                                        }
+//                                                                    );
+//                                                                }
+//                                                            );
+//                                                        }
+//                                                    );
+//                                                }
+//                                            );
+//                                        }
+//                                    );
+//                                }
+//                            );
+//                        }
+//                    )
+//                    ->when(
+//                        in_array(strtolower($status), ["pending-request", "reverse-receive-approver", "reverse-approve"]),
+//                        function ($query) use ($users_id) {
+//                            $query->where("reverse_distributed_id", $users_id);
+//                        },
+//                        function ($query) use (
+//                            $status,
+//                            $users_id,
+//                            $is_voucher_transfered,
+//                            $is_transmit_transfered,
+//                            $is_file_transfered
+//                        ) {
+//                            $query->when(
+//                                $is_voucher_transfered,
+//                                function ($query) use ($users_id) {
+//                                    $query->whereHas("transfer_voucher", function ($query) use ($users_id) {
+//                                        $query->where("from_distributed_id", $users_id);
+//                                    });
+//                                },
+//                                function ($query) use ($status, $users_id, $is_transmit_transfered, $is_file_transfered) {
+//                                    $query->when(
+//                                        $is_transmit_transfered,
+//                                        function ($query) use ($users_id) {
+//                                            $query->whereHas("transfer_transmit", function ($query) use ($users_id) {
+//                                                $query->where("from_distributed_id", $users_id);
+//                                            });
+//                                        },
+//                                        function ($query) use ($status, $users_id, $is_file_transfered) {
+//                                            $query->when(
+//                                                $is_file_transfered,
+//                                                function ($query) use ($users_id) {
+//                                                    $query->whereHas("transfer_file", function ($query) use ($users_id) {
+//                                                        $query->where("from_distributed_id", $users_id);
+//                                                    });
+//                                                },
+//                                                function ($query) use ($users_id) {
+//                                                    $query->where("distributed_id", $users_id);
+//                                                }
+//                                            );
+//                                        }
+//                                    );
+//                                }
+//                            );
+//                        }
+//                    );
+//            })
+//            ->when(in_array($role, $approve_window), function ($query) use ($users_id, $status) {
+//                $query
+//                    ->when(
+//                        strtolower($status) == "approve-receive",
+//                        function ($query) {
+//                            $query->whereIn("status", ["approve-receive", "approve-unhold", "approve-unreturn"]);
+//                        },
+//                        function ($query) use ($status) {
+//                            $query->when(
+//                                strtolower($status) == "pending",
+//                                function ($query) {
+//                                    $query->whereIn("status", ["voucher-voucher"]);
+//                                },
+//                                function ($query) use ($status) {
+//                                    $query->where("status", preg_replace("/\s+/", "", $status));
+//                                }
+//                            );
+//                        }
+//                    )
+//                    ->where("approver_id", $users_id);
+//            })
+//            ->when(in_array($role, $cheque_window), function ($query) use ($status, $is_auto_debit, $search) {
+//                $query
+//                    // ->when(
+//                    //   $is_auto_debit,
+//                    //   function ($query) {
+//                    //     $query->where("document_type", "Auto Debit");
+//                    //   },
+//                    //   function ($query) {
+//                    //     $query->where("document_type", "<>", "Auto Debit");
+//                    //   }
+//                    // )
+//                    ->when(
+//                        strtolower($status) == "cheque-receive",
+//                        function ($query) {
+//                            $query
+//                                ->whereIn("status", ["cheque-receive", "cheque-unhold", "cheque-unreturn"])
+//                                ->whereNull("is_for_releasing");
+//                        },
+//                        // function ($query) use ($is_auto_debit) {
+//                        //   $query
+//                        //     ->whereIn("status", ["cheque-receive", "cheque-unhold", "cheque-unreturn"])
+//                        //     ->whereNull("is_for_releasing")
+//                        //     ->orWhere(function ($query) use ($is_auto_debit) {
+//                        //       $query->when($is_auto_debit, function ($query) {
+//                        //         $query->where("status", "cheque-receive")->where("is_for_releasing", true);
+//                        //       });
+//                        //     });
+//                        // },
+//                        function ($query) use ($status) {
+//                            $query->when(
+//                                strtolower($status) == "cheque-cheque",
+//                                function ($query) {
+//                                    $query->whereIn("status", ["cheque-cheque", "cheque-reverse"])->where("is_for_releasing", false);
+//                                },
+//                                function ($query) use ($status) {
+//                                    $query->when(
+//                                        strtolower($status) == "pending",
+//                                        function ($query) {
+//                                            $query
+//                                                ->whereIn("status", ["transmit-transmit"])
+//                                                ->where(function ($query) {
+//                                                    $query->whereNull("is_for_voucher_audit")->orWhere("is_for_releasing", true);
+//                                                })
+//                                                ->orWhere(function ($query) {
+//                                                    $query->where("status", "inspect-inspect")->where("document_id", 8); //PCF
+//                                                });
+//                                        },
+//                                        function ($query) use ($status) {
+//                                            $query->when(
+//                                                strtolower($status) == "pending-clear",
+//                                                function ($query) {
+//                                                    $query
+//                                                        ->whereIn("status", [
+//                                                            "release-release",
+//                                                            "file-receive",
+//                                                            "file-file",
+//                                                            "discharge-receive",
+//                                                            "discharge-discharge",
+//                                                        ])
+//                                                        //                              ->whereNull('is_cleared');
+//                                                        ->whereHas("cheques.cheques", function ($query) {
+//                                                            $query->whereNull("is_cleared");
+//                                                        });
+//                                                },
+//                                                function ($query) use ($status) {
+//                                                    $query->when(
+//                                                        strtolower($status) == "return-return",
+//                                                        function ($query) use ($status) {
+//                                                            $query->whereIn("status", ["reverse-return"]);
+//                                                        },
+//                                                        function ($query) use ($status) {
+//                                                            $query->when(
+//                                                            // strtolower($status) == "return-hold",
+//                                                            // function ($query) use ($status) {
+//                                                            //   $query->whereIn("status", ["release-hold"]);
+//                                                            // }
+//                                                                strtolower($status) == "hold-cheque",
+//                                                                function ($query) use ($status) {
+//                                                                    $query->whereIn("status", ["audit-hold"]);
+//                                                                },
+//                                                                function ($query) use ($status) {
+//                                                                    $query->when(
+//                                                                        strtolower($status) == "return-void",
+//                                                                        function ($query) use ($status) {
+//                                                                            $query->whereIn("status", ["release-void"]);
+//                                                                        },
+//                                                                        function ($query) use ($status) {
+//                                                                            $query->when(
+//                                                                                strtolower($status) == "pending-issue",
+//                                                                                function ($query) {
+//                                                                                    $query
+//                                                                                        ->where("status", "executive-executive")
+//                                                                                        ->where("is_for_releasing", true);
+//                                                                                },
+//                                                                                function ($query) use ($status) {
+//                                                                                    $query->when(
+//                                                                                        strtolower($status) == "issue-receive",
+//                                                                                        function ($query) {
+//                                                                                            $query->where("status", "issue-receive")->where("is_for_releasing", true);
+//                                                                                        },
+//                                                                                        function ($query) use ($status) {
+//                                                                                            $query->when(
+//                                                                                                strtolower($status) == "issue-issue",
+//                                                                                                function ($query) {
+//                                                                                                    $query
+//                                                                                                        ->where("status", "issue-issue")
+//                                                                                                        ->where("is_for_releasing", true);
+//                                                                                                },
+//                                                                                                function ($query) use ($status) {
+//                                                                                                    $query->when(
+//                                                                                                        strtolower($status) == "pending-debit",
+//                                                                                                        function ($query) {
+//                                                                                                            $query
+//                                                                                                                ->where("document_id", 9)
+//                                                                                                                ->where("status", "inspect-inspect");
+//                                                                                                        },
+//                                                                                                        function ($query) use ($status) {
+//                                                                                                            $query->when(
+//                                                                                                                strtolower($status) == "return-cheque",
+//                                                                                                                function ($query) {
+//                                                                                                                    $query->whereIn("status", ["audit-return"]);
+//                                                                                                                },
+//                                                                                                                function ($query) use ($status) {
+//                                                                                                                    $query->when(
+//                                                                                                                        strtolower($status) == "return-release",
+//                                                                                                                        function ($query) {
+//                                                                                                                            $query->whereIn("status", ["release-return"]);
+//                                                                                                                        },
+//                                                                                                                        function ($query) use ($status) {
+//                                                                                                                            $query->when(
+//                                                                                                                                strtolower($status) == "clear-clear",
+//                                                                                                                                function ($query) {
+//                                                                                                                                    //                                                                      $query->where('is_cleared', true);
+//                                                                                                                                    $query->whereHas("cheques.cheques", function (
+//                                                                                                                                        $query
+//                                                                                                                                    ) {
+//                                                                                                                                        $query->where("is_cleared", true);
+//                                                                                                                                    });
+//                                                                                                                                },
+//                                                                                                                                function ($query) use ($status) {
+//                                                                                                                                    $query->where(
+//                                                                                                                                        "status",
+//                                                                                                                                        preg_replace("/\s+/", "", $status)
+//                                                                                                                                    );
+//                                                                                                                                }
+//                                                                                                                            );
+//                                                                                                                        }
+//                                                                                                                    );
+//                                                                                                                }
+//                                                                                                            );
+//                                                                                                        }
+//                                                                                                    );
+//                                                                                                }
+//                                                                                            );
+//                                                                                        }
+//                                                                                    );
+//                                                                                }
+//                                                                            );
+//                                                                        }
+//                                                                    );
+//                                                                }
+//                                                            );
+//                                                        }
+//                                                    );
+//                                                }
+//                                            );
+//                                        }
+//                                    );
+//                                }
+//                            );
+//                        }
+//                    );
+//            })
+//            ->when(in_array($role, $audit_window), function ($query) use ($status) {
+//                $query
+//                    ->when(
+//                        strtolower($status) == "audit-receive",
+//                        function ($query) {
+//                            $query->whereIn("status", ["audit-receive", "audit-unhold", "audit-unreturn"]);
+//                        },
+//                        function ($query) use ($status) {
+//                            $query->when(
+//                                strtolower($status) == "pending",
+//                                function ($query) {
+//                                    $query
+//                                        ->whereIn("status", ["cheque-cheque", "transmit-transmit"])
+//                                        // ->whereNull("is_for_releasing")
+//                                        // ->where("is_for_voucher_audit", false);
+//                                        ->where(function ($query) {
+//                                            // $query->where("is_for_cheque_audit", true);
+//                                            $query->where("is_for_releasing", "!=", true);
+//                                            // $query->where("is_for_releasing", "!=", false);
+//                                        });
+//                                    // ->where(function ($query) {
+//                                    //   $query->whereNull("is_for_releasing")->where("is_for_voucher_audit", false);
+//                                    // });
+//                                    // ->where(function ($query) {
+//                                    //   $query->where("is_for_voucher_audit", false)->orWhereNull("is_for_voucher_audit");
+//                                    // });
+//                                },
+//                                function ($query) use ($status) {
+//                                    $query->when(
+//                                        strtolower($status) == "pending-inspect",
+//                                        function ($query) {
+//                                            $query->whereIn("status", ["transmit-transmit"])->where("is_for_voucher_audit", true);
+//                                        },
+//                                        function ($query) use ($status) {
+//                                            $query->when(
+//                                                strtolower($status) == "inspect-inspect",
+//                                                function ($query) {
+//                                                    // $query->whereIn("status", ["audit-audit"])->orWhere(function ($query) {
+//                                                    //   $query->where("document_id", 9)->where("is_for_releasing", true);
+//                                                    // });
+//                                                    $query->whereIn("status", ["inspect-inspect"]);
+//                                                },
+//                                                function ($query) use ($status) {
+//                                                    $query->where("status", preg_replace("/\s+/", "", $status));
+//                                                }
+//                                            );
+//                                        }
+//                                    );
+//                                }
+//                            );
+//                        }
+//                    );
+//            })
+//            ->when(in_array($role, $executive_assistant), function ($query) use ($status) {
+//                $query
+//                    ->when(
+//                        strtolower($status) == "executive-receive",
+//                        function ($query) {
+//                            $query->whereIn("status", ["executive-receive", "executive-unhold", "executive-unreturn"]);
+//                        },
+//                        function ($query) use ($status) {
+//                            $query->when(
+//                                strtolower($status) == "pending",
+//                                function ($query) {
+//                                    $query->whereIn("status", ["audit-audit"]);
+//                                },
+//                                function ($query) use ($status) {
+//                                    $query->where("status", preg_replace("/\s+/", "", $status));
+//                                }
+//                            );
+//                        }
+//                    );
+//            })
+//            ->when(in_array($role, $gas_window), function ($query) use ($status) {
+//                $query
+//                    ->when(
+//                        strtolower($status) == "gas-receive",
+//                        function ($query) {
+//                            $query->whereIn("status", ["gas-receive", "gas-unhold", "gas-unreturn"]);
+//                        },
+//                        function ($query) use ($status) {
+//                            $query->when(
+//                                strtolower($status) == "pending",
+//                                function ($query) {
+//                                    $query->whereIn("status", ["tag-tag"])->where("receipt_type", "official");
+//                                },
+//                                function ($query) use ($status) {
+//                                    $query->when(
+//                                        strtolower($status) == "pending-discharge",
+//                                        function ($query) {
+//                                            $query->whereIn("status", ["release-release"])->where("receipt_type", "official");
+//                                        },
+//                                        function ($query) use ($status) {
+//                                            $query->where("status", preg_replace("/\s+/", "", $status));
+//                                        }
+//                                    );
+//                                }
+//                            );
+//                        }
+//                    );
+//            })
+//            ->select($dataToFetch)
+//            ->latest('updated_at')
+//            ->paginate($rows);
+//
+//        TransactionIndex::collection($transactions);
+//
+//        if (count($transactions)) {
+//            return $this->resultResponse("fetch", "Transaction", $transactions);
+//        }
+//        return $this->resultResponse("not-found", "Transaction", []);
+//    }
+
+    public function index(Request $request) {
+
+        $status = $request->input('state', 'request');
+        $rows = (int)$request->input('rows', 10);
+        $suppliers = $this->getRequestData($request, 'suppliers');
+        $document_ids = $this->getRequestData($request, 'document_ids');
+        $companies = $this->getRequestData($request, 'companies');
+        $transaction_from = $this->getTransactionDate($request, 'transaction_from', Carbon::now()->startOfMonth()->format('Y-m-d H:i:s'));
+        $transaction_to = $this->getTransactionDate($request, 'transaction_to', Carbon::now()->endOfMonth()->format('Y-m-d H:i:s'));
+        $cheque_from = $this->getTransactionDate($request, 'cheque_from', Carbon::now()->startOfMonth()->format('Y-m-d H:i:s'));
+        $cheque_to = $this->getTransactionDate($request, 'cheque_to', Carbon::now()->endOfMonth()->format('Y-m-d H:i:s'));
+        $search = $request->input('search');
         $tag_search = str_replace('tag#', '', $search);
-        $state = isset($request["state"]) ? $request["state"] : "request";
-        !empty($request["department"])
-            ? ($department = json_decode($request["department"]))
-            : array_push($department, Auth::user()->department[0]["name"]);
-        $is_auto_debit = isset($request["is_auto_debit"]) && $request["is_auto_debit"] ? 1 : 0;
+        $department = $request->input('department', [auth()->user()->department[0]['name']]);
+        $user_id = null;
 
-        $request_window = ["Requestor"];
-        $admin_window = ["Administrator"];
-        $tag_window = ["AP Tagging"];
-        $voucher_window = ["AP Associate", "AP Specialist"];
-        $approve_window = ["Approver"];
-        $cheque_window = ["Treasury Associate"];
-        $audit_window = ["Audit Associate"];
-        $executive_assistant = ["Executive Assistant"];
-        $gas_window = ["GAS Associate"];
+        $userRole = auth()->user()->role;
+        if (in_array($userRole, ['AP Associate', 'AP Specialist', 'Approver'])) {
+            $user_id = auth()->user()->id;
+        }
 
-        $is_voucher_transfered = $status == "voucher-transfer";
-        $is_transmit_transfered = $status == "transmit-transfer";
-        $is_file_transfered = $status == "file-transfer";
+        $declaredStatus = [
+            //Requesting of Documents
+            'pending',
+            'return-request',
+            'requestor-void',
 
-        $dataToFetch = [
-            "id",
-            "users_id",
-            "request_id",
-            "supplier_id",
-            "document_id",
-            "tag_no",
-            "transaction_id",
-            "document_type",
-            "payment_type",
-            "remarks",
-            "date_requested",
-            "company_id",
-            "company",
-            "department",
-            "location",
-            "document_no",
-            "document_amount",
-            "referrence_no",
-            "referrence_amount",
-            "net_amount",
-            "cheque_date",
-            "receipt_type",
-            "is_not_editable",
-            "approver_id",
-            "approver_name",
-            "status",
-            "state",
-            "principal",
-            "interest",
-            "gross_amount",
-            "category",
-            "department_id",
-            "location_id",
-            "input_tax",
-            "voucher_no",
-            "voucher_month",
-            "distributed_id",
-            "distributed_name",
-            "period_covered"
+            //Tagging of Documents
+            'pending-tag',
+            'tag-receive',
+            'return-tag',
+            'hold-tag',
+
+            //Transmittal of Official Receipt
+            'pending-gas',
+            'gas-receive',
+
+            //Transmittal of GAS Documents
+            'pending-extract',
+
+            //Creation of Voucher
+            'pending-voucher',
+            'return-voucher',
+            'hold-voucher',
+
+            //Transaction Approval
+            'pending-approve',
+            'approve-receive',
+            'approve-approve',
+            'approve-hold',
+            'approve-return',
+
+            //Transmittal of Voucher
+            'pending-transmit',
+            'transmit-receive',
+            'transmit-transmit',
+
+            //Auditing of Voucher
+            'pending-inspect',
+
+            //Filing of Official Receipt
+            'pending-discharge',
+
+            //Filing of Voucher
+            'pending-file'
         ];
 
-        $transactions = Transaction::with([
-                "users:id,first_name,middle_name,last_name,department,position",
-                //          "supplier:id,name,supplier_type_id",
-                "supplier.supplier_type:id,type as name,transaction_days",
-                "po_details:id,request_id,po_no,po_total_amount",
-//                "cheques.cheques",
-            ])
-            ->when(!empty($document_ids), function ($query) use ($document_ids) {
+        $transactions = Transaction::
+        with([
+            "users:id,first_name,middle_name,last_name,department,position",
+            "supplier.supplier_type:id,type as name,transaction_days",
+            "po_details:id,request_id,po_no,po_total_amount",
+        ])
+                        ->when(!empty($document_ids), function ($query) use ($document_ids) {
                 $query->whereIn("document_id", $document_ids);
             })
             ->when(!empty($suppliers), function ($query) use ($suppliers) {
@@ -208,607 +924,152 @@ class TransactionController extends Controller
                         );
                     });
             })
-            ->when(in_array($role, $request_window), function ($query) use ($status, $department) {
-                $query
-                    ->when(
-                        strtoupper($status) == "PENDING",
-                        function ($query) {
-                            $query->whereNotIn("status", ["requestor-void", "tag-return"]);
-                        },
-                        function ($query) use ($status) {
-                            $query->when(
-                                strtolower($status) == "return-request",
-                                function ($query) use ($status) {
-                                    $query->whereIn("status", ["tag-return"]);
-                                },
-                                function ($query) use ($status) {
-                                    $query->when(
-                                        strtolower($status) == "return-hold",
-                                        function ($query) use ($status) {
-                                            $query->whereIn("status", ["tag-hold"]);
-                                        },
-                                        function ($query) use ($status) {
-                                            $query->when(
-                                                strtolower($status) == "return-void",
-                                                function ($query) use ($status) {
-                                                    $query->whereIn("status", ["tag-void"]);
-                                                },
-                                                function ($query) use ($status) {
-                                                    $query->where("status", preg_replace("/\s+/", "", $status));
-                                                }
-                                            );
-                                        }
-                                    );
-                                }
-                            );
-                        }
-                    )
-                    ->whereIn("department_details", $department);
+            //Requesting of Documents
+            ->when($status == 'pending', function ($query) use ($department) {
+                $query->whereNotIn('status', ['requestor-void', 'tag-return'])
+                    ->whereIn('department_details', $department);
             })
-            ->when(in_array($role, $tag_window), function ($query) use ($status) {
-                $query
-                    ->when(
-                        strtolower($status) == "tag-receive",
-                        function ($query) {
-                            $query->whereIn("status", ["tag-receive", "tag-unhold", "tag-unreturn"]);
-                        },
-                        function ($query) use ($status) {
-                            $query->when(
-                                strtolower($status) == "pending",
-                                function ($query) {
-                                    $query->whereIn("status", ["pending"]);
-                                },
-                                function ($query) use ($status) {
-                                    $query->when(
-                                        strtolower($status) == "pending-release", //remove this
-                                        function ($query) use ($status) {
-                                            $query->whereIn("status", ["issue-issue"])->where("is_for_releasing", "=", true);
-                                            //                        $query->where(function ($query) {
-                                            //                            $query->whereIn('status', ["issue-issue"])->where('receipt_type', 'unofficial')->where("is_for_releasing", "=", true);
-                                            //                        })->orWhere(function ($query) {
-                                            //                            $query->where('status', 'discharge-discharge');
-                                            //                        });
-                                        },
-                                        function ($query) use ($status) {
-                                            $query->when(
-                                                strtolower($status) == "pending-file",
-                                                function ($query) {
-                                                    $query->whereIn("status", ["file-file"]);
-                                                },
-                                                function ($query) use ($status) {
-                                                    $query->when(
-                                                        strtolower($status) == "reverse-request",
-                                                        function ($query) use ($status) {
-                                                            $query->whereIn("status", ["reverse-request"]);
-                                                        },
-                                                        function ($query) use ($status) {
-                                                            $query->when(
-                                                                strtolower($status) == "return-tag",
-                                                                function ($query) use ($status) {
-                                                                    $query->whereIn("status", ["voucher-return", "gas-return"]);
-                                                                },
-                                                                function ($query) use ($status) {
-                                                                    $query->when(
-                                                                        strtolower($status) == "hold-tag",
-                                                                        function ($query) use ($status) {
-                                                                            $query->whereIn("status", ["voucher-hold", "gas-hold"]);
-                                                                        },
-                                                                        function ($query) use ($status) {
-                                                                            $query->when(
-                                                                                strtolower($status) == "return-void",
-                                                                                function ($query) use ($status) {
-                                                                                    $query->whereIn("status", ["voucher-void"]);
-                                                                                },
-                                                                                function ($query) use ($status) {
-                                                                                   $query->when($status == 'pending-extract', function ($query) {
-                                                                                       $query->where('status', 'gas-gas');
-                                                                                   }, function ($query) use ($status) {
-                                                                                        $query->where("status", preg_replace("/\s+/", "", $status));
-                                                                                   });
-                                                                                }
-                                                                            );
-                                                                        }
-                                                                    );
-                                                                }
-                                                            );
-                                                        }
-                                                    );
-                                                }
-                                            );
-                                        }
-                                    );
-                                }
-                            );
-                        }
-                    );
+            ->when($status == 'return-request', function ($query) use ($department) {
+                $query->where('status', 'tag-return')
+                    ->whereIn('department_details', $department);
             })
-            ->when(in_array($role, $voucher_window), function ($query) use (
-                $users_id,
-                $status,
-                $is_voucher_transfered,
-                $is_transmit_transfered,
-                $is_file_transfered
-            ) {
-                $query
-                    ->where("distributed_id", $users_id)
-                    ->when(
-                        strtolower($status) == "voucher-receive",
-                        function ($query) {
-                            $query->whereIn("status", ["voucher-receive", "voucher-unhold", "voucher-unreturn"]);
-                        },
-                        function ($query) use ($users_id, $status) {
-                            $query->when(
-                                strtolower($status) == "pending",
-                                function ($query) {
-                                    //                  $query->whereIn("status", ["tag-tag", "voucher-transfer"])->where('receipt_type', 'unofficial');
-                                    $query
-                                        ->where(function ($query) {
-                                            $query->whereIn("status", ["tag-tag", "voucher-transfer"])->where("receipt_type", "unofficial");
-                                        })
-//                                        ->orWhere(function ($query) {
-//                                            $query->where("status", "gas-gas")->where("receipt_type", "official");
-//                                        });
-                                        ->orWhere(function ($query) {
-                                            $query->where('status', 'extract-extract');
-                                        });
-                                },
-                                function ($query) use ($users_id, $status) {
-                                    $query->when(
-                                        strtolower($status) == "pending-transmit",
-                                        function ($query) {
-                                            $query
-                                                ->whereIn("status", ["approve-approve", "transmit-transfer"])
-                                                ->whereNull("is_for_releasing");
-                                        },
-                                        function ($query) use ($users_id, $status) {
-                                            $query->when(
-                                                strtolower($status) == "pending-file",
-                                                function ($query) {
-                                                    //                          $query->whereIn("status", ["release-release", "file-transfer"]);
-                                                    $query
-                                                        ->where(function ($query) {
-                                                            $query->whereIn("status", ["release-release"])->where("receipt_type", "unofficial");
-                                                        })
-                                                        ->orWhere(function ($query) {
-                                                            $query->where("status", "discharge-discharge");
-                                                        });
-                                                },
-                                                function ($query) use ($users_id, $status) {
-                                                    $query->when(
-                                                        strtolower($status) == "pending-request",
-                                                        function ($query) use ($users_id) {
-                                                            $query->whereIn("status", ["reverse-request"]);
-                                                        },
-                                                        function ($query) use ($users_id, $status) {
-                                                            $query->when(
-                                                                strtolower($status) == "reverse-receive-approver",
-                                                                function ($query) {
-                                                                    $query->whereIn("status", ["reverse-receive-approver"]);
-                                                                },
-                                                                function ($query) use ($status) {
-                                                                    $query->when(
-                                                                        strtolower($status) == "return-voucher",
-                                                                        function ($query) use ($status) {
-                                                                            $query->whereIn("status", [
-                                                                                "cheque-return",
-                                                                                "approve-return",
-                                                                                "inspect-return",
-                                                                                "issue-return",
-                                                                                "debit-return",
-                                                                            ]);
-                                                                        },
-                                                                        function ($query) use ($status) {
-                                                                            $query->when(
-                                                                                strtolower($status) == "hold-voucher",
-                                                                                function ($query) use ($status) {
-                                                                                    $query->whereIn("status", [
-                                                                                        "cheque-hold",
-                                                                                        "approve-hold",
-                                                                                        "inspect-hold",
-                                                                                        "issue-hold",
-                                                                                        "debit-hold",
-                                                                                    ]);
-                                                                                },
-                                                                                function ($query) use ($status) {
-                                                                                    $query->when(
-                                                                                        strtolower($status) == "return-void",
-                                                                                        function ($query) use ($status) {
-                                                                                            $query->whereIn("status", ["cheque-void", "approve-void"]);
-                                                                                        },
-                                                                                        function ($query) use ($status) {
-                                                                                            $query->where("status", preg_replace("/\s+/", "", $status));
-                                                                                        }
-                                                                                    );
-                                                                                }
-                                                                            );
-                                                                        }
-                                                                    );
-                                                                }
-                                                            );
-                                                        }
-                                                    );
-                                                }
-                                            );
-                                        }
-                                    );
-                                }
-                            );
-                        }
-                    )
-                    ->when(
-                        in_array(strtolower($status), ["pending-request", "reverse-receive-approver", "reverse-approve"]),
-                        function ($query) use ($users_id) {
-                            $query->where("reverse_distributed_id", $users_id);
-                        },
-                        function ($query) use (
-                            $status,
-                            $users_id,
-                            $is_voucher_transfered,
-                            $is_transmit_transfered,
-                            $is_file_transfered
-                        ) {
-                            $query->when(
-                                $is_voucher_transfered,
-                                function ($query) use ($users_id) {
-                                    $query->whereHas("transfer_voucher", function ($query) use ($users_id) {
-                                        $query->where("from_distributed_id", $users_id);
-                                    });
-                                },
-                                function ($query) use ($status, $users_id, $is_transmit_transfered, $is_file_transfered) {
-                                    $query->when(
-                                        $is_transmit_transfered,
-                                        function ($query) use ($users_id) {
-                                            $query->whereHas("transfer_transmit", function ($query) use ($users_id) {
-                                                $query->where("from_distributed_id", $users_id);
-                                            });
-                                        },
-                                        function ($query) use ($status, $users_id, $is_file_transfered) {
-                                            $query->when(
-                                                $is_file_transfered,
-                                                function ($query) use ($users_id) {
-                                                    $query->whereHas("transfer_file", function ($query) use ($users_id) {
-                                                        $query->where("from_distributed_id", $users_id);
-                                                    });
-                                                },
-                                                function ($query) use ($users_id) {
-                                                    $query->where("distributed_id", $users_id);
-                                                }
-                                            );
-                                        }
-                                    );
-                                }
-                            );
-                        }
-                    );
+            ->when($status == 'requestor-void', function ($query) use ($department) {
+                $query->where('status', 'requestor-void')
+                    ->whereIn('department_details', $department);
             })
-            ->when(in_array($role, $approve_window), function ($query) use ($users_id, $status) {
-                $query
-                    ->when(
-                        strtolower($status) == "approve-receive",
-                        function ($query) {
-                            $query->whereIn("status", ["approve-receive", "approve-unhold", "approve-unreturn"]);
-                        },
-                        function ($query) use ($status) {
-                            $query->when(
-                                strtolower($status) == "pending",
-                                function ($query) {
-                                    $query->whereIn("status", ["voucher-voucher"]);
-                                },
-                                function ($query) use ($status) {
-                                    $query->where("status", preg_replace("/\s+/", "", $status));
-                                }
-                            );
-                        }
-                    )
-                    ->where("approver_id", $users_id);
-            })
-            ->when(in_array($role, $cheque_window), function ($query) use ($status, $is_auto_debit, $search) {
-                $query
-                    // ->when(
-                    //   $is_auto_debit,
-                    //   function ($query) {
-                    //     $query->where("document_type", "Auto Debit");
-                    //   },
-                    //   function ($query) {
-                    //     $query->where("document_type", "<>", "Auto Debit");
-                    //   }
-                    // )
-                    ->when(
-                        strtolower($status) == "cheque-receive",
-                        function ($query) {
-                            $query
-                                ->whereIn("status", ["cheque-receive", "cheque-unhold", "cheque-unreturn"])
-                                ->whereNull("is_for_releasing");
-                        },
-                        // function ($query) use ($is_auto_debit) {
-                        //   $query
-                        //     ->whereIn("status", ["cheque-receive", "cheque-unhold", "cheque-unreturn"])
-                        //     ->whereNull("is_for_releasing")
-                        //     ->orWhere(function ($query) use ($is_auto_debit) {
-                        //       $query->when($is_auto_debit, function ($query) {
-                        //         $query->where("status", "cheque-receive")->where("is_for_releasing", true);
-                        //       });
-                        //     });
-                        // },
-                        function ($query) use ($status) {
-                            $query->when(
-                                strtolower($status) == "cheque-cheque",
-                                function ($query) {
-                                    $query->whereIn("status", ["cheque-cheque", "cheque-reverse"])->where("is_for_releasing", false);
-                                },
-                                function ($query) use ($status) {
-                                    $query->when(
-                                        strtolower($status) == "pending",
-                                        function ($query) {
-                                            $query
-                                                ->whereIn("status", ["transmit-transmit"])
-                                                ->where(function ($query) {
-                                                    $query->whereNull("is_for_voucher_audit")->orWhere("is_for_releasing", true);
-                                                })
-                                                ->orWhere(function ($query) {
-                                                    $query->where("status", "inspect-inspect")->where("document_id", 8); //PCF
-                                                });
-                                        },
-                                        function ($query) use ($status) {
-                                            $query->when(
-                                                strtolower($status) == "pending-clear",
-                                                function ($query) {
-                                                    $query
-                                                        ->whereIn("status", [
-                                                            "release-release",
-                                                            "file-receive",
-                                                            "file-file",
-                                                            "discharge-receive",
-                                                            "discharge-discharge",
-                                                        ])
-                                                        //                              ->whereNull('is_cleared');
-                                                        ->whereHas("cheques.cheques", function ($query) {
-                                                            $query->whereNull("is_cleared");
-                                                        });
-                                                },
-                                                function ($query) use ($status) {
-                                                    $query->when(
-                                                        strtolower($status) == "return-return",
-                                                        function ($query) use ($status) {
-                                                            $query->whereIn("status", ["reverse-return"]);
-                                                        },
-                                                        function ($query) use ($status) {
-                                                            $query->when(
-                                                            // strtolower($status) == "return-hold",
-                                                            // function ($query) use ($status) {
-                                                            //   $query->whereIn("status", ["release-hold"]);
-                                                            // }
-                                                                strtolower($status) == "hold-cheque",
-                                                                function ($query) use ($status) {
-                                                                    $query->whereIn("status", ["audit-hold"]);
-                                                                },
-                                                                function ($query) use ($status) {
-                                                                    $query->when(
-                                                                        strtolower($status) == "return-void",
-                                                                        function ($query) use ($status) {
-                                                                            $query->whereIn("status", ["release-void"]);
-                                                                        },
-                                                                        function ($query) use ($status) {
-                                                                            $query->when(
-                                                                                strtolower($status) == "pending-issue",
-                                                                                function ($query) {
-                                                                                    $query
-                                                                                        ->where("status", "executive-executive")
-                                                                                        ->where("is_for_releasing", true);
-                                                                                },
-                                                                                function ($query) use ($status) {
-                                                                                    $query->when(
-                                                                                        strtolower($status) == "issue-receive",
-                                                                                        function ($query) {
-                                                                                            $query->where("status", "issue-receive")->where("is_for_releasing", true);
-                                                                                        },
-                                                                                        function ($query) use ($status) {
-                                                                                            $query->when(
-                                                                                                strtolower($status) == "issue-issue",
-                                                                                                function ($query) {
-                                                                                                    $query
-                                                                                                        ->where("status", "issue-issue")
-                                                                                                        ->where("is_for_releasing", true);
-                                                                                                },
-                                                                                                function ($query) use ($status) {
-                                                                                                    $query->when(
-                                                                                                        strtolower($status) == "pending-debit",
-                                                                                                        function ($query) {
-                                                                                                            $query
-                                                                                                                ->where("document_id", 9)
-                                                                                                                ->where("status", "inspect-inspect");
-                                                                                                        },
-                                                                                                        function ($query) use ($status) {
-                                                                                                            $query->when(
-                                                                                                                strtolower($status) == "return-cheque",
-                                                                                                                function ($query) {
-                                                                                                                    $query->whereIn("status", ["audit-return"]);
-                                                                                                                },
-                                                                                                                function ($query) use ($status) {
-                                                                                                                    $query->when(
-                                                                                                                        strtolower($status) == "return-release",
-                                                                                                                        function ($query) {
-                                                                                                                            $query->whereIn("status", ["release-return"]);
-                                                                                                                        },
-                                                                                                                        function ($query) use ($status) {
-                                                                                                                            $query->when(
-                                                                                                                                strtolower($status) == "clear-clear",
-                                                                                                                                function ($query) {
-                                                                                                                                    //                                                                      $query->where('is_cleared', true);
-                                                                                                                                    $query->whereHas("cheques.cheques", function (
-                                                                                                                                        $query
-                                                                                                                                    ) {
-                                                                                                                                        $query->where("is_cleared", true);
-                                                                                                                                    });
-                                                                                                                                },
-                                                                                                                                function ($query) use ($status) {
-                                                                                                                                    $query->where(
-                                                                                                                                        "status",
-                                                                                                                                        preg_replace("/\s+/", "", $status)
-                                                                                                                                    );
-                                                                                                                                }
-                                                                                                                            );
-                                                                                                                        }
-                                                                                                                    );
-                                                                                                                }
-                                                                                                            );
-                                                                                                        }
-                                                                                                    );
-                                                                                                }
-                                                                                            );
-                                                                                        }
-                                                                                    );
-                                                                                }
-                                                                            );
-                                                                        }
-                                                                    );
-                                                                }
-                                                            );
-                                                        }
-                                                    );
-                                                }
-                                            );
-                                        }
-                                    );
-                                }
-                            );
-                        }
-                    );
-            })
-            ->when(in_array($role, $audit_window), function ($query) use ($status) {
-                $query
-                    ->when(
-                        strtolower($status) == "audit-receive",
-                        function ($query) {
-                            $query->whereIn("status", ["audit-receive", "audit-unhold", "audit-unreturn"]);
-                        },
-                        function ($query) use ($status) {
-                            $query->when(
-                                strtolower($status) == "pending",
-                                function ($query) {
-                                    $query
-                                        ->whereIn("status", ["cheque-cheque", "transmit-transmit"])
-                                        // ->whereNull("is_for_releasing")
-                                        // ->where("is_for_voucher_audit", false);
-                                        ->where(function ($query) {
-                                            // $query->where("is_for_cheque_audit", true);
-                                            $query->where("is_for_releasing", "!=", true);
-                                            // $query->where("is_for_releasing", "!=", false);
-                                        });
-                                    // ->where(function ($query) {
-                                    //   $query->whereNull("is_for_releasing")->where("is_for_voucher_audit", false);
-                                    // });
-                                    // ->where(function ($query) {
-                                    //   $query->where("is_for_voucher_audit", false)->orWhereNull("is_for_voucher_audit");
-                                    // });
-                                },
-                                function ($query) use ($status) {
-                                    $query->when(
-                                        strtolower($status) == "pending-inspect",
-                                        function ($query) {
-                                            $query->whereIn("status", ["transmit-transmit"])->where("is_for_voucher_audit", true);
-                                        },
-                                        function ($query) use ($status) {
-                                            $query->when(
-                                                strtolower($status) == "inspect-inspect",
-                                                function ($query) {
-                                                    // $query->whereIn("status", ["audit-audit"])->orWhere(function ($query) {
-                                                    //   $query->where("document_id", 9)->where("is_for_releasing", true);
-                                                    // });
-                                                    $query->whereIn("status", ["inspect-inspect"]);
-                                                },
-                                                function ($query) use ($status) {
-                                                    $query->where("status", preg_replace("/\s+/", "", $status));
-                                                }
-                                            );
-                                        }
-                                    );
-                                }
-                            );
-                        }
-                    );
-            })
-            ->when(in_array($role, $executive_assistant), function ($query) use ($status) {
-                $query
-                    ->when(
-                        strtolower($status) == "executive-receive",
-                        function ($query) {
-                            $query->whereIn("status", ["executive-receive", "executive-unhold", "executive-unreturn"]);
-                        },
-                        function ($query) use ($status) {
-                            $query->when(
-                                strtolower($status) == "pending",
-                                function ($query) {
-                                    $query->whereIn("status", ["audit-audit"]);
-                                },
-                                function ($query) use ($status) {
-                                    $query->where("status", preg_replace("/\s+/", "", $status));
-                                }
-                            );
-                        }
-                    );
-            })
-            ->when(in_array($role, $gas_window), function ($query) use ($status) {
-                $query
-                    ->when(
-                        strtolower($status) == "gas-receive",
-                        function ($query) {
-                            $query->whereIn("status", ["gas-receive", "gas-unhold", "gas-unreturn"]);
-                        },
-                        function ($query) use ($status) {
-                            $query->when(
-                                strtolower($status) == "pending",
-                                function ($query) {
-                                    $query->whereIn("status", ["tag-tag"])->where("receipt_type", "official");
-                                },
-                                function ($query) use ($status) {
-                                    $query->when(
-                                        strtolower($status) == "pending-discharge",
-                                        function ($query) {
-                                            $query->whereIn("status", ["release-release"])->where("receipt_type", "official");
-                                        },
-                                        function ($query) use ($status) {
-                                            $query->where("status", preg_replace("/\s+/", "", $status));
-                                        }
-                                    );
-                                }
-                            );
-                        }
-                    );
-            })
-            ->select($dataToFetch)
-            ->latest('updated_at')
-            ->paginate($rows);
 
-        TransactionIndex::collection($transactions);
+            //Tagging of Documents
+            ->when($status == 'pending-tag', function ($query) {
+                $query->where('status', ['pending']);
+            })
+            ->when($status == 'tag-receive', function ($query) {
+                $query->whereIn('status', ['tag-receive', 'tag-unhold', 'tag-unreturn']);
+            })
+            ->when($status == 'return-tag', function ($query) {
+                $query->whereIn('status', ['voucher-return', 'gas-return']);
+            })
+            ->when($status == 'hold-tag', function ($query) {
+                $query->whereIn('status', ['voucher-hold', 'gas-hold']);
+            })
 
-        if (count($transactions)) {
-            return $this->resultResponse("fetch", "Transaction", $transactions);
-        }
-        return $this->resultResponse("not-found", "Transaction", []);
-    }
+            //Transmittal of Official Receipt
+            ->when($status == 'pending-gas', function ($query) {
+                $query->where('status', 'tag-tag')
+                    ->where('receipt_type', 'official');
+            })
+            ->when($status == 'gas-receive', function ($query) {
+                $query->whereIn('status', ['gas-receive', 'gas-unhold', 'gas-unreturn']);
+            })
 
-    public function indexRefactor(Request $request) {
+            //Transmittal of GAS Documents
+            ->when($status == 'pending-extract', function ($query) {
+                $query->where('status', 'gas-gas');
+            })
 
-        $status = $request->input('state', 'request');
-        $rows = (int)$request->input('rows', 10);
-        $suppliers = $this->getRequestData($request, 'suppliers');
-        $document_ids = $this->getRequestData($request, 'document_ids');
-        $companies = $this->getRequestData($request, 'companies');
-        $transaction_from = $this->getTransactionDate($request, 'transaction_from', Carbon::now()->startOfMonth()->format('Y-m-d H:i:s'));
-        $transaction_to = $this->getTransactionDate($request, 'transaction_to', Carbon::now()->endOfMonth()->format('Y-m-d H:i:s'));
-        $cheque_from = $this->getTransactionDate($request, 'cheque_from', Carbon::now()->startOfMonth()->format('Y-m-d H:i:s'));
-        $cheque_to = $this->getTransactionDate($request, 'cheque_to', Carbon::now()->endOfMonth()->format('Y-m-d H:i:s'));
-        $search = $request->input('search');
-        $tag_search = str_replace('tag#', '', $search);
-        $department = $request->input('department', [auth()->user()->department[0]['name']]);
+            //Creation of Voucher
+            ->when($status == 'pending-voucher', function ($query) use ($user_id) {
+                $query->where('distributed_id', $user_id)
+                    ->where(function ($query) {
+                        $query->whereIn("status", ["tag-tag", "voucher-transfer"])
+                            ->where("receipt_type", "unofficial")
+                            ->orWhere(function ($query) {
+                                $query->where('status', 'extract-extract');
+                            });
+                    });
+            })
+            ->when($status == 'return-voucher', function ($query) use ($user_id) {
+                $query->where('distributed_id', $user_id)
+                    ->whereIn("status", [
+                        "cheque-return",
+                        "approve-return",
+                        "inspect-return",
+                        "issue-return",
+                        "debit-return",
+                    ]);
+            })
+            ->when($status == 'hold-voucher', function ($query) use ($user_id) {
+                $query->where('distributed_id', $user_id)
+                    ->whereIn("status", [
+                        "cheque-hold",
+                        "approve-hold",
+                        "inspect-hold",
+                        "issue-hold",
+                        "debit-hold",
+                    ]);
+            })
 
-        $transactions = Transaction::
-        with([
-            "users:id,first_name,middle_name,last_name,department,position",
-            "supplier.supplier_type:id,type as name,transaction_days",
-            "po_details:id,request_id,po_no,po_total_amount",
-        ])
+            //Transaction Approval
+            ->when($status == 'pending-approve', function ($query) use ($user_id) {
+                $query->where('approver_id', $user_id)
+                    ->where('status', 'voucher-voucher');
+            })
+            ->when($status == 'approve-receive', function ($query) use ($user_id) {
+                $query->where('approver_id', $user_id)
+                    ->whereIn('status', ['approve-receive']);
+            })
+            ->when($status == 'approve-approve', function ($query) use ($user_id) {
+                $query->where('approver_id', $user_id)
+                    ->where('status', 'approve-approve');
+            })
+            ->when($status == 'approve-hold', function ($query) use ($user_id) {
+                $query->where('approver_id', $user_id)
+                    ->where('status', 'approve-hold');
+
+            })
+            ->when($status == 'approve-return', function ($query) use ($user_id) {
+                $query->where('approver_id', $user_id)
+                    ->where('status', 'approve-return');
+            })
+
+            //Transmittal of Voucher
+            ->when($status == 'pending-transmit', function ($query) use ($user_id) {
+                $query->where('distributed_id', $user_id)
+                    ->whereIn('status', ['approve-approve', 'transmit-transfer'])
+                    ->whereNull('is_for_releasing');
+            })
+            ->when($status == 'transmit-receive', function ($query) use ($user_id) {
+                $query->where('distributed_id', $user_id)
+                    ->whereIn('status', ['transmit-receive']);
+            })
+            ->when($status == 'transmit-transmit', function ($query) use ($user_id) {
+                $query->where('distributed_id', $user_id)
+                    ->where('status', 'transmit-transmit');
+            })
+
+            //Auditing of Voucher
+            ->when($status == 'pending-inspect', function ($query) {
+                $query->where('status', 'transmit-transmit')
+                    ->where('is_for_voucher_audit', true);
+            })
+
+            //Filing of Official Receipt (GAS)
+            ->when($status == 'pending-discharge', function ($query) {
+                $query->whereIn("status", ["release-release"])->where("receipt_type", "official");
+            })
+
+            //Filing of Voucher
+            ->when($status == 'pending-file', function ($query) {
+                $query
+                    ->where(function ($query) {
+                        $query->whereIn("status", ["release-release"])->where("receipt_type", "unofficial");
+                    })
+                    ->orWhere(function ($query) {
+                        $query->where("status", "discharge-discharge");
+                    });
+            })
+
+            ->when(!in_array($status, $declaredStatus), function ($query) use ($status, $user_id, $userRole) {
+                $query->where('status', preg_replace('/\s+/', '', $status))
+                    ->when(isset($user_id), function ($query) use ($user_id, $userRole) {
+                        $query->where(function ($query) use ($user_id, $userRole) {
+                            if (in_array($userRole, ['AP Associate', 'AP Specialist'])) {
+                                $query->where('distributed_id', $user_id);
+                            } else if ($userRole == 'Approver') {
+                                $query->where('approver_id', $user_id);
+                            }
+                        });
+                    });
+            })
             ->select([
                 "id",
                 "users_id",
@@ -852,7 +1113,13 @@ class TransactionController extends Controller
             ->latest('updated_at')
             ->paginate($rows);
 
-        return $this->resultResponse("fetch", "Transaction", TransactionIndex::collection($transactions));
+        TransactionIndex::collection($transactions);
+
+        if (count($transactions)) {
+            return $this->resultResponse("fetch", "Transaction", $transactions);
+        }
+        return $this->resultResponse("not-found", "Transaction", []);
+
     }
 
     public function showTransaction($id)
@@ -3790,6 +4057,13 @@ class TransactionController extends Controller
             $collection = $collection->unique('account_title_id')->filter(function ($item, $index) use ($cheque_details) {
                 return $item->account_title_id == $cheque_details->bank->AccountTitleOne->id || $item->entry == 'Debit';
             });
+
+            if (count($collection) <= 1) {
+                $collection = $collection->filter(function ($item, $index) use ($cheque_details) {
+                    return $item->amount == $cheque_details->cheque_amount || $item->entry == 'Debit';
+                });
+            }
+
         }
 
         return $collection->values();
@@ -4241,7 +4515,6 @@ class TransactionController extends Controller
         $rows = $request->rows;
         $search = $request->search;
         $tag_search = str_replace('tag#', '', $search);
-        $unofficial_tag_search = str_replace('tag#', '', $search . '-U');
         $suppliers = $this->getRequestData($request, "suppliers");
         $document_ids = $this->getRequestData($request, "document_ids");
         $companies = $this->getRequestData($request, "companies");
@@ -4274,7 +4547,7 @@ class TransactionController extends Controller
             ->when(isset($transaction_from) || isset($transaction_to), function ($query) use ($transaction_from, $transaction_to) {
                 $query->where("date_requested", ">=", $transaction_from)->where("date_requested", "<=", $transaction_to);
             })
-            ->where(function ($query) use ($search, $tag_search, $unofficial_tag_search) {
+            ->where(function ($query) use ($search, $tag_search) {
                 $query
                     ->where("date_requested", "like", "%" . $search . "%")
                     ->orWhere("remarks", "like", "%" . $search . "%")
@@ -4318,6 +4591,46 @@ class TransactionController extends Controller
                     $query->where('status', $statusMapping[$status]['status']);
                 });
             })
+            ->select([
+                "id",
+                "users_id",
+                "request_id",
+                "supplier_id",
+                "document_id",
+                "tag_no",
+                "transaction_id",
+                "document_type",
+                "payment_type",
+                "remarks",
+                "date_requested",
+                "company_id",
+                "company",
+                "department",
+                "location",
+                "document_no",
+                "document_amount",
+                "referrence_no",
+                "referrence_amount",
+                "net_amount",
+                "cheque_date",
+                "receipt_type",
+                "is_not_editable",
+                "approver_id",
+                "approver_name",
+                "status",
+                "state",
+                "principal",
+                "interest",
+                "gross_amount",
+                "category",
+                "department_id",
+                "location_id",
+                "input_tax",
+                "voucher_no",
+                "voucher_month",
+                "distributed_id",
+                "distributed_name"
+            ])
             ->orderBy(DB::raw("(SELECT t.created_at FROM " . $statusMapping[$status]['table'] . " as t WHERE t.transaction_id = transactions.id ORDER BY t.created_at DESC LIMIT 1)"), 'desc')
             ->paginate($rows);
 
@@ -4572,5 +4885,11 @@ class TransactionController extends Controller
             return $this->resultResponse("fetch", "Transaction", $cheques);
         }
         return $this->resultResponse("not-found", "Transaction", []);
+    }
+
+    public function voucher(Request $request) {
+        $id =  $request->id;
+        $transaction = Transaction::where('id', $id)->first();
+        return new TransactionVoucherResource($transaction);
     }
 }

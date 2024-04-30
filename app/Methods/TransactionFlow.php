@@ -717,6 +717,7 @@ class TransactionFlow
       $account_titles = $cheque_account_titles;
       $cheques = $cheque_cheques;
 
+<<<<<<< HEAD
       $model = new Treasury();
       if ($subprocess == "receive") {
         $status = "cheque-receive";
@@ -733,6 +734,25 @@ class TransactionFlow
         $status = "cheque-void";
       } elseif ($subprocess == "cheque") {
         $status = "cheque-cheque";
+=======
+            $model = new Treasury();
+            if ($subprocess == "receive") {
+                $status = "cheque-receive";
+                // $transaction->when($transaction->document_id === 8 && $transaction->is_for_voucher_audit, function ($query) {
+                //   $query->update([
+                //     "is_for_voucher_audit" => null,
+                //   ]);
+                // });
+            } elseif ($subprocess == "hold") {
+                $status = "cheque-hold";
+            } elseif ($subprocess == "return") {
+                $status = "cheque-return";
+                (new TransactionController())->chequeRevert1($request["bank_id"], $request["cheque_no"], $process, $request);
+            } elseif ($subprocess == "void") {
+                $status = "cheque-void";
+            } elseif ($subprocess == "cheque") {
+                $status = "cheque-cheque";
+>>>>>>> adjustments
 //        $transaction->treasuryCheque()->forceDelete();
 //        $transaction->treasuryAccountTitle()->forceDelete();
 
@@ -1865,9 +1885,9 @@ class TransactionFlow
                 case 'receive':
                     return $this->chequeSingleReceive($request, $transactionIds);
                     break;
-                case 'return':
-                    $this->chequeReturn($request, $transactionIds);
-                    break;
+//                case 'return':
+//                    $this->chequeReturn($request, $transactionIds);
+//                    break;
                 case 'unhold':
                 case 'unreturn':
                     return $this->unreturnUnhold($transactionIds, $context);
