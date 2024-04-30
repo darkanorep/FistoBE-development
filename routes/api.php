@@ -374,7 +374,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
             Route::post('cheque-revert/{id}', [TransactionController::class, "chequeRevert"]);
 
             //===TEST MODULE===//
-            Route::post('cheque-revert', [TransactionController::class, "chequeRevert1"]);
+//            Route::post('cheque-revert', [TransactionController::class, "chequeRevert1"]);
 
         });
     });
