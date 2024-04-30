@@ -350,7 +350,6 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         Route::get("status_group/", [TransactionController::class, "status_group"]);
         Route::post("void/{id}", [TransactionController::class, "voidTransaction"]);
         Route::post("validate-po-no", [TransactionController::class, "getPODetails"]);
-//        Route::post("validate-po-no-v1", [TransactionController::class, "getPODetailsv1"]);
         Route::post("validate-document-no", [TransactionController::class, "validateDocumentNo"]);
         Route::post("validate-reference-no", [TransactionController::class, "validateReferenceNo"]);
         Route::post("validate-pcf-name/", [TransactionController::class, "validatePCFName"]);
@@ -375,7 +374,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
             Route::post('cheque-revert/{id}', [TransactionController::class, "chequeRevert"]);
 
             //===TEST MODULE===//
-            Route::post('cheque-revert', [TransactionController::class, "chequeRevert1"]);
+//            Route::post('cheque-revert', [TransactionController::class, "chequeRevert1"]);
 
         });
     });

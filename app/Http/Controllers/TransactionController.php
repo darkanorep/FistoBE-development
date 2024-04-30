@@ -862,7 +862,7 @@ class TransactionController extends Controller
             "supplier.supplier_type:id,type as name,transaction_days",
             "po_details:id,request_id,po_no,po_total_amount",
         ])
-            ->when(!empty($document_ids), function ($query) use ($document_ids) {
+                        ->when(!empty($document_ids), function ($query) use ($document_ids) {
                 $query->whereIn("document_id", $document_ids);
             })
             ->when(!empty($suppliers), function ($query) use ($suppliers) {
