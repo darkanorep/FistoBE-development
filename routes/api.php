@@ -273,23 +273,23 @@ Route::group(["middleware" => "auth:sanctum"], function () {
   Route::post("users/department-validation/", [UserController::class, "departmentValidation"]);
 
   // TRANSACTION
-  Route::put("transactions/{id}", [TransactionController::class, "update"]);
-  Route::resource("transactions/", TransactionController::class);
-  Route::get("transactions/logs/request", [TransactionController::class, "viewRequestorLogs"]);
-  Route::get("transactions/{id}", [TransactionController::class, "showTransaction"]);
-  Route::get("transactions/status_group/", [TransactionController::class, "status_group"]);
-  Route::post("transactions/void/{id}", [TransactionController::class, "voidTransaction"]);
-  Route::post("transactions/validate-po-no", [TransactionController::class, "getPODetails"]);
-  Route::post("transactions/validate-document-no", [TransactionController::class, "validateDocumentNo"]);
-  Route::post("transactions/validate-reference-no", [TransactionController::class, "validateReferenceNo"]);
-  Route::post("transactions/validate-pcf-name/", [TransactionController::class, "validatePCFName"]);
-  Route::post("transactions/validate-soa-no/", [TransactionController::class, "validateSOANumber"]);
-
-
-    Route::post("transactions/flow/update-transaction/{id}", [TransactionFlowController::class, "updateInTransactionFlow"]);
-    Route::post("transactions/flow/validate-voucher-no", [TransactionFlowController::class, "validateVoucherNo"]);
-    Route::post("transactions/flow/validate-cheque-no", [TransactionFlowController::class, "validateChequeNo"]);
-    Route::put("transactions/flow/transfer/{id}", [TransactionFlowController::class, "transfer"]);
+//  Route::put("transactions/{id}", [TransactionController::class, "update"]);
+//  Route::resource("transactions/", TransactionController::class);
+//  Route::get("transactions/logs/request", [TransactionController::class, "viewRequestorLogs"]);
+//  Route::get("transactions/{id}", [TransactionController::class, "showTransaction"]);
+//  Route::get("transactions/status_group/", [TransactionController::class, "status_group"]);
+//  Route::post("transactions/void/{id}", [TransactionController::class, "voidTransaction"]);
+//  Route::post("transactions/validate-po-no", [TransactionController::class, "getPODetails"]);
+//  Route::post("transactions/validate-document-no", [TransactionController::class, "validateDocumentNo"]);
+//  Route::post("transactions/validate-reference-no", [TransactionController::class, "validateReferenceNo"]);
+//  Route::post("transactions/validate-pcf-name/", [TransactionController::class, "validatePCFName"]);
+//  Route::post("transactions/validate-soa-no/", [TransactionController::class, "validateSOANumber"]);
+//
+//
+//    Route::post("transactions/flow/update-transaction/{id}", [TransactionFlowController::class, "updateInTransactionFlow"]);
+//    Route::post("transactions/flow/validate-voucher-no", [TransactionFlowController::class, "validateVoucherNo"]);
+//    Route::post("transactions/flow/validate-cheque-no", [TransactionFlowController::class, "validateChequeNo"]);
+//    Route::put("transactions/flow/transfer/{id}", [TransactionFlowController::class, "transfer"]);
 
     // COUNTER RECEIPT
 
@@ -328,7 +328,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
     //Cheque Flow
     Route::post('cheque/flow', [TransactionFlow::class, "chequeFlow"]);
     Route::get('cheque/history/{id}',  [TransactionController::class, "chequeHistory"]);
-    //Clear
+    //ClearUser::where('role', 'approver')->pluck('id')
 //    Route::post("cheque/clear", [TransactionController::class, "chequeClear1"]);
 
     //MultiReceive
@@ -340,45 +340,45 @@ Route::group(["middleware" => "auth:sanctum"], function () {
     Route::get("cheques-history", [TransactionController::class, "historyChequeIndex"]);
     Route::get("voucher-transaction/{id}", [TransactionController::class, 'voucher']);
 
-//    Route::group(["prefix" => "transactions"], function () {
-//        //TRANSACTION
-////        Route::get("/refactor", [TransactionController::class, "indexRefactor"]);
-////        Route::put("{id}", [TransactionController::class, "update"]);
-//        Route::resource("", TransactionController::class);
-//        Route::get("logs/request", [TransactionController::class, "viewRequestorLogs"]);
+    Route::resource("transactions", TransactionController::class);
+    Route::group(["prefix" => "transactions"], function () {
+        //TRANSACTION
+//        Route::get("/refactor", [TransactionController::class, "indexRefactor"]);
+//        Route::put("{id}", [TransactionController::class, "update"])
+        Route::get("logs/request", [TransactionController::class, "viewRequestorLogs"]);
 //        Route::get("{id}", [TransactionController::class, "showTransaction"]);
-//        Route::get("status_group/", [TransactionController::class, "status_group"]);
-//        Route::post("void/{id}", [TransactionController::class, "voidTransaction"]);
-//        Route::post("validate-po-no", [TransactionController::class, "getPODetails"]);
-////        Route::post("validate-po-no-v1", [TransactionController::class, "getPODetailsv1"]);
-//        Route::post("validate-document-no", [TransactionController::class, "validateDocumentNo"]);
-//        Route::post("validate-reference-no", [TransactionController::class, "validateReferenceNo"]);
-//        Route::post("validate-pcf-name/", [TransactionController::class, "validatePCFName"]);
-//        Route::post("validate-soa-no/", [TransactionController::class, "validateSOANumber"]);
-//
-//        // TRANSACTION FLOW
-//        Route::group(["prefix" => "flow"], function () {
-//            Route::post("update-transaction/{id}", [TransactionFlowController::class, "updateInTransactionFlow"]);
-//            Route::put("update-receipt/{id}", [TransactionFlowController::class, "updateReceiptTypeTransaction"]);
-//            Route::put('update-remarks/{id}', [TransactionFlowController::class, 'updateTransactionRemarks']);
-//            Route::post("validate-voucher-no", [TransactionFlowController::class, "validateVoucherNo"]);
-//            Route::post("validate-cheque-no", [TransactionFlowController::class, "validateChequeNo"]);
-//            Route::put("transfer/{id}", [TransactionFlowController::class, "transfer"]);
-//
-//            //MULTI
-//            Route::post("receive", [TransactionFlowController::class, "multipleReceive"]);
-//            Route::post("tag", [TransactionFlowController::class, "multipleTag"]);
-//            Route::post("cheque", [TransactionFlowController::class, "multipleCheque"]);
-//
-//            //CHEQUE
-//            Route::post("clear-cheques/{id}", [TransactionController::class, "chequeClear"]);
-//            Route::post('cheque-revert/{id}', [TransactionController::class, "chequeRevert"]);
-//
-//            //===TEST MODULE===//
-//            Route::post('cheque-revert', [TransactionController::class, "chequeRevert1"]);
-//
-//        });
-//    });
+        Route::get("status_group/", [TransactionController::class, "status_group"]);
+        Route::post("void/{id}", [TransactionController::class, "voidTransaction"]);
+        Route::post("validate-po-no", [TransactionController::class, "getPODetails"]);
+//        Route::post("validate-po-no-v1", [TransactionController::class, "getPODetailsv1"]);
+        Route::post("validate-document-no", [TransactionController::class, "validateDocumentNo"]);
+        Route::post("validate-reference-no", [TransactionController::class, "validateReferenceNo"]);
+        Route::post("validate-pcf-name/", [TransactionController::class, "validatePCFName"]);
+        Route::post("validate-soa-no/", [TransactionController::class, "validateSOANumber"]);
+
+        // TRANSACTION FLOW
+        Route::group(["prefix" => "flow"], function () {
+            Route::post("update-transaction/{id}", [TransactionFlowController::class, "updateInTransactionFlow"]);
+            Route::put("update-receipt/{id}", [TransactionFlowController::class, "updateReceiptTypeTransaction"]);
+            Route::put('update-remarks/{id}', [TransactionFlowController::class, 'updateTransactionRemarks']);
+            Route::post("validate-voucher-no", [TransactionFlowController::class, "validateVoucherNo"]);
+            Route::post("validate-cheque-no", [TransactionFlowController::class, "validateChequeNo"]);
+            Route::put("transfer/{id}", [TransactionFlowController::class, "transfer"]);
+
+            //MULTI
+            Route::post("receive", [TransactionFlowController::class, "multipleReceive"]);
+            Route::post("tag", [TransactionFlowController::class, "multipleTag"]);
+            Route::post("cheque", [TransactionFlowController::class, "multipleCheque"]);
+
+            //CHEQUE
+            Route::post("clear-cheques/{id}", [TransactionController::class, "chequeClear"]);
+            Route::post('cheque-revert/{id}', [TransactionController::class, "chequeRevert"]);
+
+            //===TEST MODULE===//
+            Route::post('cheque-revert', [TransactionController::class, "chequeRevert1"]);
+
+        });
+    });
 
     Route::group(["prefix" => "counter-receipts"], function () {
         Route::get("", [CounterReceiptController::class, "index"]);

@@ -252,12 +252,13 @@ class TransactionFlow
             $cheque_cheques = GenericMethod::object_to_array($cheque_cheques);
         }
 
-        if ($process == "requestor") {
+        if ($process == "Requestor") {
             $model = new RequestorLogs();
             if ($subprocess == "void") {
                 $status = "requestor-void";
                 $state = "void";
             }
+
             GenericMethod::insertRequestorLogs(
                 $id,
                 $transaction_id,
@@ -502,7 +503,6 @@ class TransactionFlow
             } elseif ($subprocess == "void") {
                 $status = "voucher-void";
             } elseif ($subprocess == "voucher") {
-                // GenericMethod::voucherNoValidationUponSaving($voucher_no, $id);
                 $status = "voucher-voucher";
                 $transaction->account_titles()->forceDelete();
                 $transaction->treasuryCheque()->forceDelete();
@@ -806,7 +806,12 @@ class TransactionFlow
                 $status = "cheque-hold";
             } elseif ($subprocess == "return") {
                 $status = "cheque-return";
-                (new TransactionController())->chequeRevert1($request["bank_id"], $request["cheque_no"], $process, $request);
+//                (new TransactionController())->chequeRevert1($request["bank_id"], $request["cheque_no"], $process, $request);
+
+                if (isset($request["cheque_no"]) && isset($request["bank_id"])) {
+                    (new TransactionController())->chequeRevert1($request["bank_id"], $request["cheque_no"], $process, $request);
+                }
+
             } elseif ($subprocess == "void") {
                 $status = "cheque-void";
             } elseif ($subprocess == "cheque") {
@@ -1820,7 +1825,6 @@ class TransactionFlow
                 $inputTax
             );
         }
-
         $transaction->touch();
 
         return GenericMethod::resultResponse($state, "", "");

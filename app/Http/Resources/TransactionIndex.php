@@ -35,6 +35,11 @@ class TransactionIndex extends JsonResource
             'unofficial store rental',
             'rental'
         ];
+
+        $accounts = $this->account_titles->filter(function ($item) {
+            return $item->account_title_name == 'Accounts Payable' || $item->account_title_name == 'Accounts Payable - RHL';
+        });
+
         $this->state = $this->stateChange($this->state);
 
         $is_editable_prm = 0;
@@ -121,7 +126,7 @@ class TransactionIndex extends JsonResource
                 "department" => $this->users->department,
                 "position" => $this->users->position,
             ],
-            "po_details" => in_array($this->document_id, [1, 4, 5])
+            "po_details" => in_array($this->document_id, [1,  2, 4, 5])
                 ? $this->po_details->map(function ($po) {
                     return [
                         "id" => $po->id,
@@ -142,6 +147,17 @@ class TransactionIndex extends JsonResource
                     'is_cleared' => $item->is_cleared,
                 ];
             }),
+            'accounts' => $accounts->map(function ($item) {
+                return [
+                    'account_title' => [
+                        'name' => $item->account_title_name
+                    ],
+                    'amount' => $item->amount,
+                ];
+            })->values(),
+            'voucher' => [
+                'no' => $this->voucher_no,
+            ]
         ];
     }
 

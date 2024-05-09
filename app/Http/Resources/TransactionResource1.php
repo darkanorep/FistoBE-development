@@ -458,21 +458,23 @@ class TransactionResource1 extends JsonResource
             'name' => $this->bussiness_unit_name,
         ];
 
-        $autoDebit_group = $this->auto_debit->map(function ($autoDebit) {
-            return [
-                "request_id" => $autoDebit->request_id,
-                "pn_no" => $autoDebit->pn_no,
-                "interest_from" => $autoDebit->interest_from,
-                "interest_to" => $autoDebit->interest_to,
-                "outstanding_amount" => floatVal($autoDebit->outstanding_amount),
-                "interest_rate" => floatVal($autoDebit->interest_rate),
-                "no_of_days" => floatVal($autoDebit->no_of_days),
-                "principal_amount" => floatVal($autoDebit->principal_amount),
-                "interest_due" => floatVal($autoDebit->interest_due),
-                "cwt" => floatVal($autoDebit->cwt),
-                "dst" => floatVal($autoDebit->dst),
-            ];
-        });
+        if ($this->has('auto_debit')) {
+            $autoDebit_group = $this->auto_debit->map(function ($autoDebit) {
+                return [
+                    "request_id" => $autoDebit->request_id,
+                    "pn_no" => $autoDebit->pn_no,
+                    "interest_from" => $autoDebit->interest_from,
+                    "interest_to" => $autoDebit->interest_to,
+                    "outstanding_amount" => floatVal($autoDebit->outstanding_amount),
+                    "interest_rate" => floatVal($autoDebit->interest_rate),
+                    "no_of_days" => floatVal($autoDebit->no_of_days),
+                    "principal_amount" => floatVal($autoDebit->principal_amount),
+                    "interest_due" => floatVal($autoDebit->interest_due),
+                    "cwt" => floatVal($autoDebit->cwt),
+                    "dst" => floatVal($autoDebit->dst),
+                ];
+            });
+        }
 
         $condition = $this->state == "void" ? "=" : "!=";
 //        $document_amount = Transaction::where("request_id", $this->request_id)
@@ -489,7 +491,7 @@ class TransactionResource1 extends JsonResource
             ->where("transactions.state", $condition, "void")
             ->where("transactions.id", $this->id)
             ->where("transactions.request_id", $this->request_id)
-            ->whereIn("transactions.document_id", [1, 4, 5])
+            ->whereIn("transactions.document_id", [1, 2, 4, 5])
             ->when(
                 $payment_type === "PARTIAL",
                 function ($q) {
@@ -589,7 +591,7 @@ class TransactionResource1 extends JsonResource
 
         //TAG
 //        if ($this->tag()->count() > 0) {
-        if ($this->withCount('tag')) {
+        if ($this->has('tag')) {
             $tag_transaction = $this->tag->first();
 
             if (isset($tag_transaction->status)) {
@@ -607,7 +609,8 @@ class TransactionResource1 extends JsonResource
             }
         }
 
-        if ($this->withCount('extract')) {
+        //GAS TO TAGGING
+        if ($this->has('extract')) {
             $extract_transaction = $this->extract->first();
 
             if (isset($extract_transaction->status)) {
@@ -619,7 +622,8 @@ class TransactionResource1 extends JsonResource
         }
 
         //GAS
-        if ($this->gas()->count() > 0) {
+//        if ($this->gas()->count() > 0) {
+        if ($this->has('gas')) {
 //            $gas = $this->test(Gas::class, $this->receiveGas, $this->gas, $this->reasonGas, $this->statusGas, 'gas', ["receive", "gas"]);
             $gas_transaction = $this->gas->first();
 
@@ -634,7 +638,7 @@ class TransactionResource1 extends JsonResource
 
         //VOUCHER
 //        if ($this->voucher()->count() > 0) {
-        if ($this->withCount('voucher')) {
+        if ($this->has('voucher')) {
             $voucher_transaction = $this->voucher->first();
 
             if (empty($voucher_transaction->account_title)) {
@@ -715,7 +719,8 @@ class TransactionResource1 extends JsonResource
         }
 
         //INSPECT
-        if ($this->inspect()->count() > 0) {
+//        if ($this->inspect()->count() > 0) {
+        if ($this->has('inspect')) {
             $inspect_transaction = $this->inspect->first();
 
             if (isset($inspect_transaction->status)) {
@@ -729,7 +734,7 @@ class TransactionResource1 extends JsonResource
 
         //APPROVE
 //        if ($this->approve()->count() > 0) {
-        if ($this->withCount('approve')) {
+        if ($this->has('approve')) {
             $approve_transaction = $this->approve->first();
 
             if (isset($approve_transaction->status)) {
@@ -747,7 +752,7 @@ class TransactionResource1 extends JsonResource
 
         //TRANSMIT
 //        if ($this->transmit()->count() > 0) {
-        if ($this->withCount('transmit')) {
+        if ($this->has('transmit')) {
             $transmit_transaction = $this->transmit->first();
 
             if (isset($transmit_transaction->status)) {
@@ -936,7 +941,7 @@ class TransactionResource1 extends JsonResource
         }
 
         //AUDIT CHEQUE
-        if ($this->audit()->count() > 0) {
+        if ($this->has('audit')) {
             $audit_transaction = $this->audit->first();
 
             if (isset($audit_transaction->status)) {
@@ -948,24 +953,8 @@ class TransactionResource1 extends JsonResource
             }
         }
 
-//        if ($this->audit1()->count() > 0) {
-//            $audit_transaction = collect($this->audit1()->pluck('status')->toArray());
-//
-//            if ($audit_transaction->contains('audit-receive')) {
-//                $audit_transaction = $this->audit1->first();
-//
-//                if (isset($audit_transaction->status)) {
-//                    $audit = [
-//                        'dates' => $this->get_transaction_dates(Audit::class, $this->id, 'audit', ["receive", "audit"]),
-//                        'status' => $audit_transaction->status,
-//                        'reason' => $this->reason($audit_transaction, $audit_transaction->reason_id)
-//                    ];
-//                }
-//            }
-//        }
-
         //EXECUTIVE
-        if ($this->executive()->count() > 0) {
+        if ($this->has('executive')) {
             $executive_transaction = $this->executive->first();
 
             if (isset($executive_transaction->status)) {
@@ -978,7 +967,7 @@ class TransactionResource1 extends JsonResource
         }
 
         //ISSUE
-        if ($this->issue()->count() > 0) {
+        if ($this->has('issue')) {
             $issue_transaction = $this->issue->first();
 
             if (isset($issue_transaction->status)) {
@@ -1014,7 +1003,7 @@ class TransactionResource1 extends JsonResource
         }
 
         //DISCHARGE
-        if ($this->discharge()->count() > 0) {
+        if ($this->has('discharge')) {
             $discharge_transaction = $this->discharge->first();
 
             if (isset($discharge_transaction->status)) {
@@ -1028,7 +1017,7 @@ class TransactionResource1 extends JsonResource
         }
 
         //FILE
-        if ($this->file()->count() > 0) {
+        if ($this->has('file')) {
             $file_transaction = $this->file->first();
 
             if (isset($file_transaction->status)) {

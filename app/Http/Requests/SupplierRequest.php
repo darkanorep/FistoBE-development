@@ -30,11 +30,11 @@ class SupplierRequest extends FormRequest
                 'string',
                 Rule::unique('suppliers', 'code')->ignore($this->supplier)
             ],
-            'name' => [
-                'required',
-                'string',
-                Rule::unique('suppliers', 'name')->ignore($this->supplier)
-            ],
+//            'name' => [
+//                'required',
+//                'string',
+//                Rule::unique('suppliers', 'name')->ignore($this->supplier)
+//            ],
             'terms' => 'required|string',
             'supplier_type_id' => [
                 'required',

@@ -1362,844 +1362,1620 @@ class GenericMethod
     }, $array);
   }
 
-  public static function insertTransaction(
-    $transaction_id,
-    $po_total_amount = 0,
-    $request_id,
-    $date_requested,
-    $fields,
-    $balance_po_ref_amount = 0
-  ) {
-    $status = "create";
+    public static function insertTransaction($transaction_id, $po_total_amount = 0, $request_id, $date_requested, $fields, $balance_po_ref_amount = 0)
+    {
+        $status = "create";
 
-    $requestor = Auth::user();
+        $requestor = Auth::user();
 
-    if ($fields["document"]["id"] == 6) {
-      //Utilities
+        switch ($fields["document"]["id"]) {
 
-      $new_transaction = Transaction::create([
-        "transaction_id" => $transaction_id,
-        // "users_id" => $fields["requestor"]["id"],
-        // "id_prefix" => $fields["requestor"]["id_prefix"],
-        // "id_no" => $fields["requestor"]["id_no"],
-        // "first_name" => $fields["requestor"]["first_name"],
-        // "middle_name" => $fields["requestor"]["middle_name"],
-        // "last_name" => $fields["requestor"]["last_name"],
-        // "suffix" => $fields["requestor"]["suffix"],
-        // "department_details" => $fields["requestor"]["department"],
+            case 6: // Utilities
+                $new_transaction = Transaction::create([
+                    "transaction_id" => $transaction_id,
+                    "users_id" => $requestor->id,
+                    "id_prefix" => $requestor->id_prefix,
+                    "id_no" => $requestor->id_no,
+                    "first_name" => $requestor->first_name,
+                    "middle_name" => $requestor->middle_name,
+                    "last_name" => $requestor->last_name,
+                    "suffix" => $requestor->suffix,
+                    "department_details" => $requestor->department[0]["name"],
 
-        "users_id" => $requestor->id,
-        "id_prefix" => $requestor->id_prefix,
-        "id_no" => $requestor->id_no,
-        "first_name" => $requestor->first_name,
-        "middle_name" => $requestor->middle_name,
-        "last_name" => $requestor->last_name,
-        "suffix" => $requestor->suffix,
-        "department_details" => $requestor->department[0]["name"],
+                    "document_id" => $fields["document"]["id"],
+                    "company_id" => $fields["document"]["company"]["id"],
+                    "company" => $fields["document"]["company"]["name"],
+                    "department_id" => $fields["document"]["department"]["id"],
+                    "department" => $fields["document"]["department"]["name"],
+                    "location_id" => $fields["document"]["location"]["id"],
+                    "location" => $fields["document"]["location"]["name"],
+                    "supplier_id" => $fields["document"]["supplier"]["id"],
+                    "supplier" => $fields["document"]["supplier"]["name"],
+                    "payment_type" => $fields["document"]["payment_type"],
+                    "document_amount" => $fields["document"]["amount"],
+                    "remarks" => $fields["document"]["remarks"],
+                    "document_type" => $fields["document"]["name"],
 
-        "document_id" => $fields["document"]["id"],
-        "company_id" => $fields["document"]["company"]["id"],
-        "company" => $fields["document"]["company"]["name"],
-        "department_id" => $fields["document"]["department"]["id"],
-        "department" => $fields["document"]["department"]["name"],
-        "location_id" => $fields["document"]["location"]["id"],
-        "location" => $fields["document"]["location"]["name"],
-        "supplier_id" => $fields["document"]["supplier"]["id"],
-        "supplier" => $fields["document"]["supplier"]["name"],
-        "payment_type" => $fields["document"]["payment_type"],
-        "document_amount" => $fields["document"]["amount"],
-        "remarks" => $fields["document"]["remarks"],
-        "document_type" => $fields["document"]["name"],
+                    "utilities_from" => $fields["document"]["from"],
+                    "utilities_to" => $fields["document"]["to"],
 
-        "utilities_from" => $fields["document"]["from"],
-        "utilities_to" => $fields["document"]["to"],
+                    "utilities_receipt_no" => $fields["document"]["utility"]["receipt_no"],
+                    "utilities_consumption" => $fields["document"]["utility"]["consumption"],
+                    "utilities_location_id" => $fields["document"]["utility"]["location"]["id"],
+                    "utilities_location" => $fields["document"]["utility"]["location"]["name"],
+                    "utilities_category_id" => $fields["document"]["utility"]["category"]["id"],
+                    "utilities_category" => $fields["document"]["utility"]["category"]["name"],
+                    "utilities_account_no_id" => $fields["document"]["utility"]["account_no"]["id"],
+                    "utilities_account_no" => $fields["document"]["utility"]["account_no"]["no"],
 
-        "utilities_receipt_no" => $fields["document"]["utility"]["receipt_no"],
-        "utilities_consumption" => $fields["document"]["utility"]["consumption"],
-        "utilities_location_id" => $fields["document"]["utility"]["location"]["id"],
-        "utilities_location" => $fields["document"]["utility"]["location"]["name"],
-        "utilities_category_id" => $fields["document"]["utility"]["category"]["id"],
-        "utilities_category" => $fields["document"]["utility"]["category"]["name"],
-        "utilities_account_no_id" => $fields["document"]["utility"]["account_no"]["id"],
-        "utilities_account_no" => $fields["document"]["utility"]["account_no"]["no"],
+                    "po_total_amount" => $po_total_amount,
 
-        "po_total_amount" => $po_total_amount,
+                    "request_id" => $request_id,
 
-        "request_id" => $request_id,
+                    "date_requested" => $date_requested,
+                    "status" => "Pending",
+                    "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
+                    "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+                    "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
+                    "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+                ]);
+                break;
 
-        "date_requested" => $date_requested,
-        "status" => "Pending",
-          "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
-          "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
-          "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
-          "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
-      ]);
-    } elseif ($fields["document"]["id"] == 8) {
-      //PCF
+            case 8: // PCF
+                $new_transaction = Transaction::create([
+                    "transaction_id" => $transaction_id,
+                    "users_id" => $requestor->id,
+                    "id_prefix" => $requestor->id_prefix,
+                    "id_no" => $requestor->id_no,
+                    "first_name" => $requestor->first_name,
+                    "middle_name" => $requestor->middle_name,
+                    "last_name" => $requestor->last_name,
+                    "suffix" => $requestor->suffix,
+                    "department_details" => $requestor->department[0]["name"],
 
-      $new_transaction = Transaction::create([
-        "transaction_id" => $transaction_id,
-        // "users_id" => $fields["requestor"]["id"],
-        // "id_prefix" => $fields["requestor"]["id_prefix"],
-        // "id_no" => $fields["requestor"]["id_no"],
-        // "first_name" => $fields["requestor"]["first_name"],
-        // "middle_name" => $fields["requestor"]["middle_name"],
-        // "last_name" => $fields["requestor"]["last_name"],
-        // "suffix" => $fields["requestor"]["suffix"],
-        // "department_details" => $fields["requestor"]["department"],
+                    "document_id" => $fields["document"]["id"],
+                    "company_id" => $fields["document"]["company"]["id"],
+                    "company" => $fields["document"]["company"]["name"],
+                    "department_id" => $fields["document"]["department"]["id"],
+                    "department" => $fields["document"]["department"]["name"],
+                    "location_id" => $fields["document"]["location"]["id"],
+                    "location" => $fields["document"]["location"]["name"],
+                    "supplier_id" => $fields["document"]["supplier"]["id"],
+                    "supplier" => $fields["document"]["supplier"]["name"],
+                    "payment_type" => $fields["document"]["payment_type"],
+                    "document_date" => $fields["document"]["date"],
+                    "document_amount" => $fields["document"]["amount"],
+                    "remarks" => $fields["document"]["remarks"],
+                    "document_type" => $fields["document"]["name"],
 
-        "users_id" => $requestor->id,
-        "id_prefix" => $requestor->id_prefix,
-        "id_no" => $requestor->id_no,
-        "first_name" => $requestor->first_name,
-        "middle_name" => $requestor->middle_name,
-        "last_name" => $requestor->last_name,
-        "suffix" => $requestor->suffix,
-        "department_details" => $requestor->department[0]["name"],
+                    "pcf_name" => $fields["document"]["pcf_batch"]["name"],
+                    "pcf_date" => $fields["document"]["pcf_batch"]["date"],
+                    "pcf_letter" => $fields["document"]["pcf_batch"]["letter"],
+                    "request_id" => $request_id,
 
-        "document_id" => $fields["document"]["id"],
-        "company_id" => $fields["document"]["company"]["id"],
-        "company" => $fields["document"]["company"]["name"],
-        "department_id" => $fields["document"]["department"]["id"],
-        "department" => $fields["document"]["department"]["name"],
-        "location_id" => $fields["document"]["location"]["id"],
-        "location" => $fields["document"]["location"]["name"],
-        "supplier_id" => $fields["document"]["supplier"]["id"],
-        "supplier" => $fields["document"]["supplier"]["name"],
-        "payment_type" => $fields["document"]["payment_type"],
-        "document_date" => $fields["document"]["date"],
-        "document_amount" => $fields["document"]["amount"],
-        "remarks" => $fields["document"]["remarks"],
-        "document_type" => $fields["document"]["name"],
+                    "date_requested" => $date_requested,
+                    "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
+                    "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+                    "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
+                    "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+                ]);
+                break;
 
-        "pcf_name" => $fields["document"]["pcf_batch"]["name"],
-        "pcf_date" => $fields["document"]["pcf_batch"]["date"],
-        "pcf_letter" => $fields["document"]["pcf_batch"]["letter"],
-        "request_id" => $request_id,
+            case 7: // Payroll
+                $new_transaction = Transaction::create([
+                    "transaction_id" => $transaction_id,
+                    "users_id" => $requestor->id,
+                    "id_prefix" => $requestor->id_prefix,
+                    "id_no" => $requestor->id_no,
+                    "first_name" => $requestor->first_name,
+                    "middle_name" => $requestor->middle_name,
+                    "last_name" => $requestor->last_name,
+                    "suffix" => $requestor->suffix,
+                    "department_details" => $requestor->department[0]["name"],
 
-        "date_requested" => $date_requested,
-          "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
-          "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
-          "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
-          "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
-      ]);
-    } elseif ($fields["document"]["id"] == 7) {
-      //Payrol
+                    "document_id" => $fields["document"]["id"],
+                    "company_id" => $fields["document"]["company"]["id"],
+                    "company" => $fields["document"]["company"]["name"],
+                    "department_id" => $fields["document"]["department"]["id"],
+                    "department" => $fields["document"]["department"]["name"],
+                    "location_id" => $fields["document"]["location"]["id"],
+                    "location" => $fields["document"]["location"]["name"],
+                    "supplier_id" => $fields["document"]["supplier"]["id"],
+                    "supplier" => $fields["document"]["supplier"]["name"],
+                    "payment_type" => $fields["document"]["payment_type"],
+                    "document_amount" => $fields["document"]["amount"],
+                    "remarks" => $fields["document"]["remarks"],
+                    "document_type" => $fields["document"]["name"],
 
-      $new_transaction = Transaction::create([
-        "transaction_id" => $transaction_id,
-        // "users_id" => $fields["requestor"]["id"],
-        // "id_prefix" => $fields["requestor"]["id_prefix"],
-        // "id_no" => $fields["requestor"]["id_no"],
-        // "first_name" => $fields["requestor"]["first_name"],
-        // "middle_name" => $fields["requestor"]["middle_name"],
-        // "last_name" => $fields["requestor"]["last_name"],
-        // "suffix" => $fields["requestor"]["suffix"],
-        // "department_details" => $fields["requestor"]["department"],
+                    "payroll_from" => $fields["document"]["from"],
+                    "payroll_to" => $fields["document"]["to"],
+                    "payroll_category_id" => $fields["document"]["payroll"]["category"]["id"],
+                    "payroll_category" => $fields["document"]["payroll"]["category"]["name"],
+                    "payroll_control_no" => $fields["document"]["payroll"]["control_no"],
+                    "payroll_type" => $fields["document"]["payroll"]["type"],
+                    "payroll_client" => $fields["document"]["payroll"]["clients"],
+                    "request_id" => $request_id,
 
-        "users_id" => $requestor->id,
-        "id_prefix" => $requestor->id_prefix,
-        "id_no" => $requestor->id_no,
-        "first_name" => $requestor->first_name,
-        "middle_name" => $requestor->middle_name,
-        "last_name" => $requestor->last_name,
-        "suffix" => $requestor->suffix,
-        "department_details" => $requestor->department[0]["name"],
+                    "date_requested" => $date_requested,
+                    "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
+                    "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+                    "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
+                    "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+                ]);
+                break;
 
-        "document_id" => $fields["document"]["id"],
-        "company_id" => $fields["document"]["company"]["id"],
-        "company" => $fields["document"]["company"]["name"],
-        "department_id" => $fields["document"]["department"]["id"],
-        "department" => $fields["document"]["department"]["name"],
-        "location_id" => $fields["document"]["location"]["id"],
-        "location" => $fields["document"]["location"]["name"],
-        "supplier_id" => $fields["document"]["supplier"]["id"],
-        "supplier" => $fields["document"]["supplier"]["name"],
-        "payment_type" => $fields["document"]["payment_type"],
-        "document_amount" => $fields["document"]["amount"],
-        "remarks" => $fields["document"]["remarks"],
-        "document_type" => $fields["document"]["name"],
+            case 4: // Receipt
 
-        "payroll_from" => $fields["document"]["from"],
-        "payroll_to" => $fields["document"]["to"],
-        "payroll_category_id" => $fields["document"]["payroll"]["category"]["id"],
-        "payroll_category" => $fields["document"]["payroll"]["category"]["name"],
-        "payroll_control_no" => $fields["document"]["payroll"]["control_no"],
-        "payroll_type" => $fields["document"]["payroll"]["type"],
-        "payroll_client" => $fields["document"]["payroll"]["clients"],
-        "request_id" => $request_id,
+                $new_transaction = Transaction::create([
+                    "transaction_id" => $transaction_id,
+                    "users_id" => $requestor->id,
+                    "id_prefix" => $requestor->id_prefix,
+                    "id_no" => $requestor->id_no,
+                    "first_name" => $requestor->first_name,
+                    "middle_name" => $requestor->middle_name,
+                    "last_name" => $requestor->last_name,
+                    "suffix" => $requestor->suffix,
+                    "department_details" => $requestor->department[0]["name"],
 
-        "date_requested" => $date_requested,
-          "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
-          "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
-          "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
-          "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
-      ]);
-    } elseif ($fields["document"]["id"] == 4) {
-      // Receipt
+                    "document_id" => $fields["document"]["id"],
+                    "category_id" => $fields["document"]["category"]["id"],
+                    "category" => $fields["document"]["category"]["name"],
+                    "company_id" => $fields["document"]["company"]["id"],
+                    "company" => $fields["document"]["company"]["name"],
+                    "department_id" => $fields["document"]["department"]["id"],
+                    "department" => $fields["document"]["department"]["name"],
+                    "location_id" => $fields["document"]["location"]["id"],
+                    "location" => $fields["document"]["location"]["name"],
+                    "supplier_id" => $fields["document"]["supplier"]["id"],
+                    "supplier" => $fields["document"]["supplier"]["name"],
+                    "payment_type" => $fields["document"]["payment_type"],
+                    "document_date" => $fields["document"]["date"],
+                    "remarks" => $fields["document"]["remarks"],
+                    "document_type" => $fields["document"]["name"],
 
-      $new_transaction = Transaction::create([
-        "transaction_id" => $transaction_id,
-        // "users_id" => $fields["requestor"]["id"],
-        // "id_prefix" => $fields["requestor"]["id_prefix"],
-        // "id_no" => $fields["requestor"]["id_no"],
-        // "first_name" => $fields["requestor"]["first_name"],
-        // "middle_name" => $fields["requestor"]["middle_name"],
-        // "last_name" => $fields["requestor"]["last_name"],
-        // "suffix" => $fields["requestor"]["suffix"],
-        // "department_details" => $fields["requestor"]["department"],
+                    "po_total_amount" => $po_total_amount,
+                    "balance_po_ref_amount" => $balance_po_ref_amount,
 
-        "users_id" => $requestor->id,
-        "id_prefix" => $requestor->id_prefix,
-        "id_no" => $requestor->id_no,
-        "first_name" => $requestor->first_name,
-        "middle_name" => $requestor->middle_name,
-        "last_name" => $requestor->last_name,
-        "suffix" => $requestor->suffix,
-        "department_details" => $requestor->department[0]["name"],
+                    "referrence_type" => $fields["document"]["reference"]["type"],
+                    "referrence_no" => $fields["document"]["reference"]["no"],
+                    "referrence_amount" => $fields["document"]["reference"]["amount"],
+                    "referrence_id" => $fields["document"]["reference"]["id"],
+                    "is_allowable" => $fields["document"]["reference"]["allowable"],
 
-        "document_id" => $fields["document"]["id"],
-        "category_id" => $fields["document"]["category"]["id"],
-        "category" => $fields["document"]["category"]["name"],
-        "company_id" => $fields["document"]["company"]["id"],
-        "company" => $fields["document"]["company"]["name"],
-        "department_id" => $fields["document"]["department"]["id"],
-        "department" => $fields["document"]["department"]["name"],
-        "location_id" => $fields["document"]["location"]["id"],
-        "location" => $fields["document"]["location"]["name"],
-        "supplier_id" => $fields["document"]["supplier"]["id"],
-        "supplier" => $fields["document"]["supplier"]["name"],
-        "payment_type" => $fields["document"]["payment_type"],
-        "document_date" => $fields["document"]["date"],
-        "remarks" => $fields["document"]["remarks"],
-        "document_type" => $fields["document"]["name"],
+                    "request_id" => $request_id,
 
-        "po_total_amount" => $po_total_amount,
-        "balance_po_ref_amount" => $balance_po_ref_amount,
+                    "date_requested" => $date_requested,
+                    "status" => "Pending",
+                    "is_not_editable" => false,
+                    "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
+                    "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+                    "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
+                    "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+                ]);
 
-        "referrence_type" => $fields["document"]["reference"]["type"],
-        "referrence_no" => $fields["document"]["reference"]["no"],
-        "referrence_amount" => $fields["document"]["reference"]["amount"],
-        "referrence_id" => $fields["document"]["reference"]["id"],
-        "is_allowable" => $fields["document"]["reference"]["allowable"],
+                break;
 
-        "request_id" => $request_id,
+            case 5: // Contractor's Billing
 
-        "date_requested" => $date_requested,
-        "status" => "Pending",
-        "is_not_editable" => false,
-          "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
-          "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
-          "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
-          "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
-      ]);
-    } elseif ($fields["document"]["id"] == 5) {
-      //Contractor's Billing
+                $new_transaction = Transaction::create([
+                    "transaction_id" => $transaction_id,
+                    "users_id" => $requestor->id,
+                    "id_prefix" => $requestor->id_prefix,
+                    "id_no" => $requestor->id_no,
+                    "first_name" => $requestor->first_name,
+                    "middle_name" => $requestor->middle_name,
+                    "last_name" => $requestor->last_name,
+                    "suffix" => $requestor->suffix,
+                    "department_details" => $requestor->department[0]["name"],
 
-      $new_transaction = Transaction::create([
-        "transaction_id" => $transaction_id,
-        // "users_id" => $fields["requestor"]["id"],
-        // "id_prefix" => $fields["requestor"]["id_prefix"],
-        // "id_no" => $fields["requestor"]["id_no"],
-        // "first_name" => $fields["requestor"]["first_name"],
-        // "middle_name" => $fields["requestor"]["middle_name"],
-        // "last_name" => $fields["requestor"]["last_name"],
-        // "suffix" => $fields["requestor"]["suffix"],
-        // "department_details" => $fields["requestor"]["department"],
+                    "document_id" => $fields["document"]["id"],
+                    "capex_no" => $fields["document"]["capex_no"],
+                    "category_id" => $fields["document"]["category"]["id"],
+                    "category" => $fields["document"]["category"]["name"],
+                    "company_id" => $fields["document"]["company"]["id"],
+                    "company" => $fields["document"]["company"]["name"],
+                    "department_id" => $fields["document"]["department"]["id"],
+                    "department" => $fields["document"]["department"]["name"],
+                    "location_id" => $fields["document"]["location"]["id"],
+                    "location" => $fields["document"]["location"]["name"],
+                    "supplier_id" => $fields["document"]["supplier"]["id"],
+                    "supplier" => $fields["document"]["supplier"]["name"],
+                    "payment_type" => $fields["document"]["payment_type"],
+                    "document_date" => $fields["document"]["date"],
+                    "document_amount" => $fields["document"]["amount"],
+                    "remarks" => $fields["document"]["remarks"],
+                    "document_type" => $fields["document"]["name"],
 
-        "users_id" => $requestor->id,
-        "id_prefix" => $requestor->id_prefix,
-        "id_no" => $requestor->id_no,
-        "first_name" => $requestor->first_name,
-        "middle_name" => $requestor->middle_name,
-        "last_name" => $requestor->last_name,
-        "suffix" => $requestor->suffix,
-        "department_details" => $requestor->department[0]["name"],
+                    "po_total_amount" => $po_total_amount,
 
-        "document_id" => $fields["document"]["id"],
-        "capex_no" => $fields["document"]["capex_no"],
-        "category_id" => $fields["document"]["category"]["id"],
-        "category" => $fields["document"]["category"]["name"],
-        "company_id" => $fields["document"]["company"]["id"],
-        "company" => $fields["document"]["company"]["name"],
-        "department_id" => $fields["document"]["department"]["id"],
-        "department" => $fields["document"]["department"]["name"],
-        "location_id" => $fields["document"]["location"]["id"],
-        "location" => $fields["document"]["location"]["name"],
-        "supplier_id" => $fields["document"]["supplier"]["id"],
-        "supplier" => $fields["document"]["supplier"]["name"],
-        "payment_type" => $fields["document"]["payment_type"],
-        "document_date" => $fields["document"]["date"],
-        "document_amount" => $fields["document"]["amount"],
-        "remarks" => $fields["document"]["remarks"],
-        "document_type" => $fields["document"]["name"],
+                    "request_id" => $request_id,
 
-        "po_total_amount" => $po_total_amount,
+                    "date_requested" => $date_requested,
+                    "status" => "Pending",
+                    "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
+                    "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+                    "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
+                    "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+                ]);
 
-        "request_id" => $request_id,
+                break;
 
-        "date_requested" => $date_requested,
-        "status" => "Pending",
-          "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
-          "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
-          "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
-          "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
-      ]);
-    } elseif ($fields["document"]["id"] == 3) {
-      //PRM Multiple
+            case 3: //PRM Multiple
+                if (isset($fields["transaction"])) {
+                    $transaction_id = $fields["transaction"]["no"];
+                    $request_id = $fields["transaction"]["request_id"];
+                    $is_transacted = Tagging::where("transaction_id", $transaction_id)
+                        ->whereNotIn("status", ["tag-return", "tag-void"])
+                        ->exists();
 
-      if (isset($fields["transaction"])) {
-        $transaction_id = $fields["transaction"]["no"];
-        $request_id = $fields["transaction"]["request_id"];
-        $is_transacted = Tagging::where("transaction_id", $transaction_id)
-          ->whereNotIn("status", ["tag-return", "tag-void"])
-          ->exists();
+                    if ($is_transacted) {
+                        return "On Going Transaction";
+                    }
+                }
 
-        if ($is_transacted) {
-          return "On Going Transaction";
-        }
-      }
+                $category = $fields["document"]["category"]["name"];
+                $prm_group = $fields["prm_group"];
 
-      $category = $fields["document"]["category"]["name"];
-      $prm_group = $fields["prm_group"];
+                switch ($category) {
+                    case "additional rental":
+                    case "lounge rental":
+                    case "stall a rental":
+                    case "stall b rental":
+                    case "stall c rental":
+                    case "stall d rental":
+                    case "cusa rental":
+                    case "dorm rental":
+                    case "corporate special program - education":
+                    case "official store rental":
+                    case "unofficial store rental":
+                    case "rental":
+                        $errors = [];
+                        $error_date_format = [];
+                        $error_period_covered = [];
+                        $error_multiple_cheque = [];
+                        $error_amount_per_line = [];
+                        $total_gross = array_sum(array_column($prm_group, "gross_amount"));
+                        $total_cwt = array_sum(array_column($prm_group, "wht"));
+                        $total_net = array_sum(array_column($prm_group, "net_of_amount"));
+                        $total_witholding_and_net = $total_cwt + $total_net;
+                        $cheque_dates_array = array_column($prm_group, "cheque_date");
+                        $period_covered_array = array_column($prm_group, "period_covered");
 
-      switch ($category) {
-        case "additional rental":
-        case "lounge rental":
-        case "stall a rental":
-        case "stall b rental":
-        case "stall c rental":
-        case "stall d rental":
-        case "cusa rental":
-        case "dorm rental":
-        case "corporate special program - education":
-        case "official store rental":
-        case "unofficial store rental":
-        case "rental":
-          $errors = [];
-          $error_date_format = [];
-          $error_period_covered = [];
-          $error_multiple_cheque = [];
-          $error_amount_per_line = [];
-          $total_gross = array_sum(array_column($prm_group, "gross_amount"));
-          $total_cwt = array_sum(array_column($prm_group, "wht"));
-          $total_net = array_sum(array_column($prm_group, "net_of_amount"));
-          $total_witholding_and_net = $total_cwt + $total_net;
-          $cheque_dates_array = array_column($prm_group, "cheque_date");
-          $period_covered_array = array_column($prm_group, "period_covered");
+                        $message_if_error = "Document Amount and Total Gross amount not equal.";
+                        $validate_document_amount = GenericMethod::validate_document_amount(
+                            $fields["document"]["amount"],
+                            $total_gross,
+                            $message_if_error
+                        );
+                        if ($validate_document_amount) {
+                            return $validate_document_amount;
+                        }
 
-          $message_if_error = "Document Amount and Total Gross amount not equal.";
-          $validate_document_amount = GenericMethod::validate_document_amount(
-            $fields["document"]["amount"],
-            $total_gross,
-            $message_if_error
-          );
-          if ($validate_document_amount) {
-            return $validate_document_amount;
-          }
+                        if (isset($fields["transaction"])) {
+                            Transaction::where("transaction_id", $transaction_id)->delete();
+                        }
 
-          if (isset($fields["transaction"])) {
-            Transaction::where("transaction_id", $transaction_id)->delete();
-          }
+                        $error_date_format = GenericMethod::validate_prm_date_range_format($prm_group, $errors);
+                        $error_period_covered = GenericMethod::validate_period_covered($period_covered_array, $errors);
+                        $error_multiple_cheque = GenericMethod::validate_multiple_cheque_dates($cheque_dates_array, $errors);
+                        // $error_amount_per_line = GenericMethod::validate_amount_per_line($prm_group, $errors);
+                        $error_duplicate_transaction = GenericMethod::validate_duplicate_prm_multiple_transaction(
+                            $prm_group,
+                            $fields
+                        );
+                        $errors = array_merge(
+                            $error_date_format,
+                            $error_period_covered,
+                            $error_multiple_cheque,
+                            $error_amount_per_line,
+                            $error_duplicate_transaction
+                        );
 
-          $error_date_format = GenericMethod::validate_prm_date_range_format($prm_group, $errors);
-          $error_period_covered = GenericMethod::validate_period_covered($period_covered_array, $errors);
-          $error_multiple_cheque = GenericMethod::validate_multiple_cheque_dates($cheque_dates_array, $errors);
-          // $error_amount_per_line = GenericMethod::validate_amount_per_line($prm_group, $errors);
-          $error_duplicate_transaction = GenericMethod::validate_duplicate_prm_multiple_transaction(
-            $prm_group,
-            $fields
-          );
-          $errors = array_merge(
-            $error_date_format,
-            $error_period_covered,
-            $error_multiple_cheque,
-            $error_amount_per_line,
-            $error_duplicate_transaction
-          );
+                        if ($errors) {
+                            $errors = collect($errors)
+                                ->sortBy(["line", "description"])
+                                ->values();
+                            $error_list = $errors
+                                ->unique(function ($item) {
+                                    return $item["line"] . $item["description"];
+                                })
+                                ->values();
+                            // $error_list =  collect($errors)->unique('description')->all();
+                            return GenericMethod::resultResponse("upload-error", "", $error_list);
+                        }
 
-          if ($errors) {
-            $errors = collect($errors)
-              ->sortBy(["line", "description"])
-              ->values();
-            $error_list = $errors
-              ->unique(function ($item) {
-                return $item["line"] . $item["description"];
-              })
-              ->values();
-            // $error_list =  collect($errors)->unique('description')->all();
-            return GenericMethod::resultResponse("upload-error", "", $error_list);
-          }
+                        // PROCEED RENTAL
+                        foreach ($prm_group as $key => $prm_batch) {
+                            $period_covered = isset($prm_batch["period_covered"]) ? $prm_batch["period_covered"] : null;
+                            $period_covered_array = explode("-", $period_covered);
+                            $prm_multiple_from = date("Y-m-d", strtotime(trim($period_covered_array[0])));
+                            $prm_multiple_to = date("Y-m-d", strtotime(trim($period_covered_array[1])));
+                            $cheque_date = isset($prm_batch["cheque_date"]) ? $prm_batch["cheque_date"] : null;
+                            $gross_amount = isset($prm_batch["gross_amount"]) ? $prm_batch["gross_amount"] : null;
+                            $witholding_tax = isset($prm_batch["wht"]) ? $prm_batch["wht"] : null;
+                            $net_amount = isset($prm_batch["net_of_amount"]) ? $prm_batch["net_of_amount"] : null;
+                            $temporary_request_id = $request_id + $key;
 
-          // PROCEED RENTAL
-          foreach ($prm_group as $key => $prm_batch) {
-            $period_covered = isset($prm_batch["period_covered"]) ? $prm_batch["period_covered"] : null;
-            $period_covered_array = explode("-", $period_covered);
-            $prm_multiple_from = date("Y-m-d", strtotime(trim($period_covered_array[0])));
-            $prm_multiple_to = date("Y-m-d", strtotime(trim($period_covered_array[1])));
-            $cheque_date = isset($prm_batch["cheque_date"]) ? $prm_batch["cheque_date"] : null;
-            $gross_amount = isset($prm_batch["gross_amount"]) ? $prm_batch["gross_amount"] : null;
-            $witholding_tax = isset($prm_batch["wht"]) ? $prm_batch["wht"] : null;
-            $net_amount = isset($prm_batch["net_of_amount"]) ? $prm_batch["net_of_amount"] : null;
-            $temporary_request_id = $request_id + $key;
+                            $new_transaction = Transaction::create([
+                                "transaction_id" => $transaction_id,
+                                "users_id" => $requestor->id,
+                                "id_prefix" => $requestor->id_prefix,
+                                "id_no" => $requestor->id_no,
+                                "first_name" => $requestor->first_name,
+                                "middle_name" => $requestor->middle_name,
+                                "last_name" => $requestor->last_name,
+                                "suffix" => $requestor->suffix,
+                                "department_details" => $requestor->department[0]["name"],
 
-            $new_transaction = Transaction::create([
-              "transaction_id" => $transaction_id,
-              // "users_id" => $fields["requestor"]["id"],
-              // "id_prefix" => $fields["requestor"]["id_prefix"],
-              // "id_no" => $fields["requestor"]["id_no"],
-              // "first_name" => $fields["requestor"]["first_name"],
-              // "middle_name" => $fields["requestor"]["middle_name"],
-              // "last_name" => $fields["requestor"]["last_name"],
-              // "suffix" => $fields["requestor"]["suffix"],
-              // "department_details" => $fields["requestor"]["department"],
+                                "document_id" => $fields["document"]["id"],
+                                "category_id" => $fields["document"]["category"]["id"],
+                                "category" => $fields["document"]["category"]["name"],
+                                "company_id" => $fields["document"]["company"]["id"],
+                                "company" => $fields["document"]["company"]["name"],
+                                "department_id" => $fields["document"]["department"]["id"],
+                                "department" => $fields["document"]["department"]["name"],
+                                "location_id" => $fields["document"]["location"]["id"],
+                                "location" => $fields["document"]["location"]["name"],
+                                "supplier_id" => $fields["document"]["supplier"]["id"],
+                                "supplier" => $fields["document"]["supplier"]["name"],
+                                "payment_type" => $fields["document"]["payment_type"],
+                                "document_no" => $fields["document"]["no"],
+                                "document_date" => isset($fields["document"]["date"]) ? $fields["document"]["date"] : null,
+                                "document_amount" => $fields["document"]["amount"],
+                                "remarks" => $fields["document"]["remarks"],
+                                "document_type" => $fields["document"]["name"],
+                                "po_total_amount" => $po_total_amount,
+                                // "request_id" => $temporary_request_id ? $temporary_request_id : null,
+                                "request_id" => isset($temporary_request_id) ? $temporary_request_id : null,
 
-              "users_id" => $requestor->id,
-              "id_prefix" => $requestor->id_prefix,
-              "id_no" => $requestor->id_no,
-              "first_name" => $requestor->first_name,
-              "middle_name" => $requestor->middle_name,
-              "last_name" => $requestor->last_name,
-              "suffix" => $requestor->suffix,
-              "department_details" => $requestor->department[0]["name"],
+                                "date_requested" => $date_requested,
+                                "status" => "Pending",
+                                "period_covered" => $period_covered ? $period_covered : null,
+                                "prm_multiple_from" => $prm_multiple_from ? $prm_multiple_from : null,
+                                "prm_multiple_to" => $prm_multiple_to ? $prm_multiple_to : null,
+                                "cheque_date" => $cheque_date ? $cheque_date : null,
+                                "gross_amount" => $gross_amount ? $gross_amount : null,
+                                "witholding_tax" => $witholding_tax ? $witholding_tax : null,
+                                "net_amount" => $net_amount ? $net_amount : null,
+                                "total_gross" => $total_gross ? $total_gross : null,
+                                "total_cwt" => $total_cwt ? $total_cwt : null,
+                                "total_net" => $total_net ? $total_net : null,
+                                "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
+                                "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+                                "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
+                                "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+                            ]);
+                        }
 
-              "document_id" => $fields["document"]["id"],
-              "category_id" => $fields["document"]["category"]["id"],
-              "category" => $fields["document"]["category"]["name"],
-              "company_id" => $fields["document"]["company"]["id"],
-              "company" => $fields["document"]["company"]["name"],
-              "department_id" => $fields["document"]["department"]["id"],
-              "department" => $fields["document"]["department"]["name"],
-              "location_id" => $fields["document"]["location"]["id"],
-              "location" => $fields["document"]["location"]["name"],
-              "supplier_id" => $fields["document"]["supplier"]["id"],
-              "supplier" => $fields["document"]["supplier"]["name"],
-              "payment_type" => $fields["document"]["payment_type"],
-              "document_no" => $fields["document"]["no"],
-              "document_date" => isset($fields["document"]["date"]) ? $fields["document"]["date"] : null,
-              "document_amount" => $fields["document"]["amount"],
-              "remarks" => $fields["document"]["remarks"],
-              "document_type" => $fields["document"]["name"],
-              "po_total_amount" => $po_total_amount,
-              // "request_id" => $temporary_request_id ? $temporary_request_id : null,
-              "request_id" => isset($temporary_request_id) ? $temporary_request_id : null,
+                        static::prmMultiplerequestUpdateID($new_transaction);
 
-              "date_requested" => $date_requested,
-              "status" => "Pending",
-              "period_covered" => $period_covered ? $period_covered : null,
-              "prm_multiple_from" => $prm_multiple_from ? $prm_multiple_from : null,
-              "prm_multiple_to" => $prm_multiple_to ? $prm_multiple_to : null,
-              "cheque_date" => $cheque_date ? $cheque_date : null,
-              "gross_amount" => $gross_amount ? $gross_amount : null,
-              "witholding_tax" => $witholding_tax ? $witholding_tax : null,
-              "net_amount" => $net_amount ? $net_amount : null,
-              "total_gross" => $total_gross ? $total_gross : null,
-              "total_cwt" => $total_cwt ? $total_cwt : null,
-              "total_net" => $total_net ? $total_net : null,
-                "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
-                "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
-                "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
-                "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
-            ]);
-          }
+                        break;
+                    case "official store leasing":
+                    case "unofficial store leasing":
+                    case "leasing":
+                        $errors = [];
+                        $error_multiple_cheque = [];
+                        $error_amount_per_line = [];
+                        $error_duplicate_transaction = [];
+                        $total_principal = array_sum(array_column($prm_group, "principal"));
+                        $total_net_of_amount = array_sum(array_column($prm_group, "net_of_amount"));
+                        $cheque_dates_array = array_column($prm_group, "cheque_date");
 
-          static::prmMultiplerequestUpdateID($new_transaction);
+                        $message_if_error = "Document amount and total Net of amount not equal.";
+                        $validate_document_amount = GenericMethod::validate_document_amount(
+                            $fields["document"]["amount"],
+                            $total_net_of_amount,
+                            $message_if_error
+                        );
+                        if ($validate_document_amount) {
+                            return $validate_document_amount;
+                        }
 
-          break;
-        case "official store leasing":
-        case "unofficial store leasing":
-        case "leasing":
-          $errors = [];
-          $error_multiple_cheque = [];
-          $error_amount_per_line = [];
-          $error_duplicate_transaction = [];
-          $total_principal = array_sum(array_column($prm_group, "principal"));
-          $total_net_of_amount = array_sum(array_column($prm_group, "net_of_amount"));
-          $cheque_dates_array = array_column($prm_group, "cheque_date");
+                        if (isset($fields["transaction"])) {
+                            Transaction::where("transaction_id", $transaction_id)->delete();
+                        }
 
-          $message_if_error = "Document amount and total Net of amount not equal.";
-          $validate_document_amount = GenericMethod::validate_document_amount(
-            $fields["document"]["amount"],
-            $total_net_of_amount,
-            $message_if_error
-          );
-          if ($validate_document_amount) {
-            return $validate_document_amount;
-          }
+                        $error_multiple_cheque = GenericMethod::validate_multiple_cheque_dates($cheque_dates_array, $errors);
+                        // $error_amount_per_line = GenericMethod::validate_amount_per_line_leasing($prm_group, $errors);
+                        $error_duplicate_transaction = GenericMethod::validate_duplicate_prm_multiple_transaction_leasing_and_loans(
+                            $prm_group,
+                            $fields
+                        );
+                        $errors = array_merge($error_multiple_cheque, $error_amount_per_line, $error_duplicate_transaction);
 
-          if (isset($fields["transaction"])) {
-            Transaction::where("transaction_id", $transaction_id)->delete();
-          }
+                        if ($errors) {
+                            $errors = collect($errors)
+                                ->sortBy(["line", "description"])
+                                ->values();
+                            $error_list = $errors
+                                ->unique(function ($item) {
+                                    return $item["line"] . $item["description"];
+                                })
+                                ->values();
+                            // $error_list =  collect($errors)->unique('description')->all();
+                            return GenericMethod::resultResponse("upload-error", "", $error_list);
+                        }
+                        // PROCEED LEASING
+                        foreach ($prm_group as $key => $prm_batch) {
+                            $amortization = isset($prm_batch["amortization"]) ? $prm_batch["amortization"] : null;
+                            $interest = isset($prm_batch["interest"]) ? $prm_batch["interest"] : null;
+                            $cwt = isset($prm_batch["cwt"]) ? $prm_batch["cwt"] : null;
+                            $principal = isset($prm_batch["principal"]) ? $prm_batch["principal"] : null;
+                            $net_of_amount = isset($prm_batch["net_of_amount"]) ? $prm_batch["net_of_amount"] : null;
+                            $cheque_date = isset($prm_batch["cheque_date"]) ? $prm_batch["cheque_date"] : null;
+                            $temporary_request_id = $request_id + $key;
 
-          $error_multiple_cheque = GenericMethod::validate_multiple_cheque_dates($cheque_dates_array, $errors);
-          // $error_amount_per_line = GenericMethod::validate_amount_per_line_leasing($prm_group, $errors);
-          $error_duplicate_transaction = GenericMethod::validate_duplicate_prm_multiple_transaction_leasing_and_loans(
-            $prm_group,
-            $fields
-          );
-          $errors = array_merge($error_multiple_cheque, $error_amount_per_line, $error_duplicate_transaction);
+                            $new_transaction = Transaction::create([
+                                "transaction_id" => $transaction_id,
+                                "users_id" => $requestor->id,
+                                "id_prefix" => $requestor->id_prefix,
+                                "id_no" => $requestor->id_no,
+                                "first_name" => $requestor->first_name,
+                                "middle_name" => $requestor->middle_name,
+                                "last_name" => $requestor->last_name,
+                                "suffix" => $requestor->suffix,
+                                "department_details" => $requestor->department[0]["name"],
 
-          if ($errors) {
-            $errors = collect($errors)
-              ->sortBy(["line", "description"])
-              ->values();
-            $error_list = $errors
-              ->unique(function ($item) {
-                return $item["line"] . $item["description"];
-              })
-              ->values();
-            // $error_list =  collect($errors)->unique('description')->all();
-            return GenericMethod::resultResponse("upload-error", "", $error_list);
-          }
-          // PROCEED LEASING
-          foreach ($prm_group as $key => $prm_batch) {
-            $amortization = isset($prm_batch["amortization"]) ? $prm_batch["amortization"] : null;
-            $interest = isset($prm_batch["interest"]) ? $prm_batch["interest"] : null;
-            $cwt = isset($prm_batch["cwt"]) ? $prm_batch["cwt"] : null;
-            $principal = isset($prm_batch["principal"]) ? $prm_batch["principal"] : null;
-            $net_of_amount = isset($prm_batch["net_of_amount"]) ? $prm_batch["net_of_amount"] : null;
-            $cheque_date = isset($prm_batch["cheque_date"]) ? $prm_batch["cheque_date"] : null;
-            $temporary_request_id = $request_id + $key;
-
-            $new_transaction = Transaction::create([
-              "transaction_id" => $transaction_id,
-              // "users_id" => $fields["requestor"]["id"],
-              // "id_prefix" => $fields["requestor"]["id_prefix"],
-              // "id_no" => $fields["requestor"]["id_no"],
-              // "first_name" => $fields["requestor"]["first_name"],
-              // "middle_name" => $fields["requestor"]["middle_name"],
-              // "last_name" => $fields["requestor"]["last_name"],
-              // "suffix" => $fields["requestor"]["suffix"],
-              // "department_details" => $fields["requestor"]["department"],
-
-              "users_id" => $requestor->id,
-              "id_prefix" => $requestor->id_prefix,
-              "id_no" => $requestor->id_no,
-              "first_name" => $requestor->first_name,
-              "middle_name" => $requestor->middle_name,
-              "last_name" => $requestor->last_name,
-              "suffix" => $requestor->suffix,
-              "department_details" => $requestor->department[0]["name"],
-
-              "document_id" => $fields["document"]["id"],
-              "category_id" => $fields["document"]["category"]["id"],
-              "category" => $fields["document"]["category"]["name"],
-              "company_id" => $fields["document"]["company"]["id"],
-              "company" => $fields["document"]["company"]["name"],
-              "department_id" => $fields["document"]["department"]["id"],
-              "department" => $fields["document"]["department"]["name"],
-              "location_id" => $fields["document"]["location"]["id"],
-              "location" => $fields["document"]["location"]["name"],
-              "supplier_id" => $fields["document"]["supplier"]["id"],
-              "supplier" => $fields["document"]["supplier"]["name"],
-              "payment_type" => $fields["document"]["payment_type"],
-              "document_no" => $fields["document"]["no"],
-              "document_date" => isset($fields["document"]["date"]) ? $fields["document"]["date"] : null,
-              "document_amount" => $fields["document"]["amount"],
-              "remarks" => $fields["document"]["remarks"],
-              "document_type" => $fields["document"]["name"],
-              "po_total_amount" => $po_total_amount,
+                                "document_id" => $fields["document"]["id"],
+                                "category_id" => $fields["document"]["category"]["id"],
+                                "category" => $fields["document"]["category"]["name"],
+                                "company_id" => $fields["document"]["company"]["id"],
+                                "company" => $fields["document"]["company"]["name"],
+                                "department_id" => $fields["document"]["department"]["id"],
+                                "department" => $fields["document"]["department"]["name"],
+                                "location_id" => $fields["document"]["location"]["id"],
+                                "location" => $fields["document"]["location"]["name"],
+                                "supplier_id" => $fields["document"]["supplier"]["id"],
+                                "supplier" => $fields["document"]["supplier"]["name"],
+                                "payment_type" => $fields["document"]["payment_type"],
+                                "document_no" => $fields["document"]["no"],
+                                "document_date" => isset($fields["document"]["date"]) ? $fields["document"]["date"] : null,
+                                "document_amount" => $fields["document"]["amount"],
+                                "remarks" => $fields["document"]["remarks"],
+                                "document_type" => $fields["document"]["name"],
+                                "po_total_amount" => $po_total_amount,
 //              "request_id" => $temporary_request_id ? $temporary_request_id : null,
-              "request_id" => isset($temporary_request_id) ? $temporary_request_id : null,
+                                "request_id" => isset($temporary_request_id) ? $temporary_request_id : null,
 
-              "date_requested" => $date_requested,
-              "status" => "Pending",
-              "amortization" => $amortization ? $amortization : null,
-              "interest" => $interest ? $interest : null,
-              "cwt" => $cwt ? $cwt : null,
-              "principal" => $principal ? $principal : null,
-              "net_amount" => $net_of_amount ? $net_of_amount : null,
-              "cheque_date" => $cheque_date ? $cheque_date : null,
-              "release_date" => $fields["document"]["release_date"],
-              "batch_no" => $fields["document"]["batch_no"],
-                "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
-                "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
-                "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
-                "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
-            ]);
-          }
-          static::prmMultiplerequestUpdateID($new_transaction);
+                                "date_requested" => $date_requested,
+                                "status" => "Pending",
+                                "amortization" => $amortization ? $amortization : null,
+                                "interest" => $interest ? $interest : null,
+                                "cwt" => $cwt ? $cwt : null,
+                                "principal" => $principal ? $principal : null,
+                                "net_amount" => $net_of_amount ? $net_of_amount : null,
+                                "cheque_date" => $cheque_date ? $cheque_date : null,
+                                "release_date" => $fields["document"]["release_date"],
+                                "batch_no" => $fields["document"]["batch_no"],
+                                "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
+                                "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+                                "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
+                                "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+                            ]);
+                        }
+                        static::prmMultiplerequestUpdateID($new_transaction);
 
-          break;
+                        break;
 
-        case "loans":
-          $errors = [];
-          $error_multiple_cheque = [];
-          $error_amount_per_line = [];
-          $error_duplicate_transaction = [];
-          $total_principal = array_sum(array_column($prm_group, "principal"));
-          $total_net_of_amount = array_sum(array_column($prm_group, "net_of_amount"));
-          $cheque_dates_array = array_column($prm_group, "cheque_date");
+                    case "loans":
+                        $errors = [];
+                        $error_multiple_cheque = [];
+                        $error_amount_per_line = [];
+                        $error_duplicate_transaction = [];
+                        $total_principal = array_sum(array_column($prm_group, "principal"));
+                        $total_net_of_amount = array_sum(array_column($prm_group, "net_of_amount"));
+                        $cheque_dates_array = array_column($prm_group, "cheque_date");
 
-          $message_if_error = "Document amount and total Net of amount not equal.";
-          $validate_document_amount = GenericMethod::validate_document_amount(
-            $fields["document"]["amount"],
-            $total_net_of_amount,
-            $message_if_error
-          );
+                        $message_if_error = "Document amount and total Net of amount not equal.";
+                        $validate_document_amount = GenericMethod::validate_document_amount(
+                            $fields["document"]["amount"],
+                            $total_net_of_amount,
+                            $message_if_error
+                        );
 
-          if ($validate_document_amount) {
-            return $validate_document_amount;
-          }
+                        if ($validate_document_amount) {
+                            return $validate_document_amount;
+                        }
 
-          if (isset($fields["transaction"])) {
-            Transaction::where("transaction_id", $transaction_id)->delete();
-          }
+                        if (isset($fields["transaction"])) {
+                            Transaction::where("transaction_id", $transaction_id)->delete();
+                        }
 
-          $error_multiple_cheque = GenericMethod::validate_multiple_cheque_dates($cheque_dates_array, $errors);
-          //   return  $error_amount_per_line = GenericMethod::validate_amount_per_line_loans($prm_group, $errors);
-          $error_duplicate_transaction = GenericMethod::validate_duplicate_prm_multiple_transaction_leasing_and_loans(
-            $prm_group,
-            $fields
-          );
-          $errors = array_merge($error_multiple_cheque, $error_amount_per_line, $error_duplicate_transaction);
+                        $error_multiple_cheque = GenericMethod::validate_multiple_cheque_dates($cheque_dates_array, $errors);
+                        //   return  $error_amount_per_line = GenericMethod::validate_amount_per_line_loans($prm_group, $errors);
+                        $error_duplicate_transaction = GenericMethod::validate_duplicate_prm_multiple_transaction_leasing_and_loans(
+                            $prm_group,
+                            $fields
+                        );
+                        $errors = array_merge($error_multiple_cheque, $error_amount_per_line, $error_duplicate_transaction);
 
-          if ($errors) {
-            $errors = collect($errors)
-              ->sortBy(["line", "description"])
-              ->values();
-            $error_list = $errors
-              ->unique(function ($item) {
-                return $item["line"] . $item["description"];
-              })
-              ->values();
-            // $error_list =  collect($errors)->unique('description')->all();
-            return GenericMethod::resultResponse("upload-error", "", $error_list);
-          }
-          // PROCEED LOANS
-          foreach ($prm_group as $key => $prm_batch) {
-            $principal = isset($prm_batch["principal"]) ? $prm_batch["principal"] : null;
-            $interest = isset($prm_batch["interest"]) ? $prm_batch["interest"] : null;
-            $cwt = isset($prm_batch["cwt"]) ? $prm_batch["cwt"] : null;
-            $net_of_amount = isset($prm_batch["net_of_amount"]) ? $prm_batch["net_of_amount"] : null;
-            $cheque_date = isset($prm_batch["cheque_date"]) ? $prm_batch["cheque_date"] : null;
-            $temporary_request_id = $request_id + $key;
+                        if ($errors) {
+                            $errors = collect($errors)
+                                ->sortBy(["line", "description"])
+                                ->values();
+                            $error_list = $errors
+                                ->unique(function ($item) {
+                                    return $item["line"] . $item["description"];
+                                })
+                                ->values();
+                            // $error_list =  collect($errors)->unique('description')->all();
+                            return GenericMethod::resultResponse("upload-error", "", $error_list);
+                        }
+                        // PROCEED LOANS
+                        foreach ($prm_group as $key => $prm_batch) {
+                            $principal = isset($prm_batch["principal"]) ? $prm_batch["principal"] : null;
+                            $interest = isset($prm_batch["interest"]) ? $prm_batch["interest"] : null;
+                            $cwt = isset($prm_batch["cwt"]) ? $prm_batch["cwt"] : null;
+                            $net_of_amount = isset($prm_batch["net_of_amount"]) ? $prm_batch["net_of_amount"] : null;
+                            $cheque_date = isset($prm_batch["cheque_date"]) ? $prm_batch["cheque_date"] : null;
+                            $temporary_request_id = $request_id + $key;
 
-            $new_transaction = Transaction::create([
-              "transaction_id" => $transaction_id,
-              // "users_id" => $fields["requestor"]["id"],
-              // "id_prefix" => $fields["requestor"]["id_prefix"],
-              // "id_no" => $fields["requestor"]["id_no"],
-              // "first_name" => $fields["requestor"]["first_name"],
-              // "middle_name" => $fields["requestor"]["middle_name"],
-              // "last_name" => $fields["requestor"]["last_name"],
-              // "suffix" => $fields["requestor"]["suffix"],
-              // "department_details" => $fields["requestor"]["department"],
+                            $new_transaction = Transaction::create([
+                                "transaction_id" => $transaction_id,
+                                // "users_id" => $fields["requestor"]["id"],
+                                // "id_prefix" => $fields["requestor"]["id_prefix"],
+                                // "id_no" => $fields["requestor"]["id_no"],
+                                // "first_name" => $fields["requestor"]["first_name"],
+                                // "middle_name" => $fields["requestor"]["middle_name"],
+                                // "last_name" => $fields["requestor"]["last_name"],
+                                // "suffix" => $fields["requestor"]["suffix"],
+                                // "department_details" => $fields["requestor"]["department"],
 
-              "users_id" => $requestor->id,
-              "id_prefix" => $requestor->id_prefix,
-              "id_no" => $requestor->id_no,
-              "first_name" => $requestor->first_name,
-              "middle_name" => $requestor->middle_name,
-              "last_name" => $requestor->last_name,
-              "suffix" => $requestor->suffix,
-              "department_details" => $requestor->department[0]["name"],
+                                "users_id" => $requestor->id,
+                                "id_prefix" => $requestor->id_prefix,
+                                "id_no" => $requestor->id_no,
+                                "first_name" => $requestor->first_name,
+                                "middle_name" => $requestor->middle_name,
+                                "last_name" => $requestor->last_name,
+                                "suffix" => $requestor->suffix,
+                                "department_details" => $requestor->department[0]["name"],
 
-              "document_id" => $fields["document"]["id"],
-              "category_id" => $fields["document"]["category"]["id"],
-              "category" => $fields["document"]["category"]["name"],
-              "company_id" => $fields["document"]["company"]["id"],
-              "company" => $fields["document"]["company"]["name"],
-              "department_id" => $fields["document"]["department"]["id"],
-              "department" => $fields["document"]["department"]["name"],
-              "location_id" => $fields["document"]["location"]["id"],
-              "location" => $fields["document"]["location"]["name"],
-              "supplier_id" => $fields["document"]["supplier"]["id"],
-              "supplier" => $fields["document"]["supplier"]["name"],
-              "payment_type" => $fields["document"]["payment_type"],
-              "document_no" => $fields["document"]["no"],
-              "document_date" => isset($fields["document"]["date"]) ? $fields["document"]["date"] : null,
-              "document_amount" => $fields["document"]["amount"],
-              "remarks" => $fields["document"]["remarks"],
-              "document_type" => $fields["document"]["name"],
-              "po_total_amount" => $po_total_amount,
-              "request_id" => $temporary_request_id ? $temporary_request_id : null,
+                                "document_id" => $fields["document"]["id"],
+                                "category_id" => $fields["document"]["category"]["id"],
+                                "category" => $fields["document"]["category"]["name"],
+                                "company_id" => $fields["document"]["company"]["id"],
+                                "company" => $fields["document"]["company"]["name"],
+                                "department_id" => $fields["document"]["department"]["id"],
+                                "department" => $fields["document"]["department"]["name"],
+                                "location_id" => $fields["document"]["location"]["id"],
+                                "location" => $fields["document"]["location"]["name"],
+                                "supplier_id" => $fields["document"]["supplier"]["id"],
+                                "supplier" => $fields["document"]["supplier"]["name"],
+                                "payment_type" => $fields["document"]["payment_type"],
+                                "document_no" => $fields["document"]["no"],
+                                "document_date" => isset($fields["document"]["date"]) ? $fields["document"]["date"] : null,
+                                "document_amount" => $fields["document"]["amount"],
+                                "remarks" => $fields["document"]["remarks"],
+                                "document_type" => $fields["document"]["name"],
+                                "po_total_amount" => $po_total_amount,
+                                "request_id" => $temporary_request_id ? $temporary_request_id : null,
 
-              "date_requested" => $date_requested,
-              "status" => "Pending",
-              "principal" => $principal ? $principal : null,
-              "interest" => $interest ? $interest : null,
-              "cwt" => $cwt ? $cwt : null,
-              "net_amount" => $net_of_amount ? $net_of_amount : null,
-              "cheque_date" => $cheque_date ? $cheque_date : null,
-              "release_date" => $fields["document"]["release_date"],
-              "batch_no" => $fields["document"]["batch_no"],
-                "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
-                "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
-                "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
-                "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
-            ]);
-          }
+                                "date_requested" => $date_requested,
+                                "status" => "Pending",
+                                "principal" => $principal ? $principal : null,
+                                "interest" => $interest ? $interest : null,
+                                "cwt" => $cwt ? $cwt : null,
+                                "net_amount" => $net_of_amount ? $net_of_amount : null,
+                                "cheque_date" => $cheque_date ? $cheque_date : null,
+                                "release_date" => $fields["document"]["release_date"],
+                                "batch_no" => $fields["document"]["batch_no"],
+                                "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
+                                "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+                                "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
+                                "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+                            ]);
+                        }
 
-          static::prmMultiplerequestUpdateID($new_transaction);
+                        static::prmMultiplerequestUpdateID($new_transaction);
 
-          break;
-      }
-    } elseif ($fields["document"]["id"] == 9) {
-      //Auto Debit
+                        break;
+                }
+                break;
 
-      $new_transaction = Transaction::create([
-        "transaction_id" => $transaction_id,
-        // "users_id" => $fields["requestor"]["id"],
-        // "id_prefix" => $fields["requestor"]["id_prefix"],
-        // "id_no" => $fields["requestor"]["id_no"],
-        // "first_name" => $fields["requestor"]["first_name"],
-        // "middle_name" => $fields["requestor"]["middle_name"],
-        // "last_name" => $fields["requestor"]["last_name"],
-        // "suffix" => $fields["requestor"]["suffix"],
-        // "department_details" => $fields["requestor"]["department"],
+            case 9: //Auto Debit
+                $new_transaction = Transaction::create([
+                    "transaction_id" => $transaction_id,
+                    "users_id" => $requestor->id,
+                    "id_prefix" => $requestor->id_prefix,
+                    "id_no" => $requestor->id_no,
+                    "first_name" => $requestor->first_name,
+                    "middle_name" => $requestor->middle_name,
+                    "last_name" => $requestor->last_name,
+                    "suffix" => $requestor->suffix,
+                    "department_details" => $requestor->department[0]["name"],
 
-        "users_id" => $requestor->id,
-        "id_prefix" => $requestor->id_prefix,
-        "id_no" => $requestor->id_no,
-        "first_name" => $requestor->first_name,
-        "middle_name" => $requestor->middle_name,
-        "last_name" => $requestor->last_name,
-        "suffix" => $requestor->suffix,
-        "department_details" => $requestor->department[0]["name"],
+                    "document_id" => $fields["document"]["id"],
+                    "category_id" => $fields["document"]["category"]["id"],
+                    "category" => $fields["document"]["category"]["name"],
+                    "company_id" => $fields["document"]["company"]["id"],
+                    "company" => $fields["document"]["company"]["name"],
+                    "department_id" => $fields["document"]["department"]["id"],
+                    "department" => $fields["document"]["department"]["name"],
+                    "location_id" => $fields["document"]["location"]["id"],
+                    "location" => $fields["document"]["location"]["name"],
+                    "supplier_id" => $fields["document"]["supplier"]["id"],
+                    "supplier" => $fields["document"]["supplier"]["name"],
+                    "payment_type" => $fields["document"]["payment_type"],
+                    "document_date" => $fields["document"]["date"],
+                    "document_amount" => $fields["document"]["amount"],
+                    "remarks" => $fields["document"]["remarks"],
+                    "document_type" => $fields["document"]["name"],
+                    "po_total_amount" => $po_total_amount,
+                    "request_id" => $request_id,
 
-        "document_id" => $fields["document"]["id"],
-        "category_id" => $fields["document"]["category"]["id"],
-        "category" => $fields["document"]["category"]["name"],
-        "company_id" => $fields["document"]["company"]["id"],
-        "company" => $fields["document"]["company"]["name"],
-        "department_id" => $fields["document"]["department"]["id"],
-        "department" => $fields["document"]["department"]["name"],
-        "location_id" => $fields["document"]["location"]["id"],
-        "location" => $fields["document"]["location"]["name"],
-        "supplier_id" => $fields["document"]["supplier"]["id"],
-        "supplier" => $fields["document"]["supplier"]["name"],
-        "payment_type" => $fields["document"]["payment_type"],
-        "document_date" => $fields["document"]["date"],
-        "document_amount" => $fields["document"]["amount"],
-        "remarks" => $fields["document"]["remarks"],
-        "document_type" => $fields["document"]["name"],
-        "po_total_amount" => $po_total_amount,
-        "request_id" => $request_id,
+                    "date_requested" => $date_requested,
+                    "status" => "Pending",
+                    "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
+                    "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+                    "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
+                    "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+                ]);
 
-        "date_requested" => $date_requested,
-        "status" => "Pending",
-          "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
-          "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
-          "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
-          "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
-      ]);
+                if ($new_transaction->id) {
+                    // GenericMethod::insert_debit_attachment($request_id, $fields["autoDebit_group"]);
 
-      if ($new_transaction->id) {
-        // GenericMethod::insert_debit_attachment($request_id, $fields["autoDebit_group"]);
+                    if (isset($fields["autoDebit_group"])) {
+                        GenericMethod::insert_debit_attachment($new_transaction->id, $fields["autoDebit_group"]);
+                    }
+                }
+                break;
 
-          if (isset($fields["autoDebit_group"])) {
-              GenericMethod::insert_debit_attachment($new_transaction->id, $fields["autoDebit_group"]);
-          }
-      }
-    } elseif ($fields["document"]["id"] == 1 && $fields["document"]["payment_type"] == "Partial") {
-      $new_transaction = Transaction::create([
-        "transaction_id" => $transaction_id,
+            case 1:
+            case 2:
 
-        "users_id" => $requestor->id,
-        "id_prefix" => $requestor->id_prefix,
-        "id_no" => $requestor->id_no,
-        "first_name" => $requestor->first_name,
-        "middle_name" => $requestor->middle_name,
-        "last_name" => $requestor->last_name,
-        "suffix" => $requestor->suffix,
-        "department_details" => $requestor->department[0]["name"],
+                if ($fields["document"]["payment_type"] == "Partial") {
+                    $new_transaction = Transaction::create([
+                        "transaction_id" => $transaction_id,
 
-        "document_id" => $fields["document"]["id"],
-        "category_id" => $fields["document"]["category"]["id"],
-        "category" => $fields["document"]["category"]["name"],
-        "company_id" => $fields["document"]["company"]["id"],
-        "company" => $fields["document"]["company"]["name"],
-        "department_id" => $fields["document"]["department"]["id"],
-        "department" => $fields["document"]["department"]["name"],
-        "location_id" => $fields["document"]["location"]["id"],
-        "location" => $fields["document"]["location"]["name"],
-        "supplier_id" => $fields["document"]["supplier"]["id"],
-        "supplier" => $fields["document"]["supplier"]["name"],
-        "payment_type" => $fields["document"]["payment_type"],
-        "document_no" => $fields["document"]["no"],
-        "document_date" => $fields["document"]["date"],
-        "document_amount" => $fields["document"]["amount"],
-        "remarks" => $fields["document"]["remarks"],
-        "document_type" => $fields["document"]["name"],
+                        "users_id" => $requestor->id,
+                        "id_prefix" => $requestor->id_prefix,
+                        "id_no" => $requestor->id_no,
+                        "first_name" => $requestor->first_name,
+                        "middle_name" => $requestor->middle_name,
+                        "last_name" => $requestor->last_name,
+                        "suffix" => $requestor->suffix,
+                        "department_details" => $requestor->department[0]["name"],
 
-        "po_total_amount" => $po_total_amount,
-        "balance_po_ref_amount" => $balance_po_ref_amount,
-        "request_id" => $request_id,
+                        "document_id" => $fields["document"]["id"],
+                        "category_id" => $fields["document"]["category"]["id"],
+                        "category" => $fields["document"]["category"]["name"],
+                        "company_id" => $fields["document"]["company"]["id"],
+                        "company" => $fields["document"]["company"]["name"],
+                        "department_id" => $fields["document"]["department"]["id"],
+                        "department" => $fields["document"]["department"]["name"],
+                        "location_id" => $fields["document"]["location"]["id"],
+                        "location" => $fields["document"]["location"]["name"],
+                        "supplier_id" => $fields["document"]["supplier"]["id"],
+                        "supplier" => $fields["document"]["supplier"]["name"],
+                        "payment_type" => $fields["document"]["payment_type"],
+                        "document_no" => $fields["document"]["no"],
+                        "document_date" => $fields["document"]["date"],
+                        "document_amount" => $fields["document"]["amount"],
+                        "remarks" => $fields["document"]["remarks"],
+                        "document_type" => $fields["document"]["name"],
 
-        "date_requested" => $date_requested,
-        "status" => "Pending",
-        "is_not_editable" => false,
-          "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
-          "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
-          "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
-          "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
-      ]);
-    } else {
-      $new_transaction = Transaction::create([
-        "transaction_id" => $transaction_id,
-        // "users_id" => $fields["requestor"]["id"],
-        // "id_prefix" => $fields["requestor"]["id_prefix"],
-        // "id_no" => $fields["requestor"]["id_no"],
-        // "first_name" => $fields["requestor"]["first_name"],
-        // "middle_name" => $fields["requestor"]["middle_name"],
-        // "last_name" => $fields["requestor"]["last_name"],
-        // "suffix" => $fields["requestor"]["suffix"],
-        // "department_details" => $fields["requestor"]["department"],
+                        "po_total_amount" => $po_total_amount,
+                        "balance_po_ref_amount" => $balance_po_ref_amount,
+                        "request_id" => $request_id,
 
-        "users_id" => $requestor->id,
-        "id_prefix" => $requestor->id_prefix,
-        "id_no" => $requestor->id_no,
-        "first_name" => $requestor->first_name,
-        "middle_name" => $requestor->middle_name,
-        "last_name" => $requestor->last_name,
-        "suffix" => $requestor->suffix,
-        "department_details" => $requestor->department[0]["name"],
+                        "date_requested" => $date_requested,
+                        "status" => "Pending",
+                        "is_not_editable" => false,
+                        "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
+                        "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+                        "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
+                        "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+                    ]);
+                } else {
+                    $new_transaction = Transaction::create([
+                        "transaction_id" => $transaction_id,
+                        "users_id" => $requestor->id,
+                        "id_prefix" => $requestor->id_prefix,
+                        "id_no" => $requestor->id_no,
+                        "first_name" => $requestor->first_name,
+                        "middle_name" => $requestor->middle_name,
+                        "last_name" => $requestor->last_name,
+                        "suffix" => $requestor->suffix,
+                        "department_details" => $requestor->department[0]["name"],
 
-        "document_id" => $fields["document"]["id"],
-        "category_id" => $fields["document"]["category"]["id"],
-        "category" => $fields["document"]["category"]["name"],
-        "company_id" => $fields["document"]["company"]["id"],
-        "company" => $fields["document"]["company"]["name"],
-        "department_id" => $fields["document"]["department"]["id"],
-        "department" => $fields["document"]["department"]["name"],
-        "location_id" => $fields["document"]["location"]["id"],
-        "location" => $fields["document"]["location"]["name"],
-        "supplier_id" => $fields["document"]["supplier"]["id"],
-        "supplier" => $fields["document"]["supplier"]["name"],
-        "payment_type" => $fields["document"]["payment_type"],
-        "document_no" => $fields["document"]["no"],
-        "document_date" => $fields["document"]["date"],
-        "document_amount" => $fields["document"]["amount"],
-        "remarks" => $fields["document"]["remarks"],
-        "document_type" => $fields["document"]["name"],
-        "po_total_amount" => $po_total_amount,
-        "request_id" => $request_id,
+                        "document_id" => $fields["document"]["id"],
+                        "category_id" => $fields["document"]["category"]["id"],
+                        "category" => $fields["document"]["category"]["name"],
+                        "company_id" => $fields["document"]["company"]["id"],
+                        "company" => $fields["document"]["company"]["name"],
+                        "department_id" => $fields["document"]["department"]["id"],
+                        "department" => $fields["document"]["department"]["name"],
+                        "location_id" => $fields["document"]["location"]["id"],
+                        "location" => $fields["document"]["location"]["name"],
+                        "supplier_id" => $fields["document"]["supplier"]["id"],
+                        "supplier" => $fields["document"]["supplier"]["name"],
+                        "payment_type" => $fields["document"]["payment_type"],
+                        "document_no" => $fields["document"]["no"],
+                        "document_date" => $fields["document"]["date"],
+                        "document_amount" => $fields["document"]["amount"],
+                        "remarks" => $fields["document"]["remarks"],
+                        "document_type" => $fields["document"]["name"],
+                        "po_total_amount" => $po_total_amount,
+                        "request_id" => $request_id,
 
-        "date_requested" => $date_requested,
-        "status" => "Pending",
-          "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
-          "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
-          "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
-          "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
-      ]);
+                        "date_requested" => $date_requested,
+                        "status" => "Pending",
+                        "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
+                        "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+                        "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
+                        "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+                    ]);
+                }
+
+                break;
+            default:
+                $new_transaction = Transaction::create([
+                    "transaction_id" => $transaction_id,
+                    "users_id" => $requestor->id,
+                    "id_prefix" => $requestor->id_prefix,
+                    "id_no" => $requestor->id_no,
+                    "first_name" => $requestor->first_name,
+                    "middle_name" => $requestor->middle_name,
+                    "last_name" => $requestor->last_name,
+                    "suffix" => $requestor->suffix,
+                    "department_details" => $requestor->department[0]["name"],
+
+                    "document_id" => $fields["document"]["id"],
+                    "category_id" => $fields["document"]["category"]["id"],
+                    "category" => $fields["document"]["category"]["name"],
+                    "company_id" => $fields["document"]["company"]["id"],
+                    "company" => $fields["document"]["company"]["name"],
+                    "department_id" => $fields["document"]["department"]["id"],
+                    "department" => $fields["document"]["department"]["name"],
+                    "location_id" => $fields["document"]["location"]["id"],
+                    "location" => $fields["document"]["location"]["name"],
+                    "supplier_id" => $fields["document"]["supplier"]["id"],
+                    "supplier" => $fields["document"]["supplier"]["name"],
+                    "payment_type" => $fields["document"]["payment_type"],
+                    "document_no" => $fields["document"]["no"],
+                    "document_date" => $fields["document"]["date"],
+                    "document_amount" => $fields["document"]["amount"],
+                    "remarks" => $fields["document"]["remarks"],
+                    "document_type" => $fields["document"]["name"],
+                    "po_total_amount" => $po_total_amount,
+                    "request_id" => $request_id,
+
+                    "date_requested" => $date_requested,
+                    "status" => "Pending",
+                    "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
+                    "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+                    "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
+                    "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+                ]);
+                break;
+        }
+
+//    if ($fields["document"]["id"] == 6) {
+//      //Utilities
+//
+//      $new_transaction = Transaction::create([
+//        "transaction_id" => $transaction_id,
+//        // "users_id" => $fields["requestor"]["id"],
+//        // "id_prefix" => $fields["requestor"]["id_prefix"],
+//        // "id_no" => $fields["requestor"]["id_no"],
+//        // "first_name" => $fields["requestor"]["first_name"],
+//        // "middle_name" => $fields["requestor"]["middle_name"],
+//        // "last_name" => $fields["requestor"]["last_name"],
+//        // "suffix" => $fields["requestor"]["suffix"],
+//        // "department_details" => $fields["requestor"]["department"],
+//
+//        "users_id" => $requestor->id,
+//        "id_prefix" => $requestor->id_prefix,
+//        "id_no" => $requestor->id_no,
+//        "first_name" => $requestor->first_name,
+//        "middle_name" => $requestor->middle_name,
+//        "last_name" => $requestor->last_name,
+//        "suffix" => $requestor->suffix,
+//        "department_details" => $requestor->department[0]["name"],
+//
+//        "document_id" => $fields["document"]["id"],
+//        "company_id" => $fields["document"]["company"]["id"],
+//        "company" => $fields["document"]["company"]["name"],
+//        "department_id" => $fields["document"]["department"]["id"],
+//        "department" => $fields["document"]["department"]["name"],
+//        "location_id" => $fields["document"]["location"]["id"],
+//        "location" => $fields["document"]["location"]["name"],
+//        "supplier_id" => $fields["document"]["supplier"]["id"],
+//        "supplier" => $fields["document"]["supplier"]["name"],
+//        "payment_type" => $fields["document"]["payment_type"],
+//        "document_amount" => $fields["document"]["amount"],
+//        "remarks" => $fields["document"]["remarks"],
+//        "document_type" => $fields["document"]["name"],
+//
+//        "utilities_from" => $fields["document"]["from"],
+//        "utilities_to" => $fields["document"]["to"],
+//
+//        "utilities_receipt_no" => $fields["document"]["utility"]["receipt_no"],
+//        "utilities_consumption" => $fields["document"]["utility"]["consumption"],
+//        "utilities_location_id" => $fields["document"]["utility"]["location"]["id"],
+//        "utilities_location" => $fields["document"]["utility"]["location"]["name"],
+//        "utilities_category_id" => $fields["document"]["utility"]["category"]["id"],
+//        "utilities_category" => $fields["document"]["utility"]["category"]["name"],
+//        "utilities_account_no_id" => $fields["document"]["utility"]["account_no"]["id"],
+//        "utilities_account_no" => $fields["document"]["utility"]["account_no"]["no"],
+//
+//        "po_total_amount" => $po_total_amount,
+//
+//        "request_id" => $request_id,
+//
+//        "date_requested" => $date_requested,
+//        "status" => "Pending",
+//          "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
+//          "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+//          "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
+//          "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+//      ]);
+//    } elseif ($fields["document"]["id"] == 8) {
+//      //PCF
+//
+//      $new_transaction = Transaction::create([
+//        "transaction_id" => $transaction_id,
+//        // "users_id" => $fields["requestor"]["id"],
+//        // "id_prefix" => $fields["requestor"]["id_prefix"],
+//        // "id_no" => $fields["requestor"]["id_no"],
+//        // "first_name" => $fields["requestor"]["first_name"],
+//        // "middle_name" => $fields["requestor"]["middle_name"],
+//        // "last_name" => $fields["requestor"]["last_name"],
+//        // "suffix" => $fields["requestor"]["suffix"],
+//        // "department_details" => $fields["requestor"]["department"],
+//
+//        "users_id" => $requestor->id,
+//        "id_prefix" => $requestor->id_prefix,
+//        "id_no" => $requestor->id_no,
+//        "first_name" => $requestor->first_name,
+//        "middle_name" => $requestor->middle_name,
+//        "last_name" => $requestor->last_name,
+//        "suffix" => $requestor->suffix,
+//        "department_details" => $requestor->department[0]["name"],
+//
+//        "document_id" => $fields["document"]["id"],
+//        "company_id" => $fields["document"]["company"]["id"],
+//        "company" => $fields["document"]["company"]["name"],
+//        "department_id" => $fields["document"]["department"]["id"],
+//        "department" => $fields["document"]["department"]["name"],
+//        "location_id" => $fields["document"]["location"]["id"],
+//        "location" => $fields["document"]["location"]["name"],
+//        "supplier_id" => $fields["document"]["supplier"]["id"],
+//        "supplier" => $fields["document"]["supplier"]["name"],
+//        "payment_type" => $fields["document"]["payment_type"],
+//        "document_date" => $fields["document"]["date"],
+//        "document_amount" => $fields["document"]["amount"],
+//        "remarks" => $fields["document"]["remarks"],
+//        "document_type" => $fields["document"]["name"],
+//
+//        "pcf_name" => $fields["document"]["pcf_batch"]["name"],
+//        "pcf_date" => $fields["document"]["pcf_batch"]["date"],
+//        "pcf_letter" => $fields["document"]["pcf_batch"]["letter"],
+//        "request_id" => $request_id,
+//
+//        "date_requested" => $date_requested,
+//          "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
+//          "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+//          "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
+//          "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+//      ]);
+//    } elseif ($fields["document"]["id"] == 7) {
+//      //Payrol
+//
+//      $new_transaction = Transaction::create([
+//        "transaction_id" => $transaction_id,
+//        // "users_id" => $fields["requestor"]["id"],
+//        // "id_prefix" => $fields["requestor"]["id_prefix"],
+//        // "id_no" => $fields["requestor"]["id_no"],
+//        // "first_name" => $fields["requestor"]["first_name"],
+//        // "middle_name" => $fields["requestor"]["middle_name"],
+//        // "last_name" => $fields["requestor"]["last_name"],
+//        // "suffix" => $fields["requestor"]["suffix"],
+//        // "department_details" => $fields["requestor"]["department"],
+//
+//        "users_id" => $requestor->id,
+//        "id_prefix" => $requestor->id_prefix,
+//        "id_no" => $requestor->id_no,
+//        "first_name" => $requestor->first_name,
+//        "middle_name" => $requestor->middle_name,
+//        "last_name" => $requestor->last_name,
+//        "suffix" => $requestor->suffix,
+//        "department_details" => $requestor->department[0]["name"],
+//
+//        "document_id" => $fields["document"]["id"],
+//        "company_id" => $fields["document"]["company"]["id"],
+//        "company" => $fields["document"]["company"]["name"],
+//        "department_id" => $fields["document"]["department"]["id"],
+//        "department" => $fields["document"]["department"]["name"],
+//        "location_id" => $fields["document"]["location"]["id"],
+//        "location" => $fields["document"]["location"]["name"],
+//        "supplier_id" => $fields["document"]["supplier"]["id"],
+//        "supplier" => $fields["document"]["supplier"]["name"],
+//        "payment_type" => $fields["document"]["payment_type"],
+//        "document_amount" => $fields["document"]["amount"],
+//        "remarks" => $fields["document"]["remarks"],
+//        "document_type" => $fields["document"]["name"],
+//
+//        "payroll_from" => $fields["document"]["from"],
+//        "payroll_to" => $fields["document"]["to"],
+//        "payroll_category_id" => $fields["document"]["payroll"]["category"]["id"],
+//        "payroll_category" => $fields["document"]["payroll"]["category"]["name"],
+//        "payroll_control_no" => $fields["document"]["payroll"]["control_no"],
+//        "payroll_type" => $fields["document"]["payroll"]["type"],
+//        "payroll_client" => $fields["document"]["payroll"]["clients"],
+//        "request_id" => $request_id,
+//
+//        "date_requested" => $date_requested,
+//          "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
+//          "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+//          "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
+//          "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+//      ]);
+//    } elseif ($fields["document"]["id"] == 4) {
+//      // Receipt
+//
+//      $new_transaction = Transaction::create([
+//        "transaction_id" => $transaction_id,
+//        // "users_id" => $fields["requestor"]["id"],
+//        // "id_prefix" => $fields["requestor"]["id_prefix"],
+//        // "id_no" => $fields["requestor"]["id_no"],
+//        // "first_name" => $fields["requestor"]["first_name"],
+//        // "middle_name" => $fields["requestor"]["middle_name"],
+//        // "last_name" => $fields["requestor"]["last_name"],
+//        // "suffix" => $fields["requestor"]["suffix"],
+//        // "department_details" => $fields["requestor"]["department"],
+//
+//        "users_id" => $requestor->id,
+//        "id_prefix" => $requestor->id_prefix,
+//        "id_no" => $requestor->id_no,
+//        "first_name" => $requestor->first_name,
+//        "middle_name" => $requestor->middle_name,
+//        "last_name" => $requestor->last_name,
+//        "suffix" => $requestor->suffix,
+//        "department_details" => $requestor->department[0]["name"],
+//
+//        "document_id" => $fields["document"]["id"],
+//        "category_id" => $fields["document"]["category"]["id"],
+//        "category" => $fields["document"]["category"]["name"],
+//        "company_id" => $fields["document"]["company"]["id"],
+//        "company" => $fields["document"]["company"]["name"],
+//        "department_id" => $fields["document"]["department"]["id"],
+//        "department" => $fields["document"]["department"]["name"],
+//        "location_id" => $fields["document"]["location"]["id"],
+//        "location" => $fields["document"]["location"]["name"],
+//        "supplier_id" => $fields["document"]["supplier"]["id"],
+//        "supplier" => $fields["document"]["supplier"]["name"],
+//        "payment_type" => $fields["document"]["payment_type"],
+//        "document_date" => $fields["document"]["date"],
+//        "remarks" => $fields["document"]["remarks"],
+//        "document_type" => $fields["document"]["name"],
+//
+//        "po_total_amount" => $po_total_amount,
+//        "balance_po_ref_amount" => $balance_po_ref_amount,
+//
+//        "referrence_type" => $fields["document"]["reference"]["type"],
+//        "referrence_no" => $fields["document"]["reference"]["no"],
+//        "referrence_amount" => $fields["document"]["reference"]["amount"],
+//        "referrence_id" => $fields["document"]["reference"]["id"],
+//        "is_allowable" => $fields["document"]["reference"]["allowable"],
+//
+//        "request_id" => $request_id,
+//
+//        "date_requested" => $date_requested,
+//        "status" => "Pending",
+//        "is_not_editable" => false,
+//          "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
+//          "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+//          "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
+//          "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+//      ]);
+//    } elseif ($fields["document"]["id"] == 5) {
+//      //Contractor's Billing
+//
+//      $new_transaction = Transaction::create([
+//        "transaction_id" => $transaction_id,
+//        // "users_id" => $fields["requestor"]["id"],
+//        // "id_prefix" => $fields["requestor"]["id_prefix"],
+//        // "id_no" => $fields["requestor"]["id_no"],
+//        // "first_name" => $fields["requestor"]["first_name"],
+//        // "middle_name" => $fields["requestor"]["middle_name"],
+//        // "last_name" => $fields["requestor"]["last_name"],
+//        // "suffix" => $fields["requestor"]["suffix"],
+//        // "department_details" => $fields["requestor"]["department"],
+//
+//        "users_id" => $requestor->id,
+//        "id_prefix" => $requestor->id_prefix,
+//        "id_no" => $requestor->id_no,
+//        "first_name" => $requestor->first_name,
+//        "middle_name" => $requestor->middle_name,
+//        "last_name" => $requestor->last_name,
+//        "suffix" => $requestor->suffix,
+//        "department_details" => $requestor->department[0]["name"],
+//
+//        "document_id" => $fields["document"]["id"],
+//        "capex_no" => $fields["document"]["capex_no"],
+//        "category_id" => $fields["document"]["category"]["id"],
+//        "category" => $fields["document"]["category"]["name"],
+//        "company_id" => $fields["document"]["company"]["id"],
+//        "company" => $fields["document"]["company"]["name"],
+//        "department_id" => $fields["document"]["department"]["id"],
+//        "department" => $fields["document"]["department"]["name"],
+//        "location_id" => $fields["document"]["location"]["id"],
+//        "location" => $fields["document"]["location"]["name"],
+//        "supplier_id" => $fields["document"]["supplier"]["id"],
+//        "supplier" => $fields["document"]["supplier"]["name"],
+//        "payment_type" => $fields["document"]["payment_type"],
+//        "document_date" => $fields["document"]["date"],
+//        "document_amount" => $fields["document"]["amount"],
+//        "remarks" => $fields["document"]["remarks"],
+//        "document_type" => $fields["document"]["name"],
+//
+//        "po_total_amount" => $po_total_amount,
+//
+//        "request_id" => $request_id,
+//
+//        "date_requested" => $date_requested,
+//        "status" => "Pending",
+//          "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
+//          "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+//          "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
+//          "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+//      ]);
+//    } elseif ($fields["document"]["id"] == 3) {
+//      //PRM Multiple
+//
+//      if (isset($fields["transaction"])) {
+//        $transaction_id = $fields["transaction"]["no"];
+//        $request_id = $fields["transaction"]["request_id"];
+//        $is_transacted = Tagging::where("transaction_id", $transaction_id)
+//          ->whereNotIn("status", ["tag-return", "tag-void"])
+//          ->exists();
+//
+//        if ($is_transacted) {
+//          return "On Going Transaction";
+//        }
+//      }
+//
+//      $category = $fields["document"]["category"]["name"];
+//      $prm_group = $fields["prm_group"];
+//
+//      switch ($category) {
+//        case "additional rental":
+//        case "lounge rental":
+//        case "stall a rental":
+//        case "stall b rental":
+//        case "stall c rental":
+//        case "stall d rental":
+//        case "cusa rental":
+//        case "dorm rental":
+//        case "corporate special program - education":
+//        case "official store rental":
+//        case "unofficial store rental":
+//        case "rental":
+//          $errors = [];
+//          $error_date_format = [];
+//          $error_period_covered = [];
+//          $error_multiple_cheque = [];
+//          $error_amount_per_line = [];
+//          $total_gross = array_sum(array_column($prm_group, "gross_amount"));
+//          $total_cwt = array_sum(array_column($prm_group, "wht"));
+//          $total_net = array_sum(array_column($prm_group, "net_of_amount"));
+//          $total_witholding_and_net = $total_cwt + $total_net;
+//          $cheque_dates_array = array_column($prm_group, "cheque_date");
+//          $period_covered_array = array_column($prm_group, "period_covered");
+//
+//          $message_if_error = "Document Amount and Total Gross amount not equal.";
+//          $validate_document_amount = GenericMethod::validate_document_amount(
+//            $fields["document"]["amount"],
+//            $total_gross,
+//            $message_if_error
+//          );
+//          if ($validate_document_amount) {
+//            return $validate_document_amount;
+//          }
+//
+//          if (isset($fields["transaction"])) {
+//            Transaction::where("transaction_id", $transaction_id)->delete();
+//          }
+//
+//          $error_date_format = GenericMethod::validate_prm_date_range_format($prm_group, $errors);
+//          $error_period_covered = GenericMethod::validate_period_covered($period_covered_array, $errors);
+//          $error_multiple_cheque = GenericMethod::validate_multiple_cheque_dates($cheque_dates_array, $errors);
+//          // $error_amount_per_line = GenericMethod::validate_amount_per_line($prm_group, $errors);
+//          $error_duplicate_transaction = GenericMethod::validate_duplicate_prm_multiple_transaction(
+//            $prm_group,
+//            $fields
+//          );
+//          $errors = array_merge(
+//            $error_date_format,
+//            $error_period_covered,
+//            $error_multiple_cheque,
+//            $error_amount_per_line,
+//            $error_duplicate_transaction
+//          );
+//
+//          if ($errors) {
+//            $errors = collect($errors)
+//              ->sortBy(["line", "description"])
+//              ->values();
+//            $error_list = $errors
+//              ->unique(function ($item) {
+//                return $item["line"] . $item["description"];
+//              })
+//              ->values();
+//            // $error_list =  collect($errors)->unique('description')->all();
+//            return GenericMethod::resultResponse("upload-error", "", $error_list);
+//          }
+//
+//          // PROCEED RENTAL
+//          foreach ($prm_group as $key => $prm_batch) {
+//            $period_covered = isset($prm_batch["period_covered"]) ? $prm_batch["period_covered"] : null;
+//            $period_covered_array = explode("-", $period_covered);
+//            $prm_multiple_from = date("Y-m-d", strtotime(trim($period_covered_array[0])));
+//            $prm_multiple_to = date("Y-m-d", strtotime(trim($period_covered_array[1])));
+//            $cheque_date = isset($prm_batch["cheque_date"]) ? $prm_batch["cheque_date"] : null;
+//            $gross_amount = isset($prm_batch["gross_amount"]) ? $prm_batch["gross_amount"] : null;
+//            $witholding_tax = isset($prm_batch["wht"]) ? $prm_batch["wht"] : null;
+//            $net_amount = isset($prm_batch["net_of_amount"]) ? $prm_batch["net_of_amount"] : null;
+//            $temporary_request_id = $request_id + $key;
+//
+//            $new_transaction = Transaction::create([
+//              "transaction_id" => $transaction_id,
+//              // "users_id" => $fields["requestor"]["id"],
+//              // "id_prefix" => $fields["requestor"]["id_prefix"],
+//              // "id_no" => $fields["requestor"]["id_no"],
+//              // "first_name" => $fields["requestor"]["first_name"],
+//              // "middle_name" => $fields["requestor"]["middle_name"],
+//              // "last_name" => $fields["requestor"]["last_name"],
+//              // "suffix" => $fields["requestor"]["suffix"],
+//              // "department_details" => $fields["requestor"]["department"],
+//
+//              "users_id" => $requestor->id,
+//              "id_prefix" => $requestor->id_prefix,
+//              "id_no" => $requestor->id_no,
+//              "first_name" => $requestor->first_name,
+//              "middle_name" => $requestor->middle_name,
+//              "last_name" => $requestor->last_name,
+//              "suffix" => $requestor->suffix,
+//              "department_details" => $requestor->department[0]["name"],
+//
+//              "document_id" => $fields["document"]["id"],
+//              "category_id" => $fields["document"]["category"]["id"],
+//              "category" => $fields["document"]["category"]["name"],
+//              "company_id" => $fields["document"]["company"]["id"],
+//              "company" => $fields["document"]["company"]["name"],
+//              "department_id" => $fields["document"]["department"]["id"],
+//              "department" => $fields["document"]["department"]["name"],
+//              "location_id" => $fields["document"]["location"]["id"],
+//              "location" => $fields["document"]["location"]["name"],
+//              "supplier_id" => $fields["document"]["supplier"]["id"],
+//              "supplier" => $fields["document"]["supplier"]["name"],
+//              "payment_type" => $fields["document"]["payment_type"],
+//              "document_no" => $fields["document"]["no"],
+//              "document_date" => isset($fields["document"]["date"]) ? $fields["document"]["date"] : null,
+//              "document_amount" => $fields["document"]["amount"],
+//              "remarks" => $fields["document"]["remarks"],
+//              "document_type" => $fields["document"]["name"],
+//              "po_total_amount" => $po_total_amount,
+//              // "request_id" => $temporary_request_id ? $temporary_request_id : null,
+//              "request_id" => isset($temporary_request_id) ? $temporary_request_id : null,
+//
+//              "date_requested" => $date_requested,
+//              "status" => "Pending",
+//              "period_covered" => $period_covered ? $period_covered : null,
+//              "prm_multiple_from" => $prm_multiple_from ? $prm_multiple_from : null,
+//              "prm_multiple_to" => $prm_multiple_to ? $prm_multiple_to : null,
+//              "cheque_date" => $cheque_date ? $cheque_date : null,
+//              "gross_amount" => $gross_amount ? $gross_amount : null,
+//              "witholding_tax" => $witholding_tax ? $witholding_tax : null,
+//              "net_amount" => $net_amount ? $net_amount : null,
+//              "total_gross" => $total_gross ? $total_gross : null,
+//              "total_cwt" => $total_cwt ? $total_cwt : null,
+//              "total_net" => $total_net ? $total_net : null,
+//                "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
+//                "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+//                "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
+//                "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+//            ]);
+//          }
+//
+//          static::prmMultiplerequestUpdateID($new_transaction);
+//
+//          break;
+//        case "official store leasing":
+//        case "unofficial store leasing":
+//        case "leasing":
+//          $errors = [];
+//          $error_multiple_cheque = [];
+//          $error_amount_per_line = [];
+//          $error_duplicate_transaction = [];
+//          $total_principal = array_sum(array_column($prm_group, "principal"));
+//          $total_net_of_amount = array_sum(array_column($prm_group, "net_of_amount"));
+//          $cheque_dates_array = array_column($prm_group, "cheque_date");
+//
+//          $message_if_error = "Document amount and total Net of amount not equal.";
+//          $validate_document_amount = GenericMethod::validate_document_amount(
+//            $fields["document"]["amount"],
+//            $total_net_of_amount,
+//            $message_if_error
+//          );
+//          if ($validate_document_amount) {
+//            return $validate_document_amount;
+//          }
+//
+//          if (isset($fields["transaction"])) {
+//            Transaction::where("transaction_id", $transaction_id)->delete();
+//          }
+//
+//          $error_multiple_cheque = GenericMethod::validate_multiple_cheque_dates($cheque_dates_array, $errors);
+//          // $error_amount_per_line = GenericMethod::validate_amount_per_line_leasing($prm_group, $errors);
+//          $error_duplicate_transaction = GenericMethod::validate_duplicate_prm_multiple_transaction_leasing_and_loans(
+//            $prm_group,
+//            $fields
+//          );
+//          $errors = array_merge($error_multiple_cheque, $error_amount_per_line, $error_duplicate_transaction);
+//
+//          if ($errors) {
+//            $errors = collect($errors)
+//              ->sortBy(["line", "description"])
+//              ->values();
+//            $error_list = $errors
+//              ->unique(function ($item) {
+//                return $item["line"] . $item["description"];
+//              })
+//              ->values();
+//            // $error_list =  collect($errors)->unique('description')->all();
+//            return GenericMethod::resultResponse("upload-error", "", $error_list);
+//          }
+//          // PROCEED LEASING
+//          foreach ($prm_group as $key => $prm_batch) {
+//            $amortization = isset($prm_batch["amortization"]) ? $prm_batch["amortization"] : null;
+//            $interest = isset($prm_batch["interest"]) ? $prm_batch["interest"] : null;
+//            $cwt = isset($prm_batch["cwt"]) ? $prm_batch["cwt"] : null;
+//            $principal = isset($prm_batch["principal"]) ? $prm_batch["principal"] : null;
+//            $net_of_amount = isset($prm_batch["net_of_amount"]) ? $prm_batch["net_of_amount"] : null;
+//            $cheque_date = isset($prm_batch["cheque_date"]) ? $prm_batch["cheque_date"] : null;
+//            $temporary_request_id = $request_id + $key;
+//
+//            $new_transaction = Transaction::create([
+//              "transaction_id" => $transaction_id,
+//              // "users_id" => $fields["requestor"]["id"],
+//              // "id_prefix" => $fields["requestor"]["id_prefix"],
+//              // "id_no" => $fields["requestor"]["id_no"],
+//              // "first_name" => $fields["requestor"]["first_name"],
+//              // "middle_name" => $fields["requestor"]["middle_name"],
+//              // "last_name" => $fields["requestor"]["last_name"],
+//              // "suffix" => $fields["requestor"]["suffix"],
+//              // "department_details" => $fields["requestor"]["department"],
+//
+//              "users_id" => $requestor->id,
+//              "id_prefix" => $requestor->id_prefix,
+//              "id_no" => $requestor->id_no,
+//              "first_name" => $requestor->first_name,
+//              "middle_name" => $requestor->middle_name,
+//              "last_name" => $requestor->last_name,
+//              "suffix" => $requestor->suffix,
+//              "department_details" => $requestor->department[0]["name"],
+//
+//              "document_id" => $fields["document"]["id"],
+//              "category_id" => $fields["document"]["category"]["id"],
+//              "category" => $fields["document"]["category"]["name"],
+//              "company_id" => $fields["document"]["company"]["id"],
+//              "company" => $fields["document"]["company"]["name"],
+//              "department_id" => $fields["document"]["department"]["id"],
+//              "department" => $fields["document"]["department"]["name"],
+//              "location_id" => $fields["document"]["location"]["id"],
+//              "location" => $fields["document"]["location"]["name"],
+//              "supplier_id" => $fields["document"]["supplier"]["id"],
+//              "supplier" => $fields["document"]["supplier"]["name"],
+//              "payment_type" => $fields["document"]["payment_type"],
+//              "document_no" => $fields["document"]["no"],
+//              "document_date" => isset($fields["document"]["date"]) ? $fields["document"]["date"] : null,
+//              "document_amount" => $fields["document"]["amount"],
+//              "remarks" => $fields["document"]["remarks"],
+//              "document_type" => $fields["document"]["name"],
+//              "po_total_amount" => $po_total_amount,
+////              "request_id" => $temporary_request_id ? $temporary_request_id : null,
+//              "request_id" => isset($temporary_request_id) ? $temporary_request_id : null,
+//
+//              "date_requested" => $date_requested,
+//              "status" => "Pending",
+//              "amortization" => $amortization ? $amortization : null,
+//              "interest" => $interest ? $interest : null,
+//              "cwt" => $cwt ? $cwt : null,
+//              "principal" => $principal ? $principal : null,
+//              "net_amount" => $net_of_amount ? $net_of_amount : null,
+//              "cheque_date" => $cheque_date ? $cheque_date : null,
+//              "release_date" => $fields["document"]["release_date"],
+//              "batch_no" => $fields["document"]["batch_no"],
+//                "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
+//                "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+//                "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
+//                "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+//            ]);
+//          }
+//          static::prmMultiplerequestUpdateID($new_transaction);
+//
+//          break;
+//
+//        case "loans":
+//          $errors = [];
+//          $error_multiple_cheque = [];
+//          $error_amount_per_line = [];
+//          $error_duplicate_transaction = [];
+//          $total_principal = array_sum(array_column($prm_group, "principal"));
+//          $total_net_of_amount = array_sum(array_column($prm_group, "net_of_amount"));
+//          $cheque_dates_array = array_column($prm_group, "cheque_date");
+//
+//          $message_if_error = "Document amount and total Net of amount not equal.";
+//          $validate_document_amount = GenericMethod::validate_document_amount(
+//            $fields["document"]["amount"],
+//            $total_net_of_amount,
+//            $message_if_error
+//          );
+//
+//          if ($validate_document_amount) {
+//            return $validate_document_amount;
+//          }
+//
+//          if (isset($fields["transaction"])) {
+//            Transaction::where("transaction_id", $transaction_id)->delete();
+//          }
+//
+//          $error_multiple_cheque = GenericMethod::validate_multiple_cheque_dates($cheque_dates_array, $errors);
+//          //   return  $error_amount_per_line = GenericMethod::validate_amount_per_line_loans($prm_group, $errors);
+//          $error_duplicate_transaction = GenericMethod::validate_duplicate_prm_multiple_transaction_leasing_and_loans(
+//            $prm_group,
+//            $fields
+//          );
+//          $errors = array_merge($error_multiple_cheque, $error_amount_per_line, $error_duplicate_transaction);
+//
+//          if ($errors) {
+//            $errors = collect($errors)
+//              ->sortBy(["line", "description"])
+//              ->values();
+//            $error_list = $errors
+//              ->unique(function ($item) {
+//                return $item["line"] . $item["description"];
+//              })
+//              ->values();
+//            // $error_list =  collect($errors)->unique('description')->all();
+//            return GenericMethod::resultResponse("upload-error", "", $error_list);
+//          }
+//          // PROCEED LOANS
+//          foreach ($prm_group as $key => $prm_batch) {
+//            $principal = isset($prm_batch["principal"]) ? $prm_batch["principal"] : null;
+//            $interest = isset($prm_batch["interest"]) ? $prm_batch["interest"] : null;
+//            $cwt = isset($prm_batch["cwt"]) ? $prm_batch["cwt"] : null;
+//            $net_of_amount = isset($prm_batch["net_of_amount"]) ? $prm_batch["net_of_amount"] : null;
+//            $cheque_date = isset($prm_batch["cheque_date"]) ? $prm_batch["cheque_date"] : null;
+//            $temporary_request_id = $request_id + $key;
+//
+//            $new_transaction = Transaction::create([
+//              "transaction_id" => $transaction_id,
+//              // "users_id" => $fields["requestor"]["id"],
+//              // "id_prefix" => $fields["requestor"]["id_prefix"],
+//              // "id_no" => $fields["requestor"]["id_no"],
+//              // "first_name" => $fields["requestor"]["first_name"],
+//              // "middle_name" => $fields["requestor"]["middle_name"],
+//              // "last_name" => $fields["requestor"]["last_name"],
+//              // "suffix" => $fields["requestor"]["suffix"],
+//              // "department_details" => $fields["requestor"]["department"],
+//
+//              "users_id" => $requestor->id,
+//              "id_prefix" => $requestor->id_prefix,
+//              "id_no" => $requestor->id_no,
+//              "first_name" => $requestor->first_name,
+//              "middle_name" => $requestor->middle_name,
+//              "last_name" => $requestor->last_name,
+//              "suffix" => $requestor->suffix,
+//              "department_details" => $requestor->department[0]["name"],
+//
+//              "document_id" => $fields["document"]["id"],
+//              "category_id" => $fields["document"]["category"]["id"],
+//              "category" => $fields["document"]["category"]["name"],
+//              "company_id" => $fields["document"]["company"]["id"],
+//              "company" => $fields["document"]["company"]["name"],
+//              "department_id" => $fields["document"]["department"]["id"],
+//              "department" => $fields["document"]["department"]["name"],
+//              "location_id" => $fields["document"]["location"]["id"],
+//              "location" => $fields["document"]["location"]["name"],
+//              "supplier_id" => $fields["document"]["supplier"]["id"],
+//              "supplier" => $fields["document"]["supplier"]["name"],
+//              "payment_type" => $fields["document"]["payment_type"],
+//              "document_no" => $fields["document"]["no"],
+//              "document_date" => isset($fields["document"]["date"]) ? $fields["document"]["date"] : null,
+//              "document_amount" => $fields["document"]["amount"],
+//              "remarks" => $fields["document"]["remarks"],
+//              "document_type" => $fields["document"]["name"],
+//              "po_total_amount" => $po_total_amount,
+//              "request_id" => $temporary_request_id ? $temporary_request_id : null,
+//
+//              "date_requested" => $date_requested,
+//              "status" => "Pending",
+//              "principal" => $principal ? $principal : null,
+//              "interest" => $interest ? $interest : null,
+//              "cwt" => $cwt ? $cwt : null,
+//              "net_amount" => $net_of_amount ? $net_of_amount : null,
+//              "cheque_date" => $cheque_date ? $cheque_date : null,
+//              "release_date" => $fields["document"]["release_date"],
+//              "batch_no" => $fields["document"]["batch_no"],
+//                "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
+//                "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+//                "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
+//                "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+//            ]);
+//          }
+//
+//          static::prmMultiplerequestUpdateID($new_transaction);
+//
+//          break;
+//      }
+//    } elseif ($fields["document"]["id"] == 9) {
+//      //Auto Debit
+//
+//      $new_transaction = Transaction::create([
+//        "transaction_id" => $transaction_id,
+//        // "users_id" => $fields["requestor"]["id"],
+//        // "id_prefix" => $fields["requestor"]["id_prefix"],
+//        // "id_no" => $fields["requestor"]["id_no"],
+//        // "first_name" => $fields["requestor"]["first_name"],
+//        // "middle_name" => $fields["requestor"]["middle_name"],
+//        // "last_name" => $fields["requestor"]["last_name"],
+//        // "suffix" => $fields["requestor"]["suffix"],
+//        // "department_details" => $fields["requestor"]["department"],
+//
+//        "users_id" => $requestor->id,
+//        "id_prefix" => $requestor->id_prefix,
+//        "id_no" => $requestor->id_no,
+//        "first_name" => $requestor->first_name,
+//        "middle_name" => $requestor->middle_name,
+//        "last_name" => $requestor->last_name,
+//        "suffix" => $requestor->suffix,
+//        "department_details" => $requestor->department[0]["name"],
+//
+//        "document_id" => $fields["document"]["id"],
+//        "category_id" => $fields["document"]["category"]["id"],
+//        "category" => $fields["document"]["category"]["name"],
+//        "company_id" => $fields["document"]["company"]["id"],
+//        "company" => $fields["document"]["company"]["name"],
+//        "department_id" => $fields["document"]["department"]["id"],
+//        "department" => $fields["document"]["department"]["name"],
+//        "location_id" => $fields["document"]["location"]["id"],
+//        "location" => $fields["document"]["location"]["name"],
+//        "supplier_id" => $fields["document"]["supplier"]["id"],
+//        "supplier" => $fields["document"]["supplier"]["name"],
+//        "payment_type" => $fields["document"]["payment_type"],
+//        "document_date" => $fields["document"]["date"],
+//        "document_amount" => $fields["document"]["amount"],
+//        "remarks" => $fields["document"]["remarks"],
+//        "document_type" => $fields["document"]["name"],
+//        "po_total_amount" => $po_total_amount,
+//        "request_id" => $request_id,
+//
+//        "date_requested" => $date_requested,
+//        "status" => "Pending",
+//          "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
+//          "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+//          "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
+//          "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+//      ]);
+//
+//      if ($new_transaction->id) {
+//        // GenericMethod::insert_debit_attachment($request_id, $fields["autoDebit_group"]);
+//
+//          if (isset($fields["autoDebit_group"])) {
+//              GenericMethod::insert_debit_attachment($new_transaction->id, $fields["autoDebit_group"]);
+//          }
+//      }
+//    } elseif ($fields["document"]["id"] == 1 && $fields["document"]["payment_type"] == "Partial") {
+//      $new_transaction = Transaction::create([
+//        "transaction_id" => $transaction_id,
+//
+//        "users_id" => $requestor->id,
+//        "id_prefix" => $requestor->id_prefix,
+//        "id_no" => $requestor->id_no,
+//        "first_name" => $requestor->first_name,
+//        "middle_name" => $requestor->middle_name,
+//        "last_name" => $requestor->last_name,
+//        "suffix" => $requestor->suffix,
+//        "department_details" => $requestor->department[0]["name"],
+//
+//        "document_id" => $fields["document"]["id"],
+//        "category_id" => $fields["document"]["category"]["id"],
+//        "category" => $fields["document"]["category"]["name"],
+//        "company_id" => $fields["document"]["company"]["id"],
+//        "company" => $fields["document"]["company"]["name"],
+//        "department_id" => $fields["document"]["department"]["id"],
+//        "department" => $fields["document"]["department"]["name"],
+//        "location_id" => $fields["document"]["location"]["id"],
+//        "location" => $fields["document"]["location"]["name"],
+//        "supplier_id" => $fields["document"]["supplier"]["id"],
+//        "supplier" => $fields["document"]["supplier"]["name"],
+//        "payment_type" => $fields["document"]["payment_type"],
+//        "document_no" => $fields["document"]["no"],
+//        "document_date" => $fields["document"]["date"],
+//        "document_amount" => $fields["document"]["amount"],
+//        "remarks" => $fields["document"]["remarks"],
+//        "document_type" => $fields["document"]["name"],
+//
+//        "po_total_amount" => $po_total_amount,
+//        "balance_po_ref_amount" => $balance_po_ref_amount,
+//        "request_id" => $request_id,
+//
+//        "date_requested" => $date_requested,
+//        "status" => "Pending",
+//        "is_not_editable" => false,
+//          "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
+//          "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+//          "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
+//          "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+//      ]);
+//    } else {
+//      $new_transaction = Transaction::create([
+//        "transaction_id" => $transaction_id,
+//        // "users_id" => $fields["requestor"]["id"],
+//        // "id_prefix" => $fields["requestor"]["id_prefix"],
+//        // "id_no" => $fields["requestor"]["id_no"],
+//        // "first_name" => $fields["requestor"]["first_name"],
+//        // "middle_name" => $fields["requestor"]["middle_name"],
+//        // "last_name" => $fields["requestor"]["last_name"],
+//        // "suffix" => $fields["requestor"]["suffix"],
+//        // "department_details" => $fields["requestor"]["department"],
+//
+//        "users_id" => $requestor->id,
+//        "id_prefix" => $requestor->id_prefix,
+//        "id_no" => $requestor->id_no,
+//        "first_name" => $requestor->first_name,
+//        "middle_name" => $requestor->middle_name,
+//        "last_name" => $requestor->last_name,
+//        "suffix" => $requestor->suffix,
+//        "department_details" => $requestor->department[0]["name"],
+//
+//        "document_id" => $fields["document"]["id"],
+//        "category_id" => $fields["document"]["category"]["id"],
+//        "category" => $fields["document"]["category"]["name"],
+//        "company_id" => $fields["document"]["company"]["id"],
+//        "company" => $fields["document"]["company"]["name"],
+//        "department_id" => $fields["document"]["department"]["id"],
+//        "department" => $fields["document"]["department"]["name"],
+//        "location_id" => $fields["document"]["location"]["id"],
+//        "location" => $fields["document"]["location"]["name"],
+//        "supplier_id" => $fields["document"]["supplier"]["id"],
+//        "supplier" => $fields["document"]["supplier"]["name"],
+//        "payment_type" => $fields["document"]["payment_type"],
+//        "document_no" => $fields["document"]["no"],
+//        "document_date" => $fields["document"]["date"],
+//        "document_amount" => $fields["document"]["amount"],
+//        "remarks" => $fields["document"]["remarks"],
+//        "document_type" => $fields["document"]["name"],
+//        "po_total_amount" => $po_total_amount,
+//        "request_id" => $request_id,
+//
+//        "date_requested" => $date_requested,
+//        "status" => "Pending",
+//          "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
+//          "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+//          "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
+//          "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+//      ]);
+//    }
+
+        GenericMethod::updateRequestID($new_transaction->id);
+        GenericMethod::insertRequestorLogs(
+            $new_transaction->id,
+            $transaction_id,
+            $date_requested,
+            $fields["document"]["remarks"],
+            Auth::user()->id,
+            $status,
+            null,
+            null,
+            null
+        );
+
+        return $new_transaction;
     }
-
-    GenericMethod::updateRequestID($new_transaction->id);
-    GenericMethod::insertRequestorLogs(
-      $new_transaction->id,
-      $transaction_id,
-      $date_requested,
-      $fields["document"]["remarks"],
-      Auth::user()->id,
-      $status,
-      null,
-      null,
-      null
-    );
-
-    return $new_transaction;
-  }
 
   public static function updateRequestID($id)
   {
@@ -3825,40 +4601,40 @@ class GenericMethod
       );
     }
 
-    if ($receipt_no) {
-      $receiptNo = Transaction::where("utilities_receipt_no", $receipt_no)
-        ->where("supplier_id", $supplier_id)
-        ->where("state", "!=", "void")
-        ->when($id, function ($query, $id) {
-          $query->where("id", "<>", $id);
-        })
-        ->count();
-
-      if ($receiptNo > 0) {
-        return GenericMethod::resultLaravelFormat(
-          [
-            // "document.from",
-            // "document.to",
-            // "document.company.id",
-            // "document.department.id",
-            // "document.utility.location.id",
-            // "document.utility.category.id",
-            "document.utility.receipt_no",
-            "document.supplier.id",
-          ],
-          [
-            // ["from has already been taken."],
-            // ["to has already been taken."],
-            // ["Company has already been taken."],
-            // ["Department has already been taken."],
-            // ["Utility Location has already been taken."],
-            // ["Utility Category has already been taken."],
-            ["SOA Number has already been taken."],
-            ["Supplier has already been taken."],
-          ]
-        );
-      }
-    }
+//    if ($receipt_no) {
+//      $receiptNo = Transaction::where("utilities_receipt_no", $receipt_no)
+//        ->where("supplier_id", $supplier_id)
+//        ->where("state", "!=", "void")
+//        ->when($id, function ($query, $id) {
+//          $query->where("id", "<>", $id);
+//        })
+//        ->count();
+//
+//      if ($receiptNo > 0) {
+//        return GenericMethod::resultLaravelFormat(
+//          [
+//            // "document.from",
+//            // "document.to",
+//            // "document.company.id",
+//            // "document.department.id",
+//            // "document.utility.location.id",
+//            // "document.utility.category.id",
+//            "document.utility.receipt_no",
+//            "document.supplier.id",
+//          ],
+//          [
+//            // ["from has already been taken."],
+//            // ["to has already been taken."],
+//            // ["Company has already been taken."],
+//            // ["Department has already been taken."],
+//            // ["Utility Location has already been taken."],
+//            // ["Utility Category has already been taken."],
+//            ["SOA Number has already been taken."],
+//            ["Supplier has already been taken."],
+//          ]
+//        );
+//      }
+//    }
   }
 
   public static function validateSOANumber($receipt_no, $supplier_id, $id = 0)

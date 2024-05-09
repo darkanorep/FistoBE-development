@@ -161,7 +161,7 @@ class TransactionFlowController extends Controller
         return GenericMethod::resultResponse("receive", null, []);
     }
 
-    public function multipleTag(Request $request) {
+    public static function multipleTag(Request $request) {
         $process = $request->input('process');
         $transactions = $request->input('transactions');
         $receipt_type = $request->input('receipt_type');
@@ -175,32 +175,58 @@ class TransactionFlowController extends Controller
             'distributed_name' => data_get($distributed_to, 'name') ?? null
         ];
 
-//        foreach ($transactions as $transaction) {
-//            Tagging::create(array_merge(['transaction_id' => $transaction], $tagData));
-//        }
-
         $second = 1;
         foreach ($transactions as $transaction) {
-            Tagging::create(array_merge(['transaction_id' => $transaction], $tagData));
 
             switch ($process) {
                 case 'tag':
+                case 'extract':
+                    Tagging::create(array_merge(['transaction_id' => $transaction], $tagData));
+
+                    if ($process == 'tag') {
+                        Transaction::where('id', $transaction)
+                            ->update([
+                                'state' => $process,
+                                'status' => $process . '-'. $process,
+                                'receipt_type' => $receipt_type ?? $transaction->receipt_type,
+                                'distributed_id' => data_get($distributed_to, 'id'),
+                                'distributed_name' => data_get($distributed_to, 'name'),
+                                'tag_no' => GenericMethod::generateTagNo($receipt_type, $transaction),
+                                'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
+                            ]);
+                    } else {
+                        Transaction::where('id', $transaction)
+                            ->update([
+                                'state' => 'transmit',
+                                'status' => $process . '-'. $process,
+                                'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
+                            ]);
+                    }
+
+                    break;
+
+                case 'gas':
+                    (new GenericMethod())->gasTransaction($transaction, $process, null, null);
+
                     Transaction::where('id', $transaction)
                         ->update([
-                            'state' => $process,
+                            'state' => 'transmit',
                             'status' => $process . '-'. $process,
-                            'receipt_type' => $receipt_type ?? $transaction->receipt_type,
-                            'distributed_id' => data_get($distributed_to, 'id'),
-                            'distributed_name' => data_get($distributed_to, 'name'),
-                            'tag_no' => GenericMethod::generateTagNo($receipt_type, $transaction),
                             'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
                         ]);
                     break;
 
-                case 'extract':
+                case 'transmit':
+                    Transmit::create([
+                        'transaction_id' => $transaction,
+                        'tag_id' => Transaction::where('id', $transaction)->first()->tag_no,
+                        'status' => $process . '-'. $process,
+                        'date_status' => date('Y-m-d')
+                    ]);
+
                     Transaction::where('id', $transaction)
                         ->update([
-                            'state' => 'transmit',
+                            'state' => $process,
                             'status' => $process . '-'. $process,
                             'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
                         ]);
@@ -278,7 +304,6 @@ class TransactionFlowController extends Controller
     public function multipleChequeReceive(Request $request) {
         $process = $request->input('process');
         $banks = $request->input('banks');
-        $transactions = [];
 
         $bankIds = data_get($banks, '*.id');
         $chequeNos = data_get($banks, '*.cheque_no');
@@ -374,7 +399,11 @@ class TransactionFlowController extends Controller
 
             $transaction->timestamps = false;
             $transaction->receipt_type = $request->receipt_type;
+//            $transaction->state = 'tag';
+//            $transaction->status = 'tag-tag';
             $transaction->save();
+
+//            $transaction->treasuryCheque()->delete();
 
 
             return $this->resultResponse("update", "Transaction", $transaction);
