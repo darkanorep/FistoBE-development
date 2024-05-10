@@ -330,6 +330,79 @@ class TransactionFlowController extends Controller
         return GenericMethod::resultResponse("receive", null, []);
     }
 
+    public function multipleChequeDateIssue(Request $request)
+    {
+        $process = $request->input('process');
+        $cheques = $request->input('cheques');
+        $date = $request->input('date');
+
+        $bankId = data_get($cheques, '*.bank_id');
+        $chequeNos = data_get($cheques, '*.cheque_no');
+        $transactionIds = Arr::flatten(data_get($cheques, '*.transactions'));
+
+        for ($i = 0; $i < count($cheques); $i++) {
+            $transactions = $cheques[$i]['transactions'];
+            $accounts = $cheques[$i]['accounts'];
+
+            foreach ($transactions as $transaction) {
+                $transaction = Transaction::find($transaction);
+
+                $issue = $transaction->issue()->create([
+                    'status' => $process . '-' . $process,
+                ]);
+
+                Cheque::where('transaction_id', $transaction->id)
+                    ->where('cheque_no', $chequeNos[$i])
+                    ->where('bank_id', $bankId[$i])
+                    ->update([
+                        'is_received' => null,
+                        'is_issued' => true,
+                        'issue_id' => $issue->id,
+                        'cheque_date' => date('Y-m-d', strtotime($date)),
+                        'reason_id' => null,
+                        'reason' => null
+                    ]);
+
+                foreach ($accounts as $account) {
+                    $issue->accountTitles()->create([
+                        'entry' => $account['entry'],
+                        'account_title_id' => data_get($account, 'account_title.id'),
+                        'account_title_code' => data_get($account, 'account_title.code'),
+                        'account_title_name' => data_get($account, 'account_title.name'),
+                        'amount' => $account['amount'],
+                        'remarks' => $account['remarks'],
+                        'transaction_type' => 'new',
+                        'company_id' => data_get($account, 'company.id'),
+                        'company_code' => data_get($account, 'company.code'),
+                        'company_name' => data_get($account, 'company.name'),
+                        'department_id' => data_get($account, 'department.id'),
+                        'department_code' => data_get($account, 'department.code'),
+                        'department_name' => data_get($account, 'department.name'),
+                        'location_id' => data_get($account, 'location.id'),
+                        'location_code' => data_get($account, 'location.code'),
+                        'location_name' => data_get($account, 'location.name'),
+                        'business_unit_id' => data_get($account, 'business_unit.id'),
+                        'business_unit_code' => data_get($account, 'business_unit.code'),
+                        'business_unit_name' => data_get($account, 'business_unit.name'),
+                        'sub_business_unit_id' => data_get($account, 'sub_business_unit.id'),
+                        'sub_business_unit_code' => data_get($account, 'sub_business_unit.code'),
+                        'sub_business_unit_name' => data_get($account, 'sub_business_unit.name'),
+                    ]);
+                }
+            }
+        }
+
+        $cheques = Cheque::whereIn('transaction_id', $transactionIds)->whereNull('issue_id')->whereNull('deleted_at')->get();
+
+        if ($cheques->isEmpty()) {
+            Transaction::whereIn('id', $transactionIds)->update([
+                'is_for_releasing' => true,
+                'state' => 'transmit',
+                'status' => $process . '-' . $process,
+            ]);
+        }
+    }
+
     function multipleChequeReceiveProcess($process, $transactions) {
 
         foreach ($transactions as $transaction) {
