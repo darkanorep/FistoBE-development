@@ -60,6 +60,7 @@ class TransactionFlow
         }
         $process = $request["process"];
         $subprocess = $request["subprocess"];
+        $isConfidential = $transaction->is_confidential;
         $reason_id = isset($request["reason"]["id"]) ? $request["reason"]["id"] : null;
         $date_now = Carbon::now("Asia/Manila")->format("Y-m-d");
         $generic = new GenericMethod();
@@ -77,7 +78,7 @@ class TransactionFlow
 
         $tag_no = $transaction->tag_no;
         if ($subprocess == "tag") {
-            $tag_no = GenericMethod::generateTagNo($receipt_type, $transaction->id);
+            $tag_no = GenericMethod::generateTagNo($receipt_type, $transaction->id, $isConfidential);
         }
 
         $previous_voucher_transaction = Transaction::with("transaction_voucher.account_title")
@@ -539,43 +540,43 @@ class TransactionFlow
                     $debit_amount = array_sum(array_column($debit_entries_amount, "amount"));
                     $credit_amount = array_sum(array_column($credit_entries_amount, "amount"));
 
-                    switch ($transaction->document_id) {
-                        case 3: //PRM Multiple
-                            if ($debit_amount != $credit_amount) {
-                                return GenericMethod::resultResponse("not-equal", "Total debit and credit", []);
-                            }
-//              if ($transaction->net_amount != $debit_amount) {
-//                return GenericMethod::resultResponse("not-equal", "Net amount and account title", []);
-//              }
-
-                            switch ($transaction->category) {
-                                case 'rental':
-                                    if ($transaction->gross_amount != $debit_amount) {
-                                        return GenericMethod::resultResponse("not-equal", "Document and account title", []);
-                                    }
-                                    break;
-
-                                default:
-//                      if (($transaction->principal + $transaction->interest) != $debit_amount) {
-//                          return GenericMethod::resultResponse("not-equal", "Document and account title", []);
-//                      }
-
-                                    if (floatval((number_format(($transaction->principal + $transaction->interest), 2, '.', ''))) != $debit_amount) {
-                                        return GenericMethod::resultResponse("not-equal", "Document and account title", []);
-                                    }
-                            }
-
-                            break;
-
-//            default:
-//              if ($debit_amount != $credit_amount) {
-//                return GenericMethod::resultResponse("not-equal", "Total debit and credit", []);
-//              }
+//                    switch ($transaction->document_id) {
+//                        case 3: //PRM Multiple
+//                            if ($debit_amount != $credit_amount) {
+//                                return GenericMethod::resultResponse("not-equal", "Total debit and credit", []);
+//                            }
+//                            if ($transaction->net_amount != $debit_amount) {
+//                                return GenericMethod::resultResponse("not-equal", "Net amount and account title", []);
+//                            }
 //
-//              if ($document_amount != $debit_amount) {
-//                return GenericMethod::resultResponse("not-equal", "Document and account title", []);
-//              }
-                    }
+//                            switch ($transaction->category) {
+//                                case 'rental':
+//                                    if ($transaction->gross_amount != $debit_amount) {
+//                                        return GenericMethod::resultResponse("not-equal", "Document and account title", []);
+//                                    }
+//                                    break;
+//
+//                                default:
+//                                    if (($transaction->principal + $transaction->interest) != $debit_amount) {
+//                                        return GenericMethod::resultResponse("not-equal", "Document and account title", []);
+//                                    }
+//
+//                                    if (floatval((number_format(($transaction->principal + $transaction->interest), 2, '.', ''))) != $debit_amount) {
+//                                        return GenericMethod::resultResponse("not-equal", "Document and account title", []);
+//                                    }
+//                            }
+//
+//                            break;
+//
+//                        default:
+//                            if ($debit_amount != $credit_amount) {
+//                                return GenericMethod::resultResponse("not-equal", "Total debit and credit", []);
+//                            }
+//
+//                            if ($document_amount != $debit_amount) {
+//                                return GenericMethod::resultResponse("not-equal", "Document and account title", []);
+//                            }
+//                    }
 
                     $department_id = null;
                     foreach ($account_titles as $account_title) {
@@ -585,7 +586,7 @@ class TransactionFlow
                         }
                     }
 
-                    $voucher_no = $generic->generateVoucherNo($transaction->id, $department_id, $voucher_month);
+                    $voucher_no = $generic->generateVoucherNo($transaction->id, $department_id, $voucher_month, $isConfidential);
 
                 }
 
@@ -1949,9 +1950,6 @@ class TransactionFlow
                 case 'receive':
                     return $this->chequeSingleReceive($request, $transactionIds);
                     break;
-//                case 'return':
-//                    $this->chequeReturn($request, $transactionIds);
-//                    break;
                 case 'unhold':
                 case 'unreturn':
                     return $this->unreturnUnhold($transactionIds, $context);
@@ -2201,25 +2199,6 @@ class TransactionFlow
         return GenericMethod::resultResponse($request->subprocess, "", "");
     }
 
-    function chequeReturn($request, $transactionIds)
-    {
-
-        $process = $request->process;
-
-        switch ($process) {
-
-            case 'release':
-                Cheque::whereIn('transaction_id', $transactionIds)
-                    ->update([
-                        'issue_id' => null,
-                        'is_received' => null,
-                        'is_issued' => null,
-                        'reason_id' => data_get($request, 'reason.id'),
-                        'reason' => data_get($request, 'reason.remarks'),
-                    ]);
-                break;
-        }
-    }
 
     function chequeSingleReceive($request, $transactionIds)
     {

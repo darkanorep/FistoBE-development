@@ -11,6 +11,8 @@ class Unit extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected $table = 'units';
+
     protected $fillable = ['code', 'name', 'department_id'];
 
     protected $hidden = ['created_at', 'department_id'];

@@ -166,6 +166,7 @@ class TransactionFlowController extends Controller
         $transactions = $request->input('transactions');
         $receipt_type = $request->input('receipt_type');
         $distributed_to = $request->input('distributed_to');
+//        $isConfidential = $request->input('is_confidential', 0);
 
         $tagData = [
 //            'status' => $process . '-tag',
@@ -177,7 +178,7 @@ class TransactionFlowController extends Controller
 
         $second = 1;
         foreach ($transactions as $transaction) {
-
+            $trx = Transaction::find($transaction);
             switch ($process) {
                 case 'tag':
                 case 'extract':
@@ -188,10 +189,10 @@ class TransactionFlowController extends Controller
                             ->update([
                                 'state' => $process,
                                 'status' => $process . '-'. $process,
-                                'receipt_type' => $receipt_type ?? $transaction->receipt_type,
+                                'receipt_type' => $receipt_type ?? $transaction->receipt_type ?? null,
                                 'distributed_id' => data_get($distributed_to, 'id'),
                                 'distributed_name' => data_get($distributed_to, 'name'),
-                                'tag_no' => GenericMethod::generateTagNo($receipt_type, $transaction),
+                                'tag_no' => GenericMethod::generateTagNo($receipt_type, $transaction, $trx->is_confidential),
                                 'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
                             ]);
                     } else {
@@ -401,6 +402,8 @@ class TransactionFlowController extends Controller
                 'status' => $process . '-' . $process,
             ]);
         }
+
+        return $this->resultResponse("update", "Transaction", null);
     }
 
     function multipleChequeReceiveProcess($process, $transactions) {

@@ -1362,7 +1362,7 @@ class GenericMethod
     }, $array);
   }
 
-    public static function insertTransaction($transaction_id, $po_total_amount = 0, $request_id, $date_requested, $fields, $balance_po_ref_amount = 0)
+    public static function insertTransaction($transaction_id, $po_total_amount = 0, $request_id, $date_requested, $fields, $balance_po_ref_amount = 0, $is_confidential)
     {
         $status = "create";
 
@@ -1418,6 +1418,7 @@ class GenericMethod
                     "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
                     "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                     "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+                    "is_confidential" => $is_confidential,
                 ]);
                 break;
 
@@ -1458,6 +1459,7 @@ class GenericMethod
                     "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
                     "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                     "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+                    "is_confidential" => $is_confidential,
                 ]);
                 break;
 
@@ -1501,6 +1503,7 @@ class GenericMethod
                     "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
                     "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                     "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+                    "is_confidential" => $is_confidential,
                 ]);
                 break;
 
@@ -1551,6 +1554,7 @@ class GenericMethod
                     "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
                     "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                     "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+                    "is_confidential" => $is_confidential,
                 ]);
 
                 break;
@@ -1596,6 +1600,7 @@ class GenericMethod
                     "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
                     "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                     "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+                    "is_confidential" => $is_confidential,
                 ]);
 
                 break;
@@ -1744,6 +1749,7 @@ class GenericMethod
                                 "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
                                 "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                                 "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+                                "is_confidential" => $is_confidential,
                             ]);
                         }
 
@@ -1851,6 +1857,7 @@ class GenericMethod
                                 "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
                                 "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                                 "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+                                "is_confidential" => $is_confidential,
                             ]);
                         }
                         static::prmMultiplerequestUpdateID($new_transaction);
@@ -1963,6 +1970,7 @@ class GenericMethod
                                 "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
                                 "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                                 "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+                                "is_confidential" => $is_confidential,
                             ]);
                         }
 
@@ -2009,6 +2017,7 @@ class GenericMethod
                     "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
                     "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                     "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+                    "is_confidential" => $is_confidential,
                 ]);
 
                 if ($new_transaction->id) {
@@ -2065,6 +2074,7 @@ class GenericMethod
                         "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
                         "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                         "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+                        "is_confidential" => $is_confidential
                     ]);
                 } else {
                     $new_transaction = Transaction::create([
@@ -2104,6 +2114,7 @@ class GenericMethod
                         "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
                         "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                         "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+                        "is_confidential" => $is_confidential,
                     ]);
                 }
 
@@ -2146,6 +2157,7 @@ class GenericMethod
                     "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
                     "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                     "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+                    "is_confidential" => $is_confidential,
                 ]);
                 break;
         }
@@ -2994,14 +3006,15 @@ class GenericMethod
     $changes
   ) {
     if ($fields["document"]["name"] == "PRM Multiple") {
-      $transaction = GenericMethod::insertTransaction(
-        $transaction_id,
-        $po_total_amount = 0,
-        $request_id,
-        $date_requested,
-        $fields,
-        $balance_po_ref_amount = 0
-      );
+        $transaction = GenericMethod::insertTransaction(
+            $transaction_id,
+            $po_total_amount = 0,
+            $request_id,
+            $date_requested,
+            $fields,
+            $balance_po_ref_amount = 0,
+            data_get($fields, "document.is_confidential", 0)
+        );
       return $transaction;
     }
     $currentTransaction = Transaction::with("po_details")
@@ -5823,7 +5836,7 @@ class GenericMethod
   }
   ##########################################################################################################
 
-  public function generateVoucherNo($id, $code, $voucher_month)
+  public function generateVoucherNo($id, $code, $voucher_month, $is_confidential)
   {
 //    $existingVoucher = Transaction::whereNotNull("voucher_no")
 //      ->where("id", $id)
@@ -5834,7 +5847,12 @@ class GenericMethod
 //    }
 
     $series = 1;
-    $code = Department::where('id', $code)->first()->voucherCode->code;
+//    $code = Department::where('id', $code)->first()->voucherCode->code;
+    if ($is_confidential) {
+        $code = 'SP';
+    } else {
+        $code = Department::where('id', $code)->first()->voucherCode->code;
+    }
 //    $date = Carbon::now("Asia/Manila")->format("ym");
     $date = DateTime::createFromFormat('Y-m-d', $voucher_month)->format('ym');
 
@@ -5854,10 +5872,21 @@ class GenericMethod
     return Transaction::where("voucher_no", $voucher)->exists();
   }
 
-  public static function generateTagNo($receipt_type, $id) {
-      $existingTag = Transaction::whereNotNull("tag_no")
-          ->where("id", $id)->where("receipt_type", $receipt_type)
-          ->first();
+  public static function  generateTagNo($receipt_type, $id, $isConfidential) {
+//      $existingTag = Transaction::whereNotNull("tag_no")
+//          ->where("id", $id)->where("receipt_type", $receipt_type)
+//          ->first();
+
+      if ($isConfidential) {
+          $existingTag = Transaction::whereNotNull("tag_no")
+                ->where("id", $id)
+              ->where("is_confidential", 1)
+              ->first();
+      } else {
+          $existingTag = Transaction::whereNotNull("tag_no")
+              ->where("id", $id)->where("receipt_type", $receipt_type)
+              ->first();
+      }
 
       if ($existingTag) {
           return $existingTag->tag_no;
@@ -5866,13 +5895,22 @@ class GenericMethod
       $series = 0;
       do {
           $series++;
-      } while (static::checkDuplicateGeneratedTagNo($series, $receipt_type));
+      } while (static::checkDuplicateGeneratedTagNo($series, $receipt_type, $isConfidential));
 
       return $series;
   }
 
-  public static function checkDuplicateGeneratedTagNo($tag_no, $receipt_type) {
-      return Transaction::where('tag_no', $tag_no)->where('receipt_type', $receipt_type)->exists();
+  public static function checkDuplicateGeneratedTagNo($tag_no, $receipt_type, $isConfidential) {
+     if ($isConfidential) {
+         return Transaction::where("tag_no", $tag_no)
+             ->where("is_confidential", 1)
+             ->exists();
+     } else {
+         return Transaction::where("tag_no", $tag_no)
+             ->where("receipt_type", $receipt_type)
+             ->exists();
+     }
+//      return Transaction::where('tag_no', $tag_no)->where('receipt_type', $receipt_type)->exists();
   }
 
 

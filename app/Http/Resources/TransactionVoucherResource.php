@@ -5,6 +5,8 @@ namespace App\Http\Resources;
 use App\Models\Approver;
 use App\Models\Associate;
 use App\Models\Audit;
+use App\Models\File;
+use App\Models\Gas;
 use App\Models\Transmit;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -19,12 +21,16 @@ class TransactionVoucherResource extends JsonResource
     public function toArray($request)
     {
 
+        $transactionResource = new TransactionResource1($this);
         $voucher = null;
         $inspect = null;
         $approve = null;
         $transmit = null;
+        $discharge = null;
+        $file = null;
 
-        if ($this->withCount('voucher')) {
+        //VOUCHER
+        if ($this->has('voucher')) {
             $voucher_transaction = $this->voucher->first();
 
             if (empty($voucher_transaction->account_title)) {
@@ -93,52 +99,83 @@ class TransactionVoucherResource extends JsonResource
                 $voucher = [
                     'status' => $voucher_transaction->status,
                     'no' => $this->voucher_no,
-                    'dates' => $this->get_transaction_dates(Associate::class, $this->id, 'voucher', ["transfer", "receive", "voucher"]),
+                    'dates' => $transactionResource->get_transaction_dates(Associate::class, $this->id, 'voucher', ["transfer", "receive", "voucher"]),
                     'month' => $this->voucher_month,
                     'transaction_type' => $transaction_type,
                     'input_tax' => $this->input_tax,
                     'accounts' => $voucher_account_title,
                     'approver' => $approver,
-                    'reason' => $this->reason($voucher_transaction, $voucher_transaction->reason_id)
+                    'reason' => $transactionResource->reason($voucher_transaction, $voucher_transaction->reason_id)
                 ];
             }
         }
 
-        if ($this->withCount('inspect')) {
+        //INSPECT
+        if ($this->has('inspect')) {
             $inspect_transaction = $this->inspect->first();
 
             if (isset($inspect_transaction->status)) {
                 $inspect = [
                     'status' => $inspect_transaction->status,
-                    'dates' => $this->get_transaction_dates(Audit::class, $this->id, 'inspect', ["receive", "inspect"]),
-                    'reason' => $this->reason($inspect_transaction, $inspect_transaction->reason_id)
+                    'dates' => $transactionResource->get_transaction_dates(Audit::class, $this->id, 'inspect', ["receive", "inspect"]),
+                    'reason' => $transactionResource->reason($inspect_transaction, $inspect_transaction->reason_id)
                 ];
             }
         }
 
-        if ($this->withCount('approve')) {
+        //APPROVE
+        if ($this->has('approve')) {
             $approve_transaction = $this->approve->first();
 
             if (isset($approve_transaction->status)) {
                 $approve = [
                     'status' => $approve_transaction->status,
-                    'dates' => $this->get_transaction_dates(Approver::class, $this->id, 'approve', ["receive", "approve"]),
+                    'dates' => $transactionResource->get_transaction_dates(Approver::class, $this->id, 'approve', ["receive", "approve"]),
                     'distributed_to' => [
                         'id' => $this->distributed_id,
                         'name' => $this->distributed_name,
                     ],
-                    'reason' => $this->reason($approve_transaction, $approve_transaction->reason_id)
+                    'reason' => $transactionResource->reason($approve_transaction, $approve_transaction->reason_id)
                 ];
             }
         }
 
-        if ($this->withCount('transmit')) {
+        //TRANSMIT
+        if ($this->has('transmit')) {
             $transmit_transaction = $this->transmit->first();
 
             if (isset($transmit_transaction->status)) {
                 $transmit = [
-                    'dates' => $this->get_transaction_dates(Transmit::class, $this->id, 'transmit', ["transfer", "receive", "transmit"]),
+                    'dates' => $transactionResource->get_transaction_dates(Transmit::class, $this->id, 'transmit', ["transfer", "receive", "transmit"]),
                     'status' => $transmit_transaction->status,
+                ];
+            }
+        }
+
+        //DISCHARGE
+        if ($this->has('discharge')) {
+            $discharge_transaction = $this->discharge->first();
+
+            if (isset($discharge_transaction->status)) {
+                $discharge = [
+                    'dates' => $this->get_transaction_dates(Gas::class, $this->id, 'discharge', ["receive", "discharge"]),
+                    'status' => $discharge_transaction->status,
+                    'reason' => $this->reason($discharge_transaction, $discharge_transaction->reason_id)
+                ];
+            }
+
+        }
+
+        //FILE
+        if ($this->has('file')) {
+            $file_transaction = $this->file->first();
+
+            if (isset($file_transaction->status)) {
+                $file = [
+                    'dates' => $this->get_transaction_dates(File::class, $this->id, 'file', ["transfer", "receive", "file"]),
+                    'status' => $file_transaction->status,
+                    'reason' => $this->reason($file_transaction, $file_transaction->reason_id),
+                    'box_no' => $this->box_no
                 ];
             }
         }
@@ -148,6 +185,8 @@ class TransactionVoucherResource extends JsonResource
             'inspect' => $inspect,
             'approve' => $approve,
             'transmit' => $transmit,
+            'discharge' => $discharge,
+            'file' => $file,
         ];
 
         $result = [];
@@ -157,93 +196,5 @@ class TransactionVoucherResource extends JsonResource
             }
         }
         return $result;
-
-    }
-
-    function get_transaction_dates($model, $id, $process, $subprocesses)
-    {
-        $flow_details = $model::where('transaction_id', $id)->latest()->get();
-
-        $details = [];
-        foreach ($subprocesses as $k => $subprocess) {
-            $status = $process . "-" . $subprocess;
-            $details[$k]["subprocess"] = $this->stateChange($subprocess);
-
-            if ($process == "tag") {
-                $details[$k]["date"] = isset($flow_details->where("status", $status)->first()->created_at)
-                    ? $flow_details->where("status", $status)->first()->created_at
-                    : null;
-            } else {
-                $details[$k]["date"] = isset($flow_details->where("status", $status)->first()["created_at"])
-                    ? $flow_details->where("status", $status)->first()["created_at"]
-                    : null;
-            }
-        }
-
-        return array_reduce(
-            $details,
-            function ($result, $item) {
-                $result[$item["subprocess"]] = $item["date"];
-                return $result;
-            },
-            []
-        );
-    }
-    function stateChange($state): string
-    {
-        switch ($state) {
-            case "tag":
-                $state = "tagged";
-                break;
-            case "request":
-            case "pending":
-                $state = "pending";
-                break;
-            case "cheque":
-                $state = "created";
-                break;
-            case "hold":
-                $state = "held";
-                break;
-            case "transmit":
-                $state = "transmitted";
-                break;
-            case "receive-approver":
-                $state = "received";
-                break;
-            case "receive-requestor":
-                $state = "received";
-                break;
-            case 'executive';
-                $state = 'signed';
-                break;
-            case 'gas':
-                $state = 'gas';
-                break;
-
-            default:
-                if (str_ends_with($state, "e")) {
-                    $state = strtolower($state . "d");
-                } elseif (str_ends_with($state, "g")) {
-                    $state = strtolower($state);
-                } else {
-                    $state = strtolower($state . "ed");
-                }
-        }
-
-        return $state;
-    }
-
-    function reason($model, $reason_id): ?array
-    {
-        if (isset($reason_id)) {
-            return [
-                'id' => $model->reason_id,
-                'reason' => Reason::where('id', $model->reason_id)->first()->reason,
-                'remarks' => $model->remarks
-            ];
-        } else {
-            return null;
-        }
     }
 }

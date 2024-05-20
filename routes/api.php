@@ -194,7 +194,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         Route::resource("users", UserController::class);
 
         // COMPANY
-//    Route::get("companies/", [CompanyController::class, "index"]);
+//        Route::get("companies/", [CompanyController::class, "index"]);
         Route::patch("companies/{id}", [CompanyController::class, "change_status"]);
         Route::resource("companies", CompanyController::class);
 
@@ -339,8 +339,8 @@ Route::group(["middleware" => "auth:sanctum"], function () {
     Route::get('/status-cheques-count', [TransactionController::class, 'statusChequeCounter']);
     Route::get("transactions-history", [TransactionController::class, "history"]);
     Route::get("cheques-history", [TransactionController::class, "historyChequeIndex"]);
-    Route::get("voucher-transaction/{id}", [TransactionController::class, 'voucher']);
-
+    Route::get("voucher-transaction/{id}", [TransactionController::class, 'voucherTransaction']);
+    Route::get("cheque-transaction/{id}", [TransactionController::class, 'chequeTransaction']);
     Route::resource("transactions", TransactionController::class);
     Route::group(["prefix" => "transactions"], function () {
         //TRANSACTION

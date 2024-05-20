@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\ChequeClearIndex;
 use App\Http\Resources\ChequeIndex;
+use App\Http\Resources\TransactionChequeResource;
 use App\Http\Resources\TransactionResource1;
 use App\Http\Resources\TransactionVoucherResource;
 use App\Models\Audit;
@@ -805,6 +806,8 @@ class TransactionController extends Controller
         $tag_search = str_replace('tag#', '', $search);
         $department = $request->input('department', [auth()->user()->department[0]['name']]);
         $user_id = null;
+        $my_request = $request->input('my_request', 0);
+        $is_confidential = $request->input('is_confidential', 0);
 
         $userRole = auth()->user()->role;
         if (in_array($userRole, ['AP Associate', 'AP Specialist', 'Approver'])) {
@@ -863,6 +866,16 @@ class TransactionController extends Controller
             "supplier.supplier_type:id,type as name,transaction_days",
             "po_details:id,request_id,po_no,po_total_amount",
         ])
+            ->when($status != in_array($status, ['pending-approve', 'approve-receive', 'approve-approve']), function ($query) use ($is_confidential) {
+                $query->when($is_confidential == 1, function ($query) {
+                    $query->where('is_confidential', 1);
+                }, function ($query) {
+                    $query->where('is_confidential', 0);
+                });
+            })
+            ->when($my_request == 1, function ($query) {
+                $query->where('users_id', auth()->user()->id);
+            })
             ->when(!empty($document_ids), function ($query) use ($document_ids) {
                 $query->whereIn("document_id", $document_ids);
             })
@@ -969,15 +982,20 @@ class TransactionController extends Controller
             })
 
             //Creation of Voucher
-            ->when($status == 'pending-voucher', function ($query) use ($user_id) {
-                $query->where('distributed_id', $user_id)
-                    ->where(function ($query) {
-                        $query->whereIn("status", ["tag-tag", "voucher-transfer"])
-                            ->where("receipt_type", "unofficial")
-                            ->orWhere(function ($query) {
-                                $query->where('status', 'extract-extract');
-                            });
-                    });
+            ->when($status == 'pending-voucher', function ($query) use ($user_id, $is_confidential) {
+                $query->where('distributed_id', $user_id, $is_confidential)
+                   ->when($is_confidential == 1, function ($query) {
+                       $query->where('is_confidential', 1)
+                           ->whereIn("status", ['tag-tag', 'tag-unhold', 'tag-unreturn']);
+                   }, function ($query) {
+                       $query->where(function ($query) {
+                           $query->whereIn("status", ["tag-tag", "voucher-transfer"])
+                               ->where("receipt_type", "unofficial")
+                               ->orWhere(function ($query) {
+                                   $query->where('status', 'extract-extract');
+                               });
+                       });
+                   });
             })
             ->when($status == 'return-voucher', function ($query) use ($user_id) {
                 $query->where('distributed_id', $user_id)
@@ -1067,7 +1085,8 @@ class TransactionController extends Controller
                             if (in_array($userRole, ['AP Associate', 'AP Specialist'])) {
                                 $query->where('distributed_id', $user_id);
                             } else if ($userRole == 'Approver') {
-                                $query->where('approver_id', $user_id);
+                                $query->where('approver_id', $user_id)
+                                    ->orWhere('users_id', $user_id);
                             }
                         });
                     });
@@ -1173,6 +1192,7 @@ class TransactionController extends Controller
         $date_requested = date("Y-m-d H:i:s");
         $transaction_id = GenericMethod::getTransactionID(Auth::user()->department[0]["name"]);
         $request_id = GenericMethod::getRequestID();
+        $isConfidential = $request->input("document.is_confidential", 0);
 
         switch ($fields["document"]["id"]) {
             case 1: //PAD
@@ -1240,7 +1260,8 @@ class TransactionController extends Controller
                                 $request_id,
                                 $date_requested,
                                 $fields,
-                                $balance_with_additional_total_po_amount
+                                $balance_with_additional_total_po_amount,
+                                $isConfidential
                             );
 
                             $request_id = $transaction->id;
@@ -1292,7 +1313,8 @@ class TransactionController extends Controller
                             $request_id,
                             $date_requested,
                             $fields,
-                            $balance_po_ref_amount
+                            $balance_po_ref_amount,
+                            $isConfidential
                         );
 
                         $request_id = $transaction->id;
@@ -1365,7 +1387,9 @@ class TransactionController extends Controller
                             $po_total_amount,
                             $request_id,
                             $date_requested,
-                            $fields
+                            $fields,
+                            null,
+                            $isConfidential
                         );
 
                         $request_id = $transaction->id;
@@ -1428,7 +1452,9 @@ class TransactionController extends Controller
                     $po_total_amount,
                     $request_id,
                     $date_requested,
-                    $fields
+                    $fields,
+                    null,
+                    $isConfidential
                 );
 
                 $request_id = $transaction->id;
@@ -1507,7 +1533,8 @@ class TransactionController extends Controller
                                 $request_id,
                                 $date_requested,
                                 $fields,
-                                $balance_with_additional_total_po_amount
+                                $balance_with_additional_total_po_amount,
+                                $isConfidential
                             );
 
                             $request_id = $transaction->id;
@@ -1559,7 +1586,8 @@ class TransactionController extends Controller
                             $request_id,
                             $date_requested,
                             $fields,
-                            $balance_po_ref_amount
+                            $balance_po_ref_amount,
+                            $isConfidential
                         );
 
                         $request_id = $transaction->id;
@@ -1606,7 +1634,7 @@ class TransactionController extends Controller
 
                     default:
                         GenericMethod::documentNoValidation($request["document"]["no"]);
-                        $transaction = GenericMethod::insertTransaction($transaction_id, null, $request_id, $date_requested, $fields);
+                        $transaction = GenericMethod::insertTransaction($transaction_id, null, $request_id, $date_requested, $fields, null, $isConfidential);
                         if (isset($transaction->transaction_id)) {
                             return $this->resultResponse("save", "Transaction", []);
                         }
@@ -1616,7 +1644,7 @@ class TransactionController extends Controller
 
             case 3: // PRM Multiple
                 GenericMethod::documentNoValidation($request["document"]["no"]);
-                $transaction = GenericMethod::insertTransaction($transaction_id, null, $request_id, $date_requested, $fields);
+                $transaction = GenericMethod::insertTransaction($transaction_id, null, $request_id, $date_requested, $fields, null, $isConfidential);
 
                 if (isset($transaction->transaction_id)) {
                     return $this->resultResponse("save", "Transaction", []);
@@ -1652,7 +1680,7 @@ class TransactionController extends Controller
                     return $this->resultResponse("invalid", "", $duplicateUtilities);
                 }
 
-                $transaction = GenericMethod::insertTransaction($transaction_id, null, $request_id, $date_requested, $fields);
+                $transaction = GenericMethod::insertTransaction($transaction_id, null, $request_id, $date_requested, $fields, null, $isConfidential);
                 if (isset($transaction->transaction_id)) {
                     return $this->resultResponse("save", "Transaction", []);
                 }
@@ -1672,7 +1700,7 @@ class TransactionController extends Controller
                     return $this->resultResponse("invalid", "", $duplicatePCF);
                 }
 
-                $transaction = GenericMethod::insertTransaction($transaction_id, null, $request_id, $date_requested, $fields);
+                $transaction = GenericMethod::insertTransaction($transaction_id, null, $request_id, $date_requested, $fields, null, $isConfidential);
                 if (isset($transaction->transaction_id)) {
                     return $this->resultResponse("save", "Transaction", []);
                 }
@@ -1696,7 +1724,7 @@ class TransactionController extends Controller
                     return $this->resultResponse("invalid", "", $duplicatePayroll);
                 }
 
-                $transaction = GenericMethod::insertTransaction($transaction_id, null, $request_id, $date_requested, $fields);
+                $transaction = GenericMethod::insertTransaction($transaction_id, null, $request_id, $date_requested, $fields, null, $isConfidential);
 
                 $request_id = $transaction->id;
 
@@ -1751,7 +1779,9 @@ class TransactionController extends Controller
                         $po_total_amount,
                         $request_id,
                         $date_requested,
-                        $fields
+                        $fields,
+                        null,
+                        $isConfidential
                     );
 
                     $request_id = $transaction->id;
@@ -1836,7 +1866,8 @@ class TransactionController extends Controller
                             $request_id,
                             $date_requested,
                             $fields,
-                            $balance_with_additional_total_po_amount
+                            $balance_with_additional_total_po_amount,
+                            $isConfidential
                         );
 
                         $request_id = $transaction->id;
@@ -1890,7 +1921,8 @@ class TransactionController extends Controller
                         $request_id,
                         $date_requested,
                         $fields,
-                        $balance_po_ref_amount
+                        $balance_po_ref_amount,
+                        $isConfidential
                     );
 
                     $request_id = $transaction->id;
@@ -1959,7 +1991,7 @@ class TransactionController extends Controller
 //                    "Document amount and net of cwt amount is not equal.")
 //                    : null;
 
-                $transaction = GenericMethod::insertTransaction($transaction_id, null, $request_id, $date_requested, $fields);
+                $transaction = GenericMethod::insertTransaction($transaction_id, null, $request_id, $date_requested, $fields, null, $isConfidential);
                 if (isset($transaction->transaction_id)) {
                     return $this->resultResponse("save", "Transaction", []);
                 }
@@ -1974,6 +2006,7 @@ class TransactionController extends Controller
         $fields = $request->validated();
         $date_requested = date("Y-m-d H:i:s");
         $request_id = $request["transaction"]["request_id"];
+        $isConfidential = $request->input("document.is_confidential", 0);
 
         switch ($fields["document"]["id"]) {
             case 1: //PAD
@@ -2309,30 +2342,60 @@ class TransactionController extends Controller
                 break;
 
             case 3: //PRM Multiple
-                $po_total_amount = null;
-                GenericMethod::documentNoValidationUpdate($request["document"]["no"], $id, $request["transaction"]["no"]);
-                $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
-                $transaction = GenericMethod::updateTransaction(
-                    $id,
-                    $po_total_amount,
-                    $request_id,
-                    $date_requested,
-                    $request,
-                    0,
-                    $changes
-                );
+                $prms = Transaction::where('transaction_id', $request->input('transaction.no'))->pluck('tag_no')->toArray();
+                $prms = collect(array_filter($prms));
+
+                if ($prms->isEmpty()) {
+                    $po_total_amount = null;
+                    GenericMethod::documentNoValidationUpdate($request["document"]["no"], $id, $request["transaction"]["no"]);
+                    $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
+                    $transaction = GenericMethod::updateTransaction(
+                        $id,
+                        $po_total_amount,
+                        $request_id,
+                        $date_requested,
+                        $request,
+                        0,
+                        $changes
+                    );
+                } else {
+                    Transaction::where('transaction_id', $request->input('transaction.no'))->update([
+                        'document_no' => data_get($request, 'document.no'),
+                        'remarks' => data_get($request, 'document.remarks'),
+                        'document_amount' => data_get($request, 'document.amount'),
+                        'batch_no' => data_get($request, 'document.batch_no'),
+                        'company_id' => data_get($request, 'document.company.id'),
+                        'company' => data_get($request, 'document.company.name'),
+                        'department_id' => data_get($request, 'document.department.id'),
+                        'department' => data_get($request, 'document.department.name'),
+                        'location_id' => data_get($request, 'document.location.id'),
+                        'location' => data_get($request, 'document.location.name'),
+                        'release_date' => data_get($request, 'document.release_date'),
+                    ]);
+                }
+
+//                $transaction = GenericMethod::updateTransaction(
+//                    $id,
+//                    $po_total_amount,
+//                    $request_id,
+//                    $date_requested,
+//                    $request,
+//                    0,
+//                    $changes
+//                );
 
                 // return $transaction;
 
-                if ($transaction == "Nothing Has Changed") {
-                    return $this->resultResponse("nothing-has-changed", "Transaction", []);
-                } elseif ($transaction == "On Going Transaction") {
-                    return GenericMethod::resultResponse("ongoing", "", []);
-                }
+//                if ($transaction == "Nothing Has Changed") {
+//                    return $this->resultResponse("nothing-has-changed", "Transaction", []);
+//                } elseif ($transaction == "On Going Transaction") {
+//                    return GenericMethod::resultResponse("ongoing", "", []);
+//                }
 
-                if (isset($transaction->transaction_id)) {
-                    return $this->resultResponse("update", "Transaction", []);
-                }
+//                if (isset($transaction->transaction_id)) {
+//                    return $this->resultResponse("update", "Transaction", []);
+//                }
+                return $this->resultResponse("update", "Transaction", []);
 
                 #----------------------------------------------------------------------#
 
@@ -4342,7 +4405,7 @@ class TransactionController extends Controller
             12 => ["tag-tag", "extract-extract", "approve-return", "cheque-return", "inspect-return"], //Creation of Voucher
             13 => [], //Transmittal of Confidential Document
             14 => [], //Filing of Confidential Voucher
-            15 => [], //Tagging and Vouchering
+            15 => ['pending'], //Tagging of Confidential Document
             16 => [], //Releasing of Confidential Cheque
             17 => ["voucher-voucher"], //Approval of Voucher
             18 => [], //Approval of Confidential Voucher
@@ -4355,6 +4418,7 @@ class TransactionController extends Controller
             25 => ["tag-tag"], //Transmittal of Official Receipt
             26 => ["release-release"], //Filing of Official Receipt
             27 => ['gas-gas'], //Transmittal of GAS Voucher
+            28 => ['tag-tag'] //Vouchering of Confidential Document
         ];
 
         $response = [];
@@ -4374,6 +4438,7 @@ class TransactionController extends Controller
                 $user_id = null;
                 $document_id = null;
                 $receipt_type = null;
+                $is_confidential = null;
                 switch ($permissionName) {
                     case 'Transmittal of Official Receipt':
                     case 'Filing of Official Receipt':
@@ -4385,11 +4450,17 @@ class TransactionController extends Controller
                     case 'Transmittal of Document':
                     case 'Approval of Voucher':
                     case 'Filing of Voucher':
+                    case 'Vouchering of Confidential Document':
                         $user_id = auth()->user()->id;
                         break;
 
                     case 'Auditing of Voucher':
                         $document_id = 8;
+                        break;
+
+                    case 'Tagging of Confidential Document':
+                    case 'Vouchering of Confidential Document':
+                        $is_confidential = 1;
                         break;
                 }
 
@@ -4400,6 +4471,9 @@ class TransactionController extends Controller
                                 ->orWhere('approver_id', $user_id)
                                 ->orWhere('users_id', $user_id);
                         });
+                    })
+                    ->when($is_confidential, function ($query) use ($is_confidential) {
+                        $query->where('is_confidential', $is_confidential);
                     })
                     ->when($receipt_type, function ($query) use ($receipt_type, $status) {
                         return $query->where('receipt_type', $receipt_type);
@@ -4439,7 +4513,8 @@ class TransactionController extends Controller
                         $query->where('status', '<>', 'tag-tag')
                             ->orWhere(function ($query) use ($permissionName) {
                                 $query->where('status', '=', 'tag-tag')
-                                    ->where('receipt_type', $permissionName == 'Creation of Voucher' ? '=' : '<>', 'Unofficial');
+                                    ->where('receipt_type', $permissionName == 'Creation of Voucher' ? '=' : '<>', 'Unofficial')
+                                    ->orWhere('receipt_type', null);
                             });
                     })
                     ->where(function ($query) use ($permissionName) {
@@ -4722,6 +4797,8 @@ class TransactionController extends Controller
         $companies = $this->getRequestData($request, "companies");
         $transaction_from = $this->getTransactionDate($request, "transaction_from", $dateToday->startOfMonth()->format("Y-m-d H:i:s"));
         $transaction_to = $this->getTransactionDate($request, "transaction_to", $dateToday->endOfMonth()->format("Y-m-d H:i:s"));
+        $my_approve = $request->input('my_approve', 0);
+        $is_confidential = $request->input('is_confidential', 0);
 
         $statusMapping = [
             'tag' => ['relation' => 'tag', 'status' => 'tag-tag', 'table' => 'taggings'],
@@ -4739,6 +4816,19 @@ class TransactionController extends Controller
         ])
         ->when(!empty($document_ids), function ($query) use ($document_ids) {
             $query->whereIn("document_id", $document_ids);
+            })
+//            ->when($is_confidential == 1, function ($query) {
+//                $query->where('is_confidential', 1);
+//            }, function ($query) {
+//                $query->where('is_confidential', 0);
+//            })
+
+            ->when($status != in_array($status, ['approve']), function ($query) use ($is_confidential) {
+                $query->when($is_confidential == 1, function ($query) {
+                    $query->where('is_confidential', 1);
+                }, function ($query) {
+                    $query->where('is_confidential', 0);
+                });
             })
             ->when(!empty($suppliers), function ($query) use ($suppliers) {
                 $query->whereIn("supplier_id", $suppliers);
@@ -4785,8 +4875,14 @@ class TransactionController extends Controller
                         );
                     });
             })
-            ->when(isset($statusMapping[$status]['role']), function ($query) use ($statusMapping, $status) {
-                $query->whereIn($statusMapping[$status]['user'], User::where('role', 'approver')->pluck('id'));
+            ->when(isset($statusMapping[$status]['role']), function ($query) use ($statusMapping, $status, $my_approve) {
+//                $query->whereIn($statusMapping[$status]['user'], User::where('role', 'approver')->pluck('id'));
+
+                $query->when($my_approve == 1, function ($query) {
+                    $query->where('approver_id', auth()->user()->id);
+                }, function ($query) use ($statusMapping, $status) {
+                    $query->whereIn($statusMapping[$status]['user'], User::where('role', 'approver')->pluck('id'));
+                });
             })
             ->when(isset($statusMapping[$status]['user']) && !isset($statusMapping[$status]['role']), function ($query) use ($statusMapping, $status) {
                 $query->where($statusMapping[$status]['user'], auth()->user()->id);
@@ -4848,13 +4944,11 @@ class TransactionController extends Controller
     }
 
     public function historyChequeIndex(Request $request) {
-        $status = $request->input("state", "request");
-
+        $status = $request->input("state");
         $rows = $request->input("rows", 10);
-
         $search = $request->input("search");
-
         $suppliers = json_decode($request->input("suppliers")) ?? [];
+        $companies = json_decode($request->input("companies")) ?? [];
 
         $cheque_from = isset($request["cheque_from"])
             ? Carbon::createFromFormat("Y-m-d", $request->input("cheque_from"))->format("Y-m-d")
@@ -4878,6 +4972,11 @@ class TransactionController extends Controller
                     return $query->whereIn("supplier_id", $suppliers);
                 });
             })
+            ->when(count($companies), function ($query) use ($companies) {
+                $query->whereHas("transaction", function ($query) use ($companies) {
+                    return $query->whereIn("company_id", $companies);
+                });
+            })
 
             // Search
             ->where(function ($query) use ($search) {
@@ -4892,7 +4991,8 @@ class TransactionController extends Controller
                         ->orWhere("supplier", "like", "%" . $search . "%")
                         ->orWhere("document_no", "like", "%" . $search . "%")
                         ->orWhere("referrence_no", "like", "%" . $search . "%");
-                });
+                })
+                    ->orWhere("cheque_no", "like", "%" . $search . "%");
             })
             ->when(isset($statusMap[$status]), function ($query) use ($statusMap, $status) {
                 $query->where($statusMap[$status]['status'], true);
@@ -5092,9 +5192,14 @@ class TransactionController extends Controller
         return $this->resultResponse("not-found", "Transaction", []);
     }
 
-    public function voucher(Request $request) {
-        $id =  $request->id;
+    public function voucherTransaction($id) {
+//        $id =  $request->id;
         $transaction = Transaction::where('id', $id)->first();
         return new TransactionVoucherResource($transaction);
+    }
+
+    public function chequeTransaction($id) {
+        $transaction = Transaction::where('id', $id)->first();
+        return new TransactionChequeResource($transaction);
     }
 }

@@ -30,20 +30,7 @@ class TransactionResource1 extends JsonResource
      */
     public function toArray($request)
     {
-        $rental = [
-            'stall a rental',
-            'stall b rental',
-            'stall c rental',
-            'stall d rental',
-            'cusa rental',
-            'dorm rental',
-            'additional rental',
-            'lounge rental',
-            'corporate special program - education',
-            'official store rental',
-            'unofficial store rental',
-            'rental'
-        ];
+        $rental = $this->getRental();
         $autoDebit_group = [];
         $document = null;
         $prm_group = [];
@@ -1150,5 +1137,22 @@ class TransactionResource1 extends JsonResource
         } else {
             return null;
         }
+    }
+
+    public function getRental() {
+        return [
+            'stall a rental',
+            'stall b rental',
+            'stall c rental',
+            'stall d rental',
+            'cusa rental',
+            'dorm rental',
+            'additional rental',
+            'lounge rental',
+            'corporate special program - education',
+            'official store rental',
+            'unofficial store rental',
+            'rental'
+        ];
     }
 }

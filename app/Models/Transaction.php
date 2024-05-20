@@ -3,13 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Transaction extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $table = "transactions";
 
@@ -126,6 +127,7 @@ class Transaction extends Model
         "sub_unit",
         "input_tax",
         "box_no",
+        "is_confidential"
     ];
 
     public $timestamps = ["created_at"];
