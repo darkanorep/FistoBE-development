@@ -503,6 +503,7 @@ class TransactionFlow
                 $status = "voucher-return";
             } elseif ($subprocess == "void") {
                 $status = "voucher-void";
+                static::voidTransaction($request, $id);
             } elseif ($subprocess == "voucher") {
                 $status = "voucher-voucher";
                 $transaction->account_titles()->forceDelete();
@@ -988,7 +989,6 @@ class TransactionFlow
 //          return GenericMethod::resultResponse("not-equal", "Cheque and account title", []);
 //        }
 //      }
-
             GenericMethod::chequeTransaction(
                 $model,
 //        $transaction_id,

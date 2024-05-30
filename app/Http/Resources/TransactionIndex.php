@@ -8,7 +8,7 @@ use App\Models\POBatch;
 use App\Models\Tagging;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\Auth;
-use App\Http\Resources\TransactionResource;
+use App\Http\Resources\TransactionResource1;
 
 class TransactionIndex extends JsonResource
 {
@@ -21,26 +21,16 @@ class TransactionIndex extends JsonResource
 
     public function toArray($request)
     {
-        $rental = [
-            'stall a rental',
-            'stall b rental',
-            'stall c rental',
-            'stall d rental',
-            'cusa rental',
-            'dorm rental',
-            'additional rental',
-            'lounge rental',
-            'corporate special program - education',
-            'official store rental',
-            'unofficial store rental',
-            'rental'
-        ];
+        $resource = new TransactionResource1($this);
+
+        $rental = $resource->getRental();
 
         $accounts = $this->account_titles->filter(function ($item) {
             return $item->account_title_name == 'Accounts Payable' || $item->account_title_name == 'Accounts Payable - RHL';
         });
 
-        $this->state = $this->stateChange($this->state);
+//        $this->state = $this->stateChange($this->state);
+        $this->state = $resource->stateChange($this->state);
 
         $is_editable_prm = 0;
         if ($this->document_id == 3) {
@@ -81,8 +71,14 @@ class TransactionIndex extends JsonResource
             }
         }
 
-        $collect = $this->treasuryCheque->pluck('is_cleared');
-        $is_cleared = $collect->isEmpty() ? 0 : ($collect->contains(0 || null) ? 0 : 1);
+        $is_cheque = $this->treasuryCheque()->exists() ? 1 : 0;
+
+//        $collect = $this->treasuryCheque->pluck('is_cleared');
+//        $is_cleared = $collect->isEmpty() ? 0 : ($collect->contains(0 || null) ? 0 : 1);
+        $is_cleared = $this->treasuryCheque->pluck('is_cleared')->isEmpty()
+            ? 0 : ($this->treasuryCheque->pluck('is_cleared')->contains(0 || null)
+                ? 0
+                : 1);
 
         return [
             "id" => $this->id,
@@ -157,74 +153,41 @@ class TransactionIndex extends JsonResource
             })->values(),
             'voucher' => [
                 'no' => $this->voucher_no,
-            ]
+            ],
+            'is_cheque' => $is_cheque,
+            'is_confidential' => $this->is_confidential,
         ];
     }
 
-    public function stateChange($state)
-    {
-        switch ($state) {
-            case "tag":
-                $state = "Tagged";
-                break;
-            case "request":
-            case "pending":
-                $state = "Pending";
-                break;
-            case "hold":
-                $state = "Held";
-                break;
-            case "transmit":
-                $state = "Transmitted";
-                break;
-            case "receive-approver":
-                $state = "Received";
-                break;
-            case "receive-requestor":
-                $state = "Received";
-                break;
 
-            default:
-                if (str_ends_with($state, "e")) {
-                    $state = ucfirst($state . "d");
-                } elseif (str_ends_with($state, "g")) {
-                    $state = ucfirst($state);
-                } else {
-                    $state = ucfirst($state . "ed");
-                }
-        }
-
-        return $state;
-    }
-
-    public function get_transaction_dates($model, $id, $process, $subprocesses)
-    {
-        $flow_details = $model::where('transaction_id', $id)->latest()->get();
-
-        $details = [];
-        foreach ($subprocesses as $k => $subprocess) {
-            $status = $process . "-" . $subprocess;
-            $details[$k]["subprocess"] = strtolower($this->stateChange($subprocess));
-
-            if ($process == "tag") {
-                $details[$k]["date"] = isset($flow_details->where("status", $status)->first()->created_at)
-                    ? $flow_details->where("status", $status)->first()->created_at
-                    : null;
-            } else {
-                $details[$k]["date"] = isset($flow_details->where("status", $status)->first()["created_at"])
-                    ? $flow_details->where("status", $status)->first()["created_at"]
-                    : null;
-            }
-        }
-
-//        return array_reduce(
-//            $details,
-//            function ($result, $item) {
-//                $result[$item["subprocess"]] = $item["date"];
-//                return $result;
-//            },
-//            []
-//        );
-        return $details[0]["date"];
-    }
+//    public function get_transaction_dates($model, $id, $process, $subprocesses)
+//    {
+//        $flow_details = $model::where('transaction_id', $id)->latest()->get();
+//
+//        $details = [];
+//        foreach ($subprocesses as $k => $subprocess) {
+//            $status = $process . "-" . $subprocess;
+//            $details[$k]["subprocess"] = strtolower($this->stateChange($subprocess));
+//
+//            if ($process == "tag") {
+//                $details[$k]["date"] = isset($flow_details->where("status", $status)->first()->created_at)
+//                    ? $flow_details->where("status", $status)->first()->created_at
+//                    : null;
+//            } else {
+//                $details[$k]["date"] = isset($flow_details->where("status", $status)->first()["created_at"])
+//                    ? $flow_details->where("status", $status)->first()["created_at"]
+//                    : null;
+//            }
+//        }
+//
+////        return array_reduce(
+////            $details,
+////            function ($result, $item) {
+////                $result[$item["subprocess"]] = $item["date"];
+////                return $result;
+////            },
+////            []
+////        );
+//        return $details[0]["date"];
+//    }
 }

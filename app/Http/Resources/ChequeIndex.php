@@ -120,6 +120,7 @@ class ChequeIndex extends JsonResource
             "remarks" => $this->remarks,
             "status" => $this->state,
             "state" => $this->status,
+            "is_confidential" => $this->is_confidential
         ];
     }
 }

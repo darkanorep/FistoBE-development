@@ -69,7 +69,11 @@ class TransactionResource1 extends JsonResource
             'no' => $this->transaction_id,
             'date_requested' => $this->date_requested,
             'status' => $this->status,
-            'state' => $this->state
+            'state' => $this->state,
+            'is_latest_transaction' => $this->payment_type == 'Partial'
+                ? !$this->is_not_editable
+                    ? 1 : 0
+                : '-'
         ];
 
         $reason = [
@@ -84,6 +88,7 @@ class TransactionResource1 extends JsonResource
             case 2: //PRM Common
                 $document = [
                     "id" => $this->document_id,
+                    "is_confidential" => $this->is_confidential,
                     "name" => $this->document_type,
                     "no" => $this->document_no,
                     "date" => $this->document_date,
@@ -109,13 +114,14 @@ class TransactionResource1 extends JsonResource
                     "supplier" => [
                         "id" => $this->supplier_id,
                         "name" => $this->supplier,
-                    ],
+                    ]
                 ];
                 break;
 
             case 3: //PRM Multiple
                 $document = [
                     "id" => $this->document_id,
+                    "is_confidential" => $this->is_confidential,
                     "name" => $this->document_type,
                     "no" => $this->document_no,
                     "date" => $this->document_date,
@@ -194,6 +200,7 @@ class TransactionResource1 extends JsonResource
             case 5: //Contractor's Billing
                 $document = [
                     "id" => $this->document_id,
+                    "is_confidential" => $this->is_confidential,
                     "name" => $this->document_type,
                     "no" => $this->document_no,
                     "capex_no" => $this->capex_no,
@@ -227,6 +234,7 @@ class TransactionResource1 extends JsonResource
             case 6: //Utilities
                 $document = [
                     "id" => $this->document_id,
+                    "is_confidential" => $this->is_confidential,
                     "name" => $this->document_type,
                     "payment_type" => $this->payment_type,
                     "amount" => $this->document_amount,
@@ -271,6 +279,7 @@ class TransactionResource1 extends JsonResource
             case 8: //PCF
                 $document = [
                     "id" => $this->document_id,
+                    "is_confidential" => $this->is_confidential,
                     "name" => $this->document_type,
                     "date" => $this->document_date,
                     "amount" => $this->document_amount,
@@ -304,6 +313,7 @@ class TransactionResource1 extends JsonResource
             case 7: //Payroll
                 $document = [
                     "id" => $this->document_id,
+                    "is_confidential" => $this->is_confidential,
                     "name" => $this->document_type,
                     "payment_type" => $this->payment_type,
                     "amount" => $this->document_amount,
@@ -341,6 +351,7 @@ class TransactionResource1 extends JsonResource
             case 4: //Receipt
                 $document = [
                     "id" => $this->document_id,
+                    "is_confidential" => $this->is_confidential,
                     "name" => $this->document_type,
                     "date" => $this->document_date,
                     "payment_type" => $this->payment_type,
@@ -371,13 +382,14 @@ class TransactionResource1 extends JsonResource
                         "no" => $this->referrence_no,
                         "amount" => $this->referrence_amount,
                         "allowable" => $this->is_allowable,
-                    ],
+                    ]
                 ];
                 break;
 
             case 9: //Auto Debit
                 $document = [
                     "id" => $this->document_id,
+                    "is_confidential" => $this->is_confidential,
                     "name" => $this->document_type,
                     "date" => $this->document_date,
                     "payment_type" => $this->payment_type,
