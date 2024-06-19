@@ -17,6 +17,8 @@ class ChequeIndex extends JsonResource
     public function toArray($request)
     {
 //        $cheques = $this->cheques->first()->cheques ?? $this->cheques;
+        $rental = (new TransactionResource1($this))->getRental();
+
         $cheques = $this->cheques->first()
             ? $this->cheques->first()->chequeViaTransaction
                 ? $this->cheques->first()->chequeViaTransaction
@@ -38,7 +40,8 @@ class ChequeIndex extends JsonResource
             "document_no" => $this->document_no,
 //                "document_amount" => $this->document_amount,
             'document_amount' => ($this->document_id == 3)
-                ? ($this->category == 'rental' ? $this->gross_amount : (($this->principal + $this->interest)))
+//                ? ($this->category == 'rental' ? $this->gross_amount : (($this->principal + $this->interest)))
+                ? ($this->category == in_array($this->category, $rental) ? $this->gross_amount : floatval((number_format(($this->principal + $this->interest), 2, '.', ''))))
                 : $this->document_amount ?? $this->referrence_amount,
             "reference_no" => $this->referrence_no,
             "input_tax" => $this->input_tax,
@@ -120,7 +123,8 @@ class ChequeIndex extends JsonResource
             "remarks" => $this->remarks,
             "status" => $this->state,
             "state" => $this->status,
-            "is_confidential" => $this->is_confidential
+            "is_confidential" => $this->is_confidential,
+            "is_mc" => $this->is_mc
         ];
     }
 }

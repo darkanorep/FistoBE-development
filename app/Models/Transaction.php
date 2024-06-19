@@ -127,7 +127,9 @@ class Transaction extends Model
         "sub_unit",
         "input_tax",
         "box_no",
-        "is_confidential"
+        "is_confidential",
+        "is_mc",
+        "is_mcl"
     ];
 
     public $timestamps = ["created_at"];
@@ -633,6 +635,19 @@ class Transaction extends Model
                 "net_amount as net_of_amount",
                 "cheque_date"
         ]);
+    }
+
+    public function scopeVnumbers($query, $process) {
+        $query->where('status', $process)
+//            ->whereNotIn('is_confidential', [1])
+                ->where([
+                    'is_confidential' => 0,
+                    'status' => $process
+            ])
+            ->select([
+                "id",
+                "voucher_no"
+            ]);
     }
 
 }

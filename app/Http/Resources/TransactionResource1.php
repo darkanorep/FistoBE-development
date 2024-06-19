@@ -89,6 +89,7 @@ class TransactionResource1 extends JsonResource
                 $document = [
                     "id" => $this->document_id,
                     "is_confidential" => $this->is_confidential,
+                    "is_mc" => $this->is_mc,
                     "name" => $this->document_type,
                     "no" => $this->document_no,
                     "date" => $this->document_date,
@@ -122,6 +123,7 @@ class TransactionResource1 extends JsonResource
                 $document = [
                     "id" => $this->document_id,
                     "is_confidential" => $this->is_confidential,
+                    "is_mc" => $this->is_mc,
                     "name" => $this->document_type,
                     "no" => $this->document_no,
                     "date" => $this->document_date,
@@ -201,6 +203,7 @@ class TransactionResource1 extends JsonResource
                 $document = [
                     "id" => $this->document_id,
                     "is_confidential" => $this->is_confidential,
+                    "is_mc" => $this->is_mc,
                     "name" => $this->document_type,
                     "no" => $this->document_no,
                     "capex_no" => $this->capex_no,
@@ -235,6 +238,7 @@ class TransactionResource1 extends JsonResource
                 $document = [
                     "id" => $this->document_id,
                     "is_confidential" => $this->is_confidential,
+                    "is_mc" => $this->is_mc,
                     "name" => $this->document_type,
                     "payment_type" => $this->payment_type,
                     "amount" => $this->document_amount,
@@ -280,6 +284,7 @@ class TransactionResource1 extends JsonResource
                 $document = [
                     "id" => $this->document_id,
                     "is_confidential" => $this->is_confidential,
+                    "is_mc" => $this->is_mc,
                     "name" => $this->document_type,
                     "date" => $this->document_date,
                     "amount" => $this->document_amount,
@@ -314,6 +319,7 @@ class TransactionResource1 extends JsonResource
                 $document = [
                     "id" => $this->document_id,
                     "is_confidential" => $this->is_confidential,
+                    "is_mc" => $this->is_mc,
                     "name" => $this->document_type,
                     "payment_type" => $this->payment_type,
                     "amount" => $this->document_amount,
@@ -352,6 +358,7 @@ class TransactionResource1 extends JsonResource
                 $document = [
                     "id" => $this->document_id,
                     "is_confidential" => $this->is_confidential,
+                    "is_mc" => $this->is_mc,
                     "name" => $this->document_type,
                     "date" => $this->document_date,
                     "payment_type" => $this->payment_type,
@@ -390,6 +397,7 @@ class TransactionResource1 extends JsonResource
                 $document = [
                     "id" => $this->document_id,
                     "is_confidential" => $this->is_confidential,
+                    "is_mc" => $this->is_mc,
                     "name" => $this->document_type,
                     "date" => $this->document_date,
                     "payment_type" => $this->payment_type,

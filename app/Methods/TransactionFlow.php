@@ -2031,7 +2031,6 @@ class TransactionFlow
 
     function issueCheque($request, $transactionIds)
     {
-
         for ($i = 0; $i < count($transactionIds); $i++) {
 
             $transaction = Transaction::find($transactionIds[$i]);
@@ -2070,8 +2069,12 @@ class TransactionFlow
             }
 
             Cheque::where('transaction_id', $transactionIds[$i])
-                ->where('bank_id', data_get($request, 'cheque.bank.id'))
-                ->where('cheque_no', data_get($request, 'cheque.no'))
+//                ->where('bank_id', data_get($request, 'cheque.bank.id'))
+//                ->where('cheque_no', data_get($request, 'cheque.no'))
+                ->where([
+                    'bank_id' => data_get($request, 'cheque.bank.id'),
+                    'cheque_no' => data_get($request, 'cheque.no')
+                ])
                 ->update([
                     'is_received' => null,
                     'is_issued' => true,
@@ -2083,6 +2086,23 @@ class TransactionFlow
         }
 
         $this->chequeIssueChecker($request, $transactionIds);
+
+        foreach($transactionIds as $transaction) {
+            $transaction = Transaction::find($transaction);
+
+            if ($transaction->is_mc == 1) {
+                Cheque::where('transaction_id', $transaction->id)
+                    ->update([
+                        'is_released' => true
+                    ]);
+
+                Transaction::where('id', $transaction->id)
+                    ->update([
+                        'state' => 'release',
+                        'status' => 'release-release'
+                    ]);
+            }
+        }
 
         return GenericMethod::resultResponse($request->subprocess, "", "");
     }

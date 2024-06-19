@@ -288,7 +288,7 @@ class TransactionFlowController extends Controller
                     'cheque_date' => $cheque['date'],
                     'cheque_amount' => $cheque['amount'],
                     'transaction_type' => 'new',
-                    'entry_type' => 'Cheque'
+                    'entry_type' => data_get($cheque, 'type')
                 ]);
             }
 
@@ -300,6 +300,28 @@ class TransactionFlowController extends Controller
                 ]);
         }
         return GenericMethod::result(200, "Transaction has been saved.", []);
+    }
+
+    public function applicationForLoan (Request $request) {
+        $transactions = collect($request->input('transactions'));
+
+        $transactions->each(function ($item) {
+            $transaction = Transaction::find($item);
+
+            if ($transaction->is_mc == 0) {
+                $transaction->update([
+                    'is_mc' => 1,
+                    'is_mcl' => 1
+                ]);
+            } else {
+                $transaction->update([
+                    'is_mc' => 0,
+                    'is_mcl' => 0
+                ]);
+            }
+        });
+
+        return $this->resultResponse("update", "Transaction", null);
     }
 
     public function multipleChequeReceive(Request $request) {
@@ -393,14 +415,44 @@ class TransactionFlowController extends Controller
             }
         }
 
-        $cheques = Cheque::whereIn('transaction_id', $transactionIds)->whereNull('issue_id')->whereNull('deleted_at')->get();
+        $chequesTransactions = Cheque::whereIn('transaction_id', $transactionIds)->whereNull('issue_id')->whereNull('deleted_at')->get();
 
-        if ($cheques->isEmpty()) {
-            Transaction::whereIn('id', $transactionIds)->update([
-                'is_for_releasing' => true,
-                'state' => 'transmit',
-                'status' => $process . '-' . $process,
-            ]);
+        if ($chequesTransactions->isEmpty()) {
+
+            for ($i = 0; $i < count($cheques); $i++) {
+                $transactions = $cheques[$i]['transactions'];
+
+                foreach($transactions as $transaction) {
+                    $transaction = Transaction::find($transaction);
+
+                    if ($transaction->is_mc == 1 || $transaction->is_mcl == 1) {
+                        Cheque::where('transaction_id', $transaction->id)
+                            ->update([
+                                'is_released' => true
+                            ]);
+
+                        Transaction::where('id', $transaction->id)
+                            ->update([
+                                'state' => 'release',
+                                'status' => 'release-release'
+                            ]);
+                    } else {
+                        Transaction::where('id', $transaction->id)
+                            ->update([
+                                'is_for_releasing' => true,
+                                'state' => 'transmit',
+                                'status' => $process . '-' . $process,
+                         ]);
+                    }
+                }
+
+            }
+
+//            Transaction::whereIn('id', $transactionIds)->update([
+//                'is_for_releasing' => true,
+//                'state' => 'transmit',
+//                'status' => $process . '-' . $process,
+//            ]);
         }
 
         return $this->resultResponse("update", "Transaction", null);

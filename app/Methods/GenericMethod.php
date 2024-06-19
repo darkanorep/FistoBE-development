@@ -1362,7 +1362,7 @@ class GenericMethod
     }, $array);
   }
 
-    public static function insertTransaction($transaction_id, $po_total_amount = 0, $request_id, $date_requested, $fields, $balance_po_ref_amount = 0, $is_confidential)
+    public static function insertTransaction($transaction_id, $po_total_amount = 0, $request_id, $date_requested, $fields, $balance_po_ref_amount = 0, $is_confidential, $is_mc)
     {
         $status = "create";
 
@@ -1419,6 +1419,7 @@ class GenericMethod
                     "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                     "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                     "is_confidential" => $is_confidential,
+                    "is_mc" => $is_mc
                 ]);
                 break;
 
@@ -1460,6 +1461,7 @@ class GenericMethod
                     "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                     "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                     "is_confidential" => $is_confidential,
+                    "is_mc" => $is_mc
                 ]);
                 break;
 
@@ -1504,6 +1506,7 @@ class GenericMethod
                     "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                     "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                     "is_confidential" => $is_confidential,
+                    "is_mc" => $is_mc
                 ]);
                 break;
 
@@ -1555,6 +1558,7 @@ class GenericMethod
                     "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                     "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                     "is_confidential" => $is_confidential,
+                    "is_mc" => $is_mc
                 ]);
 
                 break;
@@ -1601,6 +1605,7 @@ class GenericMethod
                     "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                     "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                     "is_confidential" => $is_confidential,
+                    "is_mc" => $is_mc
                 ]);
 
                 break;
@@ -1750,6 +1755,7 @@ class GenericMethod
                                 "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                                 "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                                 "is_confidential" => $is_confidential,
+                                "is_mc" => $is_mc
                             ]);
                         }
 
@@ -1858,6 +1864,7 @@ class GenericMethod
                                 "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                                 "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                                 "is_confidential" => $is_confidential,
+                                "is_mc" => $is_mc
                             ]);
                         }
                         static::prmMultiplerequestUpdateID($new_transaction);
@@ -1971,6 +1978,7 @@ class GenericMethod
                                 "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                                 "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                                 "is_confidential" => $is_confidential,
+                                "is_mc" => $is_mc
                             ]);
                         }
 
@@ -2018,6 +2026,7 @@ class GenericMethod
                     "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                     "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                     "is_confidential" => $is_confidential,
+                    "is_mc" => $is_mc
                 ]);
 
                 if ($new_transaction->id) {
@@ -2074,7 +2083,8 @@ class GenericMethod
                         "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
                         "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                         "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
-                        "is_confidential" => $is_confidential
+                        "is_confidential" => $is_confidential,
+                        "is_mc" => $is_mc
                     ]);
                 } else {
                     $new_transaction = Transaction::create([
@@ -2115,6 +2125,7 @@ class GenericMethod
                         "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                         "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                         "is_confidential" => $is_confidential,
+                        "is_mc" => $is_mc
                     ]);
                 }
 
@@ -2158,6 +2169,7 @@ class GenericMethod
                     "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                     "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                     "is_confidential" => $is_confidential,
+                    "is_mc" => $is_mc
                 ]);
                 break;
         }
@@ -3013,7 +3025,8 @@ class GenericMethod
             $date_requested,
             $fields,
             $balance_po_ref_amount = 0,
-            data_get($fields, "document.is_confidential", 0)
+            data_get($fields, "document.is_confidential", 0),
+            data_get($fields, "docmuent.is_mc", 0)
         );
       return $transaction;
     }
@@ -3023,70 +3036,44 @@ class GenericMethod
     $currentTransaction->isClean();
     $status = "update";
 
-    $capex_no = isset($fields["document"]["capex_no"]) ? $fields["document"]["capex_no"] : null;
-    $document_no = isset($fields["document"]["no"]) ? $fields["document"]["no"] : null;
-    $document_date = isset($fields["document"]["date"]) ? $fields["document"]["date"] : null;
-    $category_id = isset($fields["document"]["category"]["id"]) ? $fields["document"]["category"]["id"] : null;
-    $category_name = isset($fields["document"]["category"]["name"]) ? $fields["document"]["category"]["name"] : null;
-    $document_from = isset($fields["document"]["from"]) ? $fields["document"]["from"] : null;
-    $document_to = isset($fields["document"]["to"]) ? $fields["document"]["to"] : null;
-    $amount = isset($fields["document"]["amount"])
-      ? $fields["document"]["amount"]
-      : $fields["document"]["reference"]["amount"];
+    $capex_no = $fields["document"]["capex_no"] ?? null;
+    $document_no = $fields["document"]["no"] ?? null;
+    $document_date = $fields["document"]["date"] ?? null;
+    $category_id = $fields["document"]["category"]["id"] ?? null;
+    $category_name = $fields["document"]["category"]["name"] ?? null;
+    $document_from = $fields["document"]["from"] ?? null;
+    $document_to = $fields["document"]["to"] ?? null;
+    $amount = $fields["document"]["amount"] ?? $fields["document"]["reference"]["amount"];
 
     // Utilities
-    $receipt_no = isset($fields["document"]["utility"]["receipt_no"])
-      ? $fields["document"]["utility"]["receipt_no"]
-      : null;
-    $consumption = isset($fields["document"]["utility"]["consumption"])
-      ? $fields["document"]["utility"]["consumption"]
-      : null;
-    $location_id = isset($fields["document"]["utility"]["location"]["id"])
-      ? $fields["document"]["utility"]["location"]["id"]
-      : null;
-    $location_name = isset($fields["document"]["utility"]["location"]["name"])
-      ? $fields["document"]["utility"]["location"]["name"]
-      : null;
-    $utility_category_id = isset($fields["document"]["utility"]["category"]["id"])
-      ? $fields["document"]["utility"]["category"]["id"]
-      : null;
-    $utility_category_name = isset($fields["document"]["utility"]["category"]["name"])
-      ? $fields["document"]["utility"]["category"]["name"]
-      : null;
-    $account_no_id = isset($fields["document"]["utility"]["account_no"]["id"])
-      ? $fields["document"]["utility"]["account_no"]["id"]
-      : null;
-    $account_no = isset($fields["document"]["utility"]["account_no"]["no"])
-      ? $fields["document"]["utility"]["account_no"]["no"]
-      : null;
+    $receipt_no = $fields["document"]["utility"]["receipt_no"] ?? null;
+    $consumption = $fields["document"]["utility"]["consumption"] ?? null;
+    $location_id = $fields["document"]["utility"]["location"]["id"] ?? null;
+    $location_name = $fields["document"]["utility"]["location"]["name"] ?? null;
+    $utility_category_id = $fields["document"]["utility"]["category"]["id"] ?? null;
+    $utility_category_name = $fields["document"]["utility"]["category"]["name"] ?? null;
+    $account_no_id = $fields["document"]["utility"]["account_no"]["id"] ?? null;
+    $account_no = $fields["document"]["utility"]["account_no"]["no"] ?? null;
 
     // Payroll
-    $payroll_type = isset($fields["document"]["payroll"]["type"]) ? $fields["document"]["payroll"]["type"] : null;
-    $payroll_category_id = isset($fields["document"]["payroll"]["category"]["id"])
-      ? $fields["document"]["payroll"]["category"]["id"]
-      : null;
-    $payroll_category_name = isset($fields["document"]["payroll"]["category"]["name"])
-      ? $fields["document"]["payroll"]["category"]["name"]
-      : null;
+    $payroll_type = $fields["document"]["payroll"]["type"] ?? null;
+    $payroll_category_id = $fields["document"]["payroll"]["category"]["id"] ?? null;
+    $payroll_category_name = $fields["document"]["payroll"]["category"]["name"] ?? null;
     $payroll_control_no = $fields->input("document.payroll.control_no", null);
-    $clients = isset($fields["document"]["payroll"]["clients"]) ? $fields["document"]["payroll"]["clients"] : null;
+    $clients = $fields["document"]["payroll"]["clients"] ?? null;
 
     // PCF
-    $pcf_name = isset($fields["document"]["pcf_batch"]["name"]) ? $fields["document"]["pcf_batch"]["name"] : null;
-    $pcf_date = isset($fields["document"]["pcf_batch"]["date"]) ? $fields["document"]["pcf_batch"]["date"] : null;
-    $pcf_letter = isset($fields["document"]["pcf_batch"]["letter"]) ? $fields["document"]["pcf_batch"]["letter"] : null;
+    $pcf_name = $fields["document"]["pcf_batch"]["name"] ?? null;
+    $pcf_date = $fields["document"]["pcf_batch"]["date"] ?? null;
+    $pcf_letter = $fields["document"]["pcf_batch"]["letter"] ?? null;
 
     // Receipt
-    $reference_id = isset($fields["document"]["reference"]["id"]) ? $fields["document"]["reference"]["id"] : null;
-    $reference_type = isset($fields["document"]["reference"]["type"]) ? $fields["document"]["reference"]["type"] : null;
-    $reference_no = isset($fields["document"]["reference"]["no"]) ? $fields["document"]["reference"]["no"] : null;
-    $reference_amount = isset($fields["document"]["reference"]["amount"])
-      ? $fields["document"]["reference"]["amount"]
-      : null;
-    $is_allowable = isset($fields["document"]["reference"]["allowable"])
-      ? $fields["document"]["reference"]["allowable"]
-      : 0;
-    $balance_po_ref_amount = isset($balance_po_ref_amount) ? $balance_po_ref_amount : null;
+    $reference_id = $fields["document"]["reference"]["id"] ?? null;
+    $reference_type = $fields["document"]["reference"]["type"] ?? null;
+    $reference_no = $fields["document"]["reference"]["no"] ?? null;
+    $reference_amount = $fields["document"]["reference"]["amount"] ?? null;
+    $is_allowable = $fields["document"]["reference"]["allowable"] ?? 0;
+    $balance_po_ref_amount = $balance_po_ref_amount ?? null;
 
     $currentTransaction->transaction_id = $fields["transaction"]["no"];
     // $currentTransaction->users_id = $fields["requestor"]["id"];

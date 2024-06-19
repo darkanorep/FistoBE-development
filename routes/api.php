@@ -88,6 +88,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         Route::get("transaction-types", [MasterlistController::class, "transactionTypeDropdown"]);
         Route::get("business-unit", [BusinessUnitController::class, "index"]);
         Route::get("sub-unit", [SubUnitController::class, "index"]);
+        Route::get("voucher-number", [TransactionController::class, "voucherNumberDropdown"]);
     });
 
     Route::group(["prefix" => "admin", "middleware" => ["auth" => "is_admin"]], function () {
@@ -370,6 +371,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
             Route::post("receive", [TransactionFlowController::class, "multipleReceive"]);
             Route::post("tag", [TransactionFlowController::class, "multipleTag"]);
             Route::post("cheque", [TransactionFlowController::class, "multipleCheque"]);
+            Route::post("mcloan", [TransactionFlowController::class, "applicationForLoan"]);
 
             //CHEQUE
             Route::post("clear-cheques/{id}", [TransactionController::class, "chequeClear"]);
@@ -377,6 +379,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
 
             //===TEST MODULE===//
             Route::post('cheque-revert', [TransactionController::class, "chequeRevert1"]);
+            Route::get('report', [TransactionController::class, 'generateAPReport']);
 
         });
     });
