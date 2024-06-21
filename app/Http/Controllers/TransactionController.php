@@ -967,7 +967,7 @@ class TransactionController extends Controller
             })
             //Requesting of Documents
             ->when($status == 'pending', function ($query) use ($department, $is_mcl) {
-                $query->whereNotIn('status', ['requestor-void', 'tag-return'])
+                $query->whereNotIn('state', ['void'])
                     ->whereIn('department_details', $department)
                     ->when($is_mcl == 1, function ($query) {
                         $query->orWhere([
@@ -984,7 +984,7 @@ class TransactionController extends Controller
                     ->whereIn('department_details', $department);
             })
             ->when($status == 'requestor-void', function ($query) use ($department) {
-                $query->where('status', 'requestor-void')
+                $query->where('state', 'void')
                     ->whereIn('department_details', $department);
             })
 
@@ -3083,6 +3083,7 @@ class TransactionController extends Controller
             ->when(isset($transaction_id), function ($query) use ($transaction_id) {
                 $query->where("transactions.id", "<>", $transaction_id);
             })
+            ->whereNull('p_o_batches.deleted_at')
             ->get(["balance_po_ref_amount as po_balance", "transactions.request_id"]);
 
         if (count($po_details) > 0) {
@@ -3099,6 +3100,7 @@ class TransactionController extends Controller
             $balance = $po_details->last()->po_balance;
             $po_details = POBatch::where("request_id", $po_details->last()->request_id)
                 ->orderByDesc("id")
+                ->whereNull('deleted_at')
                 ->get(["request_id as batch", "po_no as no", "po_amount as amount", "rr_group as rr_no"]);
 
             $po_details->mapToGroups(function ($item, $v) use ($balance) {
@@ -5440,7 +5442,11 @@ class TransactionController extends Controller
 //        return Transaction::vnumbers($request->input('status'))->get();
 
         return Transaction::when($request->input('status') == 'approve-approve', function ($query) {
-            $query->whereIn('status', ['approve-approvef']);
+            $query->whereIn('status', ['approve-approve'])
+                ->where([
+                    'is_mc' => 0,
+                    'is_confidential' => 0
+                ]);
         })
             ->when($request->input('status') == 'cheque-cheque', function ($query) {
                 $query->whereIn('status', ['transmit-transmit', 'cheque-receive', 'inspect-inspect'])
@@ -5458,12 +5464,17 @@ class TransactionController extends Controller
 
         $transactionFrom = $this->getTransactionDate($request, "transaction_from", Carbon::now()->startOfMonth()->format("Y-m-d"));
         $transactionTo = $this->getTransactionDate($request, "transaction_to", Carbon::now()->endOfMonth()->format("Y-m-d"));
+        $companies = $this->getRequestData($request, 'companies');
 
         $transactions = Transaction::withoutTrashed()
             ->when(isset($transactionFrom) || isset($transactionTo), function ($query) use ($transactionFrom, $transactionTo) {
                 $query->where("voucher_month", ">=", $transactionFrom)->where("voucher_month", "<=", $transactionTo);
             })
+            ->when(!empty($companies), function ($query) use ($companies) {
+                $query->whereIn("company_id", $companies);
+            })
             ->where('status', '!=', 'void')
+            ->whereNotNull('voucher_no')
             ->where('distributed_id', auth()->user()->id)
             ->get();
 

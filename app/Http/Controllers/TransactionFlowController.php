@@ -202,6 +202,11 @@ class TransactionFlowController extends Controller
                                 'status' => $process . '-'. $process,
                                 'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
                             ]);
+//                        $trx->update([
+//                            'state' => 'transmit',
+//                            'status' => $process . '-'. $process,
+//                            'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
+//                        ]);
                     }
 
                     break;
@@ -209,28 +214,61 @@ class TransactionFlowController extends Controller
                 case 'gas':
                     (new GenericMethod())->gasTransaction($transaction, $process, null, null);
 
-                    Transaction::where('id', $transaction)
-                        ->update([
-                            'state' => 'transmit',
-                            'status' => $process . '-'. $process,
-                            'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
-                        ]);
+//                    Transaction::where('id', $transaction)
+//                        ->update([
+//                            'state' => 'transmit',
+//                            'status' => $process . '-'. $process,
+//                            'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
+//                        ]);
+                    $trx->update([
+                        'state' => 'transmit',
+                        'status' => $process . '-'. $process,
+                        'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
+                    ]);
                     break;
 
-                case 'transmit':
-                    Transmit::create([
-                        'transaction_id' => $transaction,
-                        'tag_id' => Transaction::where('id', $transaction)->first()->tag_no,
+                case 'approve':
+
+                    $trx->approve()->create([
                         'status' => $process . '-'. $process,
-                        'date_status' => date('Y-m-d')
+                        'date_status' => date('Y-m-d'),
+                        'tag_id' => $trx->tag_no,
+                        'distributed_id' => $trx->distributed_id,
+                        'distributed_name' => $trx->distributed_name
                     ]);
 
-                    Transaction::where('id', $transaction)
-                        ->update([
-                            'state' => $process,
-                            'status' => $process . '-'. $process,
-                            'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
-                        ]);
+                    $trx->update([
+                        'state' => $process,
+                        'status' => $process . '-'. $process,
+                        'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
+                    ]);
+
+                    break;
+                case 'transmit':
+//                    Transmit::create([
+//                        'transaction_id' => $transaction,
+//                        'tag_id' => Transaction::where('id', $transaction)->first()->tag_no,
+//                        'status' => $process . '-'. $process,
+//                        'date_status' => date('Y-m-d')
+//                    ]);
+
+                    $trx->transmit()->create([
+                        'status' => $process . '-'. $process,
+                        'date_status' => date('Y-m-d'),
+                        'tag_id' => $trx->tag_no,
+                    ]);
+
+//                    Transaction::where('id', $transaction)
+//                        ->update([
+//                            'state' => $process,
+//                            'status' => $process . '-'. $process,
+//                            'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
+//                        ]);
+                    $trx->update([
+                        'state' => $process,
+                        'status' => $process . '-'. $process,
+                        'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
+                    ]);
                     break;
             }
         }

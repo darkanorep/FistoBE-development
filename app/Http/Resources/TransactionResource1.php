@@ -493,12 +493,14 @@ class TransactionResource1 extends JsonResource
 //            ->first();
         $po_transaction = POBatch::leftJoin("transactions", "p_o_batches.request_id", "=", "transactions.request_id")
             ->where("transactions.state", $condition, "void")
+            ->whereNull("p_o_batches.deleted_at")
             ->get();
         $po_details = POBatch::leftJoin("transactions", "p_o_batches.request_id", "=", "transactions.request_id")
             ->where("transactions.state", $condition, "void")
             ->where("transactions.id", $this->id)
             ->where("transactions.request_id", $this->request_id)
             ->whereIn("transactions.document_id", [1, 2, 4, 5])
+            ->whereNull("p_o_batches.deleted_at")
             ->when(
                 $payment_type === "PARTIAL",
                 function ($q) {
