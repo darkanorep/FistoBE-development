@@ -156,7 +156,8 @@ class TransactionIndex extends JsonResource
             ],
             'is_cheque' => $is_cheque,
             'is_confidential' => $this->is_confidential,
-            'is_mc' => $this->is_mc
+            'is_mc' => $this->is_mc,
+            "is_new" => $this->is_new
         ];
     }
 

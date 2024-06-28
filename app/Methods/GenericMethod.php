@@ -1362,7 +1362,7 @@ class GenericMethod
     }, $array);
   }
 
-    public static function insertTransaction($transaction_id, $po_total_amount = 0, $request_id, $date_requested, $fields, $balance_po_ref_amount = 0, $is_confidential, $is_mc)
+    public static function insertTransaction($transaction_id, $po_total_amount = 0, $request_id, $date_requested, $fields, $balance_po_ref_amount = 0, $is_confidential, $is_mc, $is_new)
     {
         $status = "create";
 
@@ -1419,7 +1419,8 @@ class GenericMethod
                     "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                     "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                     "is_confidential" => $is_confidential,
-                    "is_mc" => $is_mc
+                    "is_mc" => $is_mc,
+                    "is_new" => $is_new
                 ]);
                 break;
 
@@ -1461,7 +1462,8 @@ class GenericMethod
                     "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                     "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                     "is_confidential" => $is_confidential,
-                    "is_mc" => $is_mc
+                    "is_mc" => $is_mc,
+                    "is_new" => $is_new
                 ]);
                 break;
 
@@ -1506,7 +1508,8 @@ class GenericMethod
                     "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                     "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                     "is_confidential" => $is_confidential,
-                    "is_mc" => $is_mc
+                    "is_mc" => $is_mc,
+                    "is_new" => $is_new
                 ]);
                 break;
 
@@ -1558,7 +1561,8 @@ class GenericMethod
                     "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                     "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                     "is_confidential" => $is_confidential,
-                    "is_mc" => $is_mc
+                    "is_mc" => $is_mc,
+                    "is_new" => $is_new
                 ]);
 
                 break;
@@ -1605,7 +1609,8 @@ class GenericMethod
                     "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                     "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                     "is_confidential" => $is_confidential,
-                    "is_mc" => $is_mc
+                    "is_mc" => $is_mc,
+                    "is_new" => $is_new
                 ]);
 
                 break;
@@ -1755,7 +1760,8 @@ class GenericMethod
                                 "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                                 "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                                 "is_confidential" => $is_confidential,
-                                "is_mc" => $is_mc
+                                "is_mc" => $is_mc,
+                                "is_new" => $is_new
                             ]);
                         }
 
@@ -1864,7 +1870,8 @@ class GenericMethod
                                 "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                                 "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                                 "is_confidential" => $is_confidential,
-                                "is_mc" => $is_mc
+                                "is_mc" => $is_mc,
+                                "is_new" => $is_new
                             ]);
                         }
                         static::prmMultiplerequestUpdateID($new_transaction);
@@ -1978,7 +1985,8 @@ class GenericMethod
                                 "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                                 "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                                 "is_confidential" => $is_confidential,
-                                "is_mc" => $is_mc
+                                "is_mc" => $is_mc,
+                                "is_new" => $is_new
                             ]);
                         }
 
@@ -2026,7 +2034,8 @@ class GenericMethod
                     "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                     "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                     "is_confidential" => $is_confidential,
-                    "is_mc" => $is_mc
+                    "is_mc" => $is_mc,
+                    "is_new" => $is_new
                 ]);
 
                 if ($new_transaction->id) {
@@ -2084,7 +2093,8 @@ class GenericMethod
                         "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                         "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                         "is_confidential" => $is_confidential,
-                        "is_mc" => $is_mc
+                        "is_mc" => $is_mc,
+                        "is_new" => $is_new
                     ]);
                 } else {
                     $new_transaction = Transaction::create([
@@ -2125,7 +2135,8 @@ class GenericMethod
                         "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                         "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                         "is_confidential" => $is_confidential,
-                        "is_mc" => $is_mc
+                        "is_mc" => $is_mc,
+                        "is_new" => $is_new
                     ]);
                 }
 
@@ -2169,7 +2180,8 @@ class GenericMethod
                     "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                     "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                     "is_confidential" => $is_confidential,
-                    "is_mc" => $is_mc
+                    "is_mc" => $is_mc,
+                    "is_new" => $is_new
                 ]);
                 break;
         }
@@ -3111,7 +3123,7 @@ class GenericMethod
     $currentTransaction->supplier_id = $fields["document"]["supplier"]["id"];
     $currentTransaction->supplier = $fields["document"]["supplier"]["name"];
     $currentTransaction->payment_type = $fields["document"]["payment_type"];
-    $currentTransaction->document_amount = $amount;
+    $currentTransaction->document_amount = data_get($fields, "document.amount");
     $currentTransaction->remarks = $fields["document"]["remarks"];
     $currentTransaction->po_total_amount = $po_total_amount;
     $currentTransaction->request_id = $request_id;

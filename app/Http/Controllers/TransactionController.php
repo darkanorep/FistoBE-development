@@ -15,7 +15,6 @@ use App\Models\Clear;
 use App\Models\ClearingAccountTitle;
 use App\Models\Permission;
 use App\Models\POBalance;
-use App\Models\PurchaseOrders;
 use App\Models\Release;
 use App\Models\Supplier;
 use App\Models\Treasury;
@@ -878,93 +877,43 @@ class TransactionController extends Controller
             "supplier.supplier_type:id,type as name,transaction_days",
             "po_details:id,request_id,po_no,po_total_amount",
         ])
-
-             //Confidential
-            ->when($is_confidential == null, function ($query) {
-                $query->whereIn('is_confidential', [1, 0]);
-            })->when($is_confidential == 1, function ($query) {
-                $query->where('is_confidential', 1);
-            })->when($is_confidential == 0, function ($query) {
-                $query->where('is_confidential', 0);
-            })
-
-            //Managers Cheque
-            ->when($is_mc == null, function ($query) {
-                $query->whereIn('is_mc', [1, 0]);
-            })->when($is_mc == 1, function ($query) {
-                $query->where('is_mc', 1);
-            })->when($is_mc == 0, function ($query) {
-                $query->where('is_mc', 0);
-            })
-
-            ->when($my_request == 1, function ($query) {
-                $query->where('users_id', auth()->user()->id);
-            })
-            ->when(!empty($document_ids), function ($query) use ($document_ids) {
-                $query->whereIn("document_id", $document_ids);
-            })
-            ->when(!empty($suppliers), function ($query) use ($suppliers) {
-                $query->whereIn("supplier_id", $suppliers);
-            })
-            ->when(!empty($companies), function ($query) use ($companies) {
-                $query->whereIn("company_id", $companies);
-            })
-            ->when(!empty($voucher_numbers), function ($query) use ($voucher_numbers) {
-                $query->whereIn('id', $voucher_numbers);
-            })
-            ->when(
-                isset($request["cheque_from"]) || isset($request["cheque_to"]),
-                function ($query) use ($cheque_from, $cheque_to) {
-                    $query->whereHas("cheques.cheques", function ($query) use ($cheque_from, $cheque_to) {
-                        $query->where("cheque_date", ">=", $cheque_from)->where("cheque_date", "<=", $cheque_to);
-                    });
-                },
-                function ($query) use ($document_ids, $suppliers, $transaction_from, $transaction_to) {
-                    $query->when(!empty($document_ids) || !empty($suppliers), function ($query) use (
-                        $transaction_from,
-                        $transaction_to
-                    ) {
-                        $query->where("date_requested", ">=", $transaction_from)->where("date_requested", "<=", $transaction_to);
-                    });
-                }
-            )
-            ->where(function ($query) use ($search, $tag_search) {
-                $query
-                    ->where("date_requested", "like", "%" . $search . "%")
-                    ->orWhere("remarks", "like", "%" . $search . "%")
-//                    ->orWhere("tag_no", "like", "%" . $search . "%")
-                    ->orWhere("tag_no", "=", $tag_search)
-                    ->orWhere("transaction_id", "like", "%" . $search . "%")
-                    ->orWhere("document_amount", "like", "%" . $search . "%")
-                    ->orWhere("document_type", "like", "%" . $search . "%")
-                    ->orWhere("payment_type", "like", "%" . $search . "%")
-                    ->orWhere("company", "like", "%" . $search . "%")
-                    ->orWhere("department", "like", "%" . $search . "%")
-                    ->orWhere("location", "like", "%" . $search . "%")
-                    ->orWhere("supplier", "like", "%" . $search . "%")
-                    ->orWhere("document_no", "like", "%" . $search . "%")
-                    ->orWhere("referrence_no", "like", "%" . $search . "%")
-                    ->orWhere("po_total_amount", "like", "%" . $search . "%")
-                    ->orWhere("referrence_total_amount", "like", "%" . $search . "%")
-                    ->orWhereHas("po_details", function ($query) use ($search) {
-                        $query->where("po_no", "like", "%" . $search . "%");
-                    })
-                    ->orWhereHas("users", function ($query) use ($search) {
-                        $query->where(
-                            DB::raw(
-                                "REPLACE(
-                        CONCAT(
-                            COALESCE(first_name,''),' ',
-                            COALESCE(last_name,''),
-                            COALESCE(suffix,'')
-                        ),
-                    '  ',' ')"
-                            ),
-                            "like",
-                            "%" . $search . "%"
-                        );
-                    });
-            })
+//            ->where(function ($query) use ($search, $tag_search) {
+//                $query
+//                    ->where("date_requested", "like", "%" . $search . "%")
+//                    ->orWhere("remarks", "like", "%" . $search . "%")
+////                    ->orWhere("tag_no", "like", "%" . $search . "%")
+//                    ->orWhere("tag_no", "=", $tag_search)
+//                    ->orWhere("transaction_id", "like", "%" . $search . "%")
+//                    ->orWhere("document_amount", "like", "%" . $search . "%")
+//                    ->orWhere("document_type", "like", "%" . $search . "%")
+//                    ->orWhere("payment_type", "like", "%" . $search . "%")
+//                    ->orWhere("company", "like", "%" . $search . "%")
+//                    ->orWhere("department", "like", "%" . $search . "%")
+//                    ->orWhere("location", "like", "%" . $search . "%")
+//                    ->orWhere("supplier", "like", "%" . $search . "%")
+//                    ->orWhere("document_no", "like", "%" . $search . "%")
+//                    ->orWhere("referrence_no", "like", "%" . $search . "%")
+//                    ->orWhere("po_total_amount", "like", "%" . $search . "%")
+//                    ->orWhere("referrence_total_amount", "like", "%" . $search . "%")
+//                    ->orWhereHas("po_details", function ($query) use ($search) {
+//                        $query->where("po_no", "like", "%" . $search . "%");
+//                    })
+//                    ->orWhereHas("users", function ($query) use ($search) {
+//                        $query->where(
+//                            DB::raw(
+//                                "REPLACE(
+//                        CONCAT(
+//                            COALESCE(first_name,''),' ',
+//                            COALESCE(last_name,''),
+//                            COALESCE(suffix,'')
+//                        ),
+//                    '  ',' ')"
+//                            ),
+//                            "like",
+//                            "%" . $search . "%"
+//                        );
+//                    });
+//            })
             //Requesting of Documents
             ->when($status == 'pending', function ($query) use ($department, $is_mcl) {
                 $query->whereNotIn('state', ['void'])
@@ -1131,25 +1080,31 @@ class TransactionController extends Controller
             ->when($status == 'pending-file', function ($query) {
                 $query->whereIn("status", ["release-release", "discharge-discharge"])
                     ->where(function ($query) {
-                        $query->where("receipt_type", "unofficial")
-                            ->orWhereNull('receipt_type')
-                            ->orWhereIn('is_mc', [1,0]);
-
+//                        $query->where("receipt_type", "unofficial")
+//                            ->whereIn("is_mc", [1, 0]);
+////                            ->orWhereNull('receipt_type')
+////                            ->orWhereIn('is_mc', [1,0]);
+                        $query->where(function ($query) {
+                            $query->where("receipt_type", "unofficial")
+                                ->whereIn("is_mc", [1, 0]);
+                        })->orWhere(function ($query) {
+                            $query->whereNull('receipt_type');
+                        });
                     });
             })
 
             //Application for Loan
             ->when($status == 'pending-mcloan', function ($query) {
-                    $query->whereIn("status", ["approve-approve"])
-                        ->where([
-                            'is_mc' => 0,
-                            'is_confidential' => 0
-                        ]);
+                $query->whereIn("status", ["approve-approve"])
+                    ->where([
+                        'is_mc' => 0,
+                        'is_confidential' => 0
+                    ]);
             })
             ->when($status == 'loan-loan', function ($query) {
                 $query->where([
-                        'is_mcl' => 1
-                    ]);
+                    'is_mcl' => 1
+                ]);
             })
             ->when(!in_array($status, $declaredStatus), function ($query) use ($status, $user_id, $userRole) {
                 $query->where('status', preg_replace('/\s+/', '', $status))
@@ -1204,8 +1159,81 @@ class TransactionController extends Controller
                 "distributed_id",
                 "distributed_name",
                 'is_confidential',
-                'is_mc'
+                'is_mc',
+                'is_new'
             ])
+
+             //Confidential
+            ->when($is_confidential == null, function ($query) {
+                $query->whereIn('is_confidential', [1, 0]);
+            })->when($is_confidential == 1, function ($query) {
+                $query->where('is_confidential', 1);
+            })->when($is_confidential == 0, function ($query) {
+                $query->where('is_confidential', 0);
+            })
+
+            //Managers Cheque
+            ->when($is_mc == null, function ($query) {
+                $query->whereIn('is_mc', [1, 0]);
+            })->when($is_mc == 1, function ($query) {
+                $query->where('is_mc', 1);
+            })->when($is_mc == 0, function ($query) {
+                $query->where('is_mc', 0);
+            })
+
+            ->when($my_request == 1, function ($query) {
+                $query->where('users_id', auth()->user()->id);
+            })
+            ->when(!empty($document_ids), function ($query) use ($document_ids) {
+                $query->whereIn("document_id", $document_ids);
+            })
+            ->when(!empty($suppliers), function ($query) use ($suppliers) {
+                $query->whereIn("supplier_id", $suppliers);
+            })
+            ->when(!empty($companies), function ($query) use ($companies) {
+                $query->whereIn("company_id", $companies);
+            })
+            ->when(!empty($voucher_numbers), function ($query) use ($voucher_numbers) {
+                $query->whereIn('id', $voucher_numbers);
+            })
+            ->when(
+                isset($request["cheque_from"]) || isset($request["cheque_to"]),
+                function ($query) use ($cheque_from, $cheque_to) {
+                    $query->whereHas("cheques.cheques", function ($query) use ($cheque_from, $cheque_to) {
+                        $query->where("cheque_date", ">=", $cheque_from)->where("cheque_date", "<=", $cheque_to);
+                    });
+                },
+                function ($query) use ($document_ids, $suppliers, $transaction_from, $transaction_to) {
+                    $query->when(!empty($document_ids) || !empty($suppliers), function ($query) use (
+                        $transaction_from,
+                        $transaction_to
+                    ) {
+                        $query->where("date_requested", ">=", $transaction_from)->where("date_requested", "<=", $transaction_to);
+                    });
+                }
+            )
+            ->whereLike([
+                "date_requested",
+                "voucher_no",
+                "remarks",
+                "tag_no",
+                "transaction_id",
+                "document_amount",
+                "document_type",
+                "payment_type",
+                "company",
+                "department",
+                "location",
+                "supplier",
+                "document_no",
+                "referrence_no",
+                "po_total_amount",
+                "referrence_total_amount",
+                "po_details.po_no",
+                "users.first_name",
+                "users.middle_name",
+                "users.last_name",
+            ], $search)
             ->latest('updated_at')
             ->paginate($rows);
 
@@ -1269,6 +1297,22 @@ class TransactionController extends Controller
         $request_id = GenericMethod::getRequestID();
         $isConfidential = $request->input("document.is_confidential", 0);
         $isMc = $request->input("document.is_mc", 0);
+        $isNew = null;
+
+        if (isset($fields["po_group"])) {
+            $check_po = POBatch::whereIn("po_no", collect($fields["po_group"])->pluck("no"))
+                ->get()
+                ->pluck('created_at');
+
+            $isAllDatesNotLessThanToday = $check_po->every(function ($date) {
+                $date = \Carbon\Carbon::parse($date);
+                return $date->startOfDay()->greaterThanOrEqualTo('June 26, 2024');
+            });
+
+            if ($isAllDatesNotLessThanToday) {
+                $isNew = 1;
+            }
+        }
 
         switch ($fields["document"]["id"]) {
             case 1: //PAD
@@ -1338,7 +1382,8 @@ class TransactionController extends Controller
                                 $fields,
                                 $balance_with_additional_total_po_amount,
                                 $isConfidential,
-                                $isMc
+                                $isMc,
+                                $isNew
                             );
 
                             $request_id = $transaction->id;
@@ -1392,7 +1437,8 @@ class TransactionController extends Controller
                             $fields,
                             $balance_po_ref_amount,
                             $isConfidential,
-                            $isMc
+                            $isMc,
+                            $isNew
                         );
 
                         $request_id = $transaction->id;
@@ -1468,7 +1514,8 @@ class TransactionController extends Controller
                             $fields,
                             null,
                             $isConfidential,
-                            $isMc
+                            $isMc,
+                            $isNew
                         );
 
                         $request_id = $transaction->id;
@@ -1483,6 +1530,7 @@ class TransactionController extends Controller
                         if (isset($transaction->transaction_id)) {
                             return $this->resultResponse("save", "Transaction", []);
                         }
+
                         break;
                 }
 
@@ -1534,7 +1582,8 @@ class TransactionController extends Controller
                     $fields,
                     null,
                     $isConfidential,
-                    $isMc
+                    $isMc,
+                    $isNew
                 );
 
                 $request_id = $transaction->id;
@@ -1615,7 +1664,8 @@ class TransactionController extends Controller
                                 $fields,
                                 $balance_with_additional_total_po_amount,
                                 $isConfidential,
-                                $isMc
+                                $isMc,
+                                $isNew
                             );
 
                             $request_id = $transaction->id;
@@ -1669,7 +1719,8 @@ class TransactionController extends Controller
                             $fields,
                             $balance_po_ref_amount,
                             $isConfidential,
-                            $isMc
+                            $isMc,
+                            $isNew
                         );
 
                         $request_id = $transaction->id;
@@ -1716,7 +1767,7 @@ class TransactionController extends Controller
 
                     default:
                         GenericMethod::documentNoValidation($request["document"]["no"]);
-                        $transaction = GenericMethod::insertTransaction($transaction_id, null, $request_id, $date_requested, $fields, null, $isConfidential, $isMc);
+                        $transaction = GenericMethod::insertTransaction($transaction_id, null, $request_id, $date_requested, $fields, null, $isConfidential, $isMc, $isNew);
                         if (isset($transaction->transaction_id)) {
                             return $this->resultResponse("save", "Transaction", []);
                         }
@@ -1726,7 +1777,7 @@ class TransactionController extends Controller
 
             case 3: // PRM Multiple
                 GenericMethod::documentNoValidation($request["document"]["no"]);
-                $transaction = GenericMethod::insertTransaction($transaction_id, null, $request_id, $date_requested, $fields, null, $isConfidential, $isMc);
+                $transaction = GenericMethod::insertTransaction($transaction_id, null, $request_id, $date_requested, $fields, null, $isConfidential, $isMc, $isNew);
 
                 if (isset($transaction->transaction_id)) {
                     return $this->resultResponse("save", "Transaction", []);
@@ -1762,7 +1813,7 @@ class TransactionController extends Controller
                     return $this->resultResponse("invalid", "", $duplicateUtilities);
                 }
 
-                $transaction = GenericMethod::insertTransaction($transaction_id, null, $request_id, $date_requested, $fields, null, $isConfidential, $isMc);
+                $transaction = GenericMethod::insertTransaction($transaction_id, null, $request_id, $date_requested, $fields, null, $isConfidential, $isMc, $isNew);
                 if (isset($transaction->transaction_id)) {
                     return $this->resultResponse("save", "Transaction", []);
                 }
@@ -1782,7 +1833,7 @@ class TransactionController extends Controller
                     return $this->resultResponse("invalid", "", $duplicatePCF);
                 }
 
-                $transaction = GenericMethod::insertTransaction($transaction_id, null, $request_id, $date_requested, $fields, null, $isConfidential, $isMc);
+                $transaction = GenericMethod::insertTransaction($transaction_id, null, $request_id, $date_requested, $fields, null, $isConfidential, $isMc, $isNew);
                 if (isset($transaction->transaction_id)) {
                     return $this->resultResponse("save", "Transaction", []);
                 }
@@ -1806,7 +1857,7 @@ class TransactionController extends Controller
                     return $this->resultResponse("invalid", "", $duplicatePayroll);
                 }
 
-                $transaction = GenericMethod::insertTransaction($transaction_id, null, $request_id, $date_requested, $fields, null, $isConfidential, $isMc);
+                $transaction = GenericMethod::insertTransaction($transaction_id, null, $request_id, $date_requested, $fields, null, $isConfidential, $isMc, $isNew);
 
                 $request_id = $transaction->id;
 
@@ -1864,7 +1915,8 @@ class TransactionController extends Controller
                         $fields,
                         null,
                         $isConfidential,
-                        $isMc
+                        $isMc,
+                        $isNew
                     );
 
                     $request_id = $transaction->id;
@@ -1951,39 +2003,11 @@ class TransactionController extends Controller
                             $fields,
                             $balance_with_additional_total_po_amount,
                             $isConfidential,
-                            $isMc
+                            $isMc,
+                            $isNew
                         );
 
                         $request_id = $transaction->id;
-
-                        /////=================================================================================================================/////
-//                        $transactionIds[] = $request_id;
-//                        foreach(data_get($fields, "po_group") as $po) {
-//                            $purchaseOrder = PurchaseOrders::updateOrCreate(
-//                                [
-//                                    'po_no' => $po['no'],
-//                                    'company_id' => data_get($fields, "document.company.id"),
-//                                    'payment_type' => data_get($fields, "document.payment_type")
-//                                ],
-//                                [
-//                                    'total_amount' => $po['amount'],
-//                                    'rr_no' => $po['rr_no']
-//                                ]
-//                            );
-//
-//                            // Update the transaction_ids field by merging existing ids with the new one
-//                            $existingTransactionIds = $purchaseOrder->transaction_ids;
-//                            $existingTransactionIds = is_array($existingTransactionIds) ? $existingTransactionIds : [$existingTransactionIds];
-//                            $updatedTransactionIds = array_unique(array_merge($existingTransactionIds, $transactionIds));
-//                            $purchaseOrder->transaction_ids = $updatedTransactionIds;
-//                            $purchaseOrder->save();
-//
-//                            POBalance::create([
-//                                'purchase_order_ids' => $purchaseOrder->id,
-//                                'balance' => $purchaseOrder->total_amount - $fields["document"]["reference"]["amount"],
-//                            ]);
-//                        }
-                        /////=================================================================================================================/////
 
                         GenericMethod::insertPO(
                             $request_id,
@@ -2036,47 +2060,12 @@ class TransactionController extends Controller
                         $fields,
                         $balance_po_ref_amount,
                         $isConfidential,
-                        $isMc
+                        $isMc,
+                        $isNew
                     );
 
                     $request_id = $transaction->id;
 
-                    ////=================================================================================================================================////
-//                    $transactionIds[] = $request_id;
-//                    foreach(data_get($fields, "po_group") as $po) {
-//                        $purchaseOrder = PurchaseOrders::updateOrCreate(
-//                            [
-//                                'po_no' => $po['no'],
-//                                'company_id' => data_get($fields, "document.company.id"),
-//                                'payment_type' => data_get($fields, "document.payment_type")
-//                            ],
-//                            [
-//                                'total_amount' => $po['amount'],
-//                                'rr_no' => $po['rr_no']
-//                            ]
-//                        );
-//
-//                        // Update the transaction_ids field by merging existing ids with the new one
-//                        $existingTransactionIds = $purchaseOrder->transaction_ids;
-//                        $existingTransactionIds = is_array($existingTransactionIds) ? $existingTransactionIds : [$existingTransactionIds];
-//                        $updatedTransactionIds = array_unique(array_merge($existingTransactionIds, $transactionIds));
-//                        $purchaseOrder->transaction_ids = $updatedTransactionIds;
-//                        $purchaseOrder->save();
-//
-//                        $poBalance = POBalance::updateOrCreate(
-//                            ['purchase_order_ids' => $purchaseOrder->id],
-//                            ['balance' => $purchaseOrder->total_amount - $fields["document"]["reference"]["amount"]]
-//                        );
-//
-//                        if (!$poBalance->wasRecentlyCreated) {
-//                            $existingPurchaseOrderIds = is_array($poBalance->purchase_order_ids) ? $poBalance->purchase_order_ids : [];
-//                            $poBalance->purchase_order_ids = array_unique(array_merge($existingPurchaseOrderIds, [$purchaseOrder->id]));
-//                            $poBalance->balance -= $purchaseOrder->total_amount;
-//                            $poBalance->save();
-//                        }
-//                    }
-
-                    ////=================================================================================================================================////
 
                     GenericMethod::insertPO(
                         $request_id,
@@ -2142,7 +2131,7 @@ class TransactionController extends Controller
 //                    "Document amount and net of cwt amount is not equal.")
 //                    : null;
 
-                $transaction = GenericMethod::insertTransaction($transaction_id, null, $request_id, $date_requested, $fields, null, $isConfidential, $isMc);
+                $transaction = GenericMethod::insertTransaction($transaction_id, null, $request_id, $date_requested, $fields, null, $isConfidential, $isMc, $isNew);
                 if (isset($transaction->transaction_id)) {
                     return $this->resultResponse("save", "Transaction", []);
                 }
@@ -3071,6 +3060,94 @@ class TransactionController extends Controller
         // return $this->resultResponse("not-exist", "Document number", []);
     }
 
+    public function newGetPODetails(Request $request) {
+        $po_number = $request->input('po_no');
+        $payment_type = $request->input('payment_type');
+        $company_id = $request->input('company_id');
+
+        $po_batch = POBatch::query();
+
+        if ($payment_type == 'Full') {
+            $po_batch->where('po_no', $po_number)->get();
+
+            if ($po_batch->count() > 0) {
+                $errorMessage = GenericMethod::resultLaravelFormat("po_group.no", ["PO number already exist."]);
+                return $this->resultResponse("invalid", "", $errorMessage);
+            } else {
+                return $this->resultResponse("success-no-content", "", []);
+            }
+        } else {
+            $requestIds = $po_batch
+                ->whereHas('request', function ($query) {
+                    $query->where('state', '!=', 'void');
+                })
+                ->where('po_no', $po_number)
+                ->pluck('request_id');
+
+            $po_no = POBatch::whereIn('request_id', $requestIds)
+                ->whereNull('deleted_at')
+                ->get()
+                ->collect();
+
+            $requestIds = POBatch::whereIn('po_no', $po_no->pluck('po_no', 'po_amount')->unique())
+                ->whereHas('request', function ($query) {
+                    $query->where('state', '!=', 'void');
+                })
+                ->get()->pluck('request_id')->unique()->values();
+            $sums = Transaction::whereIn('request_id', $requestIds)
+                ->where('state', '!=', 'void')
+                ->select(['document_amount', 'referrence_amount'])
+                ->get()
+                ->reduce(function ($carry, $item) {
+                    $carry['document_amount_sum'] += $item->document_amount;
+                    $carry['referrence_amount_sum'] += $item->referrence_amount;
+                    return $carry;
+                }, ['document_amount_sum' => 0, 'referrence_amount_sum' => 0]);
+
+            $totalDeduction = $sums['document_amount_sum'] + $sums['referrence_amount_sum'];
+
+            $po_total_amount = POBatch::whereIn('request_id', $requestIds)->pluck('po_total_amount')->collect()->unique()->max();
+            $transform_po = $po_no->transform(function ($item, $key) {
+                return [
+                    'no' => $item->po_no,
+                    'amount' => $item->po_amount,
+                    'rr_no' => $item->rr_group
+                ];
+            })->reverse()->groupBy('no')->map(function ($group) {
+                return $group->sortByDesc(function ($item) {
+                    return count($item['rr_no']);
+                })->first();
+            })->values();
+
+            $filtered_po = $transform_po->transform(function ($item, $key) use ($po_total_amount, $totalDeduction, $po_no) {
+                $balance = $key === 0 ? $po_total_amount - $totalDeduction : 0;
+                return [
+                    'no' => $item['no'],
+                    'amount' => $item['amount'],
+                    'rr_no' => $item['rr_no'],
+                    'balance' => $balance,
+                ];
+            });
+
+            if ($filtered_po->count() > 0) {
+                if ($filtered_po[0]['balance'] >= 0 && $filtered_po[0]['balance'] != null) {
+                    return response()->json([
+                        'code' => 200,
+                        'message' => 'Po numbers has been fetched.',
+                        'result' => [
+                            'po_group' => $filtered_po,
+                        ]
+                    ]);
+                } else {
+                    $errorMessage = GenericMethod::resultLaravelFormat("po_group.no", ["No available balance."]);
+                    return $this->resultResponse("invalid", "", $errorMessage);
+                }
+            } else {
+                return $this->resultResponse("success-no-content", "", []);
+            }
+        }
+    }
+
     public function getPODetails(PODetailsRequest $request)
     {
         $transaction_id = $request->transaction_id;
@@ -3084,9 +3161,19 @@ class TransactionController extends Controller
                 $query->where("transactions.id", "<>", $transaction_id);
             })
             ->whereNull('p_o_batches.deleted_at')
-            ->get(["balance_po_ref_amount as po_balance", "transactions.request_id"]);
+            ->get(["balance_po_ref_amount as po_balance", "transactions.request_id", "p_o_batches.created_at"]);
 
         if (count($po_details) > 0) {
+
+            $isAllDatesNotLessThanToday = $po_details->pluck('created_at')->every(function ($date) {
+                $date = \Carbon\Carbon::parse($date);
+                return $date->startOfDay()->greaterThanOrEqualTo('June 26, 2024');
+            });
+
+            if ($isAllDatesNotLessThanToday) {
+                return $this->newGetPODetails($request);
+            }
+
             if (strtoupper($fields["payment_type"]) == "FULL") {
                 $errorMessage = GenericMethod::resultLaravelFormat("po_group.no", ["PO number already exist."]);
                 return $this->resultResponse("invalid", "", $errorMessage);
@@ -3474,63 +3561,6 @@ class TransactionController extends Controller
             //            "cheques.cheques"
         ])
 
-            //Confidential Filter
-            ->when($is_confidential == null, function ($query) {
-                $query->whereIn('is_confidential', [1,0]);
-            })
-            ->when($is_confidential == 1, function ($query) {
-                $query->where('is_confidential', 1);
-            })
-
-            //Managers Cheque Filter
-            ->when($is_mc == null, function ($query) {
-                $query->whereIn('is_mc', [1,0]);
-            })
-            ->when($is_mc == 1, function ($query) {
-                $query->whereIn('is_mc', [1]);
-            })
-
-            // Supplier Filter
-            ->when(!empty($suppliers), function ($query) use ($suppliers) {
-                return $query->whereIn("supplier_id", $suppliers);
-            })
-
-            //Company Filter
-            ->when(!empty($companies), function ($query) use ($companies) {
-                return $query->whereIn("company_id", $companies);
-            })
-
-            //Document Types Filter
-            ->when(!empty($document_ids), function ($query) use ($document_ids) {
-                $query->whereIn("document_id", $document_ids);
-            })
-
-            // Cheque Date Filter (Will deprecate)
-            ->when($cheque_from && $cheque_to, function ($query) use ($cheque_from, $cheque_to) {
-                return $query->whereHas("cheques.cheques", function ($query) use ($cheque_from, $cheque_to) {
-                    return $query->whereDate("cheque_date", ">=", $cheque_from)->whereDate("cheque_date", "<=", $cheque_to);
-                });
-            })
-
-            //Voucher Number
-            ->when(!empty($voucher_numbers), function ($query) use ($voucher_numbers) {
-                return $query->whereIn('id', $voucher_numbers);
-            })
-
-            // Search
-            ->where(function ($query) use ($search, $tag_search) {
-                $query
-                    ->where("remarks", "like", "%" . $search . "%")
-                    ->orWhere("payment_type", "like", "%" . $search . "%")
-//                    ->orWhere("tag_no", "like", "%" . $search . "%")
-                    ->orWhere("tag_no", "=", $tag_search)
-                    ->orWhere("company", "like", "%" . $search . "%")
-                    ->orWhere("department", "like", "%" . $search . "%")
-                    ->orWhere("location", "like", "%" . $search . "%")
-                    ->orWhere("supplier", "like", "%" . $search . "%")
-                    ->orWhere("document_no", "like", "%" . $search . "%")
-                    ->orWhere("referrence_no", "like", "%" . $search . "%");
-            })
             ->when($status == 'cheque', function ($query) {
                 return $query->whereHas('cheques', function ($query) {
                     $query->where('status', 'cheque-cheque')
@@ -3664,6 +3694,67 @@ class TransactionController extends Controller
                 "is_confidential",
                 "is_mc"
             ])
+
+
+            //Confidential Filter
+            ->when($is_confidential == null, function ($query) {
+                $query->whereIn('is_confidential', [1,0]);
+            })
+            ->when($is_confidential == 1, function ($query) {
+                $query->where('is_confidential', 1);
+            })
+
+            //Managers Cheque Filter
+            ->when($is_mc == null, function ($query) {
+                $query->whereIn('is_mc', [1,0]);
+            })
+            ->when($is_mc == 1, function ($query) {
+                $query->whereIn('is_mc', [1]);
+            })
+
+            // Supplier Filter
+            ->when(!empty($suppliers), function ($query) use ($suppliers) {
+                return $query->whereIn("supplier_id", $suppliers);
+            })
+
+            //Company Filter
+            ->when(!empty($companies), function ($query) use ($companies) {
+                return $query->whereIn("company_id", $companies);
+            })
+
+            //Document Types Filter
+            ->when(!empty($document_ids), function ($query) use ($document_ids) {
+                $query->whereIn("document_id", $document_ids);
+            })
+
+            // Cheque Date Filter (Will deprecate)
+            ->when($cheque_from && $cheque_to, function ($query) use ($cheque_from, $cheque_to) {
+                return $query->whereHas("cheques.cheques", function ($query) use ($cheque_from, $cheque_to) {
+                    return $query->whereDate("cheque_date", ">=", $cheque_from)->whereDate("cheque_date", "<=", $cheque_to);
+                });
+            })
+
+            //Voucher Number
+            ->when(!empty($voucher_numbers), function ($query) use ($voucher_numbers) {
+                return $query->whereIn('id', $voucher_numbers);
+            })
+
+
+            // Search
+            ->where(function ($query) use ($search, $tag_search) {
+                $query
+                    ->where("remarks", "like", "%" . $search . "%")
+                    ->orWhere("payment_type", "like", "%" . $search . "%")
+//                    ->orWhere("tag_no", "like", "%" . $search . "%")
+                    ->orWhere("tag_no", "=", $tag_search)
+                    ->orWhere("company", "like", "%" . $search . "%")
+                    ->orWhere("department", "like", "%" . $search . "%")
+                    ->orWhere("location", "like", "%" . $search . "%")
+                    ->orWhere("supplier", "like", "%" . $search . "%")
+                    ->orWhere("document_no", "like", "%" . $search . "%")
+                    ->orWhere("referrence_no", "like", "%" . $search . "%");
+            })
+
             ->latest("updated_at")
             ->paginate((int)$rows);
 
@@ -3935,6 +4026,7 @@ class TransactionController extends Controller
         $tag_search = str_replace("tag#", "", $search);
         $suppliers = json_decode($request->input("suppliers")) ?? [];
         $companies = $this->getRequestData($request, "companies");
+        $document_ids = $this->getRequestData($request, "document_ids");
         $cheque_from = isset($request["cheque_from"])
             ? Carbon::createFromFormat("Y-m-d", $request->input("cheque_from"))->format("Y-m-d")
             : null;
@@ -3944,50 +4036,6 @@ class TransactionController extends Controller
         $is_confidential = $request->input("is_confidential", 0);
 
         $cheques = Cheque
-            //Supplier Filter
-            ::when(count($suppliers), function ($query) use ($suppliers) {
-                $query->whereHas("transaction", function ($query) use ($suppliers) {
-                    return $query->whereIn("supplier_id", $suppliers);
-                });
-            })
-
-            //Organization Filter
-            ->when(!empty($companies), function ($query) use ($companies) {
-                return $query->whereHas("transaction", function ($query) use ($companies) {
-                    return $query->whereIn("company_id", $companies);
-                });
-            })
-
-            // Search
-            ->where(function ($query) use ($search, $tag_search) {
-                $query->whereHas("transaction", function ($query) use ($search, $tag_search) {
-                    $query
-                        ->where("remarks", "like", "%" . $search . "%")
-                        ->orWhere("payment_type", "like", "%" . $search . "%")
-//                        ->orWhere("tag_no", "like", "%" . $search . "%")
-                        ->orWhere('tag_no', $tag_search)
-                        ->orWhere("company", "like", "%" . $search . "%")
-                        ->orWhere("department", "like", "%" . $search . "%")
-                        ->orWhere("location", "like", "%" . $search . "%")
-                        ->orWhere("supplier", "like", "%" . $search . "%")
-                        ->orWhere("document_no", "like", "%" . $search . "%")
-                        ->orWhere("referrence_no", "like", "%" . $search . "%");
-                });
-            })
-
-            //Confidential
-
-            ->when($status != in_array($status, ['pending-audit', 'audit-receive', 'audit-audit', 'pending-executive', 'executive-receive', 'executive-executive', 'pending-issue', 'issue-receive', 'issue-issue', 'pending-clear']), function ($query) use ($is_confidential) {
-                $query->when($is_confidential == 1, function ($query) {
-                    $query->whereHas('transaction', function ($query) {
-                        $query->where('is_confidential', 1);
-                    });
-                }, function ($query) {
-                    $query->whereHas('transaction', function ($query) {
-                        $query->where('is_confidential', 0);
-                    });
-                });
-            })
 //            ->when($is_confidential == 1, function ($query) {
 //                return $query->whereHas("transaction", function ($query) {
 //                    return $query->where("is_confidential", true);
@@ -3999,7 +4047,7 @@ class TransactionController extends Controller
 //            })
 
             // auditing of cheque
-            ->when($status == "pending-audit", function ($query) {
+            ::when($status == "pending-audit", function ($query) {
                 $query
                     ->whereHas("transaction", function ($query) {
                         return $query->whereIn("status", ["cheque-cheque", "audit-receive"])->where("is_for_releasing", "!=", true);
@@ -4252,6 +4300,69 @@ class TransactionController extends Controller
             //        })
             ->select("bank_id", "bank_name", "cheque_no", DB::raw("MAX(updated_at) as latest_updated_at"))
             ->groupBy("bank_name", "cheque_no", "bank_id")
+
+            // Search
+            ->where(function ($query) use ($search, $tag_search) {
+                $query->whereHas("transaction", function ($query) use ($search) {
+//                    $query
+//                        ->where("remarks", "like", "%" . $search . "%")
+//                        ->orWhere("payment_type", "like", "%" . $search . "%")
+//                        ->orWhere("voucher_no", "like", "%" . $search . "%")
+////                        ->orWhere("tag_no", "like", "%" . $search . "%")
+//                        ->orWhere('tag_no', $tag_search)
+//                        ->orWhere("company", "like", "%" . $search . "%")
+//                        ->orWhere("department", "like", "%" . $search . "%")
+//                        ->orWhere("location", "like", "%" . $search . "%")
+//                        ->orWhere("supplier", "like", "%" . $search . "%")
+//                        ->orWhere("document_no", "like", "%" . $search . "%")
+//                        ->orWhere("referrence_no", "like", "%" . $search . "%");
+                    $query->whereLike([
+                        "remarks",
+                        "voucher_no",
+                        "tag_no",
+                    ], $search);
+                })
+                    ->orWhere(function ($query) use ($search){
+                        $query->whereLike([
+                            "bank_name",
+                            "cheque_no"
+                        ], $search);
+
+                    });
+            })
+            ->when(count($suppliers), function ($query) use ($suppliers) {
+                $query->whereHas("transaction", function ($query) use ($suppliers) {
+                    return $query->whereIn("supplier_id", $suppliers);
+                });
+            })
+
+                //Document Types Filter
+                ->when(count($document_ids), function ($query) use ($document_ids) {
+                    $query->whereHas("transaction", function ($query) use ($document_ids) {
+                        return $query->whereIn("document_id", $document_ids);
+                    });
+                })
+
+                //Organization Filter
+                ->when(!empty($companies), function ($query) use ($companies) {
+                    return $query->whereHas("transaction", function ($query) use ($companies) {
+                        return $query->whereIn("company_id", $companies);
+                    });
+                })
+
+                //Confidential
+
+                ->when($status != in_array($status, ['pending-audit', 'audit-receive', 'audit-audit', 'pending-executive', 'executive-receive', 'executive-executive', 'pending-issue', 'issue-receive', 'issue-issue', 'pending-clear']), function ($query) use ($is_confidential) {
+                    $query->when($is_confidential == 1, function ($query) {
+                        $query->whereHas('transaction', function ($query) {
+                            $query->where('is_confidential', 1);
+                        });
+                    }, function ($query) {
+                        $query->whereHas('transaction', function ($query) {
+                            $query->where('is_confidential', 0);
+                        });
+                    });
+                })
             ->orderBy("latest_updated_at", "desc")
             ->paginate((int)$rows);
 
@@ -4294,18 +4405,17 @@ class TransactionController extends Controller
                         "id" => $item->document_id,
                         "name" => $item->document_type,
                     ],
-                    "document_date" => $item->document_date ?? '---',
+                    "document_date" => $item->document_date ?? $item->date_requested,
                     "category" => $item->category ?? "---",
                     "document_no" => $item->document_no ?? '---',
                     "document_amount" =>
                         $item->document_id == 3
-//                            ? ($item->category == "rental"
                             ? (in_array($item->category, $rental)
                             ? $item->gross_amount
                             : $item->principal + $item->interest)
                             : $item->document_amount,
-                    "reference_no" => $item->referrence_no,
-                    "reference_amount" => $item->referrence_amount,
+                    "referrence_no" => $item->referrence_no,
+                    "referrence_amount" => $item->referrence_amount,
                     "date_requested" => $item->date_requested,
                     "company" => [
                         "id" => $item->company_id,
@@ -4399,57 +4509,8 @@ class TransactionController extends Controller
                 ]
                 : null;
 
-            //            $voucher_account_titles = Transaction::with('account_titles')
-            //                ->whereIn('id', $ids)
-            //                ->get()
-            //                ->pluck('account_titles')
-            //                ->flatten()
-            //                ->unique('account_title_id')
-            //                ->values();
-
-//      $treasury_account_titles = Transaction::with("treasuryAccountTitle")
-//        ->whereIn("id", $ids)
-//        ->get()
-//        ->pluck("treasuryAccountTitle")
-//        ->flatten()
-//        ->unique("account_title_id")
-//        ->filter(function ($item, $index) use ($cheque_details) {
-//          return $item->account_title_id == $cheque_details->bank->AccountTitleOne->id || $item->entry == "Debit";
-//        })
-//        ->values();
-//
-//      if (count($ids) > 1) {
-//        $treasury_account_titles = Transaction::with("treasuryAccountTitle")
-//          ->where("id", $ids[0])
-//          ->get()
-//          ->pluck("treasuryAccountTitle")
-//          ->flatten()
-//          ->values();
-//      }
 
             $treasury_account_titles = $this->getTreasuryAccountTitles($ids, $cheque_details);
-
-            //            $totalDebit = Transaction::with('treasuryAccountTitle')
-            //                ->whereIn('id', $ids)
-            //                ->get()
-            //                ->pluck('treasuryAccountTitle')
-            //                ->flatten()
-            //                ->unique('treasury_id')
-            //                ->filter(function ($item, $index) use ($cheque_details){
-            //                    return $item->account_title_id == $cheque_details->bank->AccountTitleOne->id || $item->entry == 'Debit';
-            //                })
-            //                ->sum('amount');
-
-            //            $clear_account_titles = Transaction::with('accountTitleClear')
-            //                ->whereIn('id', $ids)
-            //                ->get()
-            //                ->pluck('accountTitleClear')
-            //                ->flatten()
-            //                ->unique('account_title_id')
-            //                ->values();
-
-            //            $account_titles_treasury = $treasury_account_titles->isEmpty() ? $voucher_account_titles : $treasury_account_titles;
-            //            $account_titles = $clear_account_titles->isEmpty() ? $account_titles_treasury : $clear_account_titles;
 
             $account_titles = $treasury_account_titles->map(function ($item) {
                 return [
@@ -4511,7 +4572,6 @@ class TransactionController extends Controller
                 "amount" => $cheque_details->cheque_amount,
                 "date_cleared" => $cheque_details->date_cleared,
             ];
-            //            $voucher_account_titles = Transaction::with('account_titles')->whereIn('id', $ids)->get()->pluck('account_titles')->flatten()->unique('account_title_id');
 
             return [
                 "type" => $cheque_details->entry_type,
@@ -5028,6 +5088,7 @@ class TransactionController extends Controller
         $transaction_to = $this->getTransactionDate($request, "transaction_to", $dateToday->endOfMonth()->format("Y-m-d H:i:s"));
         $my_approve = $request->input('my_approve', 0);
         $is_confidential = $request->input('is_confidential', 0);
+        $is_mc = $request->input('is_mc', 0);
 
         $statusMapping = [
             'tag' => ['relation' => 'tag', 'status' => 'tag-tag', 'table' => 'taggings'],
@@ -5043,67 +5104,6 @@ class TransactionController extends Controller
             "supplier.supplier_type:id,type as name,transaction_days",
             "po_details:id,request_id,po_no,po_total_amount",
         ])
-            ->when(!empty($document_ids), function ($query) use ($document_ids) {
-                $query->whereIn("document_id", $document_ids);
-            })
-//            ->when($is_confidential == 1, function ($query) {
-//                $query->where('is_confidential', 1);
-//            }, function ($query) {
-//                $query->where('is_confidential', 0);
-//            })
-
-            ->when($status != in_array($status, ['approve']), function ($query) use ($is_confidential) {
-                $query->when($is_confidential == 1, function ($query) {
-                    $query->where('is_confidential', 1);
-                }, function ($query) {
-                    $query->where('is_confidential', 0);
-                });
-            })
-            ->when(!empty($suppliers), function ($query) use ($suppliers) {
-                $query->whereIn("supplier_id", $suppliers);
-            })
-            ->when(!empty($companies), function ($query) use ($companies) {
-                $query->whereIn("company_id", $companies);
-            })
-            ->when(isset($transaction_from) || isset($transaction_to), function ($query) use ($transaction_from, $transaction_to) {
-                $query->where("date_requested", ">=", $transaction_from)->where("date_requested", "<=", $transaction_to);
-            })
-            ->where(function ($query) use ($search, $tag_search) {
-                $query
-                    ->where("date_requested", "like", "%" . $search . "%")
-                    ->orWhere("remarks", "like", "%" . $search . "%")
-                    ->orWhere("tag_no", "like", "%" . $tag_search)
-                    ->orWhere("transaction_id", "like", "%" . $search . "%")
-                    ->orWhere("document_amount", "like", "%" . $search . "%")
-                    ->orWhere("document_type", "like", "%" . $search . "%")
-                    ->orWhere("payment_type", "like", "%" . $search . "%")
-                    ->orWhere("company", "like", "%" . $search . "%")
-                    ->orWhere("department", "like", "%" . $search . "%")
-                    ->orWhere("location", "like", "%" . $search . "%")
-                    ->orWhere("supplier", "like", "%" . $search . "%")
-                    ->orWhere("document_no", "like", "%" . $search . "%")
-                    ->orWhere("referrence_no", "like", "%" . $search . "%")
-                    ->orWhere("po_total_amount", "like", "%" . $search . "%")
-                    ->orWhere("referrence_total_amount", "like", "%" . $search . "%")
-                    ->orWhereHas("po_details", function ($query) use ($search) {
-                        $query->where("po_no", "like", "%" . $search . "%");
-                    })
-                    ->orWhereHas("users", function ($query) use ($search) {
-                        $query->where(
-                            DB::raw(
-                                "REPLACE(
-                        CONCAT(
-                            COALESCE(first_name,''),' ',
-                            COALESCE(last_name,''),
-                            COALESCE(suffix,'')
-                        ),
-                    '  ',' ')"
-                            ),
-                            "like",
-                            "%" . $search . "%"
-                        );
-                    });
-            })
             ->when(isset($statusMapping[$status]['role']), function ($query) use ($statusMapping, $status, $my_approve) {
 //                $query->whereIn($statusMapping[$status]['user'], User::where('role', 'approver')->pluck('id'));
 
@@ -5163,6 +5163,91 @@ class TransactionController extends Controller
                 "is_confidential",
                 "is_mc"
             ])
+            ->when(!empty($document_ids), function ($query) use ($document_ids) {
+                $query->whereIn("document_id", $document_ids);
+            })
+//            ->when($is_confidential == 1, function ($query) {
+//                $query->where('is_confidential', 1);
+//            }, function ($query) {
+//                $query->where('is_confidential', 0);
+//            })
+
+            ->when($status != in_array($status, ['approve']), function ($query) use ($is_confidential) {
+                $query->when($is_confidential == 1, function ($query) {
+                    $query->where('is_confidential', 1);
+                }, function ($query) {
+                    $query->where('is_confidential', 0);
+                });
+            })
+            ->when($is_mc == 1, function ($query) {
+                $query->where('is_mc', 1);
+            })
+            ->when(!empty($suppliers), function ($query) use ($suppliers) {
+                $query->whereIn("supplier_id", $suppliers);
+            })
+            ->when(!empty($companies), function ($query) use ($companies) {
+                $query->whereIn("company_id", $companies);
+            })
+            ->when(isset($transaction_from) || isset($transaction_to), function ($query) use ($transaction_from, $transaction_to) {
+                $query->where("date_requested", ">=", $transaction_from)->where("date_requested", "<=", $transaction_to);
+            })
+//            ->where(function ($query) use ($search, $tag_search) {
+//                $query
+//                    ->where("date_requested", "like", "%" . $search . "%")
+//                    ->orWhere("remarks", "like", "%" . $search . "%")
+//                    ->orWhere("tag_no", "like", "%" . $tag_search)
+//                    ->orWhere("transaction_id", "like", "%" . $search . "%")
+//                    ->orWhere("document_amount", "like", "%" . $search . "%")
+//                    ->orWhere("document_type", "like", "%" . $search . "%")
+//                    ->orWhere("payment_type", "like", "%" . $search . "%")
+//                    ->orWhere("company", "like", "%" . $search . "%")
+//                    ->orWhere("department", "like", "%" . $search . "%")
+//                    ->orWhere("location", "like", "%" . $search . "%")
+//                    ->orWhere("supplier", "like", "%" . $search . "%")
+//                    ->orWhere("document_no", "like", "%" . $search . "%")
+//                    ->orWhere("referrence_no", "like", "%" . $search . "%")
+//                    ->orWhere("po_total_amount", "like", "%" . $search . "%")
+//                    ->orWhere("referrence_total_amount", "like", "%" . $search . "%")
+//                    ->orWhereHas("po_details", function ($query) use ($search) {
+//                        $query->where("po_no", "like", "%" . $search . "%");
+//                    })
+//                    ->orWhereHas("users", function ($query) use ($search) {
+//                        $query->where(
+//                            DB::raw(
+//                                "REPLACE(
+//                        CONCAT(
+//                            COALESCE(first_name,''),' ',
+//                            COALESCE(last_name,''),
+//                            COALESCE(suffix,'')
+//                        ),
+//                    '  ',' ')"
+//                            ),
+//                            "like",
+//                            "%" . $search . "%"
+//                        );
+//                    });
+//            })
+                ->whereLike([
+                    "date_requested",
+                    "remarks",
+                    "tag_no",
+                    "transaction_id",
+                    "document_amount",
+                    "document_type",
+                    "payment_type",
+                    "company",
+                    "department",
+                    "location",
+                    "supplier",
+                    "document_no",
+                    "referrence_no",
+                    "po_total_amount",
+                    "referrence_total_amount",
+                    "po_details.po_no",
+                    "users.first_name",
+                    "users.last_name",
+                    "users.suffix",
+                ], $search)
             ->orderBy(DB::raw("(SELECT t.created_at FROM " . $statusMapping[$status]['table'] . " as t WHERE t.transaction_id = transactions.id ORDER BY t.created_at DESC LIMIT 1)"), 'desc')
             ->paginate($rows);
 
@@ -5181,6 +5266,7 @@ class TransactionController extends Controller
         $search = $request->input("search");
         $suppliers = json_decode($request->input("suppliers")) ?? [];
         $companies = json_decode($request->input("companies")) ?? [];
+        $document_ids = json_decode($request->input("document_ids")) ?? [];
 
         $cheque_from = isset($request["cheque_from"])
             ? Carbon::createFromFormat("Y-m-d", $request->input("cheque_from"))->format("Y-m-d")
@@ -5199,6 +5285,10 @@ class TransactionController extends Controller
 
         $cheques = Cheque::withTrashed()
             //Supplier Filter
+            ->when(isset($statusMap[$status]), function ($query) use ($statusMap, $status) {
+                $query->where($statusMap[$status]['status'], true);
+            })
+            ->select("bank_id", "bank_name", "cheque_no", DB::raw("MAX(updated_at) as latest_updated_at"))
             ->when(count($suppliers), function ($query) use ($suppliers) {
                 $query->whereHas("transaction", function ($query) use ($suppliers) {
                     return $query->whereIn("supplier_id", $suppliers);
@@ -5207,6 +5297,11 @@ class TransactionController extends Controller
             ->when(count($companies), function ($query) use ($companies) {
                 $query->whereHas("transaction", function ($query) use ($companies) {
                     return $query->whereIn("company_id", $companies);
+                });
+            })
+            ->when(count($document_ids), function ($query) use ($document_ids) {
+                $query->whereHas("transaction", function ($query) use ($document_ids) {
+                    return $query->whereIn("document_id", $document_ids);
                 });
             })
 
@@ -5226,10 +5321,6 @@ class TransactionController extends Controller
                 })
                     ->orWhere("cheque_no", "like", "%" . $search . "%");
             })
-            ->when(isset($statusMap[$status]), function ($query) use ($statusMap, $status) {
-                $query->where($statusMap[$status]['status'], true);
-            })
-            ->select("bank_id", "bank_name", "cheque_no", DB::raw("MAX(updated_at) as latest_updated_at"))
             ->groupBy("bank_name", "cheque_no", "bank_id")
             ->orderBy("latest_updated_at", "desc")
             ->paginate((int)$rows);
@@ -5282,8 +5373,8 @@ class TransactionController extends Controller
                             ? $item->gross_amount
                             : $item->principal + $item->interest)
                             : $item->document_amount,
-                    "reference_no" => $item->referrence_no,
-                    "reference_amount" => $item->referrence_amount,
+                    "referrence_no" => $item->referrence_no,
+                    "referrence_amount" => $item->referrence_amount,
                     "date_requested" => $item->date_requested,
                     "company" => [
                         "id" => $item->company_id,
@@ -5479,5 +5570,13 @@ class TransactionController extends Controller
             ->get();
 
         return APReportResource::collection($transactions);
+    }
+
+    public function multipleVouchers(Request $request) {
+
+        $transactions = $this->getRequestData($request, 'transactions');
+
+        return TransactionResource1::collection(Transaction::whereIn('id', $transactions)
+            ->get());
     }
 }

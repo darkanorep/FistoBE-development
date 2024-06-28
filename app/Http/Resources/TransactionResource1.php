@@ -90,6 +90,7 @@ class TransactionResource1 extends JsonResource
                     "id" => $this->document_id,
                     "is_confidential" => $this->is_confidential,
                     "is_mc" => $this->is_mc,
+                    "is_new" => $this->is_new,
                     "name" => $this->document_type,
                     "no" => $this->document_no,
                     "date" => $this->document_date,
@@ -126,7 +127,7 @@ class TransactionResource1 extends JsonResource
                     "is_mc" => $this->is_mc,
                     "name" => $this->document_type,
                     "no" => $this->document_no,
-                    "date" => $this->document_date,
+//                    "date" => $this->document_date ?? $this->date_requested,
                     "payment_type" => $this->payment_type,
 //          "amount" => $this->document_amount,
                     'amount' => ($this->document_id == 3)
@@ -237,6 +238,7 @@ class TransactionResource1 extends JsonResource
             case 6: //Utilities
                 $document = [
                     "id" => $this->document_id,
+//                    "date" => $this->document_date ?? $this->date_requested,
                     "is_confidential" => $this->is_confidential,
                     "is_mc" => $this->is_mc,
                     "name" => $this->document_type,
@@ -318,6 +320,7 @@ class TransactionResource1 extends JsonResource
             case 7: //Payroll
                 $document = [
                     "id" => $this->document_id,
+//                    "date" => $this->document_date ?? $this->date_requested,
                     "is_confidential" => $this->is_confidential,
                     "is_mc" => $this->is_mc,
                     "name" => $this->document_type,
@@ -359,6 +362,7 @@ class TransactionResource1 extends JsonResource
                     "id" => $this->document_id,
                     "is_confidential" => $this->is_confidential,
                     "is_mc" => $this->is_mc,
+                    "is_new" => $this->is_new,
                     "name" => $this->document_type,
                     "date" => $this->document_date,
                     "payment_type" => $this->payment_type,

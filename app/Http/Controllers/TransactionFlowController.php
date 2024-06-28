@@ -268,6 +268,7 @@ class TransactionFlowController extends Controller
                         'state' => $process,
                         'status' => $process . '-'. $process,
                         'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
+                        'is_for_voucher_audit' => ($trx->document_id == 8) ? 1 : null
                     ]);
                     break;
             }

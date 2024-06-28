@@ -129,7 +129,8 @@ class Transaction extends Model
         "box_no",
         "is_confidential",
         "is_mc",
-        "is_mcl"
+        "is_mcl",
+        "is_new"
     ];
 
     public $timestamps = ["created_at"];
@@ -609,6 +610,7 @@ class Transaction extends Model
                 "witholding_tax as wht",
                 "net_amount as net_of_amount",
                 "cheque_date",
+//                "date_requested"
         ]);
     }
 
@@ -622,6 +624,7 @@ class Transaction extends Model
                 "cwt",
                 "net_amount as net_of_amount",
                 "cheque_date",
+//                "date_requested"
         ]);
     }
 
@@ -633,7 +636,8 @@ class Transaction extends Model
                 "interest",
                 "cwt",
                 "net_amount as net_of_amount",
-                "cheque_date"
+                "cheque_date",
+//                "date_requested"
         ]);
     }
 
