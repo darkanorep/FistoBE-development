@@ -654,4 +654,9 @@ class Transaction extends Model
             ]);
     }
 
+    public function generalJournals()
+    {
+        return $this->hasMany(GeneralJournal::class, 'transaction_id', 'id');
+    }
+
 }

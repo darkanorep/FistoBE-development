@@ -2038,12 +2038,23 @@ class GenericMethod
                     "is_new" => $is_new
                 ]);
 
-                if ($new_transaction->id) {
-                    // GenericMethod::insert_debit_attachment($request_id, $fields["autoDebit_group"]);
+                if (isset($fields["autoDebit_group"])) {
 
-                    if (isset($fields["autoDebit_group"])) {
-                        GenericMethod::insert_debit_attachment($new_transaction->id, $fields["autoDebit_group"]);
+                    foreach($fields["autoDebit_group"] as $autoDebit) {
+                        $new_transaction->auto_debit()->create([
+                            'pn_no' => $autoDebit['pn_no'],
+                            'interest_from' => $autoDebit['interest_from'],
+                            'interest_to' => $autoDebit['interest_to'],
+                            'outstanding_amount' => $autoDebit['outstanding_amount'],
+                            'interest_rate' => $autoDebit['interest_rate'],
+                            'no_of_days' => $autoDebit['no_of_days'],
+                            'principal_amount' => $autoDebit['principal_amount'],
+                            'interest_due' => $autoDebit['interest_due'],
+                            'cwt' => $autoDebit['cwt'],
+                            'dst' => $autoDebit['dst']
+                        ]);
                     }
+//                        GenericMethod::insert_debit_attachment($new_transaction->id, $fields["autoDebit_group"]);
                 }
                 break;
 
@@ -5066,7 +5077,7 @@ class GenericMethod
         }
       }
 
-      $balance = GenericMethod::getBalance($new_po_total_amount, $balance_po_ref_amount, $reference_amount);
+            $balance = GenericMethod::getBalance($new_po_total_amount, $balance_po_ref_amount, $reference_amount);
 
       return [
         "po_total_amount" => $po_total_amount,
@@ -5835,7 +5846,7 @@ class GenericMethod
   }
   ##########################################################################################################
 
-  public function generateVoucherNo($id, $code, $voucher_month, $is_confidential)
+  public function generateVoucherNo($id, $code, $voucher_month, $is_confidential, $voucher_code)
   {
 //    $existingVoucher = Transaction::whereNotNull("voucher_no")
 //      ->where("id", $id)
@@ -5847,11 +5858,24 @@ class GenericMethod
 
     $series = 1;
 //    $code = Department::where('id', $code)->first()->voucherCode->code;
+
+
+//    if ($is_confidential) {
+//        $code = 'SP';
+//    } else {
+//        $code = Department::where('id', $code)->first()->voucherCode->code;
+//    }
+
     if ($is_confidential) {
         $code = 'SP';
     } else {
-        $code = Department::where('id', $code)->first()->voucherCode->code;
+        if (isset($voucher_code)) {
+            $code = $voucher_code;
+        } else {
+            $code = Department::where('id', $code)->first()->voucherCode->code;
+        }
     }
+
 //    $date = Carbon::now("Asia/Manila")->format("ym");
     $date = DateTime::createFromFormat('Y-m-d', $voucher_month)->format('ym');
 
@@ -5913,9 +5937,34 @@ class GenericMethod
   }
 
 
-  public static function prmMultiplerequestUpdateID($new_transaction) {
-      $newTransactionId = $new_transaction->transaction_id;
-      $requestIds = Transaction::where('transaction_id', $newTransactionId)->pluck('id');
-      Transaction::whereIn('id', $requestIds)->update(['request_id' => DB::raw('id')]);
-  }
+    public static function prmMultiplerequestUpdateID($new_transaction)
+    {
+        $newTransactionId = $new_transaction->transaction_id;
+        $requestIds = Transaction::where('transaction_id', $newTransactionId)->pluck('id')->reverse()->toArray();
+        Transaction::whereIn('id', $requestIds)->update(['request_id' => DB::raw('id')]);
+
+        $date = Carbon::now();
+        $second = 0;
+        $minute = 0;
+
+        foreach ($requestIds as $requestId) {
+            // Clone the date object to ensure the original date is not modified directly
+//            $updateDate = clone $date;
+//
+//            if ($second == 60) {
+//                $second = 0;
+//                $minute++;
+//                $updateDate->addMinutes($minute);
+//            } else {
+//                $updateDate->addSeconds($second);
+//            }
+
+            Transaction::where('id', $requestId)->update([
+//                'updated_at' => $updateDate->format('Y-m-d H:i:s')
+                'updated_at' => Carbon::now()->addSeconds($second++)->format('Y-m-d H:i:s')
+            ]);
+
+//            $second++;
+        }
+    }
 }

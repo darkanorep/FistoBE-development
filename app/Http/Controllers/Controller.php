@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Foundation\Validation\ValidatesRequests;
@@ -628,6 +629,20 @@ class Controller extends BaseController
         }
 
         return $state;
+    }
+
+    function getRequestData($request, $key, $default = [])
+    {
+        return isset($request[$key]) && $request[$key]
+            ? array_map("intval", json_decode($request[$key]))
+            : $default;
+    }
+
+    function getTransactionDate($request, $key, $default)
+    {
+        return isset($request[$key]) && $request[$key]
+            ? Carbon::createFromFormat("Y-m-d", $request[$key])->format("Y-m-d H:i:s")
+            : $default;
     }
 
 }

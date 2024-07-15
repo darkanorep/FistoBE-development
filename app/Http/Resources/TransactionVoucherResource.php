@@ -30,7 +30,7 @@ class TransactionVoucherResource extends JsonResource
         $file = null;
 
         //VOUCHER
-        if ($this->has('voucher')) {
+        if ($this->has('voucher')->exists()) {
             $voucher_transaction = $this->voucher->first();
 
             if (empty($voucher_transaction->account_title)) {
@@ -111,7 +111,7 @@ class TransactionVoucherResource extends JsonResource
         }
 
         //INSPECT
-        if ($this->has('inspect')) {
+        if ($this->has('inspect')->exists()) {
             $inspect_transaction = $this->inspect->first();
 
             if (isset($inspect_transaction->status)) {
@@ -124,7 +124,7 @@ class TransactionVoucherResource extends JsonResource
         }
 
         //APPROVE
-        if ($this->has('approve')) {
+        if ($this->has('approve')->exists()) {
             $approve_transaction = $this->approve->first();
 
             if (isset($approve_transaction->status)) {
@@ -141,7 +141,7 @@ class TransactionVoucherResource extends JsonResource
         }
 
         //TRANSMIT
-        if ($this->has('transmit')) {
+        if ($this->has('transmit')->exists()) {
             $transmit_transaction = $this->transmit->first();
 
             if (isset($transmit_transaction->status)) {
@@ -153,7 +153,7 @@ class TransactionVoucherResource extends JsonResource
         }
 
         //DISCHARGE
-        if ($this->has('discharge')) {
+        if ($this->has('discharge')->exists()) {
             $discharge_transaction = $this->discharge->first();
 
             if (isset($discharge_transaction->status)) {
@@ -167,7 +167,7 @@ class TransactionVoucherResource extends JsonResource
         }
 
         //FILE
-        if ($this->has('file')) {
+        if ($this->has('file')->exists()) {
             $file_transaction = $this->file->first();
 
             if (isset($file_transaction->status)) {

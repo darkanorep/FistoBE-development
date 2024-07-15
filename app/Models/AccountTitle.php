@@ -28,12 +28,12 @@ class AccountTitle extends Model
 
     protected $hidden = [
         'created_at',
-        'account_title_ggparent_id',
-        'account_title_gparent_id',
-        'account_title_parent_id',
-        'account_title_child_id',
-        'account_title_pnl_id',
-        'account_title_unit_id',
+//        'account_title_ggparent_id',
+//        'account_title_gparent_id',
+//        'account_title_parent_id',
+//        'account_title_child_id',
+//        'account_title_pnl_id',
+//        'account_title_unit_id',
     ];
 
     public function getCreatedAtAttribute($value)

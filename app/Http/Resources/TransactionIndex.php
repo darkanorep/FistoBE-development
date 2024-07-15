@@ -157,7 +157,11 @@ class TransactionIndex extends JsonResource
             'is_cheque' => $is_cheque,
             'is_confidential' => $this->is_confidential,
             'is_mc' => $this->is_mc,
-            "is_new" => $this->is_new
+            "is_new" => $this->is_new ? 1 : 0,
+            'distributed_to' => [
+                'id' => $this->distributed_id,
+                'name' => $this->distributed_name,
+            ]
         ];
     }
 

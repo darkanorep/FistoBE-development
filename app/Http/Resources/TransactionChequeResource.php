@@ -30,7 +30,7 @@ class TransactionChequeResource extends JsonResource
         $release = null;
 
         //CHEQUE
-        if ($this->has('cheques')){
+        if ($this->has('cheques')->exists()){
             $cheque_transaction = $this->cheques->first();
             $clear_transaction = $this->accountTitleClear;
 
@@ -197,7 +197,7 @@ class TransactionChequeResource extends JsonResource
         }
 
         //AUDIT
-        if ($this->has('audit')) {
+        if ($this->has('audit')->exists()) {
             $audit_transaction = $this->audit->first();
 
             if (isset($audit_transaction->status)) {
@@ -210,7 +210,7 @@ class TransactionChequeResource extends JsonResource
         }
 
         //EXECUTIVE
-        if ($this->has('executive')) {
+        if ($this->has('executive')->exists()) {
             $executive_transaction = $this->executive->first();
 
             if (isset($executive_transaction->status)) {

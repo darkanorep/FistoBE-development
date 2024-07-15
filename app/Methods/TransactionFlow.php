@@ -8,6 +8,7 @@ use App\Models\Charging;
 use App\Models\Cheque;
 use App\Models\ClearingAccountTitle;
 use App\Models\Executive;
+use App\Models\GeneralJournal;
 use App\Models\Issue;
 use App\Models\VoucherAccountTitle;
 use Carbon\Carbon;
@@ -225,9 +226,11 @@ class TransactionFlow
 
         $voucher_no = data_get($request, "voucher.no", $transaction->voucher_no);
         $voucher_month = data_get($request, "voucher.month", $transaction->voucher_month);
+        $voucher_code = data_get($request, "voucher.code", null);
         $voucher_account_titles = GenericMethod::with_previous_transaction($accounts, $voucher_account_title);
         $approver = GenericMethod::with_previous_transaction($request["approver"] ?? null, $previous_approver);
         $distributed = GenericMethod::with_previous_transaction($request["distributed_to"] ?? null, $previous_distributed);
+        $gj_number = $request->input('gj_number', null);
 
         $approver_id = data_get($request, 'approver.id') ?? $transaction->approver_id;
         $approver_name = data_get($request, 'approver.name') ?? $transaction->approver_name;
@@ -587,8 +590,15 @@ class TransactionFlow
                         }
                     }
 
-                    $voucher_no = $generic->generateVoucherNo($transaction->id, $department_id, $voucher_month, $isConfidential);
+                    $voucher_no = $generic->generateVoucherNo($transaction->id, $department_id, $voucher_month, $isConfidential, $voucher_code);
 
+                    if (isset($gj_number)) {
+                        GeneralJournal::where('gj_number', $gj_number)->update([
+                            'transaction_id' => $transaction->id,
+                            'voucher_no' => $voucher_no,
+                            'voucher_month' => $voucher_month,
+                        ]);
+                    }
                 }
 
 //        if (isset($account_titles)) {

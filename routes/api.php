@@ -89,6 +89,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         Route::get("business-unit", [BusinessUnitController::class, "index"]);
         Route::get("sub-unit", [SubUnitController::class, "index"]);
         Route::get("voucher-number", [TransactionController::class, "voucherNumberDropdown"]);
+        Route::get('general-journals-numbers', [TransactionController::class, 'generalNumbersDropdown']);
     });
 
     Route::group(["prefix" => "admin", "middleware" => ["auth" => "is_admin"]], function () {
@@ -272,6 +273,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
 
     // USER
     Route::post("users/department-validation/", [UserController::class, "departmentValidation"]);
+    Route::get("adjust-entries", [TransactionFlowController::class, 'adjustEntries']);
 
     // TRANSACTION
 //  Route::put("transactions/{id}", [TransactionController::class, "update"]);
@@ -342,6 +344,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
     Route::get("cheques-history", [TransactionController::class, "historyChequeIndex"]);
     Route::get("voucher-transaction/{id}", [TransactionController::class, 'voucherTransaction']);
     Route::get("cheque-transaction/{id}", [TransactionController::class, 'chequeTransaction']);
+    Route::resource("general-journals", \App\Http\Controllers\GeneralJournalController::class);
     Route::resource("transactions", TransactionController::class);
 
     Route::group(["prefix" => "transactions"], function () {

@@ -34,6 +34,7 @@ class APReportResource extends JsonResource
                         'location_code' => $item->location_code,
                         'location' => $item->location_name,
                         'description' => $item->remarks,
+//                        'account_types' => $item->accountType
                     ];
                 });
             }
