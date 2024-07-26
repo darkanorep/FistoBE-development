@@ -598,122 +598,122 @@ class TransactionFlowController extends Controller
             }
     }
 
-    public function adjustEntries(Request $request) {
-
-        $rental = [
-            'stall a rental',
-            'stall b rental',
-            'stall c rental',
-            'stall d rental',
-            'cusa rental',
-            'dorm rental',
-            'additional rental',
-            'lounge rental',
-            'corporate special program - education',
-            'official store rental',
-            'unofficial store rental',
-            'rental'
-        ];
-
-        $transactions = Transaction::with([
-            'account_titles' => function ($query) {
-                $query->with([
-                    'accountType',
-                    'accountGroup',
-                    'accountSubGroup',
-                    'financialStatement',
-                    'normalBalance',
-                    'unit',
-                ]);
-            }
-        ])->where('voucher_no', $request->input('voucher_no'))
-            ->where('distributed_id', auth()->user()->id)
-            ->select([
-                'id',
-                'tag_no',
-                'receipt_type',
-                'category',
-                'voucher_no',
-                'voucher_month',
-                'supplier_id',
-                'supplier',
-                'input_tax',
-                'document_amount',
-                'referrence_amount',
-                'document_id',
-                'document_type',
-                'gross_amount',
-                'principal',
-                'interest',
-            ])
-            ->get();
-
-        $transactions->transform(function ($transactions) use ($rental){
-            return [
-                'id' => $transactions->id,
-                'receipt_type' => $transactions->receipt_type,
-                'tag_no' => $transactions->tag_no,
-                'input_tax' => $transactions->input_tax ?? 0,
-                'document_amount' => ($transactions->document_id == 3)
-                ? ($transactions->category == in_array($transactions->category, $rental)
-                        ? $transactions->gross_amount
-                        : floatval((number_format(($transactions->principal + $transactions->interest), 2, '.', ''))))
-                    : $transactions->document_amount ?? $transactions->referrence_amount,
+//    public function adjustEntries(Request $request) {
+//
+//        $rental = [
+//            'stall a rental',
+//            'stall b rental',
+//            'stall c rental',
+//            'stall d rental',
+//            'cusa rental',
+//            'dorm rental',
+//            'additional rental',
+//            'lounge rental',
+//            'corporate special program - education',
+//            'official store rental',
+//            'unofficial store rental',
+//            'rental'
+//        ];
+//
+//        $transactions = Transaction::with([
+//            'account_titles' => function ($query) {
+//                $query->with([
+//                    'accountType',
+//                    'accountGroup',
+//                    'accountSubGroup',
+//                    'financialStatement',
+//                    'normalBalance',
+//                    'unit',
+//                ]);
+//            }
+//        ])->where('voucher_no', $request->input('voucher_no'))
+//            ->where('distributed_id', auth()->user()->id)
+//            ->select([
+//                'id',
+//                'tag_no',
+//                'receipt_type',
+//                'category',
+//                'voucher_no',
+//                'voucher_month',
+//                'supplier_id',
+//                'supplier',
+//                'input_tax',
+//                'document_amount',
+//                'referrence_amount',
+//                'document_id',
+//                'document_type',
+//                'gross_amount',
+//                'principal',
+//                'interest',
+//            ])
+//            ->get();
+//
+//        $transactions->transform(function ($transactions) use ($rental){
+//            return [
+//                'id' => $transactions->id,
+//                'receipt_type' => $transactions->receipt_type,
+//                'tag_no' => $transactions->tag_no,
+//                'input_tax' => $transactions->input_tax ?? 0,
 //                'document_amount' => ($transactions->document_id == 3)
-//                    ? ($transactions->category == in_array($transactions->category, $rental)
-//                        ? $transactions->gross_amount : floatval((number_format(($transactions->principal + $transactions->interest), 2, '.', ''))))
+//                ? ($transactions->category == in_array($transactions->category, $rental)
+//                        ? $transactions->gross_amount
+//                        : floatval((number_format(($transactions->principal + $transactions->interest), 2, '.', ''))))
 //                    : $transactions->document_amount ?? $transactions->referrence_amount,
-                'voucher' => [
-                    'voucher_no' => $transactions->voucher_no,
-                    'voucher_month' => $transactions->voucher_month,
-                ],
-                'supplier' => [
-                    'id' => $transactions->supplier_id,
-                    'name' => $transactions->supplier,
-                ],
-                'account_titles' => $transactions->account_titles->map(function ($account) {
-                    return [
-                        'id' => $account->id,
-                        'entry' => $account->entry,
-                        'account_title' => [
-                            'id' => $account->account_title_id,
-                            'code' => $account->account_title_code,
-                            'name' => $account->account_title_name,
-                        ],
-                        'amount' => $account->amount,
-                        'remarks' => $account->remarks,
-                        'company' => [
-                            'id' => $account->company_id,
-                            'code' => $account->company_code,
-                            'name' => $account->company_name,
-                        ],
-                        'department' => [
-                            'id' => $account->department_id,
-                            'code' => $account->department_code,
-                            'name' => $account->department_name,
-                        ],
-                        'location' => [
-                            'id' => $account->location_id,
-                            'code' => $account->location_code,
-                            'name' => $account->location_name,
-                        ],
-                        'business_unit' => [
-                            'id' => $account->business_unit_id,
-                            'code' => $account->business_unit_code,
-                            'name' => $account->business_unit_name,
-                        ],
-                        'sub_unit' => [
-                            'id' => $account->sub_business_unit_id,
-                            'code' => $account->sub_business_unit_code,
-                            'name' => $account->sub_business_unit_name,
-                        ]
-                    ];
-                }),
-            ];
-        });
-
-        return $transactions->first();
-    }
+////                'document_amount' => ($transactions->document_id == 3)
+////                    ? ($transactions->category == in_array($transactions->category, $rental)
+////                        ? $transactions->gross_amount : floatval((number_format(($transactions->principal + $transactions->interest), 2, '.', ''))))
+////                    : $transactions->document_amount ?? $transactions->referrence_amount,
+//                'voucher' => [
+//                    'voucher_no' => $transactions->voucher_no,
+//                    'voucher_month' => $transactions->voucher_month,
+//                ],
+//                'supplier' => [
+//                    'id' => $transactions->supplier_id,
+//                    'name' => $transactions->supplier,
+//                ],
+//                'account_titles' => $transactions->account_titles->map(function ($account) {
+//                    return [
+//                        'id' => $account->id,
+//                        'entry' => $account->entry,
+//                        'account_title' => [
+//                            'id' => $account->account_title_id,
+//                            'code' => $account->account_title_code,
+//                            'name' => $account->account_title_name,
+//                        ],
+//                        'amount' => $account->amount,
+//                        'remarks' => $account->remarks,
+//                        'company' => [
+//                            'id' => $account->company_id,
+//                            'code' => $account->company_code,
+//                            'name' => $account->company_name,
+//                        ],
+//                        'department' => [
+//                            'id' => $account->department_id,
+//                            'code' => $account->department_code,
+//                            'name' => $account->department_name,
+//                        ],
+//                        'location' => [
+//                            'id' => $account->location_id,
+//                            'code' => $account->location_code,
+//                            'name' => $account->location_name,
+//                        ],
+//                        'business_unit' => [
+//                            'id' => $account->business_unit_id,
+//                            'code' => $account->business_unit_code,
+//                            'name' => $account->business_unit_name,
+//                        ],
+//                        'sub_unit' => [
+//                            'id' => $account->sub_business_unit_id,
+//                            'code' => $account->sub_business_unit_code,
+//                            'name' => $account->sub_business_unit_name,
+//                        ]
+//                    ];
+//                }),
+//            ];
+//        });
+//
+//        return $transactions->first();
+//    }
 
 public function updateTransactionEntries(Request $request, $id)
 {

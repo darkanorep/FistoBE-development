@@ -8,6 +8,7 @@ use App\Http\Resources\ChequeIndex;
 use App\Http\Resources\TransactionChequeResource;
 use App\Http\Resources\TransactionResource1;
 use App\Http\Resources\TransactionVoucherResource;
+use App\Models\Accruals;
 use App\Models\Audit;
 use App\Models\BankSeries;
 use App\Models\Cheque;
@@ -5751,198 +5752,449 @@ class TransactionController extends Controller
             ])->get();
     }
 
-    public function generateAPReport(Request $request) {
-
-        $transactionFrom = $this->getTransactionDate($request, "transaction_from", Carbon::now()->startOfMonth()->format("Y-m-d"));
-        $transactionTo = $this->getTransactionDate($request, "transaction_to", Carbon::now()->endOfMonth()->format("Y-m-d"));
-        $companies = $this->getRequestData($request, 'companies');
-
-        //Transaction with Vouchers
-        $transactions = Transaction::withoutTrashed()
-            ->when(isset($transactionFrom) || isset($transactionTo), function ($query) use ($transactionFrom, $transactionTo) {
-                $query->where("voucher_month", ">=", $transactionFrom)->where("voucher_month", "<=", $transactionTo);
-            })
-            ->when(!empty($companies), function ($query) use ($companies) {
-                $query->whereIn("company_id", $companies);
-            })
-            ->where('status', '!=', 'void')
-            ->whereNotNull('voucher_no')
-            ->where('distributed_id', auth()->user()->id)
-            ->get();
-
-        $transformedTransactions = $transactions->map(function ($transaction) {
-            $voucher_account_title = [];
-            if ($transaction->voucher) {
-                $voucher_transaction = $transaction->voucher->first();
-                if ($voucher_transaction && !empty($voucher_transaction->account_title)) {
-                    $voucher_account_title = $voucher_transaction->account_title->map(function ($item) {
-                        return [
-                            'entry' => $item->entry,
-                            'amount' => $item->amount,
-                            'account_title_code' => $item->account_title_code,
-                            'account_title' => $item->account_title_name,
-                            'company_code' => $item->company_code,
-                            'company' => $item->company_name,
-                            'department_code' => $item->department_code,
-                            'department' => $item->department_name,
-                            'location_code' => $item->location_code,
-                            'location' => $item->location_name,
-                            'description' => $item->remarks,
-                            'category' => $item->accountType->first()->name ?? null,
-                            'dr/cr' => $item->normalBalance->first()->name ?? null,
-                            'allocation' => $item->accountGroup->first()->name ?? null,
-                        ];
-                    })->toArray();
-                }
-            }
-
-            return [
-                'account_tag' => $transaction->tag_no,
-                'boa' => 'Voucher Prepared',
-                'division' => $transaction->company,
-                'capex_no' => $transaction->capex_no,
-                'transaction_date' => $transaction->date_requested,
-                'supplier' => $transaction->supplier,
-                'voucher_month' => $transaction->voucher_month,
-                'voucher_no' => $transaction->voucher_no,
-                'reference_no' => $transaction->referrence_no ?? $transaction->utilities_receipt_no ?? 'x',
-                'batch' => $transaction->pcf_letter . $transaction->pcf_date,
-                'vouchers' => $voucher_account_title,
-                'po_details' => $transaction->po_details->map(function ($item) {
-                    return [
-                        'po_no' => $item->po_no,
-                    ];
-                }),
-//                'gj_number' => $transaction->gj_number,
-            ];
-        })->collect();
-
-//        $generalJournals = GeneralJournal::with('transaction')->when(isset($transactionFrom) || isset($transactionTo), function ($query) use ($transactionFrom, $transactionTo) {
-//            $query->where("created_at", ">", $transactionFrom)->where("created_at", "<", $transactionTo);
-//        })
+//    public function generateAPReport(Request $request) {
+//
+//        $transactionFrom = $this->getTransactionDate($request, "transaction_from", Carbon::now()->startOfMonth()->format("Y-m-d"));
+//        $transactionTo = $this->getTransactionDate($request, "transaction_to", Carbon::now()->endOfMonth()->format("Y-m-d"));
+//        $companies = $this->getRequestData($request, 'companies');
+//
+//        //Transaction with Vouchers
+//        $transactions = Transaction::withoutTrashed()
+//            ->when(isset($transactionFrom) || isset($transactionTo), function ($query) use ($transactionFrom, $transactionTo) {
+//                $query->where("voucher_month", ">=", $transactionFrom)->where("voucher_month", "<=", $transactionTo);
+//            })
 //            ->when(!empty($companies), function ($query) use ($companies) {
-//                $query->whereHas('transaction', function ($query) use ($companies) {
-//                    $query->whereIn('company_id', $companies);
+//                $query->whereIn("company_id", $companies);
+//            })
+//            ->where('status', '!=', 'void')
+//            ->whereNotNull('voucher_no')
+//            ->where('distributed_id', auth()->user()->id)
+//            ->get();
+//
+//        $transformedTransactions = $transactions->map(function ($transaction) {
+//            $voucher_account_title = [];
+//            if ($transaction->voucher) {
+//                $voucher_transaction = $transaction->voucher->first();
+//                if ($voucher_transaction && !empty($voucher_transaction->account_title)) {
+//                    $voucher_account_title = $voucher_transaction->account_title->map(function ($item) {
+//                        return [
+//                            'entry' => $item->entry,
+//                            'amount' => $item->amount,
+//                            'account_title_code' => $item->account_title_code,
+//                            'account_title' => $item->account_title_name,
+//                            'company_code' => $item->company_code,
+//                            'company' => $item->company_name,
+//                            'department_code' => $item->department_code,
+//                            'department' => $item->department_name,
+//                            'location_code' => $item->location_code,
+//                            'location' => $item->location_name,
+//                            'description' => $item->remarks,
+//                            'category' => $item->accountType->first()->name ?? null,
+//                            'dr/cr' => $item->normalBalance->first()->name ?? null,
+//                            'allocation' => $item->accountGroup->first()->name ?? null,
+//                        ];
+//                    })->toArray();
+//                }
+//            }
+//
+//            return [
+//                'account_tag' => $transaction->tag_no,
+//                'boa' => 'Voucher Prepared',
+//                'division' => $transaction->company,
+//                'capex_no' => $transaction->capex_no,
+//                'transaction_date' => $transaction->date_requested,
+//                'supplier' => $transaction->supplier,
+//                'voucher_month' => $transaction->voucher_month,
+//                'voucher_no' => $transaction->voucher_no,
+//                'reference_no' => $transaction->referrence_no ?? $transaction->utilities_receipt_no ?? 'x',
+//                'batch' => $transaction->pcf_letter . $transaction->pcf_date,
+//                'vouchers' => $voucher_account_title,
+//                'po_details' => $transaction->po_details->map(function ($item) {
+//                    return [
+//                        'po_no' => $item->po_no,
+//                    ];
+//                }),
+////                'gj_number' => $transaction->gj_number,
+//            ];
+//        })->collect();
+//
+////        $generalJournals = GeneralJournal::with('transaction')->when(isset($transactionFrom) || isset($transactionTo), function ($query) use ($transactionFrom, $transactionTo) {
+////            $query->where("created_at", ">", $transactionFrom)->where("created_at", "<", $transactionTo);
+////        })
+////            ->when(!empty($companies), function ($query) use ($companies) {
+////                $query->whereHas('transaction', function ($query) use ($companies) {
+////                    $query->whereIn('company_id', $companies);
+////                });
+////            })
+////            ->get();
+//
+//        //Transaction with Adjustment Entries/Reversal with Actual Voucher
+//        $transformedGeneralJournals = Transaction::whereHas('generalJournals', function ($query) use ($transactionFrom, $transactionTo){
+//                $query->when(isset($transactionFrom) || isset($transactionTo), function ($query) use ($transactionFrom, $transactionTo) {
+//                    $query->where("voucher_month", ">", $transactionFrom)->where("voucher_month", "<", $transactionTo);
 //                });
 //            })
+//            ->when(!empty($companies), function ($query) use ($companies) {
+//                $query->whereIn("company_id", $companies);
+//            })
+//            ->where('status', '!=', 'void')
+//            ->whereNotNull('voucher_no')
+//            ->where('distributed_id', auth()->user()->id)
 //            ->get();
+//
+//        $transformedGeneralJournals->transform(function ($item) {
+//            return [
+//                'account_tag' => $item->tag_no,
+//                'boa' => $item->generalJournals->first()->type == 'Adjustment' ? 'General Journal' : 'Reversals',
+//                'division' => $item->company,
+//                'capex_no' => $item->capex_no,
+//                'transaction_date' => $item->date_requested,
+//                'supplier' => $item->supplier,
+//                'voucher_month' => $item->generalJournals->first()->voucher_month ?? $item->voucher_month,
+//                'voucher_no' => $item->voucher_no,
+//                'reference_no' => $item->referrence_no ?? $item->utilities_receipt_no ?? 'x',
+//                'batch' => $item->pcf_letter . $item->pcf_date,
+//                'vouchers' => $item->generalJournals->map(function ($item) {
+//                    return [
+//                        'entry' => $item->entry,
+//                        'amount' => $item->amount,
+//                        'account_title_code' => $item->account_title_code,
+//                        'account_title' => $item->account_title_name,
+//                        'company_code' => $item->company_code,
+//                        'company' => $item->company_name,
+//                        'department_code' => $item->department_code,
+//                        'department' => $item->department_name,
+//                        'location_code' => $item->location_code,
+//                        'location' => $item->location_name,
+//                        'description' => $item->remarks,
+//                        'category' => $item->account_titles->first()->greatGrandParents->name ?? null,
+//                        'dr/cr' => $item->account_titles->first()->pnl->name ?? null,
+//                        'allocation' => $item->account_titles->first()->grandParents->name ?? null,
+//                    ];
+//                }),
+//                'po_details' => $item->po_details->map(function ($item) {
+//                    return [
+//                        'po_no' => $item->po_no
+//                    ];
+//                }),
+//            ];
+//        })->collect();
+//
+//        //Accruals and Reversals
+//        $transformedAccruals = GeneralJournal::
+//        when(!empty($companies), function ($query) use ($companies) {
+//                $query->whereIn("division_id", $companies);
+//            })
+//        ->when(isset($transactionFrom) || isset($transactionTo), function ($query) use ($transactionFrom, $transactionTo, $companies) {
+//            $formattedTransactionFrom = Carbon::parse($transactionFrom)->startOfDay()->toDateTimeString();
+//            $formattedTransactionTo = Carbon::parse($transactionTo)->endOfDay()->toDateTimeString();
+//            $query->where(function ($query) use ($formattedTransactionFrom, $formattedTransactionTo) {
+//                $query->whereBetween("created_at", [$formattedTransactionFrom, $formattedTransactionTo])
+//                    ->where('type', 'Accruals')
+//                    ->whereIn('is_reversed', [false]);
+//            })->orWhere(function ($query) use ($formattedTransactionFrom, $formattedTransactionTo) {
+//                $query->whereBetween("updated_at", [$formattedTransactionFrom, $formattedTransactionTo])
+//                    ->where('type', 'Accruals')
+//                    ->where('is_reversed', true);
+//            })->where('user_id', auth()->user()->id);
+//        })
+//            ->get()
+//            ->groupBy('gj_number');
+//
+//        $transformedAccruals = $transformedAccruals->map(function ($item) {
+//           return [
+//               'account_tag' => '',
+//               'boa' => $item[0]->is_reversed ? 'Reversals' : 'Accruals',
+//               'division' => $item[0]->division_name,
+//               'capex_no' =>'',
+//               'transaction_date' => $item[0]->created_at,
+//               'supplier' => '',
+//               'voucher_month' => $item[0]->voucher_month ?? $item[0]->created_at,
+//               'voucher_no' => '',
+//               'reference_no' => '',
+//               'batch' => '',
+//               'vouchers' => $item->map(function ($item) {
+//                   return [
+//                       'entry' => $item->entry,
+//                       'amount' => $item->amount,
+//                       'account_title_code' => $item->account_title_code,
+//                       'account_title' => $item->account_title_name,
+//                       'company_code' => $item->company_code,
+//                       'company' => $item->company_name,
+//                       'department_code' => $item->department_code,
+//                       'department' => $item->department_name,
+//                       'location_code' => $item->location_code,
+//                       'location' => $item->location_name,
+//                       'description' => $item->remarks,
+//                       'category' => $item->account_titles->first()->greatGrandParents->name ?? null,
+//                       'dr/cr' => $item->account_titles->first()->pnl->name ?? null,
+//                       'allocation' => $item->account_titles->first()->grandParents->name ?? null,
+//                   ];
+//               }),
+//               'po_details' => [],
+//           ];
+//       })->values()->collect();
+//
+//        return response()->json([
+//            'data' => $transformedTransactions->merge($transformedGeneralJournals)->merge($transformedAccruals)
+//        ]);
+//
+//
+////        return APReportResource::collection($transactions)
+//
+//    }
 
-        //Transaction with Adjustment Entries/Reversal with Actual Voucher
-        $transformedGeneralJournals = Transaction::whereHas('generalJournals', function ($query) use ($transactionFrom, $transactionTo){
-                $query->when(isset($transactionFrom) || isset($transactionTo), function ($query) use ($transactionFrom, $transactionTo) {
-                    $query->where("voucher_month", ">", $transactionFrom)->where("voucher_month", "<", $transactionTo);
-                });
-            })
-            ->when(!empty($companies), function ($query) use ($companies) {
-                $query->whereIn("company_id", $companies);
-            })
-            ->where('status', '!=', 'void')
-            ->whereNotNull('voucher_no')
-            ->where('distributed_id', auth()->user()->id)
-            ->get();
 
-        $transformedGeneralJournals->transform(function ($item) {
-            return [
-                'account_tag' => $item->tag_no,
-                'boa' => $item->generalJournals->first()->type == 'Adjustment' ? 'General Journal' : 'Reversals',
-                'division' => $item->company,
-                'capex_no' => $item->capex_no,
-                'transaction_date' => $item->date_requested,
-                'supplier' => $item->supplier,
-                'voucher_month' => $item->voucher_month,
-                'voucher_no' => $item->voucher_no,
-                'reference_no' => $item->referrence_no ?? $item->utilities_receipt_no ?? 'x',
-                'batch' => $item->pcf_letter . $item->pcf_date,
-                'vouchers' => $item->generalJournals->map(function ($item) {
-                    return [
-                        'entry' => $item->entry,
-                        'amount' => $item->amount,
-                        'account_title_code' => $item->account_title_code,
-                        'account_title' => $item->account_title_name,
-                        'company_code' => $item->company_code,
-                        'company' => $item->company_name,
-                        'department_code' => $item->department_code,
-                        'department' => $item->department_name,
-                        'location_code' => $item->location_code,
-                        'location' => $item->location_name,
-                        'description' => $item->remarks,
-                        'category' => $item->account_titles->first()->greatGrandParents->name ?? null,
-                        'dr/cr' => $item->account_titles->first()->pnl->name ?? null,
-                        'allocation' => $item->account_titles->first()->grandParents->name ?? null,
-                    ];
-                }),
-                'po_details' => $item->po_details->map(function ($item) {
-                    return [
-                        'po_no' => $item->po_no
-                    ];
-                }),
-            ];
-        })->collect();
+    public function generateAPReport(Request $request)
+    {
+        $boa = $request->boa;
+        $dateToday = Carbon::now()->timezone("Asia/Manila");
+//        $transaction_from = Carbon::parse($this->getTransactionDate($request, "transaction_from", $dateToday->startOfMonth()->format("Y-m-d")))->startOfDay();
+//        $transaction_to = Carbon::parse($this->getTransactionDate($request, "transaction_to", $dateToday->endOfMonth()->format("Y-m-d")))->endOfDay();
+        $adjustment_month = $request->input('adjustment_month', Carbon::now()->format('Y-m'));
+        $year = date('Y', strtotime($adjustment_month));
+        $month = date('m', strtotime($adjustment_month));
 
-        $transformedAccruals = GeneralJournal::when(isset($transactionFrom) || isset($transactionTo), function ($query) use ($transactionFrom, $transactionTo) {
-            $formattedTransactionFrom = Carbon::parse($transactionFrom)->startOfDay()->toDateTimeString();
-            $formattedTransactionTo = Carbon::parse($transactionTo)->endOfDay()->toDateTimeString();
+        $companies = $this->getRequestData($request, 'companies');
 
-//            $query->where("created_at", ">", $transactionFrom)->where("created_at", "<", $transactionTo)
-//                ->where('type', 'Accruals');
+        if ($boa == 'adjustments') {
+            $generalJournal = GeneralJournal::where('user_id', auth()->user()->id)
+//                    ->when(isset($transaction_from) || isset($transactionTo), function ($query) use ($transaction_from, $transaction_to) {
+//                        $query->whereBetween("adjustment_month", [$transaction_from, $transaction_to]);
+//                    })
+                ->when($adjustment_month, function ($query) use ($month, $year) {
+                    $query->whereMonth('adjustment_month', $month)
+                        ->whereYear('adjustment_month', $year);
+                })
+                ->when(!empty($companies), function ($query) use ($companies) {
+                    $query->whereIn("division_id", $companies);
+                })
+                ->where('is_posted', true)
+                ->get();
 
+//            $generalJournal->transform(function ($item) {
+//                return [
+//                    'adjustment_month' => $item->adjustment_month,
+//                    'account_tag' => $item->tag_no
+//                ];
+//            });
 
-            $query->where(function ($query) use ($formattedTransactionFrom, $formattedTransactionTo) {
-                $query->whereBetween("created_at", [$formattedTransactionFrom, $formattedTransactionTo])
-                    ->where('type', 'Accruals')
-                    ->whereIn('is_reversed', [false, true]);
-            })->orWhere(function ($query) use ($formattedTransactionFrom, $formattedTransactionTo) {
-                $query->whereBetween("updated_at", [$formattedTransactionFrom, $formattedTransactionTo])
-                    ->where('type', 'Accruals')
-                    ->where('is_reversed', true);
+            $generalJournal->transform(function ($item) {
+                return [
+                    'journal_name' => $item->journal_name,
+                    'journal_description' => $item->journal_description,
+                    'adjustment_month' => $item->adjustment_month,
+                    'division' => $item->division_name,
+                    'account_tag' => $item->tag_no,
+                    'transaction_date' => $item->transaction_date,
+                    'supplier' => $item->supplier_name,
+                    'account_title' => [
+                        'code' => $item->account_title_code,
+                        'name' => $item->account_title_name,
+                    ],
+                    'company' => [
+                        'code' => $item->company_code,
+                        'name' => $item->company_name,
+                    ],
+                    'department' => [
+                        'code' => $item->department_code,
+                        'name' => $item->department_name,
+                    ],
+                    'location' => [
+                        'code' => $item->location_code,
+                        'name' => $item->location_name,
+                    ],
+                    'business_unit' => [
+                        'code' => $item->business_unit_code,
+                        'name' => $item->business_unit_name,
+                    ],
+                    'sub_unit' => [
+                        'code' => $item->sub_unit_code,
+                        'name' => $item->sub_unit_name,
+                    ],
+                    'category' => $item->account_titles->first()->greatGrandParents->name ?? null,
+                    'allocation' => $item->account_titles->first()->grandParents->name ?? null,
+                    'description' => $item->description,
+                    'amount' => $item->amount,
+                    'po_no' => $item->po_no,
+                    'reference_no' => $item->reference_no,
+                    'quantity' => $item->quantity,
+                    'unit' => $item->unit,
+                    'unit_price' => $item->unit_price,
+                    'voucher_number' => $item->voucher_number,
+                    'gj_number' => $item->gj_number,
+                    'dr/cr' => $item->entry,
+                    'asset' => [
+                        'code' => $item->asset_code,
+                        'name' => $item->asset_name
+                    ],
+                    'service_provider' => [
+                        'code' => $item->service_provider_code,
+                        'name' => $item->service_provider_name
+                    ],
+                    'boa' => $item->boa
+                ];
             });
-        })
-            ->get()
-           ->groupBy('gj_number');
+        } else if ($boa == 'accruals' || $boa == 'reversals') {
+            $generalJournal = Accruals::where('user_id', auth()->user()->id)
+                ->when($boa == 'accruals', function ($query) use ($month, $year) {
+                    $query->whereMonth('adjustment_month', $month)
+                        ->whereYear('adjustment_month', $year)
+                        ->where('is_reversed', false);
+                }, function ($query) use ($month, $year) {
+                    $query->whereMonth('reversed_at', $month)
+                        ->whereYear('reversed_at', $year)
+                        ->where('is_reversed', true);
+                })
+                ->when($adjustment_month, function ($query) use ($month, $year) {
+//                        $query->whereMonth('adjustment_month', $month)
+//                            ->whereYear('adjustment_month', $year);
+                    $query->where(function ($item) use ($month, $year) {
+                        $item->whereMonth('adjustment_month', $month)
+                            ->whereYear('adjustment_month', $year);
+                    })->orWhere(function ($item) use ($month, $year) {
+                        $item->whereMonth('reversed_at', $month)
+                            ->whereYear('reversed_at', $year);
 
-        $transformedAccruals = $transformedAccruals->map(function ($item) {
-           return [
-               'account_tag' => '',
-               'boa' => $item[0]->is_reversed ? 'Reversals' : 'Accruals',
-               'division' => '',
-               'capex_no' =>'',
-               'transaction_date' => $item[0]->created_at,
-               'supplier' => '',
-               'voucher_month' => $item[0]->voucher_month ?? $item[0]->created_at,
-               'voucher_no' => '',
-               'reference_no' => '',
-               'batch' => '',
-               'vouchers' => $item->map(function ($item) {
-                   return [
-                       'entry' => $item->entry,
-                       'amount' => $item->amount,
-                       'account_title_code' => $item->account_title_code,
-                       'account_title' => $item->account_title_name,
-                       'company_code' => $item->company_code,
-                       'company' => $item->company_name,
-                       'department_code' => $item->department_code,
-                       'department' => $item->department_name,
-                       'location_code' => $item->location_code,
-                       'location' => $item->location_name,
-                       'description' => $item->remarks,
-                       'category' => $item->account_titles->first()->greatGrandParents->name ?? null,
-                       'dr/cr' => $item->account_titles->first()->pnl->name ?? null,
-                       'allocation' => $item->account_titles->first()->grandParents->name ?? null,
-                   ];
-               }),
-               'po_details' => [],
-           ];
-       })->values()->collect();
+                    });
+                })
+                ->when(!empty($companies), function ($query) use ($companies) {
+                    $query->whereIn("division_id", $companies);
+                })
+                ->get();
 
-        return response()->json([
-            'data' => $transformedTransactions->merge($transformedGeneralJournals)->merge($transformedAccruals)
-        ]);
+            $generalJournal->transform(function ($item) {
+                return [
+                    'journal_name' => $item->journal_name,
+                    'journal_description' => $item->journal_description,
+                    'adjustment_month' => $item->is_reversed ? $item->reversed_at : $item->adjustment_month,
+                    'account_tag' => $item->tag_no,
+                    'transaction_date' => $item->transaction_date,
+                    'supplier' => $item->supplier_name,
+                    'account_title' => [
+                        'code' => $item->account_title_code,
+                        'name' => $item->account_title_name,
+                    ],
+                    'company' => [
+                        'code' => $item->company_code,
+                        'name' => $item->company_name,
+                    ],
+                    'department' => [
+                        'code' => $item->department_code,
+                        'name' => $item->department_name,
+                    ],
+                    'location' => [
+                        'code' => $item->location_code,
+                        'name' => $item->location_name,
+                    ],
+                    'business_unit' => [
+                        'code' => $item->business_unit_code,
+                        'name' => $item->business_unit_name,
+                    ],
+                    'sub_unit' => [
+                        'code' => $item->sub_unit_code,
+                        'name' => $item->sub_unit_name,
+                    ],
+                    'category' => $item->account_titles->first()->greatGrandParents->name ?? null,
+                    'allocation' => $item->account_titles->first()->grandParents->name ?? null,
+                    'description' => $item->description,
+                    'amount' => $item->amount,
+                    'po_no' => $item->po_no,
+                    'reference_no' => $item->reference_no,
+                    'quantity' => $item->quantity,
+                    'unit' => $item->unit,
+                    'unit_price' => $item->unit_price,
+                    'voucher_number' => $item->voucher_number,
+                    'gj_number' => $item->gj_number,
+                    'dr/cr' => $item->entry,
+                    'asset' => [
+                        'code' => $item->asset_code,
+                        'name' => $item->asset_name
+                    ],
+                    'service_provider' => [
+                        'code' => $item->service_provider_code,
+                        'name' => $item->service_provider_name
+                    ],
+                    'boa' => $item->boa,
+                    'is_reversed' => $item->is_reversed
+                ];
+            });
+        } else {
+            $generalJournal = Transaction::withoutTrashed()
+                ->when($adjustment_month, function ($query) use ($month, $year) {
+                    $query->whereMonth('voucher_month', $month)
+                        ->whereYear('voucher_month', $year);
+                })
+                ->when(!empty($companies), function ($query) use ($companies) {
+                    $query->whereIn("company_id", $companies);
+                })
+                ->select(
+                    'id',
+                    'tag_no',
+                    'date_requested',
+                    'supplier',
+                    'referrence_no',
+                    'voucher_no',
+                    'voucher_month',
+                    'capex_no',
+                    'document_no',
+                    'utilities_receipt_no',
+                    'company'
+                )
+                ->get();
 
 
-//        return APReportResource::collection($transactions)
+            $generalJournal = $generalJournal->map(function ($transaction) {
+                $voucher_account_title = [];
+                if ($transaction->voucher) {
+                    $voucher_transaction = $transaction->voucher->first();
+                    if ($voucher_transaction && !empty($voucher_transaction->account_title)) {
+                        $voucher_account_title = $voucher_transaction->account_title
+                            ->map(function ($item) {
+                                return [
+                                    "entry" => $item->entry,
+                                    "amount" => $item->amount,
+                                    "account_title_code" => $item->account_title_code,
+                                    "account_title" => $item->account_title_name,
+                                    "company_code" => $item->company_code,
+                                    "company" => $item->company_name,
+                                    "department_code" => $item->department_code,
+                                    "department" => $item->department_name,
+                                    "location_code" => $item->location_code,
+                                    "location" => $item->location_name,
+                                    "description" => $item->remarks,
+                                    "category" => $item->accountType->first()->name ?? null,
+                                    "dr/cr" => $item->normalBalance->first()->name ?? null,
+                                    "allocation" => $item->accountGroup->first()->name ?? null,
+                                ];
+                            })
+                            ->toArray();
+                    }
+                }
 
+                return [
+                    "account_tag" => $transaction->tag_no,
+                    "boa" => "VP",
+                    "division" => $transaction->company,
+                    "capex_no" => $transaction->capex_no,
+                    "transaction_date" => $transaction->date_requested,
+                    "supplier" => $transaction->supplier,
+                    "voucher_month" => $transaction->voucher_month,
+                    "voucher_no" => $transaction->voucher_no,
+                    "reference_no" => $transaction->document_no ?? $transaction->referrence_no ?? $transaction->utilities_receipt_no ?? 'x',
+                    "batch" => $transaction->pcf_letter . $transaction->pcf_date,
+                    "vouchers" => $voucher_account_title,
+                    "po_details" => $transaction->po_details->map(function ($item) {
+                        return [
+                            "po_no" => $item->po_no,
+                        ];
+                    }),
+                ];
+            });
+        }
+
+        return $generalJournal;
     }
-
     public function generalNumbersDropdown(Request $request) {
         $voucher_month = $request->voucher_month;
 
@@ -5972,6 +6224,8 @@ class TransactionController extends Controller
                     })->transform(function ($item) {
                         return [
                             'entry' => 'debit',
+                            'account_title_id' => $item->account_title_id,
+                            'account_title_code' => $item->account_title_code,
                             'account_title' => $item->account_title_name,
                             'amount' => $item->amount,
                             'company_id' => $item->company_id,

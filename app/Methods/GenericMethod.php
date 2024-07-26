@@ -5848,13 +5848,13 @@ class GenericMethod
 
   public function generateVoucherNo($id, $code, $voucher_month, $is_confidential, $voucher_code)
   {
-//    $existingVoucher = Transaction::whereNotNull("voucher_no")
-//      ->where("id", $id)
-//      ->first();
-//
-//    if ($existingVoucher) {
-//      return $existingVoucher->voucher_no;
-//    }
+    $existingVoucher = Transaction::whereNotNull("voucher_no")
+      ->where("id", $id)
+      ->first();
+
+    if ($existingVoucher) {
+      return $existingVoucher->voucher_no;
+    }
 
     $series = 1;
 //    $code = Department::where('id', $code)->first()->voucherCode->code;

@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateGeneralJournalsTable extends Migration
+class CreateAccrualsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,7 +13,7 @@ class CreateGeneralJournalsTable extends Migration
      */
     public function up()
     {
-        Schema::create('general_journals', function (Blueprint $table) {
+        Schema::create('accruals', function (Blueprint $table) {
             $table->id();
             $table->date('adjustment_month')->nullable();
             $table->foreignId('division_id')->nullable()->constrained('companies');
@@ -47,21 +47,21 @@ class CreateGeneralJournalsTable extends Migration
             $table->string('po_no')->nullable();
             $table->string('reference_no')->nullable();
             $table->string('quantity')->nullable();
-            $table->string('unit')->nullable();
+            $table->string('uom')->nullable();
             $table->double('unit_price', 15, 2)->nullable();
             $table->string('voucher_number')->nullable();
             $table->string('asset_code')->nullable();
             $table->string('asset_name')->nullable();
             $table->string('service_provider_code')->nullable();
             $table->string('service_provider_name')->nullable();
-            $table->string('remarks')->nullable();
             $table->string('boa')->nullable();
             $table->foreignId('user_id')->nullable()->constrained('users');
             $table->string('journal_name')->nullable();
             $table->string('journal_description')->nullable();
             $table->string('gj_number')->nullable();
+            $table->boolean('is_reversed')->default(false);
+            $table->date('reversed_at')->nullable();
             $table->string('batch_no')->nullable();
-            $table->boolean('is_posted')->default(false);
             $table->timestamps();
             $table->softDeletes();
         });
@@ -74,6 +74,6 @@ class CreateGeneralJournalsTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('general_journals');
+        Schema::dropIfExists('accruals');
     }
 }

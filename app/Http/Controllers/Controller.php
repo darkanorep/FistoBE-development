@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Department;
+use App\Models\GeneralJournal;
 use Carbon\Carbon;
+use DateTime;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Foundation\Validation\ValidatesRequests;
@@ -643,6 +646,35 @@ class Controller extends BaseController
         return isset($request[$key]) && $request[$key]
             ? Carbon::createFromFormat("Y-m-d", $request[$key])->format("Y-m-d H:i:s")
             : $default;
+    }
+
+    function generateGeneralNumber($department_id) {
+        $code = 'GJ';
+        $voucher_code = Department::where('id', $department_id)->first()->voucherCode->code;
+        $date = (new DateTime())->format('y-m');
+
+        $series = 1;
+
+        do {
+            $formattedSeries = str_pad($series, 3, "0", STR_PAD_LEFT);
+            $gj_number = $code . $voucher_code . $date . '-' . $formattedSeries;
+            $series++;
+        } while(GeneralJournal::where('gj_number', $gj_number)->exists());
+
+        return $gj_number;
+    }
+
+    public function generateGJBatchNo($model) {
+
+        $series = 1;
+        $date = (new DateTime())->format('y-m');
+
+        do {
+            $batch_no = $date . '-' . str_pad($series, 3, '0', STR_PAD_LEFT);
+            $series++;
+        } while ($model::where('batch_no', $batch_no)->withTrashed()->exists());
+
+        return $batch_no;
     }
 
 }

@@ -2,62 +2,57 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\GeneralJournalRequest;
 use App\Models\AccountTitle;
+use App\Models\Accruals;
 use App\Models\BusinessUnit;
 use App\Models\Company;
 use App\Models\Department;
-use App\Models\GeneralJournal;
 use App\Models\Location;
 use App\Models\SubUnit;
 use App\Models\Supplier;
-use App\Models\Transaction;
 use Carbon\Carbon;
-use DateTime;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-class GeneralJournalController extends Controller
+class AccrualsController extends Controller
 {
 
     public function index(Request $request)
     {
         $rows = $request->rows;
         $companies = $this->getRequestData($request, 'companies');
-//        $transactionFrom = $this->getTransactionDate($request, 'transaction_from', Carbon::now()->startOfMonth()->format('Y-m-d H:i:s'));
-//        $transactionTo = $this->getTransactionDate($request, 'transaction_to', Carbon::now()->endOfMonth()->format('Y-m-d H:i:s'));
-        $is_posted = $request->input('is_posted', 0);
         $search = $request->search;
         $adjustment_month = $request->input('adjustment_month', Carbon::now()->format('Y-m'));
         $year = date('Y', strtotime($adjustment_month));
         $month = date('m', strtotime($adjustment_month));
+        $is_reversed = $request->input('is_reversed', 0);
 
-        $generalJournals = GeneralJournal::select(['gj_number', 'journal_name', 'journal_description', 'is_posted', DB::raw("MAX(updated_at) as latest_updated_at")])
-//            ->whereBetween('created_at', [$transactionFrom, $transactionTo])
-            ->when($is_posted == 1, function ($query) {
-                $query->where('is_posted', true);
-            }, function ($query) {
-                $query->where('is_posted', false);
-            })
+        $accruals = Accruals::select('journal_name', 'journal_description', 'adjustment_month', 'batch_no', 'is_reversed', 'reversed_at', DB::raw("MAX(updated_at) as latest_updated_at"))
             ->when(!empty($companies), function ($query) use ($companies) {
                 $query->whereIn('division_id', $companies);
             })
-            ->when(isset($adjustment_month), function ($query) use ($year, $month) {
-                $query->whereYear('adjustment_month', $year)
-                    ->whereMonth('adjustment_month', $month);
+            ->when($adjustment_month, function ($query) use ($year, $month, $is_reversed) {
+                $query->when($is_reversed, function ($query) use ($year, $month) {
+                    $query->where('is_reversed', 1)
+                        ->whereYear('reversed_at', $year)
+                        ->whereMonth('reversed_at', $month);
+                }, function ($query) use ($year, $month) {
+                    $query->where('is_reversed', 0)
+                        ->whereYear('adjustment_month', $year)
+                        ->whereMonth('adjustment_month', $month);
+                });
             })
             ->where('user_id', auth()->user()->id)
-            ->whereLike(['gj_number', 'journal_name', 'journal_description'], $search)
-            ->groupBy('gj_number', 'journal_name', 'journal_description', 'is_posted')
+            ->whereLike(['journal_name', 'journal_description'], $search)
+            ->groupBy('journal_name', 'journal_description', 'adjustment_month', 'batch_no', 'is_reversed', 'reversed_at')
             ->orderBy('latest_updated_at', 'desc')
-            ->whereLike(['gj_number', 'journal_name', 'journal_description'], $search)
+            ->whereLike(['journal_name', 'journal_description'], $search)
             ->paginate($rows);
 
-        $gjNumbers = $generalJournals->pluck('gj_number')->toArray();
-        $allAccountTitles = GeneralJournal::whereIn('gj_number', $gjNumbers)->get()->groupBy('gj_number');
+        $allAccountTitles = Accruals::whereIn('batch_no', $accruals->pluck('batch_no')->toArray())->get()->groupBy('batch_no');
 
-        $generalJournals->transform(function ($item) use ($allAccountTitles) {
-            $account_titles = $allAccountTitles[$item->gj_number];
+        $accruals->transform(function ($item) use ($allAccountTitles) {
+            $account_titles = $allAccountTitles->get($item->batch_no);
 
             return [
                 'id' => $account_titles->first()->id,
@@ -69,7 +64,6 @@ class GeneralJournalController extends Controller
                 'journal_name' => $item->journal_name,
                 'journal_description' => $item->journal_description,
                 'created_at' => $item->latest_updated_at,
-                'adjustment_month' => $account_titles->first()->adjustment_month,
                 'account_titles' => $account_titles->transform(function ($item) {
                     return [
                         'po_no' => $item->po_no,
@@ -113,15 +107,16 @@ class GeneralJournalController extends Controller
                         'remarks' => $item->description,
                     ];
                 }),
-                'is_posted' => $item->is_posted
+                'is_reversed' => $item->is_reversed,
+                'reversed_at' => $item->reversed_at,
             ];
         });
 
-        if ($generalJournals->isEmpty()) {
+        if ($accruals->isEmpty()) {
             return $this->resultResponse("not-found", "General Journals", []);
         }
 
-        return $generalJournals;
+        return $accruals;
     }
 
 
@@ -134,28 +129,19 @@ class GeneralJournalController extends Controller
         $division_name = data_get($request, "division.name");
         $adjust_month = data_get($request, "adjustment_month");
         $account_titles = $request->account_titles;
-        $department_id = null;
 
-        foreach($account_titles as $account_title) {
-            if(data_get($account_title, "department.id")) {
-                $department_id = $account_title['department']['id'];
-                break;
-            }
-        }
+        $batch_no = $this->generateGJBatchNo(Accruals::class);
 
-        $gj_number = $this->generateGeneralNumber($department_id);
-        $batch_no = $this->generateGJBatchNo(GeneralJournal::class);
-
-        foreach($account_titles as $account_title) {
-            GeneralJournal::create([
+        foreach ($account_titles as $account_title) {
+            Accruals::create([
                 'adjustment_month' => $adjust_month,
                 'division_id' => $division_id,
                 'division_name' => $division_name,
-                'description' => data_get($account_title, "remarks"),
+                'transaction_date' => Carbon::now(),
+                'tag_no' => data_get($account_title, "tag_no"),
                 'po_no' => data_get($account_title, "po_no"),
                 'reference_no' => data_get($account_title, "reference_no"),
                 'voucher_number' => data_get($account_title, "voucher_number"),
-                'transaction_date' => Carbon::now(),
                 'supplier_id' => data_get($account_title, "supplier.id"),
                 'supplier_code' => data_get($account_title, "supplier.code"),
                 'supplier_name' => data_get($account_title, "supplier.name"),
@@ -179,71 +165,68 @@ class GeneralJournalController extends Controller
                 'sub_unit_code' => data_get($account_title, "sub_unit.code"),
                 'sub_unit_name' => data_get($account_title, "sub_unit.name"),
                 'amount' => data_get($account_title, "amount"),
+                'description' => data_get($account_title, "remarks"),
 
                 'boa' => $boa,
-                'user_id' => auth()->user()->id,
+                'user_id' => auth()->id(),
                 'journal_name' => $journal_name,
                 'journal_description' => $journal_description,
-                'gj_number' => $gj_number,
                 'batch_no' => $batch_no
             ]);
         }
 
-        return response()->json(['message' => 'General Journal successfully created.'], 201);
+        return response()->json(['message' => 'Accrual Journal successfully created.'], 201);
     }
+
 
     public function show($id)
     {
-        //
+
     }
 
 
-    public function update($id, Request $request)
+    public function update(Request $request, $id)
     {
-        $generalJournal = GeneralJournal::find($id);
+        $accruals = Accruals::find($id);
 
-        if ($generalJournal) {
-            GeneralJournal::where('batch_no', $generalJournal->batch_no)->forceDelete();
+        if ($accruals) {
+            Accruals::where('batch_no', $accruals->batch_no)->forceDelete();
         }
 
         return $this->store($request);
-
-
-//        $generalJournal = GeneralJournal::find($id);
-//
-//        if (!$generalJournal) {
-//            return response()->json(['message' => 'General Journal not found.'], 404);
-//        }
-//
-//        $ids = GeneralJournal::where('gj_number', $generalJournal->gj_number)->pluck('id')->toArray();
-//
-//        foreach ($ids as $id) {
-//            $gj = GeneralJournal::find($id);
-//
-//            if ($gj->entry == 'Credit') {
-//                $gj->update([
-//                    'entry' => 'Debit',
-//                    'is_reversed' => true,
-//                    'reversed_at' => Carbon::now()->addMonth(1)
-//                ]);
-//            } else {
-//                $gj->update([
-//                    'entry' => 'Credit',
-//                    'is_reversed' => true,
-//                    'reversed_at' => Carbon::now()->addMonth(1)
-//                ]);
-//            }
-//        }
-//
-//        return response()->json(['message' => 'Entry updated successfully.']);
     }
 
     public function destroy($id)
     {
-        GeneralJournal::where('batch_no', GeneralJournal::find($id)->batch_no)->delete();
+        Accruals::where('batch_no', Accruals::find($id)->batch_no)->delete();
 
         return response()->json(['message' => 'General Journal successfully deleted.'], 200);
+    }
 
+
+    public function reverse($id)
+    {
+        $accruals = Accruals::find($id);
+
+        if (!$accruals) {
+            return response()->json(['message' => 'General Journal not found.'], 404);
+        }
+
+        $batchNo = $accruals->batch_no;
+
+        Accruals::where('batch_no', $batchNo)->get()->each(function ($gj) {
+            $gj->update([
+                'entry' => $gj->entry == 'Credit' ? 'Debit' : 'Credit',
+                'is_reversed' => true
+            ]);
+        });
+
+        Accruals::where('batch_no', $batchNo)->update([
+            'is_reversed' => true,
+            'reversed_at' => Carbon::now()
+        ]);
+
+        return response()->json(['message' => 'General Journal successfully reversed.'], 200);
     }
 
     public function import(Request $request) {
@@ -288,7 +271,7 @@ class GeneralJournalController extends Controller
                 ];
             }
 
-            if (!in_array($location, $location_list) && !empty($location)){
+            if (!in_array($location, $location_list) && !empty($location)) {
                 $error[] = (object)[
                     "line" => $index,
                     "description" => $location . " is not registered.",
@@ -302,10 +285,10 @@ class GeneralJournalController extends Controller
                 ];
             }
 
-            if ($boa != 'Adjustment') {
+            if ($boa != 'Accruals' || null) {
                 $error[] = (object)[
                     "line" => $index,
-                    "description" => "BOA must be Adjustment.",
+                    "description" => "BOA must be Accruals.",
                 ];
             }
 
@@ -384,20 +367,6 @@ class GeneralJournalController extends Controller
         } else {
             return response()->json(['error' => $error], 400);
         }
-    }
-
-
-    public function posted($id)
-    {
-        $generalJournal = GeneralJournal::find($id);
-
-        if ($generalJournal) {
-            GeneralJournal::where('batch_no', $generalJournal->batch_no)->update(['is_posted' => true]);
-        }
-
-        return response()->json(
-            ['message' => $generalJournal->gj_number . ' successfully posted.']
-            , 200);
     }
 
 }

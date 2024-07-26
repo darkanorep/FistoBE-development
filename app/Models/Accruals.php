@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class GeneralJournal extends Model
+class Accruals extends Model
 {
     use HasFactory, softDeletes;
 
@@ -43,26 +43,24 @@ class GeneralJournal extends Model
         'po_no',
         'reference_no',
         'quantity',
-        'unit',
+        'uom',
         'unit_price',
         'voucher_number',
         'asset_code',
         'asset_name',
-        'service_provider_code',
         'service_provider_name',
-        'remarks',
         'boa',
         'user_id',
         'journal_name',
         'journal_description',
         'gj_number',
-        'batch_no',
-        'is_posted'
+        'is_reversed',
+        'reversed_at',
+        'batch_no'
     ];
 
     public function account_titles()
     {
         return $this->hasMany(AccountTitle::class, 'id', 'account_title_id');
     }
-
 }
