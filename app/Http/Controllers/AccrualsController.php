@@ -64,6 +64,7 @@ class AccrualsController extends Controller
                 'journal_name' => $item->journal_name,
                 'journal_description' => $item->journal_description,
                 'created_at' => $item->latest_updated_at,
+                'adjustment_month' => $account_titles->first()->adjustment_month,
                 'account_titles' => $account_titles->transform(function ($item) {
                     return [
                         'po_no' => $item->po_no,

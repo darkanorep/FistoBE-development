@@ -1239,30 +1239,8 @@ class TransactionController extends Controller
 
     public function show($id)
     {
-//        $counter_receipt_status = null;
-//        $counter_receipt_no = null;
-        // $transaction = DB::table('transactions')->where('id',$id)->first();
         $transaction = Transaction::where("id", $id)->get();
-//        if ($transaction->isEmpty()) {
-//            throw new FistoException("No records found.", 404, null, []);
-//        }
-//
-//        $counter_receipt_details = CounterReceiptMethod::get_counter_receipt_id(
-//            $transaction->first()->referrence_no,
-//            $transaction->first()->supplier_id,
-//            $transaction->first()->department_id
-//        );
-//        if ($counter_receipt_details) {
-//            $counter_receipt_status = $counter_receipt_details->counter_receipt_status;
-//            $counter_receipt_no = $counter_receipt_details->counter_receipt_no;
-//        }
-//
-//        $transaction->map(function ($value) use ($counter_receipt_status, $counter_receipt_no) {
-//            $value["counter_receipt_status"] = $counter_receipt_status;
-//            $value["counter_receipt_no"] = $counter_receipt_no;
-//        });
 
-//                $singleTransaction = TransactionResource::collection($transaction);
         $singleTransaction = TransactionResource1::collection($transaction);
         if (!count($singleTransaction)) {
             throw new FistoException("No records found.", 404, null, []);
@@ -3371,10 +3349,16 @@ class TransactionController extends Controller
                     });
                 });
         })
-            ->where("utilities_receipt_no", $request->utilities_receipt_no)
-            ->where("supplier_id", $request->supplier_id)
-            ->where("company_id", $request->company_id)
-            ->where("state", "!=", "void")
+//            ->where("utilities_receipt_no", $request->utilities_receipt_no)
+//            ->where("supplier_id", $request->supplier_id)
+//            ->where("company_id", $request->company_id)
+//            ->where("state", "!=", "void")
+            ->where([
+                "utilities_receipt_no" => $request->utilities_receipt_no,
+                "supplier_id" => $request->supplier_id,
+                "company_id" => $request->company_id,
+                "state" => "!=", "void"
+            ])
             ->when(isset($transaction_id), function ($query) use ($transaction_id) {
                 $query->where("id", "<>", $transaction_id);
             })

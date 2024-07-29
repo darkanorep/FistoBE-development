@@ -15,67 +15,73 @@ use Illuminate\Validation\Rule;
 
 class AccountNumberController extends Controller
 {
-  public function index(Request $request)
-  {
-    $status =  $request['status'];
-    $rows =  (empty($request['rows']))?10:(int)$request['rows'];
-    $search =  $request['search'];
-    $paginate = (isset($request['paginate']))? $request['paginate']:$paginate = 1;
+    public function index(Request $request)
+    {
+        $status = $request['status'];
+        $rows = (empty($request['rows'])) ? 10 : (int)$request['rows'];
+        $search = $request['search'];
+        $paginate = (isset($request['paginate'])) ? $request['paginate'] : $paginate = 1;
 
-    $account_number = AccountNumber::withTrashed()
-    ->when($paginate,function($q) use ($search){
-      $q->with('location')
-      ->with('category')
-      ->with('supplier')
-      ->where(function ($query) use ($search) {
-        $query->where('account_no', 'like', '%'.$search.'%')
-        ->orWhereHas ('location',function($q)use($search){$q->where('location', 'like', '%'.$search.'%');})
-        ->orWhereHas ('category',function($q)use($search){$q->where('category', 'like', '%'.$search.'%');})
-        ->orWhereHas ('supplier',function($q)use($search){$q->where('name', 'like', '%'.$search.'%');});
-      });
-    },function($q){
-      $q->with(['location'=>function($q){
-        $q->select('id');
-      }])
-      ->with(['category'=>function($q){
-        $q->select('id');
-      }])
-      ->with(['supplier'=>function($q){
-        $q->select('id');
-      }]);
-    })
-    ->where(function ($query) use ($status){
-      return ($status==true)?$query->whereNull('deleted_at'):$query->whereNotNull('deleted_at');
-    })
-    ->latest('updated_at');
+        $account_number = AccountNumber::withTrashed()
+            ->when($paginate, function ($q) use ($search) {
+                $q->with('location')
+                    ->with('category')
+                    ->with('supplier')
+                    ->where(function ($query) use ($search) {
+                        $query->where('account_no', 'like', '%' . $search . '%')
+                            ->orWhereHas('location', function ($q) use ($search) {
+                                $q->where('location', 'like', '%' . $search . '%');
+                            })
+                            ->orWhereHas('category', function ($q) use ($search) {
+                                $q->where('category', 'like', '%' . $search . '%');
+                            })
+                            ->orWhereHas('supplier', function ($q) use ($search) {
+                                $q->where('name', 'like', '%' . $search . '%');
+                            });
+                    });
+            }, function ($q) {
+                $q->with(['location' => function ($q) {
+                    $q->select('id');
+                }])
+                    ->with(['category' => function ($q) {
+                        $q->select('id');
+                    }])
+                    ->with(['supplier' => function ($q) {
+                        $q->select('id');
+                    }]);
+            })
+            ->where(function ($query) use ($status) {
+                return ($status == true) ? $query->whereNull('deleted_at') : $query->whereNotNull('deleted_at');
+            })
+            ->latest('updated_at');
 
-    if ($paginate == 1){
-      $account_number = $account_number
-      ->paginate($rows);
-    }else if ($paginate == 0){
-      $account_number = $account_number
-      ->get(['id','location_id','category_id','supplier_id','account_no as no']);
-      if(count($account_number)==true){
-          $account_number = array("account_numbers"=>$account_number);;
-      }
+        if ($paginate == 1) {
+            $account_number = $account_number
+                ->paginate($rows);
+        } else if ($paginate == 0) {
+            $account_number = $account_number
+                ->get(['id', 'location_id', 'category_id', 'supplier_id', 'account_no as no']);
+            if (count($account_number) == true) {
+                $account_number = array("account_numbers" => $account_number);;
+            }
+        }
+
+        if (count($account_number) == true) {
+            return $this->resultResponse('fetch', 'Account Number', $account_number);
+        }
+        return $this->resultResponse('not-found', 'Account Number', []);
     }
 
-    if(count($account_number)==true){
-      return $this->resultResponse('fetch','Account Number',$account_number);
-    }
-    return $this->resultResponse('not-found','Account Number',[]);
-  }
+    public function store(AccountNumberRequest $request)
+    {
+        $account_number = AccountNumber::create([
+            'account_no' => $request->account_no,
+            'location_id' => $request->location_id,
+            'category_id' => $request->category_id,
+            'supplier_id' => $request->supplier_id,
+        ]);
 
-  public function store(AccountNumberRequest $request)
-  {
-      $account_number = AccountNumber::create([
-          'account_no' => $request->account_no,
-          'location_id' => $request->location_id,
-          'category_id' => $request->category_id,
-          'supplier_id' => $request->supplier_id,
-      ]);
-
-      return $this->resultResponse('save','Account Number', $account_number);
+        return $this->resultResponse('save', 'Account Number', $account_number);
 
 //    $fields = $request->validated();
 //
@@ -86,24 +92,24 @@ class AccountNumberController extends Controller
 //    }
 //    else
 //      return $this->resultResponse('registered','Account Number',[]);
-  }
+    }
 
-  public function update(AccountNumberRequest $request,$id)
-  {
-      $account_number = AccountNumber::where('id', $id)->first();
+    public function update(AccountNumberRequest $request, $id)
+    {
+        $account_number = AccountNumber::where('id', $id)->first();
 
-      if ($account_number) {
+        if ($account_number) {
 
-          $account_number->account_no = $request->account_no;
-          $account_number->location_id = $request->location_id;
-          $account_number->category_id = $request->category_id;
-          $account_number->supplier_id = $request->supplier_id;
+            $account_number->account_no = $request->account_no;
+            $account_number->location_id = $request->location_id;
+            $account_number->category_id = $request->category_id;
+            $account_number->supplier_id = $request->supplier_id;
 
-          return $this->validateIfNothingChangeThenSave($account_number, 'Account number');
+            return $this->validateIfNothingChangeThenSave($account_number, 'Account number');
 
-      } else {
-          return $this->resultResponse('not-found', 'Account Number', []);
-      }
+        } else {
+            return $this->resultResponse('not-found', 'Account Number', []);
+        }
 
 //    $model = new AccountNumber();
 //    $account_number = AccountNumber::find($id);
@@ -123,41 +129,42 @@ class AccountNumberController extends Controller
 //      $account_number->supplier_id = $fields['supplier_id'];
 //
 //      return $this->validateIfNothingChangeThenSave($account_number,'Account number');
-  }
+    }
 
-  public function change_status($id)
-  {
+    public function change_status($id)
+    {
 
-      return $this->changeStatus($id,  AccountNumber::class, 'Account number');
+        return $this->changeStatus($id, AccountNumber::class, 'Account number');
 
 //    $status = $request['status'];
 //    $model = new AccountNumber();
 //    return $this->change_masterlist_status($status,$model,$id,'Account number');
-  }
+    }
 
-  public function import(Request $request) {
-      $account_numbers = $request->all();
-      $errorBag = [];
-      $account_numbers_list = AccountNumber::withTrashed()->pluck('account_no')->toArray();
-      $locations_list = UtilityLocation::withTrashed()->pluck('location')->toArray();
-      $categories_list = UtilityCategory::withTrashed()->pluck('category')->toArray();
-      $suppliers_list = Supplier::withTrashed()->pluck('name')->toArray();
+    public function import(Request $request)
+    {
+        $account_numbers = $request->all();
+        $errorBag = [];
+        $account_numbers_list = AccountNumber::withTrashed()->pluck('account_no')->toArray();
+        $locations_list = UtilityLocation::withTrashed()->pluck('location')->toArray();
+        $categories_list = UtilityCategory::withTrashed()->pluck('category')->toArray();
+        $suppliers_list = Supplier::withTrashed()->pluck('name')->toArray();
 
-      date_default_timezone_set('Asia/Manila');
+        date_default_timezone_set('Asia/Manila');
 
-      $headers = 'Account No, Category, Location, Status, Supplier';
-      $templates = ['account_no', 'category', 'location', 'status', 'supplier'];
-      $keys = array_keys(current($account_numbers));
-      $this->validateHeader($templates, $keys, $headers);
+        $headers = 'Account No, Category, Location, Status, Supplier';
+        $templates = ['account_no', 'category', 'location', 'status', 'supplier'];
+        $keys = array_keys(current($account_numbers));
+        $this->validateHeader($templates, $keys, $headers);
 
-      $index = 2;
+        $index = 2;
 
-      foreach ($account_numbers as $account_number) {
-          $account_no = $account_number['account_no'];
-          $location = $account_number['location'];
-          $category = $account_number['category'];
-          $supplier = $account_number['supplier'];
-          $status = $account_number['status'];
+        foreach ($account_numbers as $account_number) {
+            $account_no = $account_number['account_no'];
+            $location = $account_number['location'];
+            $category = $account_number['category'];
+            $supplier = $account_number['supplier'];
+            $status = $account_number['status'];
 
 //          if (in_array($account_no, $account_numbers_list)) {
 //              $errorBag[] = [
@@ -167,101 +174,101 @@ class AccountNumberController extends Controller
 //              ];
 //          }
 
-          if (!in_array($location, $locations_list)) {
-              $errorBag[] = [
-                  "error_type" => "unregistered",
-                  "line" => $index,
-                  "description" => $location . " is not registered."
-              ];
-          }
+            if (!in_array($location, $locations_list)) {
+                $errorBag[] = [
+                    "error_type" => "unregistered",
+                    "line" => $index,
+                    "description" => $location . " is not registered."
+                ];
+            }
 
-          if (!in_array($category, $categories_list)) {
-              $errorBag[] = [
-                  "error_type" => "unregistered",
-                  "line" => $index,
-                  "description" => $category . " is not registered."
-              ];
-          }
+            if (!in_array($category, $categories_list)) {
+                $errorBag[] = [
+                    "error_type" => "unregistered",
+                    "line" => $index,
+                    "description" => $category . " is not registered."
+                ];
+            }
 
-          if(!in_array($supplier, $suppliers_list)) {
-              $errorBag[] = [
-                  "error_type" => "unregistered",
-                  "line" => $index,
-                  "description" => $supplier . " is not registered."
-              ];
-          }
+            if (!in_array($supplier, $suppliers_list)) {
+                $errorBag[] = [
+                    "error_type" => "unregistered",
+                    "line" => $index,
+                    "description" => $supplier . " is not registered."
+                ];
+            }
 
-          if(!in_array($status, ['Active', 'Inactive'])) {
-              $errorBag[] = (object) [
-                  "error_type" => "wrong-format",
-                  "line" => $index,
-                  "description" => "Status must be Active or Inactive.",
-              ];
-          }
+            if (!in_array($status, ['Active', 'Inactive'])) {
+                $errorBag[] = (object)[
+                    "error_type" => "wrong-format",
+                    "line" => $index,
+                    "description" => "Status must be Active or Inactive.",
+                ];
+            }
 
-          foreach ($account_number as $key => $value) {
-              if (empty($value)) {
-                  $errorBag[] = (object) [
-                      "error_type" => "empty",
-                      "line" => $index,
-                      "description" => $key . " is empty.",
-                  ];
-              }
-          }
+            foreach ($account_number as $key => $value) {
+                if (empty($value)) {
+                    $errorBag[] = (object)[
+                        "error_type" => "empty",
+                        "line" => $index,
+                        "description" => $key . " is empty.",
+                    ];
+                }
+            }
 
-          $index++;
-      }
+            $index++;
+        }
 
-      if (count($errorBag) || !count($errorBag)) {
+        if (count($errorBag) || !count($errorBag)) {
 
-          $input_account_no = array_column($account_numbers, 'account_no');
-          $duplicate_account_no = array_keys(array_filter(array_count_values($input_account_no), function ($value) {
-              return $value > 1;
-          }));
+            $input_account_no = array_column($account_numbers, 'account_no');
+            $duplicate_account_no = array_keys(array_filter(array_count_values($input_account_no), function ($value) {
+                return $value > 1;
+            }));
 
-          if (count($duplicate_account_no) > 0) {
-              $errorBag[] = (object) [
-                  'error_type' => 'duplicate',
-                  'line' => implode(', ', array_map(function ($value) {
-                      return $value + 2;
-                  }, (array_keys($input_account_no, $duplicate_account_no[0])))),
-                  'description' => 'Account No ' . $duplicate_account_no[0] . ' has a duplicate in your excel file.'
-              ];
-          }
-      }
+            if (count($duplicate_account_no) > 0) {
+                $errorBag[] = (object)[
+                    'error_type' => 'duplicate',
+                    'line' => implode(', ', array_map(function ($value) {
+                        return $value + 2;
+                    }, (array_keys($input_account_no, $duplicate_account_no[0])))),
+                    'description' => 'Account No ' . $duplicate_account_no[0] . ' has a duplicate in your excel file.'
+                ];
+            }
+        }
 
-      if (!count($errorBag)) {
-          $account_numbers = array_map(function ($account_number) {
-              return [
-                  'account_no' => $account_number['account_no'],
-                  'location_id' => UtilityLocation::withTrashed()->where('location', $account_number['location'])->first()->id,
-                  'category_id' => UtilityCategory::withTrashed()->where('category', $account_number['category'])->first()->id,
-                  'supplier_id' => Supplier::withTrashed()->where('name', $account_number['supplier'])->first()->id,
-                  'created_at' => date('Y-m-d H:i:s'),
-                  'updated_at' => date('Y-m-d H:i:s'),
-                  'deleted_at' => ($account_number['status'] == 'Active') ? null : date('Y-m-d H:i:s'),
-              ];
-          }, $account_numbers);
+        if (!count($errorBag)) {
+            $account_numbers = array_map(function ($account_number) {
+                return [
+                    'account_no' => $account_number['account_no'],
+                    'location_id' => UtilityLocation::withTrashed()->where('location', $account_number['location'])->first()->id,
+                    'category_id' => UtilityCategory::withTrashed()->where('category', $account_number['category'])->first()->id,
+                    'supplier_id' => Supplier::withTrashed()->where('name', $account_number['supplier'])->first()->id,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'updated_at' => date('Y-m-d H:i:s'),
+                    'deleted_at' => ($account_number['status'] == 'Active') ? null : date('Y-m-d H:i:s'),
+                ];
+            }, $account_numbers);
 
-          $chunks = array_chunk($account_numbers, 100);
+            $chunks = array_chunk($account_numbers, 100);
 
-          foreach ($chunks as $chunk) {
-              AccountNumber::insert($chunk);
-          }
+            foreach ($chunks as $chunk) {
+                AccountNumber::insert($chunk);
+            }
 
-          $account_numbers_collection = collect($account_numbers);
-          $active = $account_numbers_collection->whereNull('deleted_at')->count();
-          $inactive = $account_numbers_collection->whereNotNull('deleted_at')->count();
+            $account_numbers_collection = collect($account_numbers);
+            $active = $account_numbers_collection->whereNull('deleted_at')->count();
+            $inactive = $account_numbers_collection->whereNotNull('deleted_at')->count();
 
-          return response()->json([
-              'status' => 'imported',
-              'message' => 'Account Numbers successfully imported, '. $active . ' active rows and, ' . $inactive . ' inactive rows were added.',
-          ], 201);
-      } else {
-          return $this->resultResponse('import-error', 'Account Number', $errorBag);
-      }
+            return response()->json([
+                'status' => 'imported',
+                'message' => 'Account Numbers successfully imported, ' . $active . ' active rows and, ' . $inactive . ' inactive rows were added.',
+            ], 201);
+        } else {
+            return $this->resultResponse('import-error', 'Account Number', $errorBag);
+        }
 
-  }
+    }
 
 //  public function import(Request $request)
 //  {
