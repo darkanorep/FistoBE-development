@@ -2194,23 +2194,23 @@ class TransactionController extends Controller
                             $balance_with_additional_total_po_amount = $getAndValidatePOBalance["balance"];
 
                             $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
-//                            GenericMethod::updatePO(
-//                                $request_id,
-//                                $fields["po_group"],
-//                                $po_total_amount,
-//                                strtoupper($fields["document"]["payment_type"]),
-//                                $id
-//                            );
+                            GenericMethod::updatePO(
+                                $request_id,
+                                $fields["po_group"],
+                                $po_total_amount,
+                                strtoupper($fields["document"]["payment_type"]),
+                                $id
+                            );
 
-                            if (!$currentTransaction->is_new) {
-                                GenericMethod::updatePO(
-                                    $request_id,
-                                    $fields["po_group"],
-                                    $po_total_amount,
-                                    strtoupper($fields["document"]["payment_type"]),
-                                    $id
-                                );
-                            }
+//                            if (!$currentTransaction->is_new) {
+//                                GenericMethod::updatePO(
+//                                    $request_id,
+//                                    $fields["po_group"],
+//                                    $po_total_amount,
+//                                    strtoupper($fields["document"]["payment_type"]),
+//                                    $id
+//                                );
+//                            }
 
                             $transaction = GenericMethod::updateTransaction(
                                 $id,
@@ -2287,23 +2287,23 @@ class TransactionController extends Controller
                         }
 
                         $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
-//                        GenericMethod::updatePO(
-//                            $request_id,
-//                            $fields["po_group"],
-//                            $po_total_amount,
-//                            strtoupper($fields["document"]["payment_type"]),
-//                            $id
-//                        );
+                        GenericMethod::updatePO(
+                            $request_id,
+                            $fields["po_group"],
+                            $po_total_amount,
+                            strtoupper($fields["document"]["payment_type"]),
+                            $id
+                        );
 
-                        if (!$currentTransaction->is_new) {
-                            GenericMethod::updatePO(
-                                $request_id,
-                                $fields["po_group"],
-                                $po_total_amount,
-                                strtoupper($fields["document"]["payment_type"]),
-                                $id
-                            );
-                        }
+//                        if (!$currentTransaction->is_new) {
+//                            GenericMethod::updatePO(
+//                                $request_id,
+//                                $fields["po_group"],
+//                                $po_total_amount,
+//                                strtoupper($fields["document"]["payment_type"]),
+//                                $id
+//                            );
+//                        }
 
                         $transaction = GenericMethod::updateTransaction(
                             $id,
@@ -2854,23 +2854,23 @@ class TransactionController extends Controller
                     }
 
                     $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
-//                    GenericMethod::updatePO(
-//                        $request_id,
-//                        $fields["po_group"],
-//                        $po_total_amount,
-//                        strtoupper($fields["document"]["payment_type"]),
-//                        $id
-//                    );
+                    GenericMethod::updatePO(
+                        $request_id,
+                        $fields["po_group"],
+                        $po_total_amount,
+                        strtoupper($fields["document"]["payment_type"]),
+                        $id
+                    );
 
-                    if (!$currentTransaction->is_new) {
-                        GenericMethod::updatePO(
-                            $request_id,
-                            $fields["po_group"],
-                            $po_total_amount,
-                            strtoupper($fields["document"]["payment_type"]),
-                            $id
-                        );
-                    }
+//                    if (!$currentTransaction->is_new) {
+//                        GenericMethod::updatePO(
+//                            $request_id,
+//                            $fields["po_group"],
+//                            $po_total_amount,
+//                            strtoupper($fields["document"]["payment_type"]),
+//                            $id
+//                        );
+//                    }
 
                     $transaction = GenericMethod::updateTransaction(
                         $id,
@@ -2956,23 +2956,23 @@ class TransactionController extends Controller
                     $balance_with_additional_total_po_amount = $getAndValidatePOBalance["balance"];
 
                     $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
-//                    GenericMethod::updatePO(
-//                        $request_id,
-//                        $fields["po_group"],
-//                        $po_total_amount,
-//                        strtoupper($fields["document"]["payment_type"]),
-//                        $id
-//                    );
+                    GenericMethod::updatePO(
+                        $request_id,
+                        $fields["po_group"],
+                        $po_total_amount,
+                        strtoupper($fields["document"]["payment_type"]),
+                        $id
+                    );
 
-                    if (!$currentTransaction->is_new) {
-                        GenericMethod::updatePO(
-                            $request_id,
-                            $fields["po_group"],
-                            $po_total_amount,
-                            strtoupper($fields["document"]["payment_type"]),
-                            $id
-                        );
-                    }
+//                    if (!$currentTransaction->is_new) {
+//                        GenericMethod::updatePO(
+//                            $request_id,
+//                            $fields["po_group"],
+//                            $po_total_amount,
+//                            strtoupper($fields["document"]["payment_type"]),
+//                            $id
+//                        );
+//                    }
 
                     $transaction = GenericMethod::updateTransaction(
                         $id,
@@ -3005,23 +3005,23 @@ class TransactionController extends Controller
                 }
 
                 $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
-//                GenericMethod::updatePO(
-//                    $request_id,
-//                    $fields["po_group"],
-//                    $po_total_amount,
-//                    strtoupper($fields["document"]["payment_type"]),
-//                    $id
-//                );
+                GenericMethod::updatePO(
+                    $request_id,
+                    $fields["po_group"],
+                    $po_total_amount,
+                    strtoupper($fields["document"]["payment_type"]),
+                    $id
+                );
 
-                if (!$currentTransaction->is_new) {
-                    GenericMethod::updatePO(
-                        $request_id,
-                        $fields["po_group"],
-                        $po_total_amount,
-                        strtoupper($fields["document"]["payment_type"]),
-                        $id
-                    );
-                }
+//                if (!$currentTransaction->is_new) {
+//                    GenericMethod::updatePO(
+//                        $request_id,
+//                        $fields["po_group"],
+//                        $po_total_amount,
+//                        strtoupper($fields["document"]["payment_type"]),
+//                        $id
+//                    );
+//                }
 
                 $transaction = GenericMethod::updateTransaction(
                     $id,
@@ -3112,8 +3112,9 @@ class TransactionController extends Controller
             }
         } else {
             $requestIds = $po_batch
-                ->whereHas('request', function ($query) {
-                    $query->where('state', '!=', 'void');
+                ->whereHas('request', function ($query) use ($company_id){
+                    $query->where('state', '!=', 'void')
+                        ->where('company_id', $company_id);
                 })
                 ->where('po_no', $po_number)
                 ->pluck('request_id');
@@ -3130,6 +3131,7 @@ class TransactionController extends Controller
                 ->get()->pluck('request_id')->unique()->values();
             $sums = Transaction::whereIn('request_id', $requestIds)
                 ->where('state', '!=', 'void')
+                ->where('company_id', $company_id)
                 ->select(['document_amount', 'referrence_amount'])
                 ->get()
                 ->reduce(function ($carry, $item) {
@@ -4612,6 +4614,7 @@ class TransactionController extends Controller
                 "date" => $cheque_details->cheque_date,
                 "amount" => $cheque_details->cheque_amount,
                 "date_cleared" => $cheque_details->date_cleared,
+                "date_issued" => $cheque_details->issue->created_at ?? null,
             ];
 
             return [
@@ -5334,25 +5337,13 @@ class TransactionController extends Controller
             "supplier.supplier_type:id,type as name,transaction_days",
             "po_details:id,request_id,po_no,po_total_amount",
         ])
-            ->orderBy(DB::raw("(SELECT t.created_at FROM " . $statusMapping[$status]['table'] . " as t WHERE t.transaction_id = transactions.id ORDER BY t.created_at DESC LIMIT 1)"), 'desc')
-            ->when(isset($statusMapping[$status]['role']), function ($query) use ($statusMapping, $status, $my_approve) {
-                $query->when($my_approve == 1, function ($query) {
-                    $query->where('approver_id', auth()->user()->id);
-                }, function ($query) use ($statusMapping, $status) {
-                    $query->whereIn($statusMapping[$status]['user'], User::where('role', 'approver')->pluck('id'));
-                });
-            })
-            ->when(isset($statusMapping[$status]['user']) && !isset($statusMapping[$status]['role']), function ($query) use ($statusMapping, $status) {
-                $query->where($statusMapping[$status]['user'], auth()->user()->id);
-            })
             ->when(isset($statusMapping[$status]), function ($query) use ($statusMapping, $status, $transaction_from, $transaction_to) {
                 $query->whereHas($statusMapping[$status]['relation'], function ($query) use ($statusMapping, $status, $transaction_from, $transaction_to) {
                     $query->where('status', $statusMapping[$status]['status'])
                         ->when(isset($transaction_from) || isset($transaction_to), function ($query) use ($transaction_from, $transaction_to) {
                             $query->whereBetween('created_at', [$transaction_from, $transaction_to])
                                 ->latest('created_at');
-                        })
-                        ->limit(1);
+                        });
                 });
             })
             ->select([
@@ -5397,6 +5388,16 @@ class TransactionController extends Controller
                 "is_confidential",
                 "is_mc"
             ])
+            ->when(isset($statusMapping[$status]['role']), function ($query) use ($statusMapping, $status, $my_approve) {
+                $query->when($my_approve == 1, function ($query) {
+                    $query->where('approver_id', auth()->user()->id);
+                }, function ($query) use ($statusMapping, $status) {
+                    $query->whereIn($statusMapping[$status]['user'], User::where('role', 'approver')->pluck('id'));
+                });
+            })
+            ->when(isset($statusMapping[$status]['user']) && !isset($statusMapping[$status]['role']), function ($query) use ($statusMapping, $status) {
+                $query->where($statusMapping[$status]['user'], auth()->user()->id);
+            })
             ->when(!empty($document_ids), function ($query) use ($document_ids) {
                 $query->whereIn("document_id", $document_ids);
             })
@@ -5433,6 +5434,7 @@ class TransactionController extends Controller
                 "users.last_name",
                 "users.suffix",
             ], $search)
+            ->orderBy(DB::raw("(SELECT t.created_at FROM " . $statusMapping[$status]['table'] . " as t WHERE t.transaction_id = transactions.id ORDER BY t.created_at DESC LIMIT 1)"), 'desc')
             ->paginate($rows);
 
         TransactionIndex::collection($transactions);

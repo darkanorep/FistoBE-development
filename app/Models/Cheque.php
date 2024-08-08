@@ -77,4 +77,11 @@ class Cheque extends Model
         return $this->hasMany(ClearingAccountTitle::class, 'clear_id', 'id');
     }
 
+    public function issue() {
+        return $this->belongsTo(Issue::class, 'issue_id', 'id')
+            ->where('status', 'issue-issue')
+            ->limit(1)
+            ->latest();
+    }
+
 }

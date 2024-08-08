@@ -330,8 +330,13 @@ Route::group(["middleware" => "auth:sanctum"], function () {
     //Revert Cheque
 //    Route::post('transactions/flow/cheque-revert', [TransactionController::class, "chequeRevert1"]);
     //Cheque Flow
-    Route::post('cheque/flow', [TransactionFlow::class, "chequeFlow"]);
-    Route::get('cheque/history/{id}', [TransactionController::class, "chequeHistory"]);
+//    Route::post('cheque/flow', [TransactionFlow::class, "chequeFlow"]);
+//    Route::get('cheque/history/{id}', [TransactionController::class, "chequeHistory"]);
+    Route::group(["prefix" => "cheque"], function () {
+        Route::post('flow', [TransactionFlow::class, "chequeFlow"]);
+        Route::post('flow/multiple-process', [TransactionFlow::class, "multipleChequeProcess"]);
+        Route::get('history/{id}', [TransactionController::class, "chequeHistory"]);
+    });
     //ClearUser::where('role', 'approver')->pluck('id')
 //    Route::post("cheque/clear", [TransactionController::class, "chequeClear1"]);
 
@@ -356,6 +361,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
     Route::post('accruals/import', [\App\Http\Controllers\AccrualsController::class, 'import']);
 
     Route::resource("transactions", TransactionController::class);
+    Route::post('transactions-test', [TransactionController::class, "store1"]);
 
     Route::group(["prefix" => "transactions"], function () {
         //TRANSACTION
@@ -384,6 +390,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
             //MULTI
             Route::post("receive", [TransactionFlowController::class, "multipleReceive"]);
             Route::post("tag", [TransactionFlowController::class, "multipleTag"]);
+            ROute::post('multiple-process', [TransactionFlowController::class, "mutlipleProcess"]);
             Route::post("cheque", [TransactionFlowController::class, "multipleCheque"]);
             Route::post("mcloan", [TransactionFlowController::class, "applicationForLoan"]);
 

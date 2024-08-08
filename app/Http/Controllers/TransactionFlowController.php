@@ -766,6 +766,17 @@ public function updateTransactionEntries(Request $request, $id)
     }
 }
 
+public function mutlipleProcess(Request $request) {
+    $transactions = collect($request->input('transactions'));
+    $subprocess = $request->subprocess;
+
+    $transactions->each(function ($transaction) use ($request) {
+        static::updateInTransactionFlow($request, $transaction);
+    });
+
+    return GenericMethod::resultResponse($subprocess, "", "");
+}
+
     // public function pullRequest(Request $request){
     //     $process =  $request['process'];
     //     $subprocess =  $request['subprocess'];

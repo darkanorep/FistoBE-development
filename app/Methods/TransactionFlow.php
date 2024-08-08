@@ -230,7 +230,7 @@ class TransactionFlow
         $voucher_account_titles = GenericMethod::with_previous_transaction($accounts, $voucher_account_title);
         $approver = GenericMethod::with_previous_transaction($request["approver"] ?? null, $previous_approver);
         $distributed = GenericMethod::with_previous_transaction($request["distributed_to"] ?? null, $previous_distributed);
-        $gj_number = $request->input('gj_number', null);
+//        $gj_number = $request->input('gj_number', null);
 
         $approver_id = data_get($request, 'approver.id') ?? $transaction->approver_id;
         $approver_name = data_get($request, 'approver.name') ?? $transaction->approver_name;
@@ -592,13 +592,13 @@ class TransactionFlow
 
                     $voucher_no = $generic->generateVoucherNo($transaction->id, $department_id, $voucher_month, $isConfidential, $voucher_code);
 
-                    if (isset($gj_number)) {
-                        GeneralJournal::where('gj_number', $gj_number)->update([
-                            'transaction_id' => $transaction->id,
-                            'voucher_no' => $voucher_no,
-                            'voucher_month' => $voucher_month,
-                        ]);
-                    }
+//                    if (isset($gj_number)) {
+//                        GeneralJournal::where('gj_number', $gj_number)->update([
+//                            'transaction_id' => $transaction->id,
+//                            'voucher_no' => $voucher_no,
+//                            'voucher_month' => $voucher_month,
+//                        ]);
+//                    }
                 }
 
 //        if (isset($account_titles)) {
@@ -1916,8 +1916,8 @@ class TransactionFlow
 
     public function chequeFlow(Request $request)
     {
-        $bankId = $request->bank_id;
-        $chequeNo = $request->cheque_no;
+        $bankId = $request->bank_id ?? $request->cheque['bank_id'];
+        $chequeNo = $request->cheque_no ?? $request->cheque['cheque_no'];
 
         $context = [
             "process" => $request->process,
@@ -1976,6 +1976,16 @@ class TransactionFlow
         }
     }
 
+    public function multipleChequeProcess(Request $request) {
+        $cheques = collect($request->input('cheques'));
+
+        $cheques->each(function($cheque) use ($request) {
+            $chequeRequest = new Request(array_merge($request->all(), ['cheque' => $cheque]));
+            $this->chequeFlow($chequeRequest);
+        });
+
+        return GenericMethod::resultResponse($request->subprocess, "", "");
+    }
     //Issue Cheque
 //    function issueCheque($request, $transactionIds) {
 //
