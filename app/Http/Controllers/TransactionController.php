@@ -1097,20 +1097,26 @@ class TransactionController extends Controller
             //Filing of Voucher
             ->when($status == 'pending-file', function ($query) {
 //                $query->whereIn("status", ["release-release", "discharge-discharge"])
-                $query->whereIn("status", ["pass-pass", "discharge-discharge"])
-                    ->where('distributed_id', auth()->user()->id)
-                    ->where(function ($query) {
-//                        $query->where("receipt_type", "unofficial")
-//                            ->whereIn("is_mc", [1, 0]);
-////                            ->orWhereNull('receipt_type')
-////                            ->orWhereIn('is_mc', [1,0]);
-                        $query->where(function ($query) {
-//                            $query->where("receipt_type", "unofficial")
-                            $query->whereIn("receipt_type", ["unofficial", "official"])
-                                ->whereIn("is_mc", [1, 0]);
-                        })->orWhere(function ($query) {
-                            $query->whereNull('receipt_type');
-                        });
+//                $query->whereIn("status", ["pass-pass", "discharge-discharge"])
+//                    ->where('distributed_id', auth()->user()->id)
+//                    ->where(function ($query) {
+//                        $query->where(function ($query) {
+//                            $query->whereIn("receipt_type", ["unofficial", "official"])
+//                                ->whereIn("is_mc", [1, 0]);
+//                        })->orWhere(function ($query) {
+//                            $query->whereNull('receipt_type');
+//                        });
+//                    });
+
+                $query->where(function ($query) {
+                    $query->whereIn("status", ['pass-pass'])
+                        ->where('receipt_type', 'unofficial')
+                        ->where('distributed_id', auth()->user()->id);
+                })
+                    ->orWhere(function ($query) {
+                        $query->whereIn("status", ['discharge-discharge'])
+                            ->where('receipt_type', 'official')
+                            ->where('distributed_id', auth()->user()->id);
                     });
             })
 
@@ -1355,6 +1361,7 @@ class TransactionController extends Controller
 
     public function show($id)
     {
+        $transaction = Transaction::where('id', $id)->first();
         $rental = [
             'stall a rental',
             'stall b rental',
@@ -1369,7 +1376,6 @@ class TransactionController extends Controller
             'unofficial store rental',
             'rental'
         ];
-        $transaction = Transaction::where('id', $id)->first();
         $company = [
             "id" => $transaction->company_id,
             "name" => $transaction->company,

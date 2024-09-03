@@ -125,7 +125,7 @@ class TransactionVoucherResource extends JsonResource
                     'transaction_type' => $transaction_type,
                     'input_tax' => $this->input_tax,
                     'accounts' => $account_title,
-                    'approve' => $approver,
+                    'approver' => $approver,
                     'reason' => $transactionResource->reason($voucher_transaction, $voucher_transaction->reason_id)
                 ];
             }
