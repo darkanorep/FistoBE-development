@@ -168,6 +168,7 @@ class TransactionFlowController extends Controller
         $distributed_to = $request->input('distributed_to');
 //        $isConfidential = $request->input('is_confidential', 0);
 
+
         $tagData = [
 //            'status' => $process . '-tag',
             'status' => $process . '-'. $process,
@@ -178,8 +179,45 @@ class TransactionFlowController extends Controller
 
         $second = 1;
         foreach ($transactions as $transaction) {
-            $trx = Transaction::find($transaction);
+            $trx = Transaction::where('id',$transaction)->first();
             switch ($process) {
+//                case 'tag':
+//                    $trx->tag()->create([
+//                        'status' => $process . '-'. $process,
+//                        'date_status' => date('Y-m-d'),
+//                        'distributed_id' => data_get($distributed_to, 'id'),
+//                        'distributed_name' => data_get($distributed_to, 'name'),
+//                    ]);
+//
+//                    $trx
+//                        ->update([
+//                            'state' => $process,
+//                            'status' => $process . '-'. $process,
+//                            'receipt_type' => $receipt_type ?? $transaction->receipt_type ?? null,
+//                            'distributed_id' => data_get($distributed_to, 'id'),
+//                            'distributed_name' => data_get($distributed_to, 'name'),
+//                            'tag_no' => GenericMethod::generateTagNo($receipt_type, $transaction, $trx->is_confidential),
+//                            'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
+//                        ]);
+//                    break;
+//
+//                case 'extract':
+//
+//                    $trx->extract()->create([
+//                        'status' => $process . '-'. $process,
+//                        'date_status' => date('Y-m-d'),
+////                        'distributed_id' => $trx->distributed_id,
+////                        'distributed_name' => $trx->distributed_name
+//                    ]);
+//
+//                    $trx->update([
+//                        'state' => 'transmit',
+//                        'status' => $process . '-'. $process,
+//                        'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
+//                    ]);
+//
+//                    break;
+
                 case 'tag':
                 case 'extract':
                     Tagging::create(array_merge(['transaction_id' => $transaction], $tagData));
@@ -202,11 +240,6 @@ class TransactionFlowController extends Controller
                                 'status' => $process . '-'. $process,
                                 'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
                             ]);
-//                        $trx->update([
-//                            'state' => 'transmit',
-//                            'status' => $process . '-'. $process,
-//                            'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
-//                        ]);
                     }
 
                     break;
@@ -245,6 +278,7 @@ class TransactionFlowController extends Controller
 
                     break;
                 case 'transmit':
+                case 'pass':
 //                    Transmit::create([
 //                        'transaction_id' => $transaction,
 //                        'tag_id' => Transaction::where('id', $transaction)->first()->tag_no,

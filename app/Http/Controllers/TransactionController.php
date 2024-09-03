@@ -42,6 +42,7 @@ use App\Exceptions\FistoException;
 use Carbon\Carbon;
 
 use App\Http\Requests\TransactionPostRequest;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\Rule;
 
 class TransactionController extends Controller
@@ -788,6 +789,7 @@ class TransactionController extends Controller
     public function index(Request $request)
     {
 
+//        return Route::currentRouteName();
         $status = $request->input('state', 'request');
         $rows = (int)$request->input('rows', 10);
         $suppliers = $this->getRequestData($request, 'suppliers');
@@ -854,6 +856,9 @@ class TransactionController extends Controller
             //Filing of Official Receipt
             'pending-discharge',
 
+            //Transmittal for Filing of Voucher
+            'pending-pass',
+
             //Filing of Voucher
             'pending-file',
 
@@ -862,51 +867,18 @@ class TransactionController extends Controller
             'loan-loan'
         ];
 
-        $transactions = Transaction::
-        with([
+        $transactions = Transaction::with([
             "users:id,first_name,middle_name,last_name,department,position",
             "supplier.supplier_type:id,type as name,transaction_days",
             "po_details:id,request_id,po_no,po_total_amount",
+            "company_info:id,code",
+            "department_info:id,code",
+            "location_info:id,code",
+            "treasuryCheque",
+            "account_titles"
         ])
-//            ->where(function ($query) use ($search, $tag_search) {
-//                $query
-//                    ->where("date_requested", "like", "%" . $search . "%")
-//                    ->orWhere("remarks", "like", "%" . $search . "%")
-////                    ->orWhere("tag_no", "like", "%" . $search . "%")
-//                    ->orWhere("tag_no", "=", $tag_search)
-//                    ->orWhere("transaction_id", "like", "%" . $search . "%")
-//                    ->orWhere("document_amount", "like", "%" . $search . "%")
-//                    ->orWhere("document_type", "like", "%" . $search . "%")
-//                    ->orWhere("payment_type", "like", "%" . $search . "%")
-//                    ->orWhere("company", "like", "%" . $search . "%")
-//                    ->orWhere("department", "like", "%" . $search . "%")
-//                    ->orWhere("location", "like", "%" . $search . "%")
-//                    ->orWhere("supplier", "like", "%" . $search . "%")
-//                    ->orWhere("document_no", "like", "%" . $search . "%")
-//                    ->orWhere("referrence_no", "like", "%" . $search . "%")
-//                    ->orWhere("po_total_amount", "like", "%" . $search . "%")
-//                    ->orWhere("referrence_total_amount", "like", "%" . $search . "%")
-//                    ->orWhereHas("po_details", function ($query) use ($search) {
-//                        $query->where("po_no", "like", "%" . $search . "%");
-//                    })
-//                    ->orWhereHas("users", function ($query) use ($search) {
-//                        $query->where(
-//                            DB::raw(
-//                                "REPLACE(
-//                        CONCAT(
-//                            COALESCE(first_name,''),' ',
-//                            COALESCE(last_name,''),
-//                            COALESCE(suffix,'')
-//                        ),
-//                    '  ',' ')"
-//                            ),
-//                            "like",
-//                            "%" . $search . "%"
-//                        );
-//                    });
-//            })
             //Requesting of Documents
-
+//
             //Confidential
             ->when($is_confidential == null, function ($query) {
                 $query->whereIn('is_confidential', [1, 0]);
@@ -1111,14 +1083,22 @@ class TransactionController extends Controller
                     ->where('is_for_voucher_audit', true);
             })
 
+            //Transmittal for Filing of Voucher
+            ->when($status == 'pending-pass', function ($query) {
+                $query->whereIn("status", ["release-release"]);
+            })
+
             //Filing of Official Receipt (GAS)
             ->when($status == 'pending-discharge', function ($query) {
-                $query->whereIn("status", ["release-release"])->where("receipt_type", "official");
+//                $query->whereIn("status", ["release-release"])->where("receipt_type", "official");
+                $query->whereIn("status", ["pass-pass"])->where("receipt_type", "official");
             })
 
             //Filing of Voucher
             ->when($status == 'pending-file', function ($query) {
-                $query->whereIn("status", ["release-release", "discharge-discharge"])
+//                $query->whereIn("status", ["release-release", "discharge-discharge"])
+                $query->whereIn("status", ["pass-pass", "discharge-discharge"])
+                    ->where('distributed_id', auth()->user()->id)
                     ->where(function ($query) {
 //                        $query->where("receipt_type", "unofficial")
 //                            ->whereIn("is_mc", [1, 0]);
@@ -1228,7 +1208,10 @@ class TransactionController extends Controller
             ->latest('updated_at')
             ->paginate($rows);
 
-        TransactionIndex::collection($transactions);
+//        TransactionIndex::collection($transactions);
+
+        $transactions = $this->transactionIndexFormatter($transactions);
+
 
         if (count($transactions)) {
             return $this->resultResponse("fetch", "Transaction", $transactions);
@@ -1237,26 +1220,925 @@ class TransactionController extends Controller
 
     }
 
+    private function transactionIndexFormatter($transactions)
+    {
+        $transactions->transform(function ($transaction) {
+            $resource = new TransactionResource1($transaction);
+            $rental = $resource->getRental();
+            $state = $resource->stateChange($transaction->state);
+            $is_editable_prm = 0;
+            if ($transaction->document_id == 3) {
+                $is_editable_prm = Tagging::where("transaction_id", $transaction->transaction_id)
+                    ->whereNotIn("status", ["tag-return", "tag-void"])
+                    ->exists();
+            }
+
+            $is_latest_transaction = 0;
+            if ($transaction->po_details->isNotEmpty() && strtoupper($transaction->payment_type) === "PARTIAL") {
+                $po_no = $transaction->po_details->last()->po_no;
+                $trxns_id = POBatch::with([
+                    'request' => function ($query) {
+                        $query->where('state', '!=', 'void')
+                            ->select(['request_id']);
+                    }
+                ])
+                    ->where('po_no', $po_no)->select(['request_id', 'po_no'])->get();
+
+                $trxns_id = $trxns_id->filter(function ($query) {
+                    return $query['request'] != null;
+                })->pluck('request.request_id')->last();
+
+                if ($trxns_id == $transaction->id) {
+                    $is_latest_transaction = 1;
+                }
+            }
+
+            $accounts = $transaction->account_titles->filter(function ($item) {
+                return $item->account_title_name == 'Accounts Payable' || $item->account_title_name == 'Accounts Payable - RHL';
+            });
+
+//            $is_cheque = $transaction->treasuryCheque()->exists() ? 1 : 0;
+//            $is_cleared = $transaction->treasuryCheque->pluck('is_cleared')->isEmpty()
+//                ? 0 : ($transaction->treasuryCheque->pluck('is_cleared')->contains(0 || null)
+//                    ? 0
+//                    : 1);
+
+            return [
+                "id" => $transaction->id,
+                "tag_no" => $transaction->tag_no,
+                "users_id" => $transaction->users_id,
+                "is_latest_transaction" => $is_latest_transaction,
+                "is_editable_prm" => $is_editable_prm,
+                "request_id" => $transaction->request_id,
+//                "supplier_id" => $transaction->supplier_id,
+                "document_id" => $transaction->document_id,
+                "transaction_id" => $transaction->transaction_id,
+                "document_type" => $transaction->document_type,
+                "payment_type" => $transaction->payment_type,
+                "supplier" => $transaction->supplier,
+                "remarks" => $transaction->remarks,
+                "date_requested" => $transaction->date_requested,
+                "company_id" => $transaction->company_info->id,
+                "company_code" => $transaction->company_info->code,
+                "company" => $transaction->company,
+                'department_id' => $transaction->department_id,
+                'department_code' => $transaction->department_info->code,
+                "department" => $transaction->department,
+                "location_id" => $transaction->location_id,
+                "location_code" => $transaction->location_info->code,
+                "location" => $transaction->location,
+                "document_no" => $transaction->document_no,
+                "document_amount" => ($transaction->document_id == 3)
+                    ? ($transaction->category == in_array($transaction->category, $rental) ? $transaction->gross_amount : (($transaction->principal + $transaction->interest)))
+                    : $transaction->document_amount,
+                "cheque_date" => $transaction->document_id == 3 ? $transaction->cheque_date : null,
+                "period_covered" => $transaction->document_id == 3 ? $transaction->period_covered : null,
+                "referrence_no" => $transaction->referrence_no,
+                "referrence_amount" => $transaction->referrence_amount,
+                "status" => $state,
+                "state" => $transaction->status == 'cheque-cheque' ? 'cheque-create' : $transaction->status,
+                "users" => $transaction->users,
+                "po_details" => in_array($transaction->document_id, [1,  2, 4, 5])
+                    ? $transaction->po_details->map(function ($po) {
+                        return [
+                            "id" => $po->id,
+                            "request_id" => $po->request_id,
+                            "po_no" => $po->po_no,
+                            "po_total_amount" => $po->po_total_amount
+                        ];
+                    })
+                    : [],
+                'receipt_type' => $transaction->receipt_type,
+                'input_tax' => $transaction->input_tax,
+                'cheques' => $transaction->treasuryCheque->map(function ($item) {
+                    return [
+                        'bank' => $item->bank_name,
+                        'cheque_no' => $item->cheque_no,
+                        'amount' => $item->cheque_amount,
+                        'is_cleared' => $item->is_cleared,
+                    ];
+                }),
+                'accounts' => $accounts->map(function ($item) {
+                    return [
+                        'account_title' => [
+                            'name' => $item->account_title_name
+                        ],
+                        'amount' => $item->amount,
+                    ];
+                })->values(),
+                'voucher' => [
+                    'no' => $transaction->voucher_no,
+                ],
+//                'is_cheque' => $is_cheque,
+                'is_confidential' => $transaction->is_confidential,
+                'is_mc' => $transaction->is_mc,
+                "is_new" => $transaction->is_new ? 1 : 0,
+                'distributed_name' => $transaction->distributed_name
+            ];
+
+        });
+
+        return $transactions;
+    }
+
+//    public function show($id)
+//    {
+//        $transaction = Transaction::where("id", $id)->get();
+//
+//        $singleTransaction = TransactionResource1::collection($transaction);
+//
+//        if (!count($transaction)) {
+//            throw new FistoException("No records found.", 404, null, []);
+//        }
+//        return $this->resultResponse("fetch", "Transaction details", $singleTransaction->first());
+//    }
+
     public function show($id)
     {
-        $transaction = Transaction::where("id", $id)->get();
+        $rental = [
+            'stall a rental',
+            'stall b rental',
+            'stall c rental',
+            'stall d rental',
+            'cusa rental',
+            'dorm rental',
+            'additional rental',
+            'lounge rental',
+            'corporate special program - education',
+            'official store rental',
+            'unofficial store rental',
+            'rental'
+        ];
+        $transaction = Transaction::where('id', $id)->first();
+        $company = [
+            "id" => $transaction->company_id,
+            "name" => $transaction->company,
+        ];
 
-        $singleTransaction = TransactionResource1::collection($transaction);
-        if (!count($singleTransaction)) {
-            throw new FistoException("No records found.", 404, null, []);
+        $department = [
+            "id" => $transaction->department_id,
+            "name" => $transaction->department,
+        ];
+
+        $location = [
+            "id" => $transaction->location_id,
+            "name" => $transaction->location,
+        ];
+
+        $sub_unit = [
+            'id' => $transaction->sub_unit_id,
+            'name' => $transaction->sub_unit_name,
+        ];
+
+        $bussiness_unit = [
+            'id' => $transaction->bussiness_unit_id,
+            'name' => $transaction->bussiness_unit_name,
+        ];
+
+        $supplier = [
+            "id" => $transaction->supplier_id,
+            "name" => $transaction->supplier,
+        ];
+
+        $tag = null;
+        $inspect = null;
+        $extract = null;
+        $gas = null;
+        $voucher = null;
+        $approve = null;
+        $transmit = null;
+        $cheque = null;
+        $audit = null;
+        $executive = null;
+        $discharge = null;
+        $issue = null;
+        $pass = null;
+        $file = null;
+        $release = null;
+
+        switch ($transaction->document_id) {
+            case 1: //PAD
+            case 2: //PRM Common
+                $document = [
+                    "id" => $transaction->document_id,
+                    "is_confidential" => $transaction->is_confidential,
+                    "is_mc" => $transaction->is_mc,
+                    "is_new" => $transaction->is_new,
+                    "name" => $transaction->document_type,
+                    "no" => $transaction->document_no,
+                    "date" => $transaction->document_date,
+                    "payment_type" => $transaction->payment_type,
+                    "amount" => $transaction->document_amount,
+                    "remarks" => $transaction->remarks,
+                    "category" => [
+                        "id" => $transaction->category_id,
+                        "name" => $transaction->category,
+                    ]
+                ];
+                break;
+
+            case 3: //PRM Multiple
+                $document = [
+                    "id" => $transaction->document_id,
+                    "is_confidential" => $transaction->is_confidential,
+                    "is_mc" => $transaction->is_mc,
+                    "name" => $transaction->document_type,
+                    "no" => $transaction->document_no,
+//                    "date" => $this->document_date ?? $this->date_requested,
+                    "payment_type" => $transaction->payment_type,
+                    'amount' => ($transaction->document_id == 3)
+                        ? ($transaction->category == in_array($transaction->category, [
+                            'stall a rental',
+                            'stall b rental',
+                            'stall c rental',
+                            'stall d rental',
+                            'cusa rental',
+                            'dorm rental',
+                            'additional rental',
+                            'lounge rental',
+                            'corporate special program - education',
+                            'official store rental',
+                            'unofficial store rental',
+                            'rental'
+                        ]) ? $transaction->gross_amount : floatval((number_format(($transaction->principal + $transaction->interest), 2, '.', ''))))
+                        : $transaction->document_amount,
+                    "net_amount" => $transaction->net_amount,
+                    "release_date" => $transaction->release_date,
+                    "batch_no" => $transaction->batch_no,
+                    "remarks" => $transaction->remarks,
+                    "category" => [
+                        "id" => $transaction->category_id,
+                        "name" => $transaction->category,
+                    ]
+                ];
+                switch ($transaction->category) {
+                    case "additional rental":
+                    case "lounge rental":
+                    case "stall a rental":
+                    case "stall b rental":
+                    case "stall c rental":
+                    case "stall d rental":
+                    case "cusa rental":
+                    case "dorm rental":
+                    case "corporate special program - education":
+                    case "official store rental":
+                    case "unofficial store rental":
+                    case "rental":
+                        $document["period_covered"] = $transaction->period_covered;
+                        $document["prm_multiple_from"] = $transaction->prm_multiple_from;
+                        $document["prm_multiple_to"] = $transaction->prm_multiple_to;
+                        $document["gross_amount"] = $transaction->gross_amount;
+                        $document["witholding_tax"] = $transaction->witholding_tax;
+                        $document["net_of_amount"] = $transaction->net_amount;
+                        $document["cheque_date"] = $transaction->cheque_date;
+                        $prm_group = Transaction::rental($transaction->transaction_id)->get();
+
+                        break;
+                    case "official store leasing":
+                    case "unofficial store leasing":
+                    case "leasing":
+                        $document["amortization"] = $transaction->amortization;
+                        $document["principal"] = $transaction->principal;
+                        $document["interest"] = $transaction->interest;
+                        $document["cwt"] = $transaction->cwt;
+                        $document["net_of_amount"] = $transaction->net_amount;
+                        $document["cheque_date"] = $transaction->cheque_date;
+                        $prm_group = Transaction::leasing($transaction->transaction_id)->get();
+                        break;
+
+                    case "loans":
+                        $document["principal"] = $transaction->principal;
+                        $document["interest"] = $transaction->interest;
+                        $document["cwt"] = $transaction->cwt;
+                        $document["net_of_amount"] = $transaction->net_amount;
+                        $document["cheque_date"] = $transaction->cheque_date;
+                        $prm_group = Transaction::loans($transaction->transaction_id)->get();
+                        break;
+                }
+
+                break;
+
+            case 5: //Contractor's Billing
+                $document = [
+                    "id" => $transaction->document_id,
+                    "is_confidential" => $transaction->is_confidential,
+                    "is_mc" => $transaction->is_mc,
+                    "name" => $transaction->document_type,
+                    "no" => $transaction->document_no,
+                    "capex_no" => $transaction->capex_no,
+                    "date" => $transaction->document_date,
+                    "payment_type" => $transaction->payment_type,
+                    "amount" => $transaction->document_amount,
+                    "remarks" => $transaction->remarks,
+                    "category" => [
+                        "id" => $transaction->category_id,
+                        "name" => $transaction->category,
+                    ]
+                ];
+                break;
+
+            case 6: //Utilities
+                $document = [
+                    "id" => $transaction->document_id,
+//                    "date" => $this->document_date ?? $this->date_requested,
+                    "is_confidential" => $transaction->is_confidential,
+                    "is_mc" => $transaction->is_mc,
+                    "name" => $transaction->document_type,
+                    "payment_type" => $transaction->payment_type,
+                    "amount" => $transaction->document_amount,
+                    "from" => $transaction->utilities_from,
+                    "to" => $transaction->utilities_to,
+                    "remarks" => $transaction->remarks,
+                    "utility" => [
+                        "receipt_no" => $transaction->utilities_receipt_no,
+                        "consumption" => $transaction->utilities_consumption,
+                        "location" => [
+                            "id" => $transaction->utilities_location_id,
+                            "name" => $transaction->utilities_location,
+                        ],
+                        "category" => [
+                            "id" => $transaction->utilities_category_id,
+                            "name" => $transaction->utilities_category,
+                        ],
+                        "account_no" => [
+                            "id" => $transaction->utilities_account_no_id,
+                            "no" => $transaction->utilities_account_no,
+                        ],
+                    ],
+                ];
+                break;
+
+            case 8: //PCF
+                $document = [
+                    "id" => $transaction->document_id,
+                    "is_confidential" => $transaction->is_confidential,
+                    "is_mc" => $transaction->is_mc,
+                    "name" => $transaction->document_type,
+                    "date" => $transaction->document_date,
+                    "amount" => $this->document_amount,
+                    "payment_type" => $transaction->payment_type,
+                    "remarks" => $transaction->remarks,
+                    "pcf_batch" => [
+                        "name" => $transaction->pcf_name,
+                        "letter" => $transaction->pcf_letter,
+                        "date" => $transaction->pcf_date,
+                    ],
+                ];
+
+                break;
+
+            case 7: //Payroll
+                $document = [
+                    "id" => $transaction->document_id,
+//                    "date" => $this->document_date ?? $this->date_requested,
+                    "is_confidential" => $transaction->is_confidential,
+                    "is_mc" => $transaction->is_mc,
+                    "name" => $transaction->document_type,
+                    "payment_type" => $transaction->payment_type,
+                    "amount" => $transaction->document_amount,
+                    "from" => $transaction->payroll_from,
+                    "to" => $transaction->payroll_to,
+                    "remarks" => $transaction->remarks,
+                    "payroll" => [
+                        "type" => $transaction->payroll_type,
+                        "clients" => $transaction->payroll_client,
+                        "category" => [
+                            "id" => $transaction->payroll_category_id,
+                            "name" => $transaction->payroll_category,
+                        ],
+                        "control_no" => $transaction->payroll_control_no,
+                    ],
+                ];
+                break;
+
+            case 4: //Receipt
+                $document = [
+                    "id" => $transaction->document_id,
+                    "is_confidential" => $transaction->is_confidential,
+                    "is_mc" => $transaction->is_mc,
+                    "is_new" => $transaction->is_new,
+                    "name" => $transaction->document_type,
+                    "date" => $transaction->document_date,
+                    "payment_type" => $transaction->payment_type,
+                    "remarks" => $transaction->remarks,
+                    "category" => [
+                        "id" => $transaction->category_id,
+                        "name" => $transaction->category,
+                    ],
+                    "reference" => [
+                        "id" => $transaction->referrence_id,
+                        "type" => $transaction->referrence_type,
+                        "no" => $transaction->referrence_no,
+                        "amount" => $transaction->referrence_amount,
+                        "allowable" => $transaction->is_allowable,
+                    ]
+                ];
+                break;
+
+            case 9: //Auto Debit
+                $document = [
+                    "id" => $transaction->document_id,
+                    "is_confidential" => $transaction->is_confidential,
+                    "is_mc" => $transaction->is_mc,
+                    "name" => $transaction->document_type,
+                    "date" => $transaction->document_date,
+                    "payment_type" => $transaction->payment_type,
+                    "amount" => $transaction->document_amount,
+                    "remarks" => $transaction->remarks,
+                    "category" => [
+                        "id" => $transaction->category_id,
+                        "name" => $transaction->category,
+                    ]
+                ];
+                break;
         }
-        return $this->resultResponse("fetch", "Transaction details", $singleTransaction->first());
+
+        $requestor = [
+            'id' => $transaction->users_id,
+            'id_prefix' => $transaction->id_prefix,
+            'id_no' => $transaction->id_no,
+            'role' => $transaction->users->role,
+            'position' => $transaction->users->position,
+            'first_name' => $transaction->users->first_name,
+            'middle_name' => $transaction->users->middle_name,
+            'last_name' => $transaction->users->last_name,
+            'suffix' => $transaction->users->suffix,
+            'department' => $transaction->users->department[0]['name'],
+        ];
+
+        $transact = [
+                'id' => $transaction->id,
+                'request_id' => $transaction->request_id,
+                'no' => $transaction->transaction_id,
+                'date_requested' => $transaction->date_requested,
+                'status' => $transaction->status,
+                'state' => $transaction->state,
+                "is_latest_transaction" => "-"
+        ];
+
+        $document = array_merge($document, [
+                'company' => $company,
+                'department' => $department,
+                'location' => $location,
+                'supplier' => $supplier,
+                'sub_unit' => $sub_unit,
+                'bussiness_unit' => $bussiness_unit,
+        ]);
+
+        $po_group = $transaction->po_details->map(function ($po) {
+                return [
+                    'is_add' => $po->is_add,
+                    'is_editable' => $po->is_editable,
+                    'is_modifiable' => $po->is_modifiable,
+                    'id' => $po->id,
+                    'no' => $po->po_no,
+                    'amount' => floatVal($po->po_amount),
+                    'previous_balance' => 0,
+                    'balance' => 0,
+                    'rr_no' => $po->rr_group,
+                ];
+            })  ?? [];
+        $prm_group = $prm_group ?? [];
+        $autoDebit_group = $transaction->document_id == 9
+            ? $transaction->autoDebit->map(function ($autoDebit) {
+                return [
+                    "request_id" => $autoDebit->request_id,
+                    "pn_no" => $autoDebit->pn_no,
+                    "interest_from" => $autoDebit->interest_from,
+                    "interest_to" => $autoDebit->interest_to,
+                    "outstanding_amount" => floatVal($autoDebit->outstanding_amount),
+                    "interest_rate" => floatVal($autoDebit->interest_rate),
+                    "no_of_days" => floatVal($autoDebit->no_of_days),
+                    "principal_amount" => floatVal($autoDebit->principal_amount),
+                    "interest_due" => floatVal($autoDebit->interest_due),
+                    "cwt" => floatVal($autoDebit->cwt),
+                    "dst" => floatVal($autoDebit->dst),
+                ];
+            })
+            : [];
+
+        //REASON
+        $reason = [
+            'id' => $transaction->reason_id,
+            'description' => $transaction->reason,
+            'remarks' => $transaction->reason_remarks
+        ];
+
+        //TAG
+        if (isset($transaction->tag->first()->status)) {
+            $tag = [
+                'status' => $transaction->tag->first()->status ?? null,
+                'receipt_type' => $transaction->receipt_type,
+                'no' => $transaction->tag_no,
+                'dates' => [
+                    'transfered' => null,
+                    'received' => $this->getDateEveryStatus($transaction->tag, 'tag-receive'),
+                    'tagged' => $this->getDateEveryStatus($transaction->tag, 'tag-tag')
+                ],
+                'distributed_to' => [
+                    'id' => $transaction->distributed_id,
+                    'name' => $transaction->distributed_name,
+                ]
+            ];
+        }
+
+        //INSPECT
+        if (isset($transaction->inspect->first()->status)) {
+            $inspect = [
+                'status' => $transaction->inspect->first()->status,
+                'dates' => [
+                    'received' => $this->getDateEveryStatus($transaction->inspect, 'inspect-receive'),
+                    'inspected' => $this->getDateEveryStatus($transaction->inspect, 'inspect-inspect')
+                ]
+            ];
+        }
+
+        //EXTRACT
+        if (isset($transaction->extract->first()->status)) {
+            $extract = [
+                'status' => $transaction->extract->first()->status ?? null,
+                'dates' => [
+                    'received' => $this->getDateEveryStatus($transaction->extract, 'extract-receive') ?? null,
+                    'extracted' => $this->getDateEveryStatus($transaction->extract, 'extract-extract') ?? null
+                ]
+            ];
+        }
+
+        //GAS
+        if (isset($transaction->gas->first()->status)) {
+            $gas = [
+                'status' => $transaction->gas->first()->status ?? null,
+                'dates' => [
+                    'received' => $this->getDateEveryStatus($transaction->gas, 'gas-receive'),
+                    'gas' => $this->getDateEveryStatus($transaction->gas, 'gas-gas')
+                ]
+            ];
+        }
+
+        //VOUCHER
+        if (isset($transaction->voucher->first()->status)) {
+            $voucher = [
+                'status' => $transaction->voucher->first()->status ?? null,
+                'no' => $transaction->voucher_no,
+                'month' => $transaction->voucher_month,
+                'dates' => [
+                    'transfered' => null,
+                    'received' => $this->getDateEveryStatus($transaction->voucher, 'voucher-receive'),
+                    'vouchered' => $this->getDateEveryStatus($transaction->voucher, 'voucher-voucher')
+                ],
+                'transaction_type' => [
+                    'id' => $transaction->document_id,
+                    'name' => $transaction->document_type,
+                ],
+                'input_tax' => $transaction->input_tax,
+                'accounts' => $transaction->account_titles->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'entry' => $item->entry,
+                        'account_title' => [
+                            'id' => $item->account_title_id,
+                            'code' => $item->account_title_code,
+                            'name' => $item->account_title_name,
+                        ],
+                        'amount' => $item->amount,
+                        'remarks' => $item->remarks,
+                        'company' => [
+                            'id' => $item->company_id,
+                            'code' => $item->company_code,
+                            'name' => $item->company_name,
+                        ],
+                        'department' => [
+                            'id' => $item->department_id,
+                            'code' => $item->department_code,
+                            'name' => $item->department_name,
+                        ],
+                        'location' => [
+                            'id' => $item->location_id,
+                            'code' => $item->location_code,
+                            'name' => $item->location_name,
+                        ],
+                        'business_unit' => [
+                            'id' => $item->business_unit_id,
+                            'code' => $item->business_unit_code,
+                            'name' => $item->business_unit_name,
+                        ],
+                        'sub_unit' => [
+                            'id' => $item->sub_unit_id,
+                            'code' => $item->sub_unit_code,
+                            'name' => $item->sub_unit_name,
+                        ],
+                        'is_default' => $item->is_default,
+                    ];
+                }),
+                'approver' => [
+                    'id' => $transaction->approver_id,
+                    'name' => $transaction->approver_name,
+                ]
+            ];
+        }
+
+        //APPROVE
+        if (isset($transaction->approve->first()->status)) {
+            $approve = [
+                'status' => $transaction->approve->first()->status ?? null,
+                    'dates' => [
+                        'received' => $this->getDateEveryStatus($transaction->approve, 'approve-receive'),
+                        'approved' => $this->getDateEveryStatus($transaction->approve, 'approve-approve')
+                    ]
+            ];
+        }
+
+        //TRANSMIT
+        if (isset($transaction->transmit->first()->status)) {
+            $transmit = [
+                'status' => $transaction->transmit->first()->status ?? null,
+                'dates' => [
+                    'received' => $this->getDateEveryStatus($transaction->transmit, 'transmit-receive'),
+                    'transmitted' => $this->getDateEveryStatus($transaction->transmit, 'transmit-transmit')
+                ]
+            ];
+        }
+
+        //CHEQUE
+        if (isset($transaction->cheques->first()->status)) {
+            $cheque_transaction = $transaction->cheques->first();
+            $clear_transaction = $transaction->accountTitleClear;
+
+            $cheque = $transaction->treasuryChequeTrashed();
+            $issue_cheque = $transaction->chequeIssue;
+
+            $merged = $cheque->merge($issue_cheque);
+
+            $distinct = $merged->filter(function ($item) {
+                return $item->deleted_at == null;
+            })->values();
+
+            if (empty($cheque_transaction->cheques)) {
+                $cheques = null;
+                $accounts = null;
+            } else {
+                $chequeIssue = $transaction->chequeIssue;
+                $cheque = $transaction->treasuryChequeTrashed()->count() === $chequeIssue->count()
+                    ? ($chequeIssue ?: $cheque_transaction->cheques)
+                    : $distinct;
+
+                $cheques = $cheque->map(function ($item) {
+                    return [
+                        'type' => $item->entry_type,
+                        'bank' => [
+                            'id' => (int)$item->bank_id,
+                            'name' => $item->bank_name,
+                        ],
+                        'no' => $item->cheque_no,
+                        'date' => $item->cheque_date,
+                        'amount' => $item->cheque_amount,
+                        'date_cleared' => $item->date_cleared,
+                    ];
+                });
+
+                $chequeHistory = null;
+
+                if ($transaction->treasuryChequeHistory()->count() > 0) {
+                    $chequeHistoryMapper = function ($item) {
+                        return [
+                            'bank_name' => $item->bank_name,
+                            'cheque_no' => $item->cheque_no,
+                            'cheque_amount' => $item->cheque_amount,
+                            'reason_id' => $item->reason_id,
+                            'reason' => $item->reason,
+                        ];
+                    };
+
+                    [$valid, $void] = $this->treasuryChequeHistory()->partition(function ($item) {
+                        return $item->reason_id == null;
+                    });
+
+                    $chequeHistory = [
+                        'valid' => $valid->map($chequeHistoryMapper)->values(),
+                        'invalid' => $void->map($chequeHistoryMapper)->values(),
+                    ];
+                }
+
+                $account_titles = $clear_transaction->isEmpty()
+                    ? $cheque_transaction->account_title
+                    : $clear_transaction;
+
+                $accounts = $account_titles->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'entry' => $item->entry,
+                        'account_title' => [
+                            'id' => $item->account_title_id,
+                            'code' => $item->account_title_code,
+                            'name' => $item->account_title_name,
+                        ],
+                        'amount' => $item->amount,
+                        'remarks' => $item->remarks,
+                        'company' => [
+                            'id' => $item->company_id,
+                            'code' => $item->company_code,
+                            'name' => $item->company_name,
+                        ],
+                        'department' => [
+                            'id' => $item->department_id,
+                            'code' => $item->department_code,
+                            'name' => $item->department_name,
+                        ],
+                        'location' => [
+                            'id' => $item->location_id,
+                            'code' => $item->location_code,
+                            'name' => $item->location_name,
+                        ],
+                        'business_unit' => [
+                            'id' => $item->business_unit_id,
+                            'code' => $item->business_unit_code,
+                            'name' => $item->business_unit_name,
+                        ],
+                        'sub_unit' => [
+                            'id' => $item->sub_unit_id,
+                            'code' => $item->sub_unit_code,
+                            'name' => $item->sub_unit_name,
+                        ],
+                        'is_default' => $item->is_default
+                    ];
+                });
+
+                $related = $transaction->cheque->map(function ($item) {
+                    return [
+                        'bank_name' => $item->bank_name,
+                        'cheque_no' => $item->cheque_no,
+                        'cheque_amount' => $item->cheque_amount,
+                    ];
+                })->unique()->first();
+
+                if (empty($related)) {
+                    $relatedVouchers = null;
+                } else {
+
+                    $relatedVouchers = Cheque::where('cheque_no', $related['cheque_no'])
+                        ->where('cheque_amount', $related['cheque_amount'])
+                        ->where('bank_name', $related['bank_name'])
+                        ->get()
+                        ->pluck('transaction_id');
+
+                    $relatedVouchers = Transaction::whereIn('id', $relatedVouchers)->get()->map(function ($item) use ($rental) {
+                        $voucher_account_title = collect($item->voucher->first()->account_title->map(function ($item) {
+                            return [
+                                'account_title' => $item->account_title_name,
+                                'amount' => $item->amount,
+                            ];
+                        }));
+
+                        return [
+                            'id' => $item->id,
+                            'document_amount' => ($item->document_id == 3)
+                                ? ($item->category == in_array($item->category, $rental) ? $item->gross_amount : floatval((number_format(($item->principal + $item->interest), 2, '.', ''))))
+                                : $item->document_amount,
+                            'voucher_no' => $item->voucher_no,
+                            'input_tax' => $item->input_tax ?? 0,
+                            'voucher_account_title' => $voucher_account_title->filter(function ($item) {
+                                return $item['account_title'] == 'Accounts Payable' || $item['account_title'] == 'Accounts Payable - RHL';
+                            })->values(),
+                        ];
+                    });
+
+                    $relatedVouchers = $relatedVouchers->filter(function ($item) use ($transaction){
+                        return $item['id'] != $transaction->id;
+                    })->values();
+                }
+            }
+
+            $cheque = [
+                'status' => $cheque_transaction->status,
+                'dates' => [
+                    'received' => $this->getDateEveryStatus($transaction->cheques, 'cheque-receive'),
+                    'chequed' => $this->getDateEveryStatus($transaction->cheques, 'cheque-cheque')
+                ],
+                'cheques' => $cheques,
+                'accounts' => $accounts,
+                'cheque_history' => $chequeHistory,
+                'vouchers' => $relatedVouchers,
+            ];
+        }
+
+        //AUDIT
+        if (isset($transaction->audit->first()->status)) {
+            $audit = [
+                'status' => $transaction->audit->first()->status ?? null,
+                'dates' => [
+                    'received' => $this->getDateEveryStatus($transaction->audit, 'audit-receive'),
+                    'audited' => $this->getDateEveryStatus($transaction->audit, 'audit-audit')
+                ],
+                'reason' => null
+            ];
+        }
+
+        //EXECUTIVE
+        if (isset($transaction->executive->first()->status)) {
+            $executive = [
+                'status' => $transaction->executive->first()->status ?? null,
+                    'dates' => [
+                        'received' => $this->getDateEveryStatus($transaction->executive, 'executive-receive'),
+                        'signed' => $this->getDateEveryStatus($transaction->executive, 'executive-executive')
+                    ],
+            ];
+        }
+
+        //DISCHARGE
+        if (isset($transaction->discharge->first()->status)) {
+            $discharge = [
+                'status' => $transaction->discharge->first()->status ?? null,
+                'dates' => [
+                    'received' => $this->getDateEveryStatus($transaction->discharge, 'discharge-receive'),
+                    'discharged' => $this->getDateEveryStatus($transaction->discharge, 'discharge-discharge')
+                ]
+            ];
+        }
+
+        //FILE
+        if (isset($transaction->file->first()->status)) {
+            $file = [
+                'status' => $transaction->file->first()->status ?? null,
+                'dates' => [
+                    'received' => $this->getDateEveryStatus($transaction->file, 'file-receive'),
+                    'filed' => $this->getDateEveryStatus($transaction->file, 'file-file')
+                ],
+                'box_no' => $transaction->box_no
+            ];
+        }
+
+        //ISSUE
+        if (isset($transaction->issue->first()->status)) {
+            $issue = [
+                'status' => $transaction->issue->first()->status ?? null,
+                'dates' => [
+                    'received' => $this->getDateEveryStatus($transaction->issue, 'issue-receive'),
+                    'issued' => $this->getDateEveryStatus($transaction->issue, 'issue-issue')
+                ]
+            ];
+        }
+
+        //RELEASE
+        if (isset($transaction->release->first()->status)) {
+            $release = [
+                'status' => $transaction->release->first()->status ?? null,
+                'dates' => [
+                    'received' => $this->getDateEveryStatus($transaction->release, 'release-receive'),
+                    'released' => $this->getDateEveryStatus($transaction->release, 'release-release')
+                ]
+            ];
+        }
+
+        $transaction = [
+            'requestor' => $requestor,
+            'transaction' => $transact,
+            'document' => $document,
+            'reason' => $reason,
+            'po_group' =>  $po_group,
+            'prm_group' => $prm_group,
+            'autoDebit_group' => $autoDebit_group,
+            'tag' => $tag,
+            'inspect' => $inspect,
+            'extract' => $extract,
+            'gas' => $gas,
+            'voucher' => $voucher,
+            'approve' => $approve,
+            'transmit' => $transmit,
+            'cheque' => $cheque,
+            'audit' => $audit,
+            'executive' => $executive,
+            'discharge' => $discharge,
+            'file' => $file,
+            'issue' => $issue,
+            'release' => $release,
+        ];
+
+        $result = [];
+        foreach ($transaction as $key => $value) {
+            if ($value != null) {
+                $result[$key] = $value;
+            }
+        }
+
+        return $this->resultResponse("fetch", "Transaction details", $result);
     }
 
-    public function showCurrentPO($id)
+    private function getDateEveryStatus($transaction, $status)
     {
-        $transaction = Transaction::where("id", $id)->get();
-        $singleTransaction = TransactionResource::collection($transaction);
-        if (!count($singleTransaction)) {
-            throw new FistoException("No records found.", 404, null, []);
-        }
-        return $singleTransaction->first();
+        return $transaction->filter(function ($tag) use ($status) {
+            return $tag->status == $status;
+        })->first()->created_at ?? null;
     }
+
+//    public function showCurrentPO($id)
+//    {
+//        $transaction = Transaction::where("id", $id)->get();
+//        $singleTransaction = TransactionResource::collection($transaction);
+//        if (!count($singleTransaction)) {
+//            throw new FistoException("No records found.", 404, null, []);
+//        }
+//        return $singleTransaction->first();
+//    }
 
     public function store(TransactionPostRequest $request)
     {
@@ -1312,21 +2194,24 @@ class TransactionController extends Controller
                             ->exists();
 
                         if ($existTransaction) {
-                            $currentRequestids = POBatch::where("po_no", last($fields["po_group"])["no"])->pluck("request_id");
+//                            $currentRequestids = POBatch::where("po_no", last($fields["po_group"])["no"])->pluck("request_id");
+//
+//                            $ids = [];
+//
+//                            for ($i = 0; $i < count($currentRequestids); $i++) {
+//                                $ids[] = $currentRequestids[$i];
+//                            }
+//
+//                            //enable new transaction
+//                            Transaction::where("request_id", "=", end($ids))->update([
+//                                "is_not_editable" => true,
+//                                "updated_at" => DB::raw("updated_at"),
+//                            ]);
 
-                            $ids = [];
+                            $currentRequestids = POBatch::where("po_no", last($fields["po_group"])["no"])->pluck("request_id")->toArray();
 
-                            for ($i = 0; $i < count($currentRequestids); $i++) {
-                                $ids[] = $currentRequestids[$i];
-                            }
-
-                            // Transaction::where('request_id', '=', end($ids))
-                            // ->update([
-                            //   'is_not_editable' => true
-                            // ]);
-
-                            //enable new transaction
-                            Transaction::where("request_id", "=", end($ids))->update([
+                            // Enable new transaction
+                            Transaction::where("request_id", last($currentRequestids))->update([
                                 "is_not_editable" => true,
                                 "updated_at" => DB::raw("updated_at"),
                             ]);
@@ -1594,21 +2479,24 @@ class TransactionController extends Controller
                             ->exists();
 
                         if ($existTransaction) {
-                            $currentRequestids = POBatch::where("po_no", last($fields["po_group"])["no"])->pluck("request_id");
+//                            $currentRequestids = POBatch::where("po_no", last($fields["po_group"])["no"])->pluck("request_id");
+//
+//                            $ids = [];
+//
+//                            for ($i = 0; $i < count($currentRequestids); $i++) {
+//                                $ids[] = $currentRequestids[$i];
+//                            }
+//
+//                            //enable new transaction
+//                            Transaction::where("request_id", "=", end($ids))->update([
+//                                "is_not_editable" => true,
+//                                "updated_at" => DB::raw("updated_at"),
+//                            ]);
 
-                            $ids = [];
+                            $currentRequestids = POBatch::where("po_no", last($fields["po_group"])["no"])->pluck("request_id")->toArray();
 
-                            for ($i = 0; $i < count($currentRequestids); $i++) {
-                                $ids[] = $currentRequestids[$i];
-                            }
-
-                            // Transaction::where('request_id', '=', end($ids))
-                            // ->update([
-                            //   'is_not_editable' => true
-                            // ]);
-
-                            //enable new transaction
-                            Transaction::where("request_id", "=", end($ids))->update([
+                            // Enable new transaction
+                            Transaction::where("request_id", last($currentRequestids))->update([
                                 "is_not_editable" => true,
                                 "updated_at" => DB::raw("updated_at"),
                             ]);
@@ -1905,11 +2793,11 @@ class TransactionController extends Controller
                 if (!$isQty && !$isFull) {
                     //Partial
 
-                    $duplicateRef = GenericMethod::validateReferenceNo($fields);
+//                    $duplicateRef = GenericMethod::validateReferenceNo($fields);
 
-                    if (isset($duplicateRef)) {
-                        return $this->resultResponse("invalid", "", $duplicateRef);
-                    }
+//                    if (isset($duplicateRef)) {
+//                        return $this->resultResponse("invalid", "", $duplicateRef);
+//                    }
 
                     $fields["po_group"] = GenericMethod::ValidateIfPOExists(
                         $fields["po_group"],
@@ -1933,21 +2821,24 @@ class TransactionController extends Controller
                         ->exists();
 
                     if ($existTransaction) {
-                        $currentRequestids = POBatch::where("po_no", last($fields["po_group"])["no"])->pluck("request_id");
+//                        $currentRequestids = POBatch::where("po_no", last($fields["po_group"])["no"])->pluck("request_id");
+//
+//                        $ids = [];
+//
+//                        for ($i = 0; $i < count($currentRequestids); $i++) {
+//                            $ids[] = $currentRequestids[$i];
+//                        }
+//
+//                        //enable new transaction
+//                        Transaction::where("request_id", "=", end($ids))->update([
+//                            "is_not_editable" => true,
+//                            "updated_at" => DB::raw("updated_at"),
+//                        ]);
 
-                        $ids = [];
+                        $currentRequestids = POBatch::where("po_no", last($fields["po_group"])["no"])->pluck("request_id")->toArray();
 
-                        for ($i = 0; $i < count($currentRequestids); $i++) {
-                            $ids[] = $currentRequestids[$i];
-                        }
-
-                        // Transaction::where('request_id', '=', end($ids))
-                        // ->update([
-                        //   'is_not_editable' => true
-                        // ]);
-
-                        //enable new transaction
-                        Transaction::where("request_id", "=", end($ids))->update([
+                        // Enable new transaction
+                        Transaction::where("request_id", last($currentRequestids))->update([
                             "is_not_editable" => true,
                             "updated_at" => DB::raw("updated_at"),
                         ]);
@@ -1991,15 +2882,22 @@ class TransactionController extends Controller
                                 "is_modifiable" => true,
                             ]);
 
-                        $isAdd = POBatch::where("request_id", $request_id)->get();
+//                        $isAdd = POBatch::where("request_id", $request_id)->get();
+//
+//                        foreach ($isAdd as $record) {
+//                            if ($record->is_add == true && $record->is_editable == true) {
+//                                $record->update([
+//                                    "is_modifiable" => true,
+//                                ]);
+//                            }
+//                        }
 
-                        foreach ($isAdd as $record) {
-                            if ($record->is_add == true && $record->is_editable == true) {
-                                $record->update([
-                                    "is_modifiable" => true,
-                                ]);
-                            }
-                        }
+                        POBatch::where("request_id", $request_id)
+                            ->where("is_add", true)
+                            ->where("is_editable", true)
+                            ->update([
+                                "is_modifiable" => true,
+                            ]);
 
                         if (isset($transaction->transaction_id)) {
                             return $this->resultResponse("save", "Transaction", []);
@@ -3102,7 +4000,7 @@ class TransactionController extends Controller
         $po_batch = POBatch::query();
 
         if ($payment_type == 'Full') {
-            $po_batch->where('po_no', $po_number)->get();
+            $po_batch->where('po_no', $po_number)->exists();
 
             if ($po_batch->count() > 0) {
                 $errorMessage = GenericMethod::resultLaravelFormat("po_group.no", ["PO number already exist."]);
@@ -3119,7 +4017,12 @@ class TransactionController extends Controller
                 ->where('po_no', $po_number)
                 ->pluck('request_id');
 
-            $po_no = POBatch::whereIn('request_id', $requestIds)
+//            $po_no = POBatch::whereIn('request_id', $requestIds)
+//                ->whereNull('deleted_at')
+//                ->get()
+//                ->collect();
+
+             $po_no = POBatch::whereIn('request_id', $requestIds)
                 ->whereNull('deleted_at')
                 ->get()
                 ->collect();
@@ -3142,7 +4045,8 @@ class TransactionController extends Controller
 
             $totalDeduction = $sums['document_amount_sum'] + $sums['referrence_amount_sum'];
 
-            $po_total_amount = POBatch::whereIn('request_id', $requestIds)->pluck('po_total_amount')->collect()->unique()->max();
+//            $po_total_amount = POBatch::whereIn('request_id', $requestIds)->pluck('po_total_amount')->collect()->unique()->max();
+            $po_total_amount = $po_no->pluck('po_total_amount')->unique()->max();
             $transform_po = $po_no->transform(function ($item, $key) {
                 return [
                     'no' => $item->po_no,
@@ -3586,22 +4490,32 @@ class TransactionController extends Controller
             ? Carbon::createFromFormat("Y-m-d", $request->input("cheque_to"))->format("Y-m-d")
             : null;
 
-        $transactions = Transaction::with([
-            "users" => function ($query) {
-                return $query->select([
-                    "users.id",
-                    "users.first_name",
-                    "users.middle_name",
-                    "users.last_name",
-                    "users.department",
-                    "users.position",
-                ]);
-            },
-            "supplier.supplier_type" => function ($query) {
-                return $query->select(["supplier_types.id", "supplier_types.type as name"]);
-            },
-            //            "cheques.cheques"
-        ])
+        $transactions = Transaction
+//            ::with([
+//            "users" => function ($query) {
+//                $query->select([
+//                    "users.id",
+//                    "users.first_name",
+//                    "users.middle_name",
+//                    "users.last_name",
+//                    "users.department",
+//                    "users.position",
+//                ]);
+//            },
+//            "supplier.supplier_type" => function ($query) {
+//                $query->select(["supplier_types.id", "supplier_types.type as name"]);
+//            },
+//            "cheques" => function ($query) {
+//                $query->first();
+//            }
+//            //            "cheques.cheques"
+//        ])
+            ::with([
+                "users:id,first_name,middle_name,last_name,department,position",
+                "supplier.supplier_type:id,type as name",
+                "account_titles",
+                "treasuryCheque"
+            ])
 
             ->when($status == 'cheque', function ($query) {
                 return $query->whereHas('cheques', function ($query) {
@@ -3801,13 +4715,129 @@ class TransactionController extends Controller
             ->latest("updated_at")
             ->paginate((int)$rows);
 
-        ChequeIndex::collection($transactions);
+//        ChequeIndex::collection($transactions);
+        $this->chequeIndexFormatter($transactions);
 
         if (count($transactions)) {
             return $this->resultResponse("fetch", "Transaction", $transactions);
         }
 
         return $this->resultResponse("not-found", "Transaction", []);
+    }
+
+    private function chequeIndexFormatter($transactions) {
+
+        $transactions->getCollection()->transform(function ($transaction) {
+            $resource = new TransactionResource1($transaction);
+            $rental = $resource->getRental();
+
+//            $cheques = $transaction->cheques->first()
+//                ? $transaction->cheques->first()->chequeViaTransaction
+//                    ? $transaction->cheques->first()->chequeViaTransaction
+//                    : $transaction->cheques
+//                : $transaction->cheques;
+            $cheques = $transaction->treasuryCheque;
+
+//            $account_title = $transaction->voucher->first()->account_title;
+            $account_title = $transaction->account_titles;
+
+            return [
+                "id" => $transaction->id,
+                "tag_no" => $transaction->tag_no,
+                "transaction_no" => $transaction->transaction_id,
+                "receipt_type" => $transaction->receipt_type,
+                "payment_type" => $transaction->payment_type,
+                "users" => $transaction->users,
+                "document" => [
+                    "id" => $transaction->document_id,
+                    "name" => $transaction->document_type,
+                ],
+                "document_no" => $transaction->document_no,
+                'document_amount' => ($transaction->document_id == 3)
+                    ? ($transaction->category == in_array($transaction->category, $rental) ? $transaction->gross_amount : floatval((number_format(($transaction->principal + $transaction->interest), 2, '.', ''))))
+                    : $transaction->document_amount ?? $transaction->referrence_amount,
+                "reference_no" => $transaction->referrence_no,
+                "input_tax" => $transaction->input_tax,
+                "date_requested" => $transaction->date_requested,
+                "company" => [
+                    "id" => $transaction->company_id,
+                    "name" => $transaction->company,
+                ],
+                "department" => [
+                    "id" => $transaction->department_id,
+                    "name" => $transaction->department,
+                ],
+                "location" => [
+                    "id" => $transaction->location_id,
+                    "name" => $transaction->location,
+                ],
+                "supplier" => [
+                    "id" => $transaction->supplier->id,
+                    "name" => $transaction->supplier->name,
+                    "type" => $transaction->supplier->supplier_type->name,
+                ],
+                "voucher" => [
+                    "no" => $transaction->voucher_no,
+                    "month" => $transaction->voucher_month,
+                ],
+                "cheques" => $cheques->map(function ($item) {
+                    return [
+                        "type" => $item->entry_type,
+                        "no" => $item->cheque_no,
+                        "bank" => [
+                            "id" => $item->bank_id,
+                            "name" => $item->bank_name
+                        ],
+                        "amount" => $item->cheque_amount,
+                        "date" => $item->cheque_date,
+                    ];
+                }),
+                "accounts" => $account_title->map(function ($item) {
+                    return [
+                        "entry" => $item->entry,
+                        "account_title" => [
+                            "id" => $item->account_title_id,
+                            "code" => $item->account_title_code,
+                            "name" => $item->account_title_name,
+                        ],
+                        "company" => [
+                            "id" => $item->company_id,
+                            "code" => $item->company_code,
+                            "name" => $item->company_name,
+                        ],
+                        "department" => [
+                            "id" => $item->department_id,
+                            "code" => $item->department_code,
+                            "name" => $item->department_name,
+                        ],
+                        "location" => [
+                            "id" => $item->location_id,
+                            "code" => $item->location_code,
+                            "name" => $item->location_name,
+                        ],
+                        "business_unit" => [
+                            "id" => $item->business_unit_id,
+                            "code" => $item->business_unit_code,
+                            "name" => $item->business_unit_name,
+                        ],
+                        "sub_unit" => [
+                            "id" => $item->sub_unit_id,
+                            "code" => $item->sub_unit_code,
+                            "name" => $item->sub_unit_name,
+                        ],
+                        "amount" => $item->amount,
+                        "remarks" => $item->remarks,
+                    ];
+                }),
+                "remarks" => $transaction->remarks,
+                "status" => $transaction->state,
+                "state" => $transaction->status,
+                "is_confidential" => $transaction->is_confidential,
+                "is_mc" => $transaction->is_mc
+            ];
+        });
+
+        return $transactions;
     }
 
     public function clearChequeIndex(Request $request)
@@ -4078,19 +5108,26 @@ class TransactionController extends Controller
             : null;
         $is_confidential = $request->input("is_confidential", 0);
 
-        $cheques = Cheque
-//            ->when($is_confidential == 1, function ($query) {
-//                return $query->whereHas("transaction", function ($query) {
-//                    return $query->where("is_confidential", true);
-//                });
-//            }, function ($query) {
-//                return $query->whereHas("transaction", function ($query) {
-//                    return $query->where("is_confidential", false);
-//                });
-//            })
-
+        $cheques = Cheque::with([
+            'bank' => function ($query) {
+                $query->with([
+                    'AccountTitleOne',
+                    'AccountTitleTwo',
+                    'CompanyOne',
+                    'CompanyTwo',
+                    'DepartmentOne',
+                    'DepartmentTwo',
+                    'LocationOne',
+                    'LocationTwo',
+                    'BusinessUnitOne',
+                    'BusinessUnitTwo',
+                    'SubUnitOne',
+                    'SubUnitTwo'
+                ]);
+            }
+        ])
             // auditing of cheque
-            ::when($status == "pending-audit", function ($query) {
+            ->when($status == "pending-audit", function ($query) {
                 $query
                     ->whereHas("transaction", function ($query) {
                         return $query->whereIn("status", ["cheque-cheque", "audit-receive"])->where("is_for_releasing", "!=", true);
@@ -4395,7 +5432,18 @@ class TransactionController extends Controller
 
                 //Confidential
 
-                ->when($status != in_array($status, ['pending-audit', 'audit-receive', 'audit-audit', 'pending-executive', 'executive-receive', 'executive-executive', 'pending-issue', 'issue-receive', 'issue-issue', 'pending-clear']), function ($query) use ($is_confidential) {
+                ->when($status != in_array($status, [
+                        'pending-audit',
+                        'audit-receive',
+                        'audit-audit',
+                        'pending-executive',
+                        'executive-receive',
+                        'executive-executive',
+                        'pending-issue',
+                        'issue-receive',
+                        'issue-issue',
+                        'pending-clear'
+                    ]), function ($query) use ($is_confidential) {
                     $query->when($is_confidential == 1, function ($query) {
                         $query->whereHas('transaction', function ($query) {
                             $query->where('is_confidential', 1);
@@ -4420,7 +5468,9 @@ class TransactionController extends Controller
                 ->where("cheque_no", $item->cheque_no)
                 ->first();
 
-            $transaction = Transaction::whereIn("id", $ids)->get();
+            $transaction = Transaction::whereIn("id", $ids)
+                ->with('account_titles')
+                ->get();
             $rental = [
                 'stall a rental',
                 'stall b rental',
@@ -4475,7 +5525,8 @@ class TransactionController extends Controller
                     "voucher" => [
                         "no" => $item->voucher_no,
                         "month" => $item->voucher_month,
-                        "account_titles" => $item->voucher->first()->account_title->map(function ($item) {
+//                        "account_titles" => $item->voucher->first()->account_title->map(function ($item) {
+                        "account_titles" => $item->account_titles->map(function ($item) {
                             return [
                                 'id' => $item->id,
                                 'entry' => $item->entry,
@@ -4594,22 +5645,22 @@ class TransactionController extends Controller
                 ];
             });
 
-            $bank = $cheque_details->bank;
-            $bank_account_title_two = $bank->AccountTitleTwo;
-            $bank_company_one = $bank->CompanyOne;
-            $bank_company_two = $bank->CompanyTwo;
-            $bank_department_one = $bank->DepartmentOne;
-            $bank_department_two = $bank->DepartmentTwo;
-            $bank_location_one = $bank->LocationOne;
-            $bank_location_two = $bank->LocationTwo;
-            $bank_business_unit_one = $bank->BusinessUnitOne;
-            $bank_business_unit_two = $bank->BusinessUnitTwo;
-            $bank_sub_unit_one = $bank->SubUnitOne;
-            $bank_sub_unit_two = $bank->SubUnitTwo;
+//            $bank = $cheque_details->bank;
+//            $bank_account_title_two = $bank->AccountTitleTwo;
+//            $bank_company_one = $bank->CompanyOne;
+//            $bank_company_two = $bank->CompanyTwo;
+//            $bank_department_one = $bank->DepartmentOne;
+//            $bank_department_two = $bank->DepartmentTwo;
+//            $bank_location_one = $bank->LocationOne;
+//            $bank_location_two = $bank->LocationTwo;
+//            $bank_business_unit_one = $bank->BusinessUnitOne;
+//            $bank_business_unit_two = $bank->BusinessUnitTwo;
+//            $bank_sub_unit_one = $bank->SubUnitOne;
+//            $bank_sub_unit_two = $bank->SubUnitTwo;
 
             $cheques = [
                 "type" => $cheque_details->entry_type,
-                "bank" => $bank,
+                "bank" => $item->bank,
                 "no" => $cheque_details->cheque_no,
                 "date" => $cheque_details->cheque_date,
                 "amount" => $cheque_details->cheque_amount,
@@ -4736,7 +5787,8 @@ class TransactionController extends Controller
 //            8 => [], //Clearing of Cheque
 //            9 => [], //Creation of Debit Memo
 //            10 => [], //Reversal Request
-            11 => ["discharge-discharge", "release-release"], //Filing of Voucher
+//            11 => ["discharge-discharge", "release-release"], //Filing of Voucher
+            11 => ["pass-pass", "discharge-discharge"], //Filing of Voucher
             12 => ["tag-tag", "extract-extract", "approve-return", "cheque-return", "inspect-return"], //Creation of Voucher
             13 => ["approve-approve"], //Transmittal of Confidential Document
             14 => ["release-release"], //Filing of Confidential Voucher
@@ -4751,12 +5803,13 @@ class TransactionController extends Controller
 //            23 => [],  //Transmittal of Cheque
 //            24 => [], //Internal Releasing of Cheque
             25 => ["tag-tag"], //Transmittal of Official Receipt
-            26 => ["release-release"], //Filing of Official Receipt
+            26 => ["pass-pass"], //Filing of Official Receipt
             27 => ['gas-gas'], //Transmittal of GAS Voucher
             28 => ['tag-tag', 'approve-return'], //Vouchering of Confidential Document
             29 => [], //Managers Cheque
             30 => ['discharge-discharge', 'release-release'], //Filing of MC Voucher
-            31 => ['approve-approve'] //Application of Loan
+            31 => ['approve-approve'], //Application of Loan
+            33 => ["release-release"]  //Transmittal for Filing of Voucher
         ];
 
         $response = [];
@@ -4827,7 +5880,8 @@ class TransactionController extends Controller
                             'Transmittal of Official Receipt',
                             'Transmittal of GAS Voucher',
                             'Filing of Official Receipt',
-                            'Application of Loan'
+                            'Application of Loan',
+                            'Transmittal for Filing of Voucher'
                         ]), function ($query) use ($is_confidential, $is_mc) {
                         $query->when($is_confidential == 1, function ($query) use ($is_confidential, $is_mc) {
                             $query->where('is_confidential', 1);
@@ -4875,9 +5929,11 @@ class TransactionController extends Controller
                             });
                     })
                     ->where(function ($query) use ($permissionName) {
-                        $query->where('status', '<>', 'release-release')
+//                        $query->where('status', '<>', 'release-release')
+                        $query->where('status', '<>', 'pass-pass')
                             ->orWhere(function ($query) use ($permissionName) {
-                                $query->where('status', '=', 'release-release')
+//                                $query->where('status', '=', 'release-release')
+                                $query->where('status', '=', 'pass-pass')
                                     ->where('receipt_type', $permissionName == 'Filing of Voucher' ? '=' : '<>', 'Unofficial')
                                     ->orWhere('receipt_type', null)
                                     ->orWhere('is_mc', 1);
@@ -4920,6 +5976,7 @@ class TransactionController extends Controller
                         case 'inspect-inspect':
                         case 'release-release':
                         case 'discharge-discharge':
+                        case 'pass-pass':
                             $result['pending'] += $count;
                             break;
 
@@ -5319,30 +6376,41 @@ class TransactionController extends Controller
         $suppliers = $this->getRequestData($request, "suppliers");
         $document_ids = $this->getRequestData($request, "document_ids");
         $companies = $this->getRequestData($request, "companies");
-        $transaction_from = Carbon::parse($this->getTransactionDate($request, "transaction_from", $dateToday->startOfMonth()->format("Y-m-d")))->startOfDay();
-        $transaction_to = Carbon::parse($this->getTransactionDate($request, "transaction_to", $dateToday->endOfMonth()->format("Y-m-d")))->endOfDay();
+//        $transaction_from = Carbon::parse($this->getTransactionDate($request, "transaction_from", $dateToday->startOfMonth()->format("Y-m-d")))->startOfDay();
+//        $transaction_to = Carbon::parse($this->getTransactionDate($request, "transaction_to", $dateToday->endOfMonth()->format("Y-m-d")))->endOfDay();
+        $transaction_from = Carbon::parse($this->getTransactionDate($request, "transaction_from", $dateToday->format("Y-m-d")))->startOfDay();
+        $transaction_to = Carbon::parse($this->getTransactionDate($request, "transaction_to", $dateToday->format("Y-m-d")))->endOfDay();
         $my_approve = $request->input('my_approve', 0);
         $is_confidential = $request->input('is_confidential', 0);
         $is_mc = $request->input('is_mc', 0);
 
         $statusMapping = [
-            'tag' => ['relation' => 'tag', 'status' => 'tag-tag', 'table' => 'taggings'],
-            'inspect' => ['relation' => 'inspect', 'status' => 'inspect-inspect', 'table' => 'audits'],
-            'voucher' => ['relation' => 'voucher', 'status' => 'voucher-voucher', 'table' => 'associates', 'user' => 'distributed_id'],
-            'approve' => ['relation' => 'approve', 'status' => 'approve-approve', 'table' => 'approvers', 'user' => 'approver_id', 'role' => 'approver'],
+//            'tag' => ['relation' => 'tag', 'status' => 'tag-tag', 'table' => 'taggings'],
+//            'inspect' => ['relation' => 'inspect', 'status' => 'inspect-inspect', 'table' => 'audits'],
+//            'voucher' => ['relation' => 'voucher', 'status' => 'voucher-voucher', 'table' => 'associates', 'user' => 'distributed_id'],
+//            'approve' => ['relation' => 'approve', 'status' => 'approve-approve', 'table' => 'approvers', 'user' => 'approver_id', 'role' => 'approver'],
+
+            'tag' => ['relation' => 'tagHistory', 'table' => 'taggings'],
+            'inspect' => ['relation' => 'inspectHistory', 'table' => 'audits'],
+            'voucher' => ['relation' => 'voucherHistory', 'table' => 'associates', 'user' => 'distributed_id'],
+            'approve' => ['relation' => 'approveHistory', 'table' => 'approvers', 'user' => 'approver_id', 'role' => 'approver'],
         ];
 
         $transactions = Transaction::with([
             "users:id,first_name,middle_name,last_name,department,position",
             "supplier.supplier_type:id,type as name,transaction_days",
             "po_details:id,request_id,po_no,po_total_amount",
+//            "company_info:id,code",
+//            "department_info:id,code",
+//            "location_info:id,code",
+//            "treasuryCheque",
+//            "account_titles"
         ])
             ->when(isset($statusMapping[$status]), function ($query) use ($statusMapping, $status, $transaction_from, $transaction_to) {
                 $query->whereHas($statusMapping[$status]['relation'], function ($query) use ($statusMapping, $status, $transaction_from, $transaction_to) {
-                    $query->where('status', $statusMapping[$status]['status'])
-                        ->when(isset($transaction_from) || isset($transaction_to), function ($query) use ($transaction_from, $transaction_to) {
-                            $query->whereBetween('created_at', [$transaction_from, $transaction_to])
-                                ->latest('created_at');
+//                    $query->where('status', $statusMapping[$status]['status'])
+                        $query->when(isset($transaction_from) || isset($transaction_to), function ($query) use ($transaction_from, $transaction_to) {
+                            $query->whereBetween('created_at', [$transaction_from, $transaction_to]);
                         });
                 });
             })
@@ -5386,7 +6454,8 @@ class TransactionController extends Controller
                 "distributed_id",
                 "distributed_name",
                 "is_confidential",
-                "is_mc"
+                "is_mc",
+                "distributed_name"
             ])
             ->when(isset($statusMapping[$status]['role']), function ($query) use ($statusMapping, $status, $my_approve) {
                 $query->when($my_approve == 1, function ($query) {
@@ -5434,15 +6503,101 @@ class TransactionController extends Controller
                 "users.last_name",
                 "users.suffix",
             ], $search)
-            ->orderBy(DB::raw("(SELECT t.created_at FROM " . $statusMapping[$status]['table'] . " as t WHERE t.transaction_id = transactions.id ORDER BY t.created_at DESC LIMIT 1)"), 'desc')
+//            ->orderBy(DB::raw("(SELECT t.created_at FROM " . $statusMapping[$status]['table'] . " as t WHERE t.transaction_id = transactions.id ORDER BY t.created_at DESC LIMIT 1)"), 'desc')
             ->paginate($rows);
 
-        TransactionIndex::collection($transactions);
+//        TransactionIndex::collection($transactions)
+        $transactions = $this->historyIndexFormatter($transactions);
+
 
         if (count($transactions)) {
             return $this->resultResponse("fetch", "Transaction", $transactions);
         }
         return $this->resultResponse("not-found", "Transaction", []);
+    }
+
+    public function historyIndexFormatter($transactions) {
+        $transactions->getCollection()->transform(function ($transaction) {
+            $resource = new TransactionResource1($transaction);
+            $rental = $resource->getRental();
+//            $accounts = $transaction->account_titles->filter(function ($item) {
+//                return $item->account_title_name == 'Accounts Payable' || $item->account_title_name == 'Accounts Payable - RHL';
+//            });
+
+
+            return [
+                "id" => $transaction->id,
+                "tag_no" => $transaction->tag_no,
+                "users_id" => $transaction->users_id,
+//                "request_id" => $transaction->request_id,
+                "document_id" => $transaction->document_id,
+                "transaction_id" => $transaction->transaction_id,
+                "document_type" => $transaction->document_type,
+                "payment_type" => $transaction->payment_type,
+                "supplier" => $transaction->supplier,
+                "remarks" => $transaction->remarks,
+                "date_requested" => $transaction->date_requested,
+//                "company_id" => $transaction->company_info->id,
+//                "company_code" => $transaction->company_info->code,
+                "company" => $transaction->company,
+//                'department_id' => $transaction->department_id,
+//                'department_code' => $transaction->department_info->code,
+                "department" => $transaction->department,
+//                "location_id" => $transaction->location_id,
+//                "location_code" => $transaction->location_info->code,
+                "location" => $transaction->location,
+                "document_no" => $transaction->document_no,
+                "document_amount" => ($transaction->document_id == 3)
+                    ? ($transaction->category == in_array($transaction->category, $rental) ? $transaction->gross_amount : (($transaction->principal + $transaction->interest)))
+                    : $transaction->document_amount,
+                "cheque_date" => $transaction->document_id == 3 ? $transaction->cheque_date : null,
+                "period_covered" => $transaction->document_id == 3 ? $transaction->period_covered : null,
+                "referrence_no" => $transaction->referrence_no,
+                "referrence_amount" => $transaction->referrence_amount,
+//                "status" => $state,
+//                "state" => $transaction->status == 'cheque-cheque' ? 'cheque-create' : $transaction->status,
+                "users" => $transaction->users,
+                "po_details" => in_array($transaction->document_id, [1,  2, 4, 5])
+                    ? $transaction->po_details->map(function ($po) {
+                        return [
+                            "id" => $po->id,
+                            "request_id" => $po->request_id,
+                            "po_no" => $po->po_no,
+                            "po_total_amount" => $po->po_total_amount
+                        ];
+                    })
+                    : [],
+                'receipt_type' => $transaction->receipt_type,
+                'input_tax' => $transaction->input_tax,
+//                'cheques' => $transaction->treasuryCheque->map(function ($item) {
+//                    return [
+//                        'bank' => $item->bank_name,
+//                        'cheque_no' => $item->cheque_no,
+//                        'amount' => $item->cheque_amount,
+//                        'is_cleared' => $item->is_cleared,
+//                    ];
+//                }),
+//                'accounts' => $accounts->map(function ($item) {
+//                    return [
+//                        'account_title' => [
+//                            'name' => $item->account_title_name
+//                        ],
+//                        'amount' => $item->amount,
+//                    ];
+//                })->values(),
+                'voucher' => [
+                    'no' => $transaction->voucher_no,
+                ],
+//                'is_cheque' => $is_cheque,
+                'is_confidential' => $transaction->is_confidential,
+                'is_mc' => $transaction->is_mc,
+                "is_new" => $transaction->is_new ? 1 : 0,
+                'distributed_name' => $transaction->distributed_name
+            ];
+
+        });
+
+        return $transactions;
     }
 
 
@@ -5937,7 +7092,8 @@ class TransactionController extends Controller
         $dateToday = Carbon::now()->timezone("Asia/Manila");
 //        $transaction_from = Carbon::parse($this->getTransactionDate($request, "transaction_from", $dateToday->startOfMonth()->format("Y-m-d")))->startOfDay();
 //        $transaction_to = Carbon::parse($this->getTransactionDate($request, "transaction_to", $dateToday->endOfMonth()->format("Y-m-d")))->endOfDay();
-        $adjustment_month = $request->input('adjustment_month', Carbon::now()->format('Y-m'));
+        $adjustment_month = $request->input('adjustment_month', $dateToday->startOfMonth()->format("Y-m-d"));
+//        $adjustment_month = Carbon::parse($this->getTransactionDate($request, "transaction_from", $dateToday->startOfMonth()->format("Y-m-d")))->startOfDay();
         $year = date('Y', strtotime($adjustment_month));
         $month = date('m', strtotime($adjustment_month));
 
@@ -6032,16 +7188,22 @@ class TransactionController extends Controller
                         ->whereYear('reversed_at', $year)
                         ->where('is_reversed', true);
                 })
-                ->when($adjustment_month, function ($query) use ($month, $year) {
-//                        $query->whereMonth('adjustment_month', $month)
+                ->when($adjustment_month, function ($query) use ($month, $year, $boa) {
+//                    $query->where(function ($item) use ($month, $year) {
+//                        $item->whereMonth('adjustment_month', $month)
 //                            ->whereYear('adjustment_month', $year);
-                    $query->where(function ($item) use ($month, $year) {
-                        $item->whereMonth('adjustment_month', $month)
-                            ->whereYear('adjustment_month', $year);
-                    })->orWhere(function ($item) use ($month, $year) {
-                        $item->whereMonth('reversed_at', $month)
-                            ->whereYear('reversed_at', $year);
+//                    })->orWhere(function ($item) use ($month, $year) {
+//                        $item->whereMonth('reversed_at', $month)
+//                            ->whereYear('reversed_at', $year);
+//
+//                    });
 
+                    $query->when($boa == 'accruals', function ($query) use ($month, $year) {
+                        $query->whereMonth('adjustment_month', $month)
+                            ->whereYear('adjustment_month', $year);
+                    }, function ($query) use ($month, $year) {
+                        $query->whereMonth('reversed_at', $month)
+                            ->whereYear('reversed_at', $year);
                     });
                 })
                 ->when(!empty($companies), function ($query) use ($companies) {
@@ -6107,6 +7269,7 @@ class TransactionController extends Controller
             });
         } else {
             $generalJournal = Transaction::withoutTrashed()
+                ->where('distributed_id', auth()->user()->id)
                 ->when($adjustment_month, function ($query) use ($month, $year) {
                     $query->whereMonth('voucher_month', $month)
                         ->whereYear('voucher_month', $year);
@@ -6128,7 +7291,6 @@ class TransactionController extends Controller
                     'company'
                 )
                 ->get();
-
 
             $generalJournal = $generalJournal->map(function ($transaction) {
                 $voucher_account_title = [];

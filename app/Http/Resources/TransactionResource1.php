@@ -178,6 +178,7 @@ class TransactionResource1 extends JsonResource
                         $document["witholding_tax"] = $this->witholding_tax;
                         $document["net_of_amount"] = $this->net_amount;
                         $document["cheque_date"] = $this->cheque_date;
+                        $prm_group = Transaction::rental($this->transaction_id)->get();
                         break;
                     case "official store leasing":
                     case "unofficial store leasing":
@@ -188,6 +189,7 @@ class TransactionResource1 extends JsonResource
                         $document["cwt"] = $this->cwt;
                         $document["net_of_amount"] = $this->net_amount;
                         $document["cheque_date"] = $this->cheque_date;
+                        $prm_group = Transaction::leasing($this->transaction_id)->get();
                         break;
                     case "loans":
                         $document["principal"] = $this->principal;
@@ -195,6 +197,7 @@ class TransactionResource1 extends JsonResource
                         $document["cwt"] = $this->cwt;
                         $document["net_of_amount"] = $this->net_amount;
                         $document["cheque_date"] = $this->cheque_date;
+                        $prm_group = Transaction::loans($this->transaction_id)->get();
                         break;
                 }
 
@@ -431,32 +434,32 @@ class TransactionResource1 extends JsonResource
                 break;
         }
 
-        if ($this->document_type == "PRM Multiple") {
-            switch ($this->category) {
-                case "stall a rental":
-                case "stall b rental":
-                case "stall c rental":
-                case "stall d rental":
-                case "cusa rental":
-                case "dorm rental":
-                case "additional rental":
-                case "lounge rental":
-                case "corporate special program - education":
-                case "official store rental":
-                case "unofficial store rental":
-                case "rental":
-                    $prm_group = Transaction::rental($this->transaction_id)->get();
-                    break;
-                case "official store leasing":
-                case "unofficial store leasing":
-                case "leasing":
-                    $prm_group = Transaction::leasing($this->transaction_id)->get();
-                    break;
-                case "loans":
-                    $prm_group = Transaction::loans($this->transaction_id)->get();
-                    break;
-            }
-        }
+//        if ($this->document_type == "PRM Multiple") {
+//            switch ($this->category) {
+//                case "stall a rental":
+//                case "stall b rental":
+//                case "stall c rental":
+//                case "stall d rental":
+//                case "cusa rental":
+//                case "dorm rental":
+//                case "additional rental":
+//                case "lounge rental":
+//                case "corporate special program - education":
+//                case "official store rental":
+//                case "unofficial store rental":
+//                case "rental":
+//                    $prm_group = Transaction::rental($this->transaction_id)->get();
+//                    break;
+//                case "official store leasing":
+//                case "unofficial store leasing":
+//                case "leasing":
+//                    $prm_group = Transaction::leasing($this->transaction_id)->get();
+//                    break;
+//                case "loans":
+//                    $prm_group = Transaction::loans($this->transaction_id)->get();
+//                    break;
+//            }
+//        }
 
 
         $sub_unit = [

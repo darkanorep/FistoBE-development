@@ -4990,118 +4990,198 @@ class GenericMethod
     }
   }
 
-  public static function getAndValidatePOBalance(
-    $fields,
-    $company_id,
-    $po_no,
-    float $reference_amount,
-    $po_group,
-    $id = 0
-  ) {
-    $balance_po_ref_amount = Transaction::leftJoin(
-      "p_o_batches",
-      "transactions.request_id",
-      "=",
-      "p_o_batches.request_id"
+    public static function getAndValidatePOBalance(
+        $fields,
+        $company_id,
+        $po_no,
+        float $reference_amount,
+        $po_group,
+        $id = 0
     )
-      ->where("transactions.company_id", $company_id)
-      ->when($id, function ($query, $id) {
-        $query->where("transactions.id", "<>", $id);
-      })
-      ->where("transactions.state", "!=", "void")
-      ->where("p_o_batches.po_no", $po_no)
-      ->orderBy("transactions.id", "desc")
-      ->get("balance_po_ref_amount")
-      ->first();
+    {
+        $balance = Transaction::leftJoin(
+            "p_o_batches",
+            "transactions.request_id",
+            "=",
+            "p_o_batches.request_id"
+        )
+            ->where("transactions.company_id", $company_id)
+            ->when($id, function ($query, $id) {
+                $query->where("transactions.id", "<>", $id);
+            })
+            ->where("transactions.state", "!=", "void")
+            ->where("p_o_batches.po_no", $po_no)
+            ->orderBy("transactions.id", "desc")
+            ->get("balance_po_ref_amount", "is_new")
+            ->first();
 
-    if (!$balance_po_ref_amount) {
-        return static::getAndValidatePOBalancev1($fields, $company_id, $po_no, $reference_amount, $po_group, $id);
-    }
+        $po_details = POBatch::whereHas('request', function ($query) use ($company_id, $po_no) {
+            $query->where('company_id', $company_id);
+        })
+            ->whereIn('po_no', collect($po_group)->pluck('no'))
+            ->get();
 
-    if (empty($balance_po_ref_amount)) {
-      return;
-    }
-    $balance_po_ref_amount = $balance_po_ref_amount->balance_po_ref_amount;
+        $isAllDatesNotLessThanToday = $po_details->pluck('created_at')->every(function ($date) {
+            $date = \Carbon\Carbon::parse($date);
+            return $date->startOfDay()->greaterThanOrEqualTo('July 13, 2024');
+        });
 
-    if ($balance_po_ref_amount == 0) {
-      if (!$id) {
-        return GenericMethod::resultLaravelFormat("po_group.no", ["PO already exist."]);
-      }
-    }
-    // Additional PO
-    $additional_po_group = [];
-    $po_total_amount = 0;
+        if ($isAllDatesNotLessThanToday) {
 
-    foreach ($po_group as $k => $v) {
-      if (
-        !POBatch::leftJoin("transactions", "p_o_batches.request_id", "=", "transactions.request_id")
-          ->where("company_id", "=", $company_id)
-          ->when($id, function ($query, $id) {
-            $query->where("transactions.id", "<>", $id);
-          })
-          ->where("p_o_batches.po_no", "=", $po_group[$k]["no"])
-          ->where("state", "!=", "void")
-          ->exists()
-      ) {
-        $additional_po_group[$k]["no"] = $po_group[$k]["no"];
-        $additional_po_group[$k]["amount"] = $po_group[$k]["amount"];
-        $additional_po_group[$k]["rr_no"] = $po_group[$k]["rr_no"];
-      }
-      $po_total_amount = $po_total_amount + $po_group[$k]["amount"];
-    }
-    $additional_po_group = array_values($additional_po_group);
+            $requestIDs = $po_details->pluck('request_id');
 
-    if (count($additional_po_group) > 0) {
-      $new_po_total_amount = GenericMethod::getPOTotalAmount($request_id = 0, $additional_po_group);
-      $additional_plust_balance_amount = $new_po_total_amount + $balance_po_ref_amount;
+            $sums = Transaction::whereIn('request_id', $requestIDs)
+                ->where('state', '!=', 'void')
+                ->where('company_id', $company_id)
+                ->select(['document_amount', 'referrence_amount'])
+                ->get()
+                ->reduce(function ($carry, $item) {
+                    $carry['document_amount_sum'] += $item->document_amount;
+                    $carry['referrence_amount_sum'] += $item->referrence_amount;
+                    return $carry;
+                }, ['document_amount_sum' => 0, 'referrence_amount_sum' => 0]);
 
-      // if ($additional_plust_balance_amount < $reference_amount) {
-      //   return GenericMethod::resultLaravelFormat("document.reference.no", ["Insufficient PO balance."]);
-      // }
+            $totalDeduction = $sums['document_amount_sum'] + $sums['referrence_amount_sum'];
+            $po_total_amount = POBatch::whereIn('request_id', $requestIDs)->pluck('po_total_amount')->collect()->unique()->max();
 
-      // if (!$fields["document"]["reference"]["allowable"]) {
-      //   if ($additional_plust_balance_amount < $reference_amount) {
-      //     return GenericMethod::resultLaravelFormat("document.reference.no", ["Insufficient PO balance."]);
-      //   }
-      // }
+            return $po_total_amount - $totalDeduction;
 
-      // if (isset($fields["document"]["reference"]["allowable"])) {
-      //   if ($additional_plust_balance_amount < $reference_amount) {
-      //     return GenericMethod::resultLaravelFormat("document.reference.no", ["Insufficient PO balance."]);
-      //   }
-      // }
+//            if (count($po_details) > 0) {
+//                if ($balance_po_ref_amount < $reference_amount) {
+//                    return GenericMethod::resultLaravelFormat("document.reference.no", ["Insufficient PO balance."]);
+//                }
+//            }
 
-      if (isset($fields["document"]["reference"]) && !$fields["document"]["reference"]["allowable"]) {
-        if ($additional_plust_balance_amount < $reference_amount) {
-          return GenericMethod::resultLaravelFormat("document.reference.no", ["Insufficient PO balance."]);
+        } else {
+
+
+            if (!$balance) {
+                return static::getAndValidatePOBalancev1($fields, $company_id, $po_no, $reference_amount, $po_group, $id);
+            }
+
+            if (empty($balance)) {
+                return;
+            }
+            $balance_po_ref_amount = $balance->balance_po_ref_amount;
+            $is_new = $balance->is_new;
+
+
+//    if ($balance_po_ref_amount == 0) {
+//      if (!$id) {
+//        return GenericMethod::resultLaravelFormat("po_group.no", ["PO already exist."]);
+//      }
+//    }
+
+            if ($balance_po_ref_amount && $is_new == null) {
+                if ($balance_po_ref_amount == 0) {
+                    if (!$id) {
+                        return GenericMethod::resultLaravelFormat("po_group.no", ["PO already exist."]);
+                    }
+                }
+            }
+
+
+            // Additional PO
+//            $additional_po_group = [];
+//            $po_total_amount = 0;
+//
+//            foreach ($po_group as $k => $v) {
+//                if (
+//                    !POBatch::leftJoin("transactions", "p_o_batches.request_id", "=", "transactions.request_id")
+//                        ->where("company_id", "=", $company_id)
+//                        ->when($id, function ($query, $id) {
+//                            $query->where("transactions.id", "<>", $id);
+//                        })
+//                        ->where("p_o_batches.po_no", "=", $po_group[$k]["no"])
+//                        ->where("state", "!=", "void")
+//                        ->exists()
+//                ) {
+//                    $additional_po_group[$k]["no"] = $po_group[$k]["no"];
+//                    $additional_po_group[$k]["amount"] = $po_group[$k]["amount"];
+//                    $additional_po_group[$k]["rr_no"] = $po_group[$k]["rr_no"];
+//                }
+//                $po_total_amount = $po_total_amount + $po_group[$k]["amount"];
+//            }
+            $po_nos = array_column($po_group, 'no');
+
+// Query all relevant POBatch records once
+            $po_batches = POBatch::leftJoin("transactions", "p_o_batches.request_id", "=", "transactions.request_id")
+                ->where("company_id", "=", $company_id)
+                ->when($id, function ($query, $id) {
+                    $query->where("transactions.id", "<>", $id);
+                })
+                ->whereIn("p_o_batches.po_no", $po_nos)
+                ->where("state", "!=", "void")
+                ->get(['p_o_batches.po_no']);
+
+            $existing_po_nos = $po_batches->pluck('po_no')->toArray();
+
+            $additional_po_group = [];
+            $po_total_amount = 0;
+
+            foreach ($po_group as $k => $v) {
+                if (!in_array($v['no'], $existing_po_nos)) {
+                    $additional_po_group[$k]["no"] = $v["no"];
+                    $additional_po_group[$k]["amount"] = $v["amount"];
+                    $additional_po_group[$k]["rr_no"] = $v["rr_no"];
+                }
+                $po_total_amount += $v["amount"];
+            }
+
+            $additional_po_group = array_values($additional_po_group);
+
+            if (count($additional_po_group) > 0) {
+                $new_po_total_amount = GenericMethod::getPOTotalAmount($request_id = 0, $additional_po_group);
+                $additional_plust_balance_amount = $new_po_total_amount + $balance_po_ref_amount;
+
+                // if ($additional_plust_balance_amount < $reference_amount) {
+                //   return GenericMethod::resultLaravelFormat("document.reference.no", ["Insufficient PO balance."]);
+                // }
+
+                // if (!$fields["document"]["reference"]["allowable"]) {
+                //   if ($additional_plust_balance_amount < $reference_amount) {
+                //     return GenericMethod::resultLaravelFormat("document.reference.no", ["Insufficient PO balance."]);
+                //   }
+                // }
+
+                // if (isset($fields["document"]["reference"]["allowable"])) {
+                //   if ($additional_plust_balance_amount < $reference_amount) {
+                //     return GenericMethod::resultLaravelFormat("document.reference.no", ["Insufficient PO balance."]);
+                //   }
+                // }
+
+                if (isset($fields["document"]["reference"]) && !$fields["document"]["reference"]["allowable"]) {
+                    if ($additional_plust_balance_amount < $reference_amount) {
+                        return GenericMethod::resultLaravelFormat("document.reference.no", ["Insufficient PO balance."]);
+                    }
+                }
+
+                $balance = GenericMethod::getBalance($new_po_total_amount, $balance_po_ref_amount, $reference_amount);
+
+                return [
+                    "po_total_amount" => $po_total_amount,
+                    "new_po_total_amount" => $new_po_total_amount,
+                    "balance" => $balance,
+                    "new_po_group" => $additional_po_group,
+                ];
+            }
+
+            // if (!$fields["document"]["reference"]["allowable"]) {
+            //   if ($balance_po_ref_amount < $reference_amount) {
+            //     return GenericMethod::resultLaravelFormat("document.reference.no", ["Insufficient PO balance."]);
+            //   }
+            // }
+
+            if (isset($fields["document"]["reference"]) && !$fields["document"]["reference"]["allowable"]) {
+                if ($balance_po_ref_amount < $reference_amount) {
+                    return GenericMethod::resultLaravelFormat("document.reference.no", ["Insufficient PO balance."]);
+                }
+            }
+
+            $balance = $balance_po_ref_amount - $reference_amount;
+            return $balance;
         }
-      }
-
-            $balance = GenericMethod::getBalance($new_po_total_amount, $balance_po_ref_amount, $reference_amount);
-
-      return [
-        "po_total_amount" => $po_total_amount,
-        "new_po_total_amount" => $new_po_total_amount,
-        "balance" => $balance,
-        "new_po_group" => $additional_po_group,
-      ];
     }
-
-    // if (!$fields["document"]["reference"]["allowable"]) {
-    //   if ($balance_po_ref_amount < $reference_amount) {
-    //     return GenericMethod::resultLaravelFormat("document.reference.no", ["Insufficient PO balance."]);
-    //   }
-    // }
-
-    if (isset($fields["document"]["reference"]) && !$fields["document"]["reference"]["allowable"]) {
-      if ($balance_po_ref_amount < $reference_amount) {
-        return GenericMethod::resultLaravelFormat("document.reference.no", ["Insufficient PO balance."]);
-      }
-    }
-
-    $balance = $balance_po_ref_amount - $reference_amount;
-    return $balance;
-  }
 
   public static function getAndValidatePOBalancev1($fields, $company_id, $po_no, float $reference_amount, $po_group, $id = 0) {
 
@@ -5462,68 +5542,111 @@ class GenericMethod
     return $result;
   }
 
-  public static function validateIfPOExists($po_group, $company_id, $id = 0)
-  {
-    $po_total_amount = 0;
-    $existingTransaction = [];
-    foreach ($po_group as $k => $v) {
-      $po_no = $po_group[$k]["no"];
+//  public static function validateIfPOExists($po_group, $company_id, $id = 0)
+//  {
+//    $po_total_amount = 0;
+//    $existingTransaction = [];
+//    foreach ($po_group as $k => $v) {
+//      $po_no = $po_group[$k]["no"];
+//
+//      $existingTransaction = Transaction::with("po_details")
+//        ->where("company_id", $company_id)
+//        ->where("state", "!=", "void")
+//        ->when($id, function ($query, $id) {
+//          $query->where("id", "<>", $id);
+//        })
+//        ->whereHas("po_details", function ($q) use ($po_no) {
+//          $q->where("po_no", $po_no);
+//        })
+//        ->exists();
+//    }
+//
+//    foreach ($po_group as $k => $v) {
+//      $po_no = $po_group[$k]["no"];
+//
+//      $transaction = Transaction::with("po_details")
+//        ->where("company_id", $company_id)
+//        ->where("state", "!=", "void")
+//        ->when($id, function ($query, $id) {
+//          $query->where("id", "<>", $id);
+//        })
+//        ->whereHas("po_details", function ($q) use ($po_no) {
+//          $q->where("po_no", $po_no);
+//        })
+//        ->get();
+//      if ($transaction->count() > 0) {
+//        $po_group[$k]["is_add"] = 0;
+//        $po_group[$k]["is_editable"] = 0;
+//        $po_group[$k]["previous_balance"] = Transaction::with("po_details")
+//          ->where("company_id", $company_id)
+//          ->where("state", "!=", "void")
+//          ->when($id, function ($query, $id) {
+//            $query->where("id", "<>", $id);
+//          })
+//          ->without("po_details")
+//          ->whereHas("po_details", function ($q) use ($po_no) {
+//            $q->where("po_no", $po_no);
+//          })
+//          ->whereHas("po_details", function ($q) {
+//            $q->where("is_add", 0);
+//          })
+//          ->get("balance_po_ref_amount")
+//          ->last()->balance_po_ref_amount;
+//      } else {
+//        $po_group[$k]["is_editable"] = 1;
+//        $po_group[$k]["is_add"] = 1;
+//        if (!$existingTransaction) {
+//          $po_group[$k]["is_add"] = 0;
+//        }
+//
+//        $po_group[$k]["previous_balance"] = $v["amount"];
+//      }
+//    }
+//    return $po_group;
+//  }
 
-      $existingTransaction = Transaction::with("po_details")
-        ->where("company_id", $company_id)
-        ->where("state", "!=", "void")
-        ->when($id, function ($query, $id) {
-          $query->where("id", "<>", $id);
-        })
-        ->whereHas("po_details", function ($q) use ($po_no) {
-          $q->where("po_no", $po_no);
-        })
-        ->exists();
-    }
+    public static function validateIfPOExists($po_group, $company_id, $id = 0)
+    {
+        $po_total_amount = 0;
+        $po_nos = array_column($po_group, 'no');
 
-    foreach ($po_group as $k => $v) {
-      $po_no = $po_group[$k]["no"];
+        // Query all relevant transactions once
+        $transactions = Transaction::with('po_details')
+            ->where('company_id', $company_id)
+            ->where('state', '!=', 'void')
+            ->when($id, function ($query, $id) {
+                $query->where('id', '<>', $id);
+            })
+            ->whereHas('po_details', function ($q) use ($po_nos) {
+                $q->whereIn('po_no', $po_nos);
+            })
+            ->get();
 
-      $transaction = Transaction::with("po_details")
-        ->where("company_id", $company_id)
-        ->where("state", "!=", "void")
-        ->when($id, function ($query, $id) {
-          $query->where("id", "<>", $id);
-        })
-        ->whereHas("po_details", function ($q) use ($po_no) {
-          $q->where("po_no", $po_no);
-        })
-        ->get();
-      if ($transaction->count() > 0) {
-        $po_group[$k]["is_add"] = 0;
-        $po_group[$k]["is_editable"] = 0;
-        $po_group[$k]["previous_balance"] = Transaction::with("po_details")
-          ->where("company_id", $company_id)
-          ->where("state", "!=", "void")
-          ->when($id, function ($query, $id) {
-            $query->where("id", "<>", $id);
-          })
-          ->without("po_details")
-          ->whereHas("po_details", function ($q) use ($po_no) {
-            $q->where("po_no", $po_no);
-          })
-          ->whereHas("po_details", function ($q) {
-            $q->where("is_add", 0);
-          })
-          ->get("balance_po_ref_amount")
-          ->last()->balance_po_ref_amount;
-      } else {
-        $po_group[$k]["is_editable"] = 1;
-        $po_group[$k]["is_add"] = 1;
-        if (!$existingTransaction) {
-          $po_group[$k]["is_add"] = 0;
+        foreach ($po_group as $k => $v) {
+            $po_no = $v['no'];
+            $transaction = $transactions->filter(function ($transaction) use ($po_no) {
+                return $transaction->po_details->contains('po_no', $po_no);
+            });
+
+            if ($transaction->count() > 0) {
+                $po_group[$k]['is_editable'] = 0;
+                $po_group[$k]['is_add'] = 0;
+                $po_group[$k]['previous_balance'] = $transaction->last()->po_details
+                    ->where('is_add', 0)
+                    ->last()
+                    ->balance_po_ref_amount ?? 0;
+            } else {
+                $po_group[$k]['is_editable'] = 1;
+                $po_group[$k]['is_add'] = 1;
+                $po_group[$k]['previous_balance'] = $v['amount'];
+
+                if (!$transactions->count()) {
+                    $po_group[$k]['is_add'] = 0;
+                }
+            }
         }
-
-        $po_group[$k]["previous_balance"] = $v["amount"];
-      }
+        return $po_group;
     }
-    return $po_group;
-  }
 
   ##########################################################################################################
   #########################################      RESPONSE             ######################################
@@ -5846,82 +5969,157 @@ class GenericMethod
   }
   ##########################################################################################################
 
-  public function generateVoucherNo($id, $code, $voucher_month, $is_confidential, $voucher_code)
-  {
-    $existingVoucher = Transaction::whereNotNull("voucher_no")
-      ->where("id", $id)
-      ->first();
-
-    if ($existingVoucher) {
-      return $existingVoucher->voucher_no;
-    }
-
-    $series = 1;
-//    $code = Department::where('id', $code)->first()->voucherCode->code;
-
-
+//  public function generateVoucherNo($id, $code, $voucher_month, $is_confidential, $voucher_code)
+//  {
+//    $existingVoucher = Transaction::whereNotNull("voucher_no")
+//      ->where("id", $id)
+//      ->first();
+//
+//    if ($existingVoucher) {
+//      return $existingVoucher->voucher_no;
+//    }
+//
+//    $series = 1;
+////    $code = Department::where('id', $code)->first()->voucherCode->code;
+//
+//
+////    if ($is_confidential) {
+////        $code = 'SP';
+////    } else {
+////        $code = Department::where('id', $code)->first()->voucherCode->code;
+////    }
+//
 //    if ($is_confidential) {
 //        $code = 'SP';
 //    } else {
-//        $code = Department::where('id', $code)->first()->voucherCode->code;
+//        if (isset($voucher_code)) {
+//            $code = $voucher_code;
+//        } else {
+//            $code = Department::where('id', $code)->first()->voucherCode->code;
+//        }
 //    }
+//
+////    $date = Carbon::now("Asia/Manila")->format("ym");
+//    $date = DateTime::createFromFormat('Y-m-d', $voucher_month)->format('ym');
+//
+//    do {
+//      $formattedSeries = str_pad($series, 3, "0", STR_PAD_LEFT);
+//       $generatedVoucher = $code . " " . $date . "-" . $formattedSeries;
+////      $generatedVoucher = $date . "-" . $formattedSeries;
+//
+//      $series++;
+//    } while ($this->checkDuplicateGeneratedVoucher($generatedVoucher));
+//
+//    return $generatedVoucher;
+//  }
 
-    if ($is_confidential) {
-        $code = 'SP';
-    } else {
-        if (isset($voucher_code)) {
-            $code = $voucher_code;
-        } else {
-            $code = Department::where('id', $code)->first()->voucherCode->code;
+    public function generateVoucherNo($id, $code, $voucher_month, $is_confidential, $voucher_code = null)
+    {
+        // Check if there is already an existing voucher number
+        $existingVoucher = Transaction::whereNotNull("voucher_no")
+            ->where("id", $id)
+            ->first();
+
+        if ($existingVoucher) {
+            return $existingVoucher->voucher_no;
         }
+
+        // Determine the voucher code based on confidentiality and given parameters
+        if ($is_confidential) {
+            $code = 'SP';
+        } else {
+            if (!empty($voucher_code)) {
+                $code = $voucher_code;
+            } else {
+                $code = Department::where('id', $code)->first()->voucherCode->code;
+            }
+        }
+
+        // Format the date to "ym"
+        $date = DateTime::createFromFormat('Y-m-d', $voucher_month)->format('ym');
+
+        // Find the maximum existing series for the generated voucher code pattern
+        $maxSeries = Transaction::where("voucher_no", 'LIKE', "$code $date-%")
+            ->selectRaw('MAX(CAST(SUBSTRING(voucher_no, LENGTH(voucher_no) - 2, 3) AS UNSIGNED)) as max_series')
+            ->value('max_series');
+
+        // If no series exists, start from 1, otherwise increment the max series
+        $series = $maxSeries ? $maxSeries + 1 : 1;
+
+        // Generate the formatted voucher number
+        $formattedSeries = str_pad($series, 3, "0", STR_PAD_LEFT);
+        $generatedVoucher = "$code $date-$formattedSeries";
+
+        return $generatedVoucher;
     }
 
-//    $date = Carbon::now("Asia/Manila")->format("ym");
-    $date = DateTime::createFromFormat('Y-m-d', $voucher_month)->format('ym');
-
-    do {
-      $formattedSeries = str_pad($series, 3, "0", STR_PAD_LEFT);
-       $generatedVoucher = $code . " " . $date . "-" . $formattedSeries;
-//      $generatedVoucher = $date . "-" . $formattedSeries;
-
-      $series++;
-    } while ($this->checkDuplicateGeneratedVoucher($generatedVoucher));
-
-    return $generatedVoucher;
-  }
 
   function checkDuplicateGeneratedVoucher($voucher)
   {
     return Transaction::where("voucher_no", $voucher)->exists();
   }
 
-  public static function  generateTagNo($receipt_type, $id, $isConfidential) {
-//      $existingTag = Transaction::whereNotNull("tag_no")
-//          ->where("id", $id)->where("receipt_type", $receipt_type)
-//          ->first();
+//  public static function  generateTagNo($receipt_type, $id, $isConfidential) {
+////      $existingTag = Transaction::whereNotNull("tag_no")
+////          ->where("id", $id)->where("receipt_type", $receipt_type)
+////          ->first();
+//
+//      if ($isConfidential) {
+//          $existingTag = Transaction::whereNotNull("tag_no")
+//                ->where("id", $id)
+//              ->where("is_confidential", 1)
+//              ->first();
+//      } else {
+//          $existingTag = Transaction::whereNotNull("tag_no")
+//              ->where("id", $id)->where("receipt_type", $receipt_type)
+//              ->first();
+//      }
+//
+//      if ($existingTag) {
+//          return $existingTag->tag_no;
+//      }
+//
+//      $series = 0;
+//      do {
+//          $series++;
+//      } while (static::checkDuplicateGeneratedTagNo($series, $receipt_type, $isConfidential));
+//
+//      return $series;
+//  }
 
-      if ($isConfidential) {
-          $existingTag = Transaction::whereNotNull("tag_no")
-                ->where("id", $id)
-              ->where("is_confidential", 1)
-              ->first();
-      } else {
-          $existingTag = Transaction::whereNotNull("tag_no")
-              ->where("id", $id)->where("receipt_type", $receipt_type)
-              ->first();
-      }
+    public static function generateTagNo($receipt_type, $id, $isConfidential) {
+        // Check if there is already an existing tag number
+        $existingTagQuery = Transaction::whereNotNull("tag_no")
+            ->where("id", $id);
 
-      if ($existingTag) {
-          return $existingTag->tag_no;
-      }
+        if ($isConfidential) {
+            $existingTagQuery->where("is_confidential", 1);
+        } else {
+            $existingTagQuery->where("receipt_type", $receipt_type);
+        }
 
-      $series = 0;
-      do {
-          $series++;
-      } while (static::checkDuplicateGeneratedTagNo($series, $receipt_type, $isConfidential));
+        $existingTag = $existingTagQuery->first();
 
-      return $series;
-  }
+        if ($existingTag) {
+            return $existingTag->tag_no;
+        }
+
+        // Generate the new tag number by finding the maximum tag_no and adding 1
+        $maxTagQuery = Transaction::whereNotNull("tag_no");
+
+        if ($isConfidential) {
+            $maxTagQuery->where("is_confidential", 1);
+        } else {
+            $maxTagQuery->where("receipt_type", $receipt_type);
+        }
+
+        $maxTagNo = $maxTagQuery->max('tag_no');
+
+        // Increment the max tag number to get the new tag number
+        $newTagNo = $maxTagNo ? $maxTagNo + 1 : 1;
+
+        return $newTagNo;
+    }
 
   public static function checkDuplicateGeneratedTagNo($tag_no, $receipt_type, $isConfidential) {
      if ($isConfidential) {

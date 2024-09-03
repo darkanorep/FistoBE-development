@@ -28,6 +28,9 @@ class TransactionVoucherResource extends JsonResource
         $transmit = null;
         $discharge = null;
         $file = null;
+        $cheque_account_title = null;
+        $account_title = null;
+        $voucher_account_title = null;
 
         //VOUCHER
         if ($this->has('voucher')->exists()) {
@@ -36,7 +39,43 @@ class TransactionVoucherResource extends JsonResource
             if (empty($voucher_transaction->account_title)) {
                 $voucher_account_title = [];
             } else {
-                $voucher_account_title = $voucher_transaction->account_title->map(function ($item) {
+                $voucher_account_title = $voucher_transaction->account_title;
+            }
+
+            if (empty($voucher_transaction->transaction_type_id)) {
+                $transaction_type = null;
+            } else {
+                $transaction_type = [
+                    'id' => $voucher_transaction->transaction_type_id,
+                    'name' => $voucher_transaction->transaction_type_name,
+                ];
+            }
+
+            if (empty($voucher_transaction->approver_id)) {
+                $approver = null;
+            } else {
+                $approver = [
+                    'id' => $voucher_transaction->approver_id,
+                    'name' => $voucher_transaction->approver_name,
+                ];
+            }
+
+            if ($this->has('cheques')->exists()) {
+
+                $cheque_transaction = $this->cheques->first();
+                $clear_transaction = $this->accountTitleClear;
+
+                $cheque_account_title = $clear_transaction->isEmpty()
+                    ? ($cheque_transaction ? ($cheque_transaction->account_title ?: []) : [])
+                    : ($clear_transaction ?: []);
+            }
+
+            $account_title = empty($cheque_account_title)
+                ? ($voucher_account_title ?: [])
+                : ($cheque_account_title);
+
+            if (!empty($account_title)) {
+                $account_title = $account_title->map(function ($item) {
                     return [
                         'id' => $item->id,
                         'entry' => $item->entry,
@@ -72,27 +111,9 @@ class TransactionVoucherResource extends JsonResource
                             'code' => $item->sub_unit_code,
                             'name' => $item->sub_unit_name,
                         ],
-                        'is_default' => $item->is_default,
+                        'is_default' => $item->is_default
                     ];
                 });
-            }
-
-            if (empty($voucher_transaction->transaction_type_id)) {
-                $transaction_type = null;
-            } else {
-                $transaction_type = [
-                    'id' => $voucher_transaction->transaction_type_id,
-                    'name' => $voucher_transaction->transaction_type_name,
-                ];
-            }
-
-            if (empty($voucher_transaction->approver_id)) {
-                $approver = null;
-            } else {
-                $approver = [
-                    'id' => $voucher_transaction->approver_id,
-                    'name' => $voucher_transaction->approver_name,
-                ];
             }
 
             if (isset($voucher_transaction->status)) {
@@ -103,8 +124,8 @@ class TransactionVoucherResource extends JsonResource
                     'month' => $this->voucher_month,
                     'transaction_type' => $transaction_type,
                     'input_tax' => $this->input_tax,
-                    'accounts' => $voucher_account_title,
-                    'approver' => $approver,
+                    'accounts' => $account_title,
+                    'approve' => $approver,
                     'reason' => $transactionResource->reason($voucher_transaction, $voucher_transaction->reason_id)
                 ];
             }

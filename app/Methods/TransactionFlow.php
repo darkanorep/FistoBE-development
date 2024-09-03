@@ -1835,6 +1835,35 @@ class TransactionFlow
                 $approver_name,
                 $inputTax
             );
+        } elseif ($process == 'pass') {
+            if ($subprocess == 'receive') {
+                $status = 'pass-receive';
+            } elseif ($subprocess == 'pass') {
+                $subprocess = 'transmit';
+                $status = 'pass-pass';
+            }
+
+            $state = $subprocess;
+
+            GenericMethod::updateTransactionStatus(
+                $id,
+                $transaction_id,
+                $request_id,
+                $receipt_type,
+                $tag_no,
+                $status,
+                $state,
+                $reason_id,
+                $reason_description,
+                $reason_remarks,
+                $voucher_no,
+                $voucher_month,
+                $distributed_id,
+                $distributed_name,
+                $approver_id,
+                $approver_name,
+                $inputTax
+            );
         }
         $transaction->touch();
 
