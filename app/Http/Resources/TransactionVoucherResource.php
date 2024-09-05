@@ -28,9 +28,7 @@ class TransactionVoucherResource extends JsonResource
         $transmit = null;
         $discharge = null;
         $file = null;
-        $cheque_account_title = null;
-        $account_title = null;
-        $voucher_account_title = null;
+        $cheque_account_title = collect();
 
         //VOUCHER
         if ($this->has('voucher')->exists()) {
@@ -61,18 +59,17 @@ class TransactionVoucherResource extends JsonResource
             }
 
             if ($this->has('cheques')->exists()) {
-
                 $cheque_transaction = $this->cheques->first();
-                $clear_transaction = $this->accountTitleClear;
+                $clear_transaction = collect($this->accountTitleClear);
 
                 $cheque_account_title = $clear_transaction->isEmpty()
-                    ? ($cheque_transaction ? ($cheque_transaction->account_title ?: []) : [])
-                    : ($clear_transaction ?: []);
+                    ? ($cheque_transaction ? collect($cheque_transaction->account_title ?: []) : collect())
+                    : $clear_transaction;
             }
 
-            $account_title = empty($cheque_account_title)
-                ? ($voucher_account_title ?: [])
-                : ($cheque_account_title);
+            $account_title = $cheque_account_title->isEmpty()
+                ? $voucher_account_title
+                : $cheque_account_title;
 
             if (!empty($account_title)) {
                 $account_title = $account_title->map(function ($item) {
@@ -115,7 +112,6 @@ class TransactionVoucherResource extends JsonResource
                     ];
                 });
             }
-
             if (isset($voucher_transaction->status)) {
                 $voucher = [
                     'status' => $voucher_transaction->status,

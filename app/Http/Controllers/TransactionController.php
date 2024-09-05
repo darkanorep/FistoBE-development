@@ -930,14 +930,16 @@ class TransactionController extends Controller
             ->when($status == 'pending', function ($query) use ($department, $is_mcl) {
                 $query->whereNotIn('status', ['requestor-void', 'tag-return'])
                     ->whereIn('department_details', $department)
-                    ->when($is_mcl == 1, function ($query) {
-                        $query->orWhere([
-                            'is_mcl' => 1
-                        ]);
-                    }, function ($query) {
-                        $query->where('is_mc', 1)->where('is_mcl', '!=', 1);
+//                    ->when($is_mcl == 1, function ($query) {
+//                        $query->orWhere([
+//                            'is_mcl' => 1
+//                        ]);
+//                    }, function ($query) {
+//                        $query->where('is_mc', 1)->where('is_mcl', '!=', 1);
+//                    })
+                    ->withTrashed(function ($query) {
+                        $query->where('deleted_at', '=', '2024-08-28 00:00:00');
                     });
-
             })
             ->when($status == 'return-request', function ($query) use ($department) {
                 $query->where('status', 'tag-return')
@@ -1349,7 +1351,7 @@ class TransactionController extends Controller
 
 //    public function show($id)
 //    {
-//        $transaction = Transaction::where("id", $id)->get();
+//        $transaction = Transaction::where("id", $id)->withTrashed()->get();
 //
 //        $singleTransaction = TransactionResource1::collection($transaction);
 //
@@ -1361,7 +1363,7 @@ class TransactionController extends Controller
 
     public function show($id)
     {
-        $transaction = Transaction::where('id', $id)->first();
+        $transaction = Transaction::withTrashed()->where('id', $id)->first();
         $rental = [
             'stall a rental',
             'stall b rental',
@@ -1581,7 +1583,7 @@ class TransactionController extends Controller
                     "is_mc" => $transaction->is_mc,
                     "name" => $transaction->document_type,
                     "date" => $transaction->document_date,
-                    "amount" => $this->document_amount,
+                    "amount" => $transaction->document_amount,
                     "payment_type" => $transaction->payment_type,
                     "remarks" => $transaction->remarks,
                     "pcf_batch" => [
@@ -1915,7 +1917,7 @@ class TransactionController extends Controller
                         ];
                     };
 
-                    [$valid, $void] = $this->treasuryChequeHistory()->partition(function ($item) {
+                    [$valid, $void] = $transaction->treasuryChequeHistory()->partition(function ($item) {
                         return $item->reason_id == null;
                     });
 
@@ -4018,7 +4020,10 @@ class TransactionController extends Controller
             $requestIds = $po_batch
                 ->whereHas('request', function ($query) use ($company_id){
                     $query->where('state', '!=', 'void')
-                        ->where('company_id', $company_id);
+                        ->where('company_id', $company_id)
+                        ->withTrashed(function ($query) {
+                            $query->where('deleted_at', '=', '2024-08-28 00:00:00');
+                        });
                 })
                 ->where('po_no', $po_number)
                 ->pluck('request_id');
@@ -4035,10 +4040,16 @@ class TransactionController extends Controller
 
             $requestIds = POBatch::whereIn('po_no', $po_no->pluck('po_no', 'po_amount')->unique())
                 ->whereHas('request', function ($query) {
-                    $query->where('state', '!=', 'void');
+                    $query->where('state', '!=', 'void')
+                    ->withTrashed(function ($query) {
+                        $query->where('deleted_at', '=', '2024-08-28 00:00:00');
+                    });
                 })
                 ->get()->pluck('request_id')->unique()->values();
             $sums = Transaction::whereIn('request_id', $requestIds)
+                ->withTrashed(function ($query) {
+                    $query->where('deleted_at', '=', '2024-08-28 00:00:00');
+                })
                 ->where('state', '!=', 'void')
                 ->where('company_id', $company_id)
                 ->select(['document_amount', 'referrence_amount'])
@@ -6865,14 +6876,13 @@ class TransactionController extends Controller
 
     public function voucherTransaction($id)
     {
-//        $id =  $request->id;
-        $transaction = Transaction::where('id', $id)->first();
+        $transaction = Transaction::where('id', $id)->withTrashed()->first();
         return new TransactionVoucherResource($transaction);
     }
 
     public function chequeTransaction($id)
     {
-        $transaction = Transaction::where('id', $id)->first();
+        $transaction = Transaction::where('id', $id)->withTrashed()->first();
         return new TransactionChequeResource($transaction);
     }
 
