@@ -50,12 +50,14 @@ Route::post("/login", [UserController::class, "login"])->name("login");
 Route::get("/coa", [MasterlistController::class, "coa"]);
 Route::get("/sedar", [MasterlistController::class, "sedar_employees"]);
 Route::get("/genus", [MasterlistController::class, "genus_orders"]);
+Route::get('/ymir', [MasterlistController::class, 'projectYmir']);
 // Protected Routes
 // Route::middleware('auth:sanctum')->get('/authenticated', function (Request $request) {
 //     return $request->user();
 // });
 
 Route::group(["middleware" => "auth:sanctum"], function () {
+//    Route::get('sync-sedar', [UserController::class, 'syncSedar']);
     Route::post("logout/", [UserController::class, "logout"]);
     Route::put("users/change-password", [UserController::class, "change_password"]);
     Route::post("users/username-validation", [UserController::class, "username_validation"]);
@@ -402,6 +404,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
             Route::post('cheque-revert', [TransactionController::class, "chequeRevert1"]);
             Route::get('report', [TransactionController::class, 'generateAPReport']);
             Route::get('multiple-vouchers', [TransactionController::class, 'multipleVouchers']);
+            Route::get('treasury-report', [TransactionController::class, 'treasuryReport']);
 
         });
     });

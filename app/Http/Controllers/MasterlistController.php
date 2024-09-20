@@ -360,4 +360,8 @@ class MasterlistController extends Controller
 
     return $result;
   }
+
+  public function projectYmir() {
+      $transaction = Http::withToken('331|TebEaClifJ0drfTGIoe0NfK1pet2GAW9Xhy58eFI')->get('10.10.13.6:8080/api/fisto_api');
+  }
 }

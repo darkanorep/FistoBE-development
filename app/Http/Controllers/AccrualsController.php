@@ -227,7 +227,7 @@ class AccrualsController extends Controller
             'reversed_at' => Carbon::now()
         ]);
 
-        return response()->json(['message' => 'General Journal successfully reversed.'], 200);
+        return response()->json(['message' => 'Accrual successfully reversed.'], 200);
     }
 
     public function import(Request $request) {

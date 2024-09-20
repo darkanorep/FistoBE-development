@@ -168,11 +168,11 @@ class TransactionChequeResource extends JsonResource
                             'id' => $item->id,
                             'document_amount' => ($item->document_id == 3)
                                 ? ($item->category == in_array($item->category, $rental) ? $item->gross_amount : floatval((number_format(($item->principal + $item->interest), 2, '.', ''))))
-                                : $item->document_amount,
+                                : $item->document_amount ?? $item->referrence_amount,
                             'voucher_no' => $item->voucher_no,
                             'input_tax' => $item->input_tax ?? 0,
-                            'voucher_account_title' => $voucher_account_title->filter(function ($item) {
-                                return $item['account_title'] == 'Accounts Payable' || $item['account_title'] == 'Accounts Payable - RHL';
+                            'voucher_account_title' => $voucher_account_title->filter(function ($accountTitle) {
+                                return $accountTitle['account_title'] == 'Accounts Payable' || $accountTitle['account_title'] == 'Accounts Payable - RHL';
                             })->values(),
                         ];
                     });
@@ -197,7 +197,7 @@ class TransactionChequeResource extends JsonResource
         }
 
         //AUDIT
-        if ($this->has('audit')->exists()) {
+        if (isset($this->audit->first()->status)) {
             $audit_transaction = $this->audit->first();
 
             if (isset($audit_transaction->status)) {
@@ -210,7 +210,7 @@ class TransactionChequeResource extends JsonResource
         }
 
         //EXECUTIVE
-        if ($this->has('executive')->exists()) {
+        if (isset($this->executive->first()->status)) {
             $executive_transaction = $this->executive->first();
 
             if (isset($executive_transaction->status)) {
@@ -235,7 +235,7 @@ class TransactionChequeResource extends JsonResource
         }
 
         //RELEASE
-        if ($this->has('release') ) {
+        if (isset($this->release->first()->status)) {
             $release_transaction = $this->release->first();
 
             if (empty($release_transaction->distributed_id)) {

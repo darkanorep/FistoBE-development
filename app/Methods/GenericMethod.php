@@ -5022,7 +5022,7 @@ class GenericMethod
             ->get();
 
         $isAllDatesNotLessThanToday = $po_details->pluck('created_at')->every(function ($date) {
-            $date = \Carbon\Carbon::parse($date);
+            $date = Carbon::parse($date);
             return $date->startOfDay()->greaterThanOrEqualTo('July 13, 2024');
         });
 
@@ -5607,7 +5607,6 @@ class GenericMethod
 
     public static function validateIfPOExists($po_group, $company_id, $id = 0)
     {
-        $po_total_amount = 0;
         $po_nos = array_column($po_group, 'no');
 
         // Query all relevant transactions once

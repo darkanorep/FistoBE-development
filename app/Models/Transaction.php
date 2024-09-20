@@ -21,82 +21,69 @@ class Transaction extends Model
         "first_name",
         "middle_name",
         "last_name",
-        "suffix",
         "department_details",
+        "receipt_type",
+        "tag_no",
+        "voucher_no",
+        "voucher_month",
         "transaction_id",
         "request_id",
-        "document_id",
+        "date_requested",
         "capex_no",
-        "document_type",
+        "document_id",
+        "document_no",
+        "document_amount",
         "document_date",
+        "payment_type",
         "category_id",
         "category",
         "company_id",
-        'company_code',
         "company",
         "department_id",
-        'department_code',
         "department",
         "location_id",
-        'location_code',
         "location",
         "supplier_id",
         "supplier",
         "po_total_amount",
-        "po_total_qty",
-        "rr_total_qty",
-        "referrence_total_amount",
-        "referrence_total_qty",
-        "date_requested",
-        "remarks",
-        "payment_type",
-        "status",
-        "state",
-        "reason_id",
-        "reason",
-        "document_no",
-        "document_amount",
+        "balance_po_ref_amount",
+        "referrence_id",
+        "referrence_type",
+        "referrence_no",
+        "referrence_amount",
         "pcf_name",
         "pcf_date",
         "pcf_letter",
         "utilities_from",
         "utilities_to",
-
-        "po_total_amount",
-        "po_total_qty",
-        "rr_total_qty",
-        "referrence_total_amount",
-        "referrence_total_qty",
-        "balance_document_po_amount",
-        "balance_document_ref_amount",
-        "balance_po_ref_amount",
-        "balance_po_ref_qty",
-        "receipt_type",
-        "tag_no",
-
         "utilities_category_id",
         "utilities_category",
-        "utilities_location_id",
-        "utilities_location",
         "utilities_account_no_id",
         "utilities_account_no",
         "utilities_consumption",
-        "utilities_uom",
+        "utilities_location_id",
+        "utilities_location",
         "utilities_receipt_no",
+        "payroll_from",
+        "payroll_to",
         "payroll_client",
         "payroll_category_id",
         "payroll_category",
         "payroll_type",
-        "payroll_from",
-        "payroll_to",
         "payroll_control_no",
-
-        "referrence_type",
-        "referrence_no",
-        "referrence_amount",
-        "referrence_qty",
-        "referrence_id",
-        "is_allowable",
+        "remarks",
+        "state",
+        "status",
+        "reason_id",
+        "reason",
+        "reason_remarks",
+        "distributed_id",
+        "distributed_name",
+        "approver_id",
+        "approver_name",
+        "total_gross",
+        "total_cwt",
+        "total_net",
         "period_covered",
         "prm_multiple_from",
         "prm_multiple_to",
@@ -104,10 +91,6 @@ class Transaction extends Model
         "gross_amount",
         "witholding_tax",
         "net_amount",
-        "total_gross",
-        "total_cwt",
-        "total_net",
-
         "release_date",
         "batch_no",
         "amortization",
@@ -115,22 +98,21 @@ class Transaction extends Model
         "cwt",
         "dst",
         "principal",
+        "transaction_type",
+        "is_allowable",
         "is_not_editable",
-        "voucher_no",
+        "is_new",
         "is_for_releasing",
         "is_for_voucher_audit",
         "business_unit_id",
-        "business_unit_code",
         "business_unit",
         "sub_unit_id",
-        "sub_unit_code",
         "sub_unit",
         "input_tax",
         "box_no",
         "is_confidential",
         "is_mc",
-        "is_mcl",
-        "is_new"
+        "is_mcl"
     ];
 
     public $timestamps = ["created_at"];
@@ -148,12 +130,18 @@ class Transaction extends Model
 
     public function po_details()
     {
-        return $this->hasMany(POBatch::class, "request_id", "request_id");
+        return $this->hasMany(POBatch::class, "request_id", "id")
+            ->select('request_id', 'is_add', 'is_editable', 'po_no', 'po_amount', 'po_total_amount', 'previous_balance', 'rr_group', 'is_modifiable', 'created_at', 'updated_at', 'deleted_at');
     }
 
     public function users()
     {
         return $this->belongsTo(User::class, "users_id", "id");
+    }
+
+    public function payableAssociates()
+    {
+        return $this->belongsTo(User::class, "distributed_id", "id");
     }
 
     public function supplier()
@@ -181,7 +169,8 @@ class Transaction extends Model
     public function cheque()
     {
 //        return $this->hasMany(Cheque::class, "transaction_id", "transaction_id")->latest();
-        return $this->hasMany(Cheque::class, "transaction_id", "id")->latest();
+        return $this->hasMany(Cheque::class, "transaction_id", "id")
+            ->latest();
     }
 
 
@@ -236,6 +225,7 @@ class Transaction extends Model
     {
         return $this->hasMany(Tagging::class)
             ->whereIn('status', ['tag-receive', 'tag-tag', 'tag-return', 'tag-hold', 'tag-void'])
+            ->select("transaction_id", "status", "created_at")
             ->latest();
 //            ->limit(1);
     }
@@ -251,6 +241,7 @@ class Transaction extends Model
     public function extract() {
         return $this->hasMany(Tagging::class, "transaction_id")
             ->whereIn("status", ["extract-extract", "extract-receive"])
+            ->select("transaction_id", "status", "created_at")
             ->latest();
 //            ->limit(1);
     }
@@ -258,6 +249,7 @@ class Transaction extends Model
     public function voucher()
     {
         return $this->hasMany(Associate::class, "transaction_id", "id")
+            ->select('id', 'transaction_id', 'status', 'approver_id', 'approver_name', 'created_at')
 //    return $this->hasMany(Associate::class, "tag_id", "tag_no")
 //            ->select(
 //                "transaction_id",
@@ -302,17 +294,7 @@ class Transaction extends Model
     public function approve()
     {
         return $this->hasMany(Approver::class, "transaction_id", "id")
-//            ->select(
-//                "transaction_id",
-//                "tag_id",
-//                "id",
-//                "distributed_id",
-//                "distributed_name",
-//                "date_status as date",
-//                "status",
-//                "reason_id",
-//                "remarks"
-//            )
+            ->select("transaction_id", "status", "created_at")
             ->latest();
 //            ->limit(1);
     }
@@ -326,9 +308,8 @@ class Transaction extends Model
 
     public function cheques()
     {
-//    return $this->hasMany(Treasury::class, "tag_id", "tag_no")
         return $this->hasMany(Treasury::class, "transaction_id", "id")
-//            ->select("transaction_id", "tag_id", "id", "date_status as date", "status", "reason_id", "remarks", "batch_no")
+            ->select('id', 'transaction_id', 'status', 'batch_no', 'created_at')
             ->latest();
 //            ->limit(1);
     }
@@ -338,7 +319,7 @@ class Transaction extends Model
     {
         return $this->hasMany(Transmit::class, "transaction_id", "id")
             ->whereNotIn('status', ['pass-receive', 'pass-pass'])
-//            ->select("transaction_id", "tag_id", "id", "date_status as date", "status")
+            ->select("transaction_id", "status", "created_at")
             ->latest();
 //            ->limit(1);
     }
@@ -347,6 +328,7 @@ class Transaction extends Model
     {
 //    return $this->hasMany(Release::class, "tag_id", "tag_no")
         return $this->hasMany(Release::class, "transaction_id", "id")
+            ->select("transaction_id", "status", "created_at")
 //            ->select(
 //                "transaction_id",
 //                "tag_id",
@@ -366,21 +348,7 @@ class Transaction extends Model
     {
 //    return $this->hasMany(File::class, "tag_id", "tag_no")
         return $this->hasMany(File::class, "transaction_id", "id")
-//            ->select(
-//                "transaction_id",
-//                "tag_id",
-//                "id",
-//                "receipt_type",
-//                "percentage_tax",
-//                "witholding_tax",
-//                "net_amount",
-//                "approver_id",
-//                "approver_name",
-//                "date_status as date",
-//                "status",
-//                "reason_id",
-//                "remarks"
-//            )
+            ->select("transaction_id", "status", "created_at")
             ->latest();
 //            ->limit(1);
     }
@@ -438,6 +406,7 @@ class Transaction extends Model
     public function inspect() {
         return $this->hasMany(Audit::class, "transaction_id")
             ->whereIn("status", ["inspect-inspect", "inspect-receive", "inspect-hold", "inspect-return"])
+            ->select("transaction_id", "status", "created_at")
             ->latest();
 //            ->limit(1);
     }
@@ -453,6 +422,7 @@ class Transaction extends Model
     {
         return $this->hasMany(Audit::class, "transaction_id")
             ->whereIn("status", ["audit-receive", "audit-audit"])
+            ->select("transaction_id", "status", "created_at")
             ->latest();
 //            ->limit(1);
     }
@@ -461,6 +431,7 @@ class Transaction extends Model
     {
         return $this->hasMany(Gas::class, "transaction_id")
             ->whereIn("status", ["gas-receive", "gas-gas", "gas-return", "gas-void"])
+            ->select("transaction_id", "status", "created_at")
             ->latest();
 //            ->limit(1);
     }
@@ -469,6 +440,7 @@ class Transaction extends Model
     {
         return $this->hasMany(Gas::class, "transaction_id")
             ->whereIn("status", ["discharge-receive", "discharge-discharge"])
+            ->select('transaction_id', 'status', 'created_at')
             ->latest();
 //            ->limit(1);
     }
@@ -476,6 +448,7 @@ class Transaction extends Model
     public function executive()
     {
         return $this->hasMany(Executive::class, "transaction_id")
+            ->select("transaction_id", "status", "created_at")
             ->latest();
 //            ->limit(1);
     }
@@ -483,6 +456,7 @@ class Transaction extends Model
 
     public function issue() {
         return $this->hasMany(Issue::class, "transaction_id")
+            ->select("transaction_id", "status", "reason_id", "created_at")
             ->latest();
 //            ->limit(1);
     }

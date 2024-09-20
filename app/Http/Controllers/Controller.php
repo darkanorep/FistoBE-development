@@ -648,31 +648,69 @@ class Controller extends BaseController
             : $default;
     }
 
+//    function generateGeneralNumber($department_id) {
+//        $code = 'GJ';
+//        $voucher_code = Department::where('id', $department_id)->first()->voucherCode->code;
+//        $date = (new DateTime())->format('y-m');
+//
+//        $series = 1;
+//
+//        do {
+//            $formattedSeries = str_pad($series, 3, "0", STR_PAD_LEFT);
+//            $gj_number = $code . $voucher_code . $date . '-' . $formattedSeries;
+//            $series++;
+//        } while(GeneralJournal::where('gj_number', $gj_number)->exists());
+//
+//        return $gj_number;
+//    }
     function generateGeneralNumber($department_id) {
         $code = 'GJ';
         $voucher_code = Department::where('id', $department_id)->first()->voucherCode->code;
         $date = (new DateTime())->format('y-m');
 
-        $series = 1;
+        $maxGJNumber = GeneralJournal::where('gj_number', 'like', $code . $voucher_code . $date . '-%')
+            ->max('gj_number');
 
-        do {
-            $formattedSeries = str_pad($series, 3, "0", STR_PAD_LEFT);
-            $gj_number = $code . $voucher_code . $date . '-' . $formattedSeries;
-            $series++;
-        } while(GeneralJournal::where('gj_number', $gj_number)->exists());
+        if ($maxGJNumber) {
+            $maxSeries = (int) substr($maxGJNumber, strrpos($maxGJNumber, '-') + 1);
+            $series = $maxSeries + 1;
+        } else {
+            $series = 1;
+        }
+
+        $formattedSeries = str_pad($series, 3, "0", STR_PAD_LEFT);
+        $gj_number = $code . $voucher_code . $date . '-' . $formattedSeries;
 
         return $gj_number;
     }
 
+//    public function generateGJBatchNo($model) {
+//
+//        $series = 1;
+//        $date = (new DateTime())->format('y-m');
+//
+//        do {
+//            $batch_no = $date . '-' . str_pad($series, 3, '0', STR_PAD_LEFT);
+//            $series++;
+//        } while ($model::where('batch_no', $batch_no)->withTrashed()->exists());
+//
+//        return $batch_no;
+//    }
+
     public function generateGJBatchNo($model) {
-
-        $series = 1;
         $date = (new DateTime())->format('y-m');
+        $maxBatchNo = $model::withTrashed()
+            ->where('batch_no', 'like', $date . '-%')
+            ->max('batch_no');
 
-        do {
-            $batch_no = $date . '-' . str_pad($series, 3, '0', STR_PAD_LEFT);
-            $series++;
-        } while ($model::where('batch_no', $batch_no)->withTrashed()->exists());
+        if ($maxBatchNo) {
+            $maxSeries = (int) substr($maxBatchNo, strrpos($maxBatchNo, '-') + 1);
+            $series = $maxSeries + 1;
+        } else {
+            $series = 1;
+        }
+
+        $batch_no = $date . '-' . str_pad($series, 3, '0', STR_PAD_LEFT);
 
         return $batch_no;
     }

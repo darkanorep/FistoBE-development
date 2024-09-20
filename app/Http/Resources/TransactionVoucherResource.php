@@ -31,7 +31,7 @@ class TransactionVoucherResource extends JsonResource
         $cheque_account_title = collect();
 
         //VOUCHER
-        if ($this->has('voucher')->exists()) {
+        if (isset($this->voucher->first()->status)) {
             $voucher_transaction = $this->voucher->first();
 
             if (empty($voucher_transaction->account_title)) {
@@ -58,7 +58,7 @@ class TransactionVoucherResource extends JsonResource
                 ];
             }
 
-            if ($this->has('cheques')->exists()) {
+            if (isset($this->cheques->first()->status)) {
                 $cheque_transaction = $this->cheques->first();
                 $clear_transaction = collect($this->accountTitleClear);
 
@@ -122,13 +122,17 @@ class TransactionVoucherResource extends JsonResource
                     'input_tax' => $this->input_tax,
                     'accounts' => $account_title,
                     'approver' => $approver,
-                    'reason' => $transactionResource->reason($voucher_transaction, $voucher_transaction->reason_id)
+                    'reason' => $transactionResource->reason($voucher_transaction, $voucher_transaction->reason_id),
+                    'distributed_to' => [
+                        'id' => $this->distributed_id,
+                        'name' => $this->distributed_name,
+                    ],
                 ];
             }
         }
 
         //INSPECT
-        if ($this->has('inspect')->exists()) {
+        if (isset($this->inspect->first()->status)) {
             $inspect_transaction = $this->inspect->first();
 
             if (isset($inspect_transaction->status)) {
@@ -141,7 +145,7 @@ class TransactionVoucherResource extends JsonResource
         }
 
         //APPROVE
-        if ($this->has('approve')->exists()) {
+        if (isset($this->approve->first()->status)) {
             $approve_transaction = $this->approve->first();
 
             if (isset($approve_transaction->status)) {
@@ -158,7 +162,7 @@ class TransactionVoucherResource extends JsonResource
         }
 
         //TRANSMIT
-        if ($this->has('transmit')->exists()) {
+        if (isset($this->transmit->first()->status)) {
             $transmit_transaction = $this->transmit->first();
 
             if (isset($transmit_transaction->status)) {
@@ -170,28 +174,28 @@ class TransactionVoucherResource extends JsonResource
         }
 
         //DISCHARGE
-        if ($this->has('discharge')->exists()) {
+        if (isset($this->discharge->first()->status)) {
             $discharge_transaction = $this->discharge->first();
 
             if (isset($discharge_transaction->status)) {
                 $discharge = [
-                    'dates' => $this->get_transaction_dates(Gas::class, $this->id, 'discharge', ["receive", "discharge"]),
+                    'dates' => $transactionResource->get_transaction_dates(Gas::class, $this->id, 'discharge', ["receive", "discharge"]),
                     'status' => $discharge_transaction->status,
-                    'reason' => $this->reason($discharge_transaction, $discharge_transaction->reason_id)
+                    'reason' => $transactionResource->reason($discharge_transaction, $discharge_transaction->reason_id)
                 ];
             }
 
         }
 
         //FILE
-        if ($this->has('file')->exists()) {
+        if (isset($this->file->first()->status)) {
             $file_transaction = $this->file->first();
 
             if (isset($file_transaction->status)) {
                 $file = [
-                    'dates' => $this->get_transaction_dates(File::class, $this->id, 'file', ["transfer", "receive", "file"]),
+                    'dates' => $transactionResource->get_transaction_dates(File::class, $this->id, 'file', ["transfer", "receive", "file"]),
                     'status' => $file_transaction->status,
-                    'reason' => $this->reason($file_transaction, $file_transaction->reason_id),
+                    'reason' => $transactionResource->reason($file_transaction, $file_transaction->reason_id),
                     'box_no' => $this->box_no
                 ];
             }

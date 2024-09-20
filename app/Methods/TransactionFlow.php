@@ -317,90 +317,6 @@ class TransactionFlow
             } elseif ($subprocess == "void") {
                 $status = "tag-void";
                 static::voidTransaction($request, $id);
-                // if ($transaction->document_id == 4 && $transaction->payment_type == "Partial") {
-                //   switch ($transaction->is_not_editable) {
-                //     case false:
-                //       $poNos = $transaction->po_details()->pluck("po_no");
-
-                //       $currentRequestIds = POBatch::whereIn("po_no", $poNos)
-                //         ->pluck("request_id")
-                //         ->toArray();
-
-                //       Transaction::where("request_id", end($currentRequestIds) - 1)->update([
-                //         "is_not_editable" => false,
-                //       ]);
-                //       break;
-
-                //     case true:
-                //       $poNo = $transaction
-                //         ->po_details()
-                //         ->pluck("po_no")
-                //         ->last();
-
-                //       $lastRequestId = POBatch::where("po_no", $poNo)
-                //         ->pluck("request_id")
-                //         ->last();
-
-                //       $currentBalance =
-                //         $transaction->referrence_amount +
-                //         Transaction::where("request_id", $lastRequestId)->value("balance_po_ref_amount");
-
-                //       // $poAmount = POBatch::where("po_no", $poNo)
-                //       //   ->where("request_id", $lastRequestId)
-                //       //   ->value("po_amount");
-
-                //       // $newPoAmount = $poAmount + $transaction->referrence_amount;
-
-                //       // POBatch::where("po_no", $poNo)
-                //       //   ->where("request_id", $lastRequestId)
-                //       //   ->update(["po_amount" => $newPoAmount]);
-
-                //       Transaction::updateOrInsert(
-                //         ["request_id" => $lastRequestId],
-                //         ["balance_po_ref_amount" => $currentBalance]
-                //       );
-                //       break;
-                //   }
-                // } elseif ($transaction->document_id == 3) {
-                //   $test = Transaction::find($id);
-                //   $test->state = $subprocess;
-                //   $test->save();
-
-                //   switch ($transaction->category) {
-                //     case "rental":
-                //       $gross_amount = Transaction::where("transaction_id", $test->transaction_id)
-                //         ->where("state", "!=", "void")
-                //         ->sum("gross_amount");
-
-                //       Transaction::where("transaction_id", $test->transaction_id)
-                //         ->where("state", "!=", "void")
-                //         ->update([
-                //           "total_gross" => $gross_amount,
-                //           "document_amount" => $gross_amount,
-                //         GenericMethod::resultResponse
-
-                //       break;
-
-                //     case "leasing":
-                //       $transactionData = Transaction::where("transaction_id", $transaction->transaction_id)
-                //         ->where("state", "!=", "void")
-                //         ->selectRaw(
-                //           "SUM(principal) as principal_amount, SUM(interest) as interest_amount, SUM(cwt) as cwt_amount"
-                //         )
-                //         ->first();
-
-                //       $document_amount =
-                //         $transactionData->principal_amount + $transactionData->interest_amount - $transactionData->cwt_amount;
-
-                //       Transaction::where("transaction_id", $transaction->transaction_id)
-                //         ->where("state", "!=", "void")
-                //         ->update([
-                //           "document_amount" => $document_amount,
-                //         ]);
-
-                //       break;
-                //   }
-                // }
             } elseif ($subprocess == "tag") {
                 $status = "tag-tag";
 //        $receipt_type = $request->receipt_type;
@@ -412,18 +328,29 @@ class TransactionFlow
                 return GenericMethod::resultResponse("invalid-access", "", "");
             }
             $state = $subprocess;
-            GenericMethod::tagTransaction(
-                $model,
-                $request_id,
-//        $transaction_id,
-                $transaction->id,
-                $remarks,
-                $date_now,
-                $reason_id,
-                $reason_remarks,
-                $status,
-                $distributed_to
-            );
+
+            $transaction->tag()->create([
+                "request_id" => $request_id,
+                "description" => $remarks,
+                "status" => $status,
+                "date_status" => $date_now,
+                "reason_id" => $reason_id,
+                "remarks" => $reason_remarks,
+                "distributed_id" => $distributed_id,
+                "distributed_name" => $distributed_name
+            ]);
+//            GenericMethod::tagTransaction(
+//                $model,
+//                $request_id,
+////        $transaction_id,
+//                $transaction->id,
+//                $remarks,
+//                $date_now,
+//                $reason_id,
+//                $reason_remarks,
+//                $status,
+//                $distributed_to
+//            );
             GenericMethod::updateTransactionStatus(
                 $id,
 //        $transaction_id,

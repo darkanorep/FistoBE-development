@@ -312,4 +312,20 @@ class UserController extends Controller
         }
         return $this->resultResponse('password-error-cred', 'User', []);
     }
+
+//    public function syncSedar() {
+//        $response = (new MasterlistController())->sedar_employees();
+//        $employees = $response->data;
+//
+//        foreach ($employees as $employee) {
+//            $generalInfo = $employee->general_info;
+//            $unitInfo = $employee->unit_info;
+//
+//            User::withTrashed()->where('id_prefix', $generalInfo->prefix_id)
+//                ->where('id_no', $generalInfo->id_number)
+//                ->update([
+//                    'subunit_name' => $unitInfo->subunit_name,
+//                ]);
+//        }
+//    }
 }

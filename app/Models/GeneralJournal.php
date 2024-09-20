@@ -65,4 +65,8 @@ class GeneralJournal extends Model
         return $this->hasMany(AccountTitle::class, 'id', 'account_title_id');
     }
 
+    public function payableAssociates() {
+        return $this->hasMany(User::class, 'id', 'user_id');
+    }
+
 }

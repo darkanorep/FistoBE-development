@@ -28,7 +28,7 @@ class GeneralJournalController extends Controller
 //        $transactionTo = $this->getTransactionDate($request, 'transaction_to', Carbon::now()->endOfMonth()->format('Y-m-d H:i:s'));
         $is_posted = $request->input('is_posted', 0);
         $search = $request->search;
-        $adjustment_month = $request->input('adjustment_month', Carbon::now()->format('Y-m'));
+        $adjustment_month = $request->input('adjustment_month');
         $year = date('Y', strtotime($adjustment_month));
         $month = date('m', strtotime($adjustment_month));
 
@@ -47,7 +47,6 @@ class GeneralJournalController extends Controller
                     ->whereMonth('adjustment_month', $month);
             })
             ->where('user_id', auth()->user()->id)
-            ->whereLike(['gj_number', 'journal_name', 'journal_description'], $search)
             ->groupBy('gj_number', 'journal_name', 'journal_description', 'is_posted')
             ->orderBy('latest_updated_at', 'desc')
             ->whereLike(['gj_number', 'journal_name', 'journal_description'], $search)
@@ -73,6 +72,7 @@ class GeneralJournalController extends Controller
                 'account_titles' => $account_titles->transform(function ($item) {
                     return [
                         'po_no' => $item->po_no,
+                        'tag_no' => $item->tag_no,
                         'reference_no' => $item->reference_no,
                         'voucher_number' => $item->voucher_number,
                         'supplier' => [
@@ -151,6 +151,7 @@ class GeneralJournalController extends Controller
                 'adjustment_month' => $adjust_month,
                 'division_id' => $division_id,
                 'division_name' => $division_name,
+                'tag_no' => data_get($account_title, "tag_no"),
                 'description' => data_get($account_title, "remarks"),
                 'po_no' => data_get($account_title, "po_no"),
                 'reference_no' => data_get($account_title, "reference_no"),
