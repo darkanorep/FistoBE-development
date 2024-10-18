@@ -43,6 +43,7 @@ use Carbon\Carbon;
 
 use App\Http\Requests\TransactionPostRequest;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class TransactionController extends Controller
@@ -788,8 +789,6 @@ class TransactionController extends Controller
 
     public function index(Request $request)
     {
-
-//        return Route::currentRouteName();
         $status = $request->input('state', 'request');
         $rows = (int)$request->input('rows', 10);
         $suppliers = $this->getRequestData($request, 'suppliers');
@@ -800,10 +799,9 @@ class TransactionController extends Controller
         $cheque_from = $this->getTransactionDate($request, 'cheque_from', Carbon::now()->startOfMonth()->format('Y-m-d H:i:s'));
         $cheque_to = $this->getTransactionDate($request, 'cheque_to', Carbon::now()->endOfMonth()->format('Y-m-d H:i:s'));
         $search = $request->input('search');
-        $tag_search = str_replace('tag#', '', $search);
-        $department = $request->input('department', [auth()->user()->department[0]['name']]);
+//        $department = $request->input('department', [auth()->user()->department[0]['name']]);
         $user_id = null;
-        $my_request = $request->input('my_request', 0);
+//        $my_request = $request->input('my_request', 0);
         $is_confidential = $request->input('is_confidential', 0);
         $is_mc = $request->input('is_mc', 0);
         $is_mcl = $request->input('is_mcl', 1);
@@ -925,9 +923,10 @@ class TransactionController extends Controller
                     });
                 }
             )
-            ->when($status == 'pending', function ($query) use ($department, $is_mcl) {
+            ->when($status == 'pending', function ($query) use ($is_mcl) {
                 $query->whereNotIn('status', ['requestor-void', 'tag-return'])
-                    ->whereIn('department_details', $department)
+//                    ->whereIn('department_details', $department)
+                    ->where('users_id', auth()->user()->id)
                     ->withTrashed(function ($query) {
                         $query->where('deleted_at', '=', '2024-08-28 00:00:00');
                     });
@@ -940,14 +939,15 @@ class TransactionController extends Controller
 //                    })
 
             })
-            ->when($status == 'return-request', function ($query) use ($department) {
+            ->when($status == 'return-request', function ($query) {
                 $query->where('status', 'tag-return')
-                    ->where('users_id', auth()->user()->id)
-                    ->whereIn('department_details', $department);
+                    ->where('users_id', auth()->user()->id);
+//                    ->whereIn('department_details', $department);
             })
-            ->when($status == 'requestor-void', function ($query) use ($department) {
+            ->when($status == 'requestor-void', function ($query) {
                 $query->where('state', 'void')
-                    ->whereIn('department_details', $department);
+                    ->where('users_id', auth()->user()->id);
+//                    ->whereIn('department_details', $department);
             })
 
             //Tagging of Documents
@@ -1178,6 +1178,7 @@ class TransactionController extends Controller
                 "department",
                 "location",
                 "document_no",
+                "document_type",
                 "document_amount",
                 "referrence_no",
                 "referrence_amount",
@@ -1255,27 +1256,28 @@ class TransactionController extends Controller
 //            }
 
             $is_latest_transaction = 0;
-//            if ($transaction->po_details->isNotEmpty() && strtoupper($transaction->payment_type) === "PARTIAL") {
-//                $po_no = $transaction->po_details->last()->po_no;
-//                $trxns_id = POBatch::with([
-//                    'request' => function ($query) {
-//                        $query->where('state', '!=', 'void')
-//                            ->select(['request_id']);
-//                    }
-//                ])
-//                    ->where('po_no', $po_no)->select(['request_id', 'po_no'])->get();
-//
-//                $trxns_id = $trxns_id->filter(function ($query) {
-//                    return $query['request'] != null;
-//                })->pluck('request.request_id')->last();
-//
-//                if ($trxns_id == $transaction->id) {
-//                    $is_latest_transaction = 1;
-//                }
-//            }
+            if ($transaction->po_details->isNotEmpty() && strtoupper($transaction->payment_type) === "PARTIAL") {
+                $po_no = $transaction->po_details->last()->po_no;
+                $trxns_id = POBatch::with([
+                    'request' => function ($query) {
+                        $query->where('state', '!=', 'void')
+                            ->select(['request_id']);
+                    }
+                ])
+                    ->where('po_no', $po_no)->select(['request_id', 'po_no'])->get();
+
+                $trxns_id = $trxns_id->filter(function ($query) {
+                    return $query['request'] != null;
+                })->pluck('request.request_id')->last();
+
+                if ($trxns_id == $transaction->id) {
+                    $is_latest_transaction = 1;
+                }
+            }
 
             $accounts = $transaction->account_titles->filter(function ($item) {
-                return $item->account_title_name == 'Accounts Payable' || $item->account_title_name == 'Accounts Payable - RHL';
+//                return $item->account_title_name == 'Accounts Payable' || $item->account_title_name == 'Accounts Payable - RHL';
+                return strpos($item->account_title_name, "Accounts Payable") !== false;
             });
 
 //            $is_cheque = $transaction->treasuryCheque()->exists() ? 1 : 0;
@@ -1426,7 +1428,12 @@ class TransactionController extends Controller
 
     public function show($id)
     {
-        $transaction = Transaction::withTrashed()->where('id', $id)
+        $transaction = Transaction::withTrashed()
+            ->with([
+                "supplier",
+                "supplier.supplier_type:id,type as name,transaction_days",
+            ])
+            ->where('id', $id)
            ->select(
                "id",
                "users_id",
@@ -1447,6 +1454,7 @@ class TransactionController extends Controller
                "document_id",
                "document_type",
                "document_no",
+               "document_type",
                "document_amount",
                "document_date",
                "payment_type",
@@ -1459,7 +1467,7 @@ class TransactionController extends Controller
                "location_id",
                "location",
                "supplier_id",
-               "supplier",
+//               "supplier",
                "po_total_amount",
                "balance_po_ref_amount",
                "referrence_id",
@@ -1521,8 +1529,11 @@ class TransactionController extends Controller
                "sub_unit",
                "input_tax",
                "box_no",
+               "transaction_type"
            )
             ->first();
+
+        $type = $transaction->transaction_type;
         $rental = [
             'stall a rental',
             'stall b rental',
@@ -1562,10 +1573,7 @@ class TransactionController extends Controller
             'name' => $transaction->bussiness_unit_name,
         ];
 
-        $supplier = [
-            "id" => $transaction->supplier_id,
-            "name" => $transaction->supplier,
-        ];
+        $supplier = $transaction->supplier;
 
         $tag = null;
         $inspect = null;
@@ -1852,7 +1860,7 @@ class TransactionController extends Controller
                 'bussiness_unit' => $bussiness_unit,
         ]);
 
-        $po_group = $transaction->po_details->map(function ($po) {
+        $po_group = $transaction->po_details->map(function ($po, $index) use ($transaction) {
                 return [
                     'is_add' => $po->is_add,
                     'is_editable' => $po->is_editable,
@@ -1860,7 +1868,8 @@ class TransactionController extends Controller
                     'id' => $po->id,
                     'no' => $po->po_no,
                     'amount' => floatVal($po->po_amount),
-                    'previous_balance' => 0,
+//                    'previous_balance' => $index === $transaction->po_details->count() - 1 ? floatval($po->po_total_amount - $totalDeduction) : 0,
+                    'previous_balance' => $index === $transaction->po_details->count() - 1 ? floatval($po->previous_balance) : 0,
                     'balance' => 0,
                     'rr_no' => $po->rr_group,
                 ];
@@ -1881,6 +1890,16 @@ class TransactionController extends Controller
                 "interest_due" => floatVal($autoDebit->interest_due),
                 "cwt" => floatVal($autoDebit->cwt),
                 "dst" => floatVal($autoDebit->dst),
+            ];
+        }) ?? [];
+        $service_group = $transaction->service_batches->map(function ($service) {
+            return [
+                "company" => $service->company_name,
+                "business_unit" => $service->business_unit_name,
+                "department" => $service->department_name,
+                "sub_unit" => $service->sub_unit_name,
+                "location" => $service->location_name,
+                "amount" => floatVal($service->amount),
             ];
         }) ?? [];
 
@@ -2261,6 +2280,7 @@ class TransactionController extends Controller
 //        }
 
         $transaction = [
+            'type' => $type,
             'requestor' => $requestor,
             'transaction' => $transact,
             'document' => $document,
@@ -2268,6 +2288,7 @@ class TransactionController extends Controller
             'po_group' =>  $po_group,
             'prm_group' => $prm_group,
             'autoDebit_group' => $autoDebit_group,
+            'service_group' => $service_group,
             'tag' => $tag,
             'inspect' => $inspect,
             'extract' => $extract,
@@ -2296,8 +2317,8 @@ class TransactionController extends Controller
 
     private function getDateEveryStatus($transaction, $status)
     {
-        return $transaction->filter(function ($tag) use ($status) {
-            return $tag->status == $status;
+        return $transaction->filter(function ($item) use ($status) {
+            return $item->status == $status;
         })->first()->created_at ?? null;
     }
 
@@ -2309,6 +2330,179 @@ class TransactionController extends Controller
 //            throw new FistoException("No records found.", 404, null, []);
 //        }
 //        return $singleTransaction->first();
+//    }
+
+//    public function store(TransactionPostRequest $request)
+//    {
+//        $transaction_id = GenericMethod::getTransactionID(Auth::user()->department[0]["name"]);
+//        $isConfidential = $request->input("document.is_confidential", 0);
+//        $isMc = $request->input("document.is_mc", 0);
+//        $isNew = null;
+//        $date_requested = Carbon::now()->format("Y-m-d H:i:s");
+//        $request_id = GenericMethod::getRequestID();
+//
+//        $transaction = Transaction::query();
+//        $poBatch = POBatch::query();
+//
+//        if (isset($request->po_group)) {
+//            $check_po = POBatch::whereIn("po_no", collect($request->po_group)->pluck("no"))
+//                ->select("created_at")
+//                ->get()
+//                ->pluck('created_at');
+//
+//            $isAllDatesNotLessThanToday = $check_po->every(function ($date) {
+//                $date = \Carbon\Carbon::parse($date);
+//                return $date->startOfDay()->greaterThanOrEqualTo('July 13, 2024');
+//            });
+//
+//            if ($isAllDatesNotLessThanToday) {
+//                $isNew = 1;
+//            }
+//        }
+//
+//        switch(data_get($request, 'document.id')) {
+//
+//            case 1:
+//                switch ($request->input("document.payment_type")) {
+//
+//                    case 'Partial':
+//
+//                        if (!$isNew) {
+//
+//                            $po_group  = GenericMethod::ValidateIfPOExists(
+//                                $request->po_group,
+//                                data_get($request,"document.company.id")
+//                            );
+//
+//                            $getAndValidatePOBalance = GenericMethod::getAndValidatePOBalance(
+//                                $request->all(),
+//                                data_get($request,"document.company.id"),
+//                                last($request->po_group)["no"],
+//                                data_get( $request, "document.amount"),
+//                                $request->po_group
+//                            );
+//
+//                            $existTransaction = $transaction->where("company_id", data_get($request, "document.company.id"))
+//                                ->exists();
+//
+//                            if ($existTransaction) {
+//                                $currentRequestids = $poBatch->where("po_no", last($request->po_group)["no"])->pluck("request_id")->toArray();
+//
+//                                $transaction->where("request_id", last($currentRequestids))->update([
+//                                    "is_not_editable" => true,
+//                                    "updated_at" => DB::raw("updated_at"),
+//                                ]);
+//                            }
+//
+//                            if (gettype($getAndValidatePOBalance) == "object") {
+//                                return $this->resultResponse("invalid", "", $getAndValidatePOBalance);
+//                            }
+//
+//                            if (gettype($getAndValidatePOBalance) == "array") {
+//                                //for new po
+//                                //Additional PO Validation
+//                                $new_po = $getAndValidatePOBalance["new_po_group"];
+//                                $po_total_amount = $getAndValidatePOBalance["po_total_amount"];
+//                                $balance_with_additional_total_po_amount = $getAndValidatePOBalance["balance"];
+//
+//                                $newTransaction = GenericMethod::insertTransaction(
+//                                    $transaction_id,
+//                                    $po_total_amount,
+//                                    0,
+//                                    $date_requested,
+//                                    $request->all(),
+//                                    $balance_with_additional_total_po_amount,
+//                                    $isConfidential,
+//                                    $isMc,
+//                                    $isNew
+//                                );
+//
+//                                $request_id = $newTransaction->id;
+//
+//                                GenericMethod::insertPO(
+//                                    $request_id,
+//                                    $request->po_group,
+//                                    $po_total_amount,
+//                                    strtoupper(data_get($request, "document.payment_type"))
+//                                );
+//
+//                                $poBatch->where("request_id", $request_id)
+//                                    ->where("po_no", reset($request->po_group)["no"])
+//                                    ->update([
+//                                        "is_modifiable" => true,
+//                                    ]);
+//
+//                                $isAdd = $poBatch->where("request_id", $request_id)->select([
+//                                    "is_add",
+//                                    "is_editable",
+//                                    "is_modifiable"
+//                                ])->get();
+//
+//                                foreach ($isAdd as $record) {
+//                                    if ($record->is_add == true && $record->is_editable == true) {
+//                                        $record->update([
+//                                            "is_modifiable" => true,
+//                                        ]);
+//                                    }
+//                                }
+//
+//                                if (isset($transaction->transaction_id)) {
+//                                    return $this->resultResponse("save", "Transaction", []);
+//                                }
+//                            }
+//
+//                            $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $request->po_group);
+//                            $balance_po_ref_amount = $po_total_amount - data_get($request, "document.amount");
+//
+//                            if ($po_total_amount < data_get($request, "document.amount")) {
+//                                $amountValdiation = GenericMethod::resultLaravelFormat("document.amount", ["Insufficient PO balance."]);
+//
+//                                return $this->resultResponse("invalid", "", $amountValdiation);
+//                            }
+//
+//                            if (isset($getAndValidatePOBalance)) {
+//                                $balance_po_ref_amount = $getAndValidatePOBalance;
+//                            }
+//
+//                            $newTransaction = GenericMethod::insertTransaction(
+//                                $transaction_id,
+//                                $po_total_amount,
+//                                $request_id,
+//                                $date_requested,
+//                                $request->all(),
+//                                $balance_po_ref_amount,
+//                                $isConfidential,
+//                                $isMc,
+//                                $isNew
+//                            );
+//
+//                            $request_id = $newTransaction->id;
+//
+//                            GenericMethod::insertPO(
+//                                $request_id,
+//                                $po_group,
+//                                $po_total_amount,
+//                                strtoupper(data_get($request, "document.payment_type"))
+//                            );
+//
+//                            $poBatch->where("request_id", $request_id)
+//                                ->where("is_add", false)
+//                                ->where("is_editable", true)
+//                                ->update(["is_modifiable" => true]);
+//
+//                            if (isset($transaction->transaction_id)) {
+//                                return $this->resultResponse("save", "Transaction", []);
+//                            }
+//                        }
+//
+//                        break;
+//
+//                    default:
+//                }
+//
+//                break;
+//
+//        }
 //    }
 
     public function store(TransactionPostRequest $request)
@@ -2323,6 +2517,7 @@ class TransactionController extends Controller
 
         if (isset($fields["po_group"])) {
             $check_po = POBatch::whereIn("po_no", collect($fields["po_group"])->pluck("no"))
+                ->select("created_at")
                 ->get()
                 ->pluck('created_at');
 
@@ -2346,25 +2541,27 @@ class TransactionController extends Controller
 
                 switch ($request->input("document.payment_type")) {
                     case "Partial":
-                        $fields["po_group"] = GenericMethod::ValidateIfPOExists(
-                            $fields["po_group"],
-                            $fields["document"]["company"]["id"]
-                        );
 
-                        $getAndValidatePOBalance = GenericMethod::getAndValidatePOBalance(
-                            $fields,
-                            $fields["document"]["company"]["id"],
-                            last($fields["po_group"])["no"],
-                            $fields["document"]["amount"],
-                            $fields["po_group"]
-                        );
+                        if (!$isNew) {
+                            $fields["po_group"] = GenericMethod::ValidateIfPOExists(
+                                $fields["po_group"],
+                                $fields["document"]["company"]["id"]
+                            );
 
-                        $existTransaction = Transaction::where("company_id", $fields["document"]["company"]["id"])
-                            // ->where('company_id', $fields["document"]["company"]["id"])
-                            // ->where('supplier_id', $fields["document"]["supplier"]["id"])
-                            ->exists();
+                            $getAndValidatePOBalance = GenericMethod::getAndValidatePOBalance(
+                                $fields,
+                                $fields["document"]["company"]["id"],
+                                last($fields["po_group"])["no"],
+                                $fields["document"]["amount"],
+                                $fields["po_group"]
+                            );
 
-                        if ($existTransaction) {
+                            $existTransaction = Transaction::where("company_id", $fields["document"]["company"]["id"])
+                                // ->where('company_id', $fields["document"]["company"]["id"])
+                                // ->where('supplier_id', $fields["document"]["supplier"]["id"])
+                                ->exists();
+
+                            if ($existTransaction) {
 //                            $currentRequestids = POBatch::where("po_no", last($fields["po_group"])["no"])->pluck("request_id");
 //
 //                            $ids = [];
@@ -2379,25 +2576,80 @@ class TransactionController extends Controller
 //                                "updated_at" => DB::raw("updated_at"),
 //                            ]);
 
-                            $currentRequestids = POBatch::where("po_no", last($fields["po_group"])["no"])->pluck("request_id")->toArray();
+                                $currentRequestids = POBatch::where("po_no", last($fields["po_group"])["no"])->pluck("request_id")->toArray();
 
-                            // Enable new transaction
-                            Transaction::where("request_id", last($currentRequestids))->update([
-                                "is_not_editable" => true,
-                                "updated_at" => DB::raw("updated_at"),
-                            ]);
-                        }
+                                // Enable new transaction
+                                Transaction::where("request_id", last($currentRequestids))->update([
+                                    "is_not_editable" => true,
+                                    "updated_at" => DB::raw("updated_at"),
+                                ]);
+                            }
 
-                        if (gettype($getAndValidatePOBalance) == "object") {
-                            return $this->resultResponse("invalid", "", $getAndValidatePOBalance);
-                        }
+                            if (gettype($getAndValidatePOBalance) == "object") {
+                                return $this->resultResponse("invalid", "", $getAndValidatePOBalance);
+                            }
 
-                        if (gettype($getAndValidatePOBalance) == "array") {
-                            //for new po
-                            //Additional PO Validation
-                            $new_po = $getAndValidatePOBalance["new_po_group"];
-                            $po_total_amount = $getAndValidatePOBalance["po_total_amount"];
-                            $balance_with_additional_total_po_amount = $getAndValidatePOBalance["balance"];
+                            if (gettype($getAndValidatePOBalance) == "array") {
+                                //for new po
+                                //Additional PO Validation
+                                $new_po = $getAndValidatePOBalance["new_po_group"];
+                                $po_total_amount = $getAndValidatePOBalance["po_total_amount"];
+                                $balance_with_additional_total_po_amount = $getAndValidatePOBalance["balance"];
+
+                                $transaction = GenericMethod::insertTransaction(
+                                    $transaction_id,
+                                    $po_total_amount,
+                                    $request_id,
+                                    $date_requested,
+                                    $fields,
+                                    $balance_with_additional_total_po_amount,
+                                    $isConfidential,
+                                    $isMc,
+                                    $isNew
+                                );
+
+                                $request_id = $transaction->id;
+
+                                GenericMethod::insertPO(
+                                    $request_id,
+                                    $fields["po_group"],
+                                    $po_total_amount,
+                                    strtoupper($fields["document"]["payment_type"])
+                                );
+
+                                POBatch::where("request_id", $request_id)
+                                    ->where("po_no", reset($fields["po_group"])["no"])
+                                    ->update([
+                                        "is_modifiable" => true,
+                                    ]);
+
+                                $isAdd = POBatch::where("request_id", $request_id)->get();
+
+                                foreach ($isAdd as $record) {
+                                    if ($record->is_add == true && $record->is_editable == true) {
+                                        $record->update([
+                                            "is_modifiable" => true,
+                                        ]);
+                                    }
+                                }
+
+                                if (isset($transaction->transaction_id)) {
+                                    return $this->resultResponse("save", "Transaction", []);
+                                }
+                            }
+
+                            $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
+                            $balance_po_ref_amount = $po_total_amount - $fields["document"]["amount"];
+
+                            if ($po_total_amount < $fields["document"]["amount"]) {
+                                $amountValdiation = GenericMethod::resultLaravelFormat("document.amount", ["Insufficient PO balance."]);
+
+                                return $this->resultResponse("invalid", "", $amountValdiation);
+                            }
+
+                            if (isset($getAndValidatePOBalance)) {
+                                $balance_po_ref_amount = $getAndValidatePOBalance;
+                            }
 
                             $transaction = GenericMethod::insertTransaction(
                                 $transaction_id,
@@ -2405,7 +2657,7 @@ class TransactionController extends Controller
                                 $request_id,
                                 $date_requested,
                                 $fields,
-                                $balance_with_additional_total_po_amount,
+                                $balance_po_ref_amount,
                                 $isConfidential,
                                 $isMc,
                                 $isNew
@@ -2420,89 +2672,116 @@ class TransactionController extends Controller
                                 strtoupper($fields["document"]["payment_type"])
                             );
 
+                            // POBatch::where('request_id', $request_id)->update([
+                            //   'is_modifiable' => true
+                            // ]);
+
+                            // $currentPO = POBatch::where('po_no', last($fields["po_group"])["no"])->pluck('request_id');
+
+                            // if ($currentPO) {
+                            //   POBatch::where('request_id', reset($currentPO))->update([
+                            //     'is_modifiable' => true
+                            //   ]);
+                            // }
+
+                            // $isAdd = POBatch::where('request_id', $request_id)->get();
+
+                            // foreach ($isAdd as $record) {
+                            //   if ($record->is_add == false && $record->is_editable == true) {
+                            //       $record->update([
+                            //           'is_modifiable' => true
+                            //       ]);
+                            //   }
+                            // }
+
                             POBatch::where("request_id", $request_id)
-                                ->where("po_no", reset($fields["po_group"])["no"])
-                                ->update([
-                                    "is_modifiable" => true,
-                                ]);
-
-                            $isAdd = POBatch::where("request_id", $request_id)->get();
-
-                            foreach ($isAdd as $record) {
-                                if ($record->is_add == true && $record->is_editable == true) {
-                                    $record->update([
-                                        "is_modifiable" => true,
-                                    ]);
-                                }
-                            }
+                                ->where("is_add", false)
+                                ->where("is_editable", true)
+                                ->update(["is_modifiable" => true]);
 
                             if (isset($transaction->transaction_id)) {
                                 return $this->resultResponse("save", "Transaction", []);
                             }
-                        }
+                        } else {
+                            $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
 
-                        $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
-                        $balance_po_ref_amount = $po_total_amount - $fields["document"]["amount"];
+                            $newTransaction = Transaction::create([
+                                "transaction_id" => $transaction_id,
+                                "users_id" => auth()->user()->id,
+                                "id_prefix" => auth()->user()->id_prefix,
+                                "id_no" => auth()->user()->id_no,
+                                "first_name" => auth()->user()->first_name,
+                                "middle_name" => auth()->user()->middle_name,
+                                "last_name" => auth()->user()->last_name,
+                                "suffix" => auth()->user()->suffix,
+                                "department_details" => auth()->user()->department[0]["name"],
 
-                        if ($po_total_amount < $fields["document"]["amount"]) {
-                            $amountValdiation = GenericMethod::resultLaravelFormat("document.amount", ["Insufficient PO balance."]);
+                                "document_id" => $fields["document"]["id"],
+                                "category_id" => $fields["document"]["category"]["id"],
+                                "category" => $fields["document"]["category"]["name"],
+                                "company_id" => $fields["document"]["company"]["id"],
+                                "company" => $fields["document"]["company"]["name"],
+                                "department_id" => $fields["document"]["department"]["id"],
+                                "department" => $fields["document"]["department"]["name"],
+                                "location_id" => $fields["document"]["location"]["id"],
+                                "location" => $fields["document"]["location"]["name"],
+                                "supplier_id" => $fields["document"]["supplier"]["id"],
+                                "supplier" => $fields["document"]["supplier"]["name"],
+                                "payment_type" => $fields["document"]["payment_type"],
+                                "document_no" => $fields["document"]["no"],
+                                "document_date" => $fields["document"]["date"],
+                                "document_amount" => $fields["document"]["amount"],
+                                "remarks" => $fields["document"]["remarks"],
+                                "document_type" => $fields["document"]["name"],
+                                "po_total_amount" => $po_total_amount,
+                                "request_id" => $request_id,
 
-                            return $this->resultResponse("invalid", "", $amountValdiation);
-                        }
+                                "date_requested" => $date_requested,
+                                "status" => "Pending",
+                                "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
+                                "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+                                "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
+                                "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+                                "is_confidential" => $isConfidential,
+                                "is_mc" => $isMc,
+                                "is_new" => $isNew
+                            ]);
 
-                        if (isset($getAndValidatePOBalance)) {
-                            $balance_po_ref_amount = $getAndValidatePOBalance;
-                        }
+                            $newTransaction->update([
+                                "request_id" => $newTransaction->id,
+                            ]);
 
-                        $transaction = GenericMethod::insertTransaction(
-                            $transaction_id,
-                            $po_total_amount,
-                            $request_id,
-                            $date_requested,
-                            $fields,
-                            $balance_po_ref_amount,
-                            $isConfidential,
-                            $isMc,
-                            $isNew
-                        );
+                            $fields["po_group"] = GenericMethod::ValidateIfPOExists(
+                                $fields["po_group"],
+                                $fields["document"]["company"]["id"]
+                            );
 
-                        $request_id = $transaction->id;
+                            foreach ($fields["po_group"] as $po) {
+                                $newTransaction->po_details()->create([
+                                    "request_id" => $newTransaction->id,
+                                    "po_no" => $po["no"],
+                                    "po_amount" => $po["amount"],
+                                    "is_add" => $po["is_add"],
+                                    "is_editable" => $po["is_editable"],
+                                    "po_total_amount" => $po_total_amount,
+                                    "previous_balance" => $request->po_balance,
+                                    "rr_group" => $po["rr_no"],
+                                ]);
+                            }
 
-                        GenericMethod::insertPO(
-                            $request_id,
-                            $fields["po_group"],
-                            $po_total_amount,
-                            strtoupper($fields["document"]["payment_type"])
-                        );
+                            $lastRequestId = POBatch::where("po_no", last($fields["po_group"])["no"])
+                                ->pluck("request_id")
+                                ->last();
 
-                        // POBatch::where('request_id', $request_id)->update([
-                        //   'is_modifiable' => true
-                        // ]);
+                            if ($lastRequestId) {
+                                Transaction::where("company_id", $fields["document"]["company"]["id"])
+                                    ->where("request_id", $lastRequestId)
+                                    ->update([
+                                        "is_not_editable" => true,
+                                        "updated_at" => DB::raw("updated_at"),
+                                    ]);
+                            }
 
-                        // $currentPO = POBatch::where('po_no', last($fields["po_group"])["no"])->pluck('request_id');
-
-                        // if ($currentPO) {
-                        //   POBatch::where('request_id', reset($currentPO))->update([
-                        //     'is_modifiable' => true
-                        //   ]);
-                        // }
-
-                        // $isAdd = POBatch::where('request_id', $request_id)->get();
-
-                        // foreach ($isAdd as $record) {
-                        //   if ($record->is_add == false && $record->is_editable == true) {
-                        //       $record->update([
-                        //           'is_modifiable' => true
-                        //       ]);
-                        //   }
-                        // }
-
-                        POBatch::where("request_id", $request_id)
-                            ->where("is_add", false)
-                            ->where("is_editable", true)
-                            ->update(["is_modifiable" => true]);
-
-                        if (isset($transaction->transaction_id)) {
                             return $this->resultResponse("save", "Transaction", []);
                         }
 
@@ -2631,58 +2910,100 @@ class TransactionController extends Controller
                 switch ($request->input("document.payment_type")) {
                     case 'Partial':
 
-                        $fields["po_group"] = GenericMethod::ValidateIfPOExists(
-                            $fields["po_group"],
-                            $fields["document"]["company"]["id"]
-                        );
+                        if (!$isNew) {
+                            $fields["po_group"] = GenericMethod::ValidateIfPOExists(
+                                $fields["po_group"],
+                                $fields["document"]["company"]["id"]
+                            );
 
-                        $getAndValidatePOBalance = GenericMethod::getAndValidatePOBalance(
-                            $fields,
-                            $fields["document"]["company"]["id"],
-                            last($fields["po_group"])["no"],
-                            $fields["document"]["amount"],
-                            $fields["po_group"]
-                        );
+                            $getAndValidatePOBalance = GenericMethod::getAndValidatePOBalance(
+                                $fields,
+                                $fields["document"]["company"]["id"],
+                                last($fields["po_group"])["no"],
+                                $fields["document"]["amount"],
+                                $fields["po_group"]
+                            );
 
-                        $existTransaction = Transaction::where("company_id", $fields["document"]["company"]["id"])
-                            // ->where('company_id', $fields["document"]["company"]["id"])
-                            // ->where('supplier_id', $fields["document"]["supplier"]["id"])
-                            ->exists();
+                            $existTransaction = Transaction::where("company_id", $fields["document"]["company"]["id"])
+                                // ->where('company_id', $fields["document"]["company"]["id"])
+                                // ->where('supplier_id', $fields["document"]["supplier"]["id"])
+                                ->exists();
 
-                        if ($existTransaction) {
-//                            $currentRequestids = POBatch::where("po_no", last($fields["po_group"])["no"])->pluck("request_id");
-//
-//                            $ids = [];
-//
-//                            for ($i = 0; $i < count($currentRequestids); $i++) {
-//                                $ids[] = $currentRequestids[$i];
-//                            }
-//
-//                            //enable new transaction
-//                            Transaction::where("request_id", "=", end($ids))->update([
-//                                "is_not_editable" => true,
-//                                "updated_at" => DB::raw("updated_at"),
-//                            ]);
+                            if ($existTransaction) {
+                                $currentRequestids = POBatch::where("po_no", last($fields["po_group"])["no"])->pluck("request_id")->toArray();
 
-                            $currentRequestids = POBatch::where("po_no", last($fields["po_group"])["no"])->pluck("request_id")->toArray();
+                                // Enable new transaction
+                                Transaction::where("request_id", last($currentRequestids))->update([
+                                    "is_not_editable" => true,
+                                    "updated_at" => DB::raw("updated_at"),
+                                ]);
+                            }
 
-                            // Enable new transaction
-                            Transaction::where("request_id", last($currentRequestids))->update([
-                                "is_not_editable" => true,
-                                "updated_at" => DB::raw("updated_at"),
-                            ]);
-                        }
+                            if (gettype($getAndValidatePOBalance) == "object") {
+                                return $this->resultResponse("invalid", "", $getAndValidatePOBalance);
+                            }
 
-                        if (gettype($getAndValidatePOBalance) == "object") {
-                            return $this->resultResponse("invalid", "", $getAndValidatePOBalance);
-                        }
+                            if (gettype($getAndValidatePOBalance) == "array") {
+                                //for new po
+                                //Additional PO Validation
+                                $new_po = $getAndValidatePOBalance["new_po_group"];
+                                $po_total_amount = $getAndValidatePOBalance["po_total_amount"];
+                                $balance_with_additional_total_po_amount = $getAndValidatePOBalance["balance"];
 
-                        if (gettype($getAndValidatePOBalance) == "array") {
-                            //for new po
-                            //Additional PO Validation
-                            $new_po = $getAndValidatePOBalance["new_po_group"];
-                            $po_total_amount = $getAndValidatePOBalance["po_total_amount"];
-                            $balance_with_additional_total_po_amount = $getAndValidatePOBalance["balance"];
+                                $transaction = GenericMethod::insertTransaction(
+                                    $transaction_id,
+                                    $po_total_amount,
+                                    $request_id,
+                                    $date_requested,
+                                    $fields,
+                                    $balance_with_additional_total_po_amount,
+                                    $isConfidential,
+                                    $isMc,
+                                    $isNew
+                                );
+
+                                $request_id = $transaction->id;
+
+                                GenericMethod::insertPO(
+                                    $request_id,
+                                    $fields["po_group"],
+                                    $po_total_amount,
+                                    strtoupper($fields["document"]["payment_type"])
+                                );
+
+                                POBatch::where("request_id", $request_id)
+                                    ->where("po_no", reset($fields["po_group"])["no"])
+                                    ->update([
+                                        "is_modifiable" => true,
+                                    ]);
+
+                                $isAdd = POBatch::where("request_id", $request_id)->get();
+
+                                foreach ($isAdd as $record) {
+                                    if ($record->is_add == true && $record->is_editable == true) {
+                                        $record->update([
+                                            "is_modifiable" => true,
+                                        ]);
+                                    }
+                                }
+
+                                if (isset($transaction->transaction_id)) {
+                                    return $this->resultResponse("save", "Transaction", []);
+                                }
+                            }
+
+                            $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
+                            $balance_po_ref_amount = $po_total_amount - $fields["document"]["amount"];
+
+                            if ($po_total_amount < $fields["document"]["amount"]) {
+                                $amountValdiation = GenericMethod::resultLaravelFormat("document.amount", ["Insufficient PO balance."]);
+
+                                return $this->resultResponse("invalid", "", $amountValdiation);
+                            }
+
+                            if (isset($getAndValidatePOBalance)) {
+                                $balance_po_ref_amount = $getAndValidatePOBalance;
+                            }
 
                             $transaction = GenericMethod::insertTransaction(
                                 $transaction_id,
@@ -2690,7 +3011,7 @@ class TransactionController extends Controller
                                 $request_id,
                                 $date_requested,
                                 $fields,
-                                $balance_with_additional_total_po_amount,
+                                $balance_po_ref_amount,
                                 $isConfidential,
                                 $isMc,
                                 $isNew
@@ -2706,89 +3027,57 @@ class TransactionController extends Controller
                             );
 
                             POBatch::where("request_id", $request_id)
-                                ->where("po_no", reset($fields["po_group"])["no"])
-                                ->update([
-                                    "is_modifiable" => true,
+                                ->where("is_add", false)
+                                ->where("is_editable", true)
+                                ->update(["is_modifiable" => true]);
+
+                            if (isset($transaction->transaction_id)) {
+                                return $this->resultResponse("save", "Transaction", []);
+                            }
+                        } else {
+                            $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
+                            $transaction = GenericMethod::insertTransaction(
+                                $transaction_id,
+                                $po_total_amount,
+                                $request_id,
+                                $date_requested,
+                                $fields,
+                                $balance_po_ref_amount = 0,
+                                $isConfidential,
+                                $isMc,
+                                $isNew
+                            );
+
+                            foreach ($fields["po_group"] as $po) {
+                                $transaction->po_details()->create([
+                                    "request_id" => $transaction->id,
+                                    "po_no" => $po["no"],
+                                    "po_amount" => $po["amount"],
+                                    "is_add" => $po["is_add"],
+                                    "is_editable" => $po["is_editable"],
+                                    "po_total_amount" => $po_total_amount,
+                                    "previous_balance" => $request->po_balance,
+                                    "rr_group" => $po["rr_no"],
                                 ]);
+                            }
 
-                            $isAdd = POBatch::where("request_id", $request_id)->get();
+                            $lastRequestId = POBatch::where("po_no", last($fields["po_group"])["no"])
+                                ->pluck("request_id")
+                                ->last();
 
-                            foreach ($isAdd as $record) {
-                                if ($record->is_add == true && $record->is_editable == true) {
-                                    $record->update([
-                                        "is_modifiable" => true,
+                            if ($lastRequestId) {
+                                Transaction::where("company_id", $fields["document"]["company"]["id"])
+                                    ->where("request_id", $lastRequestId)
+                                    ->update([
+                                        "is_not_editable" => true,
+                                        "updated_at" => DB::raw("updated_at"),
                                     ]);
-                                }
                             }
 
                             if (isset($transaction->transaction_id)) {
                                 return $this->resultResponse("save", "Transaction", []);
                             }
-                        }
 
-                        $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
-                        $balance_po_ref_amount = $po_total_amount - $fields["document"]["amount"];
-
-                        if ($po_total_amount < $fields["document"]["amount"]) {
-                            $amountValdiation = GenericMethod::resultLaravelFormat("document.amount", ["Insufficient PO balance."]);
-
-                            return $this->resultResponse("invalid", "", $amountValdiation);
-                        }
-
-                        if (isset($getAndValidatePOBalance)) {
-                            $balance_po_ref_amount = $getAndValidatePOBalance;
-                        }
-
-                        $transaction = GenericMethod::insertTransaction(
-                            $transaction_id,
-                            $po_total_amount,
-                            $request_id,
-                            $date_requested,
-                            $fields,
-                            $balance_po_ref_amount,
-                            $isConfidential,
-                            $isMc,
-                            $isNew
-                        );
-
-                        $request_id = $transaction->id;
-
-                        GenericMethod::insertPO(
-                            $request_id,
-                            $fields["po_group"],
-                            $po_total_amount,
-                            strtoupper($fields["document"]["payment_type"])
-                        );
-
-                        // POBatch::where('request_id', $request_id)->update([
-                        //   'is_modifiable' => true
-                        // ]);
-
-                        // $currentPO = POBatch::where('po_no', last($fields["po_group"])["no"])->pluck('request_id');
-
-                        // if ($currentPO) {
-                        //   POBatch::where('request_id', reset($currentPO))->update([
-                        //     'is_modifiable' => true
-                        //   ]);
-                        // }
-
-                        // $isAdd = POBatch::where('request_id', $request_id)->get();
-
-                        // foreach ($isAdd as $record) {
-                        //   if ($record->is_add == false && $record->is_editable == true) {
-                        //       $record->update([
-                        //           'is_modifiable' => true
-                        //       ]);
-                        //   }
-                        // }
-
-                        POBatch::where("request_id", $request_id)
-                            ->where("is_add", false)
-                            ->where("is_editable", true)
-                            ->update(["is_modifiable" => true]);
-
-                        if (isset($transaction->transaction_id)) {
-                            return $this->resultResponse("save", "Transaction", []);
                         }
 
                         break;
@@ -2889,7 +3178,7 @@ class TransactionController extends Controller
 
                 $request_id = $transaction->id;
 
-                GenericMethod::insertClient($request_id, $fields["document"]["payroll"]["clients"]);
+//                GenericMethod::insertClient($request_id, $fields["document"]["payroll"]["clients"]);
 
                 if (isset($transaction->transaction_id)) {
                     return $this->resultResponse("save", "Transaction", []);
@@ -2964,35 +3253,38 @@ class TransactionController extends Controller
                 if (!$isQty && !$isFull) {
                     //Partial
 
-                    $fields["po_group"] = GenericMethod::ValidateIfPOExists(
-                        $fields["po_group"],
-                        $fields["document"]["company"]["id"]
-                    );
+                    if (!$isNew)  {
 
-                    $getAndValidatePOBalance = GenericMethod::getAndValidatePOBalance(
-                        $fields,
-                        $fields["document"]["company"]["id"],
-                        last($fields["po_group"])["no"],
-                        $fields["document"]["reference"]["amount"],
-                        $fields["po_group"]
-                    );
+                        $fields["po_group"] = GenericMethod::ValidateIfPOExists(
+                            $fields["po_group"],
+                            $fields["document"]["company"]["id"]
+                        );
 
-                    //---------------------------------------------------------------------------------------------------
 
-                    //If the PO's is not unique and consider different condition
+                        $getAndValidatePOBalance = GenericMethod::getAndValidatePOBalance(
+                            $fields,
+                            $fields["document"]["company"]["id"],
+                            last($fields["po_group"])["no"],
+                            $fields["document"]["reference"]["amount"],
+                            $fields["po_group"]
+                        );
 
-                    $lastRequestId = POBatch::where("po_no", last($fields["po_group"])["no"])
-                        ->pluck("request_id")
-                        ->last();
+                        //---------------------------------------------------------------------------------------------------
 
-                    if ($lastRequestId) {
-                        Transaction::where("company_id", $fields["document"]["company"]["id"])
-                            ->where("request_id", $lastRequestId)
-                            ->update([
-                                "is_not_editable" => true,
-                                "updated_at" => DB::raw("updated_at"),
-                            ]);
-                    }
+                        //If the PO's is not unique and consider different condition
+
+                        $lastRequestId = POBatch::where("po_no", last($fields["po_group"])["no"])
+                            ->pluck("request_id")
+                            ->last();
+
+                        if ($lastRequestId) {
+                            Transaction::where("company_id", $fields["document"]["company"]["id"])
+                                ->where("request_id", $lastRequestId)
+                                ->update([
+                                    "is_not_editable" => true,
+                                    "updated_at" => DB::raw("updated_at"),
+                                ]);
+                        }
 
 //                    $existTransaction = Transaction::where("company_id", $fields["document"]["company"]["id"])
 //                        // ->where('company_id', $fields["document"]["company"]["id"])
@@ -3009,37 +3301,37 @@ class TransactionController extends Controller
 //                        ]);
 //                    }
 
-                    if (gettype($getAndValidatePOBalance) == "object") {
-                        return $this->resultResponse("invalid", "", $getAndValidatePOBalance);
-                    }
+                        if (gettype($getAndValidatePOBalance) == "object") {
+                            return $this->resultResponse("invalid", "", $getAndValidatePOBalance);
+                        }
 
-                    if (gettype($getAndValidatePOBalance) == "array") {
-                        //for new po
-                        //Additional PO Validation
-                        $new_po = $getAndValidatePOBalance["new_po_group"];
-                        $po_total_amount = $getAndValidatePOBalance["po_total_amount"];
-                        $balance_with_additional_total_po_amount = $getAndValidatePOBalance["balance"];
+                        if (gettype($getAndValidatePOBalance) == "array") {
+                            //for new po
+                            //Additional PO Validation
+                            $new_po = $getAndValidatePOBalance["new_po_group"];
+                            $po_total_amount = $getAndValidatePOBalance["po_total_amount"];
+                            $balance_with_additional_total_po_amount = $getAndValidatePOBalance["balance"];
 
-                        $transaction = GenericMethod::insertTransaction(
-                            $transaction_id,
-                            $po_total_amount,
-                            $request_id,
-                            $date_requested,
-                            $fields,
-                            $balance_with_additional_total_po_amount,
-                            $isConfidential,
-                            $isMc,
-                            $isNew
-                        );
+                            $transaction = GenericMethod::insertTransaction(
+                                $transaction_id,
+                                $po_total_amount,
+                                $request_id,
+                                $date_requested,
+                                $fields,
+                                $balance_with_additional_total_po_amount,
+                                $isConfidential,
+                                $isMc,
+                                $isNew
+                            );
 
-                        $request_id = $transaction->id;
+                            $request_id = $transaction->id;
 
-                        GenericMethod::insertPO(
-                            $request_id,
-                            $fields["po_group"],
-                            $po_total_amount,
-                            strtoupper($fields["document"]["payment_type"])
-                        );
+                            GenericMethod::insertPO(
+                                $request_id,
+                                $fields["po_group"],
+                                $po_total_amount,
+                                strtoupper($fields["document"]["payment_type"])
+                            );
 
 //                        POBatch::where("request_id", $request_id)
 //                            ->where("po_no", reset($fields["po_group"])["no"])
@@ -3054,66 +3346,155 @@ class TransactionController extends Controller
 //                                "is_modifiable" => true,
 //                            ]);
 
-                        POBatch::where("request_id", $request_id)
-                            ->where(function ($query) use ($fields) {
-                                $query->where("po_no", reset($fields["po_group"])["no"])
-                                    ->orWhere(function ($query) {
-                                        $query->where("is_add", true)
-                                            ->where("is_editable", true);
-                                    });
-                            })
-                            ->update([
-                                "is_modifiable" => true,
+                            POBatch::where("request_id", $request_id)
+                                ->where(function ($query) use ($fields) {
+                                    $query->where("po_no", reset($fields["po_group"])["no"])
+                                        ->orWhere(function ($query) {
+                                            $query->where("is_add", true)
+                                                ->where("is_editable", true);
+                                        });
+                                })
+                                ->update([
+                                    "is_modifiable" => true,
+                                ]);
+
+                            if (isset($transaction->transaction_id)) {
+                                return $this->resultResponse("save", "Transaction", []);
+                            }
+                        }
+
+                        $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
+                        $balance_po_ref_amount = $po_total_amount - $fields["document"]["reference"]["amount"];
+
+                        if ($po_total_amount < $fields["document"]["reference"]["amount"]) {
+                            $amountValdiation = GenericMethod::resultLaravelFormat("document.reference.no", [
+                                "Insufficient PO balance.",
                             ]);
+
+                            return $this->resultResponse("invalid", "", $amountValdiation);
+                        }
+
+                        if (isset($getAndValidatePOBalance)) {
+                            $balance_po_ref_amount = $getAndValidatePOBalance;
+                        }
+
+                        $transaction = GenericMethod::insertTransaction(
+                            $transaction_id,
+                            $po_total_amount,
+                            $request_id,
+                            $date_requested,
+                            $fields,
+                            $balance_po_ref_amount,
+                            $isConfidential,
+                            $isMc,
+                            $isNew
+                        );
+
+                        $request_id = $transaction->id;
+
+                        GenericMethod::insertPO(
+                            $request_id,
+                            $fields["po_group"],
+                            $po_total_amount,
+                            strtoupper($fields["document"]["payment_type"])
+                        );
+
+
+                        POBatch::where("request_id", $request_id)
+                            ->where("is_add", false)
+                            ->where("is_editable", true)
+                            ->update(["is_modifiable" => true]);
 
                         if (isset($transaction->transaction_id)) {
                             return $this->resultResponse("save", "Transaction", []);
                         }
-                    }
+                    } else {
+                        $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
 
-                    $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
-                    $balance_po_ref_amount = $po_total_amount - $fields["document"]["reference"]["amount"];
+                        $newTransaction = Transaction::create([
+                            "transaction_id" => $transaction_id,
+                            "users_id" => auth()->user()->id,
+                            "id_prefix" => auth()->user()->id_prefix,
+                            "id_no" => auth()->user()->id_no,
+                            "first_name" => auth()->user()->first_name,
+                            "middle_name" => auth()->user()->middle_name,
+                            "last_name" => auth()->user()->last_name,
+                            "suffix" => auth()->user()->suffix,
+                            "department_details" => auth()->user()->department[0]["name"],
 
-                    if ($po_total_amount < $fields["document"]["reference"]["amount"]) {
-                        $amountValdiation = GenericMethod::resultLaravelFormat("document.reference.no", [
-                            "Insufficient PO balance.",
+                            "document_id" => $fields["document"]["id"],
+                            "category_id" => $fields["document"]["category"]["id"],
+                            "category" => $fields["document"]["category"]["name"],
+                            "company_id" => $fields["document"]["company"]["id"],
+                            "company" => $fields["document"]["company"]["name"],
+                            "department_id" => $fields["document"]["department"]["id"],
+                            "department" => $fields["document"]["department"]["name"],
+                            "location_id" => $fields["document"]["location"]["id"],
+                            "location" => $fields["document"]["location"]["name"],
+                            "supplier_id" => $fields["document"]["supplier"]["id"],
+                            "supplier" => $fields["document"]["supplier"]["name"],
+                            "payment_type" => $fields["document"]["payment_type"],
+                            "document_date" => $fields["document"]["date"],
+                            "remarks" => $fields["document"]["remarks"],
+                            "document_type" => $fields["document"]["name"],
+
+                            "po_total_amount" => $po_total_amount,
+
+                            "referrence_type" => $fields["document"]["reference"]["type"],
+                            "referrence_no" => $fields["document"]["reference"]["no"],
+                            "referrence_amount" => $fields["document"]["reference"]["amount"],
+                            "referrence_id" => $fields["document"]["reference"]["id"],
+                            "is_allowable" => $fields["document"]["reference"]["allowable"],
+
+                            "request_id" => 0,
+
+                            "date_requested" => $date_requested,
+                            "status" => "Pending",
+                            "is_not_editable" => false,
+                            "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
+                            "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+                            "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
+                            "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
+                            "is_confidential" => $isConfidential,
+                            "is_mc" => $isMc,
+                            "is_new" => $isNew
                         ]);
 
-                        return $this->resultResponse("invalid", "", $amountValdiation);
-                    }
+                        $newTransaction->update([
+                            "request_id" => $newTransaction->id,
+                        ]);
 
-                    if (isset($getAndValidatePOBalance)) {
-                        $balance_po_ref_amount = $getAndValidatePOBalance;
-                    }
-
-                    $transaction = GenericMethod::insertTransaction(
-                        $transaction_id,
-                        $po_total_amount,
-                        $request_id,
-                        $date_requested,
-                        $fields,
-                        $balance_po_ref_amount,
-                        $isConfidential,
-                        $isMc,
-                        $isNew
-                    );
-
-                    $request_id = $transaction->id;
-
-                    GenericMethod::insertPO(
-                        $request_id,
-                        $fields["po_group"],
-                        $po_total_amount,
-                        strtoupper($fields["document"]["payment_type"])
-                    );
+                        $fields["po_group"] = GenericMethod::ValidateIfPOExists(
+                            $fields["po_group"],
+                            $fields["document"]["company"]["id"]
+                        );
 
 
-                    POBatch::where("request_id", $request_id)
-                        ->where("is_add", false)
-                        ->where("is_editable", true)
-                        ->update(["is_modifiable" => true]);
+                        foreach ($fields["po_group"] as $po) {
+                            $newTransaction->po_details()->create([
+                                "request_id" => $newTransaction->id,
+                                "po_no" => $po["no"],
+                                "po_amount" => $po["amount"],
+                                "is_add" => $po["is_add"],
+                                "is_editable" => $po["is_editable"],
+                                "po_total_amount" => $po_total_amount,
+                                "previous_balance" => $request->po_balance,
+                                "rr_group" => $po["rr_no"],
+                            ]);
+                        }
 
-                    if (isset($transaction->transaction_id)) {
+                        $lastRequestId = POBatch::where("po_no", last($fields["po_group"])["no"])
+                            ->pluck("request_id")
+                            ->last();
+
+                        if ($lastRequestId) {
+                            Transaction::where("request_id", $lastRequestId)
+                                ->update([
+                                    "is_not_editable" => true,
+                                    "updated_at" => DB::raw("updated_at"),
+                                ]);
+                        }
+
                         return $this->resultResponse("save", "Transaction", []);
                     }
                 }
@@ -3157,7 +3538,8 @@ class TransactionController extends Controller
     {
         $fields = $request->validated();
         $date_requested = date("Y-m-d H:i:s");
-        $request_id = $request["transaction"]["request_id"];
+//        $request_id = $request["transaction"]["request_id"];
+        $request_id = $id;
         $currentTransaction = Transaction::findOrFail($id);
 
         switch ($fields["document"]["id"]) {
@@ -3171,72 +3553,104 @@ class TransactionController extends Controller
                             return $this->resultResponse("invalid", "", $errorMessage);
                         }
 
-                        if ($currentTransaction->is_not_editable == 1 && $currentTransaction->is_new == null) {
-                            $updateData = [
-                                "document_no" => data_get($fields, "document.no"),
-                                "document_date" => data_get($fields, "document.date"),
-                                "remarks" => data_get($fields, "document.remarks"),
-                                "company" => data_get($fields, "document.company.name"),
-                                "department_id" => data_get($fields, "document.department.id"),
-                                "department" => data_get($fields, "document.department.name"),
-                                "location_id" => data_get($fields, "document.location.id"),
-                                "location" => data_get($fields, "document.location.name"),
-                                // "referrence_id" => data_get($fields, "document.reference.id"),
-                                // "referrence_type" => data_get($fields, "document.reference.type"),
-                                // "referrence_no" => data_get($fields, "document.reference.no"),
-                                "category_id" => data_get($fields, "document.category.id"),
-                                "category" => data_get($fields, "document.category.name"),
-                                "business_unit_id" => data_get($fields, "document.business_unit.id"),
-                                "business_unit" => data_get($fields, "document.business_unit.name"),
-                                "sub_unit_id" => data_get($fields, "document.sub_unit.id"),
-                                "sub_unit" => data_get($fields, "document.sub_unit.name"),
-                            ];
+                        if (!$currentTransaction->is_new) {
+                            if ($currentTransaction->is_not_editable == 1 && $currentTransaction->is_new == null) {
+                                $updateData = [
+                                    "document_no" => data_get($fields, "document.no"),
+                                    "document_date" => data_get($fields, "document.date"),
+                                    "remarks" => data_get($fields, "document.remarks"),
+                                    "company" => data_get($fields, "document.company.name"),
+                                    "department_id" => data_get($fields, "document.department.id"),
+                                    "department" => data_get($fields, "document.department.name"),
+                                    "location_id" => data_get($fields, "document.location.id"),
+                                    "location" => data_get($fields, "document.location.name"),
+                                    // "referrence_id" => data_get($fields, "document.reference.id"),
+                                    // "referrence_type" => data_get($fields, "document.reference.type"),
+                                    // "referrence_no" => data_get($fields, "document.reference.no"),
+                                    "category_id" => data_get($fields, "document.category.id"),
+                                    "category" => data_get($fields, "document.category.name"),
+                                    "business_unit_id" => data_get($fields, "document.business_unit.id"),
+                                    "business_unit" => data_get($fields, "document.business_unit.name"),
+                                    "sub_unit_id" => data_get($fields, "document.sub_unit.id"),
+                                    "sub_unit" => data_get($fields, "document.sub_unit.name"),
+                                ];
 
-                            if ($currentTransaction->status == "tag-return") {
-                                $updateData["status"] = "Pending";
-                                $updateData["state"] = "pending";
+                                if ($currentTransaction->status == "tag-return") {
+                                    $updateData["status"] = "Pending";
+                                    $updateData["state"] = "pending";
+                                }
+
+                                $currentTransaction->update($updateData, ["timestamps" => false]);
+                                $poGroups = data_get($fields, "po_group");
+
+                                for ($i = 0; $i < count($poGroups); $i++) {
+                                    POBatch::where("request_id", $currentTransaction->request_id)
+                                        ->where("po_no", $poGroups[$i]["no"])
+                                        ->update([
+                                            "rr_group" => $poGroups[$i]["rr_no"],
+                                        ]);
+                                }
+
+                                return $this->resultResponse("update", "Transaction", []);
                             }
 
-                            $currentTransaction->update($updateData, ["timestamps" => false]);
-                            $poGroups = data_get($fields, "po_group");
+                            $fields["po_group"] = GenericMethod::ValidateIfPOExists(
+                                $fields["po_group"],
+                                $fields["document"]["company"]["id"],
+                                $id
+                            );
 
-                            for ($i = 0; $i < count($poGroups); $i++) {
-                                POBatch::where("request_id", $currentTransaction->request_id)
-                                    ->where("po_no", $poGroups[$i]["no"])
-                                    ->update([
-                                        "rr_group" => $poGroups[$i]["rr_no"],
-                                    ]);
+                            $getAndValidatePOBalance = GenericMethod::getAndValidatePOBalance(
+                                $fields,
+                                $fields["document"]["company"]["id"],
+                                last($fields["po_group"])["no"],
+                                $fields["document"]["amount"],
+                                $fields["po_group"],
+                                $id
+                            );
+
+                            if (gettype($getAndValidatePOBalance) == "object") {
+                                return $this->resultResponse("invalid", "", $getAndValidatePOBalance);
                             }
 
-                            return $this->resultResponse("update", "Transaction", []);
-                        }
+                            if (gettype($getAndValidatePOBalance) == "array") {
+                                //Additional PO Validation
+                                $new_po = $getAndValidatePOBalance["new_po_group"];
+                                $po_total_amount = $getAndValidatePOBalance["po_total_amount"];
+                                $balance_with_additional_total_po_amount = $getAndValidatePOBalance["balance"];
 
-                        $fields["po_group"] = GenericMethod::ValidateIfPOExists(
-                            $fields["po_group"],
-                            $fields["document"]["company"]["id"],
-                            $id
-                        );
+                                $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
+                                GenericMethod::updatePO(
+                                    $request_id,
+                                    $fields["po_group"],
+                                    $po_total_amount,
+                                    strtoupper($fields["document"]["payment_type"]),
+                                    $id
+                                );
 
-                        $getAndValidatePOBalance = GenericMethod::getAndValidatePOBalance(
-                            $fields,
-                            $fields["document"]["company"]["id"],
-                            last($fields["po_group"])["no"],
-                            $fields["document"]["amount"],
-                            $fields["po_group"],
-                            $id
-                        );
+                                $transaction = GenericMethod::updateTransaction(
+                                    $id,
+                                    $po_total_amount,
+                                    $request_id,
+                                    $date_requested,
+                                    $request,
+                                    $balance_with_additional_total_po_amount,
+                                    $changes
+                                );
+                                if (isset($transaction->transaction_id)) {
+                                    return $this->resultResponse("update", "Transaction", []);
+                                }
+                            }
 
-                        if (gettype($getAndValidatePOBalance) == "object") {
-                            return $this->resultResponse("invalid", "", $getAndValidatePOBalance);
-                        }
+                            $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
+                            $balance_po_ref_amount = $po_total_amount - $fields["document"]["amount"];
 
-                        if (gettype($getAndValidatePOBalance) == "array") {
-                            //Additional PO Validation
-                            $new_po = $getAndValidatePOBalance["new_po_group"];
-                            $po_total_amount = $getAndValidatePOBalance["po_total_amount"];
-                            $balance_with_additional_total_po_amount = $getAndValidatePOBalance["balance"];
+                            if (isset($getAndValidatePOBalance)) {
+                                $balance_po_ref_amount = $getAndValidatePOBalance;
+                            }
 
                             $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
+
                             GenericMethod::updatePO(
                                 $request_id,
                                 $fields["po_group"],
@@ -3245,15 +3659,22 @@ class TransactionController extends Controller
                                 $id
                             );
 
-//                            if (!$currentTransaction->is_new) {
-//                                GenericMethod::updatePO(
-//                                    $request_id,
-//                                    $fields["po_group"],
-//                                    $po_total_amount,
-//                                    strtoupper($fields["document"]["payment_type"]),
-//                                    $id
-//                                );
-//                            }
+                            $transaction = GenericMethod::updateTransaction(
+                                $id,
+                                $po_total_amount,
+                                $request_id,
+                                $date_requested,
+                                $request,
+                                $balance_po_ref_amount,
+                                $changes
+                            );
+                            if (isset($transaction->transaction_id)) {
+                                return $this->resultResponse("update", "Transaction", []);
+                            }
+                        } else {
+                            $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
+                            $balance_po_ref_amount = $po_total_amount - $fields["document"]["amount"];
+                            $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
 
                             $transaction = GenericMethod::updateTransaction(
                                 $id,
@@ -3261,42 +3682,23 @@ class TransactionController extends Controller
                                 $request_id,
                                 $date_requested,
                                 $request,
-                                $balance_with_additional_total_po_amount,
+                                $balance_po_ref_amount,
                                 $changes
                             );
-                            if (isset($transaction->transaction_id)) {
-                                return $this->resultResponse("update", "Transaction", []);
+
+                            foreach ($fields["po_group"] as $po) {
+                                $transaction->po_details()->update([
+                                    "request_id" => $transaction->id,
+                                    "po_no" => $po["no"],
+                                    "po_amount" => $po["amount"],
+//                                    "is_add" => $po["is_add"],
+//                                    "is_editable" => $po["is_editable"],
+                                    "previouse_balance" => $request->po_balance,
+                                    "po_total_amount" => $po_total_amount,
+                                    "rr_group" => $po["rr_no"],
+                                ]);
                             }
-                        }
 
-                        $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
-                        $balance_po_ref_amount = $po_total_amount - $fields["document"]["amount"];
-
-                        if (isset($getAndValidatePOBalance)) {
-                            $balance_po_ref_amount = $getAndValidatePOBalance;
-                        }
-
-                        $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
-
-                        GenericMethod::updatePO(
-                            $request_id,
-                            $fields["po_group"],
-                            $po_total_amount,
-                            strtoupper($fields["document"]["payment_type"]),
-                            $id
-                        );
-
-                        $transaction = GenericMethod::updateTransaction(
-                            $id,
-                            $po_total_amount,
-                            $request_id,
-                            $date_requested,
-                            $request,
-                            $balance_po_ref_amount,
-                            $changes
-                        );
-                        if (isset($transaction->transaction_id)) {
-                            return $this->resultResponse("update", "Transaction", []);
                         }
                         break;
 
@@ -3366,59 +3768,6 @@ class TransactionController extends Controller
                         }
                         break;
                 }
-                // GenericMethod::documentNoValidationUpdate($request["document"]["no"], $id);
-
-                // if (empty($fields["po_group"])) {
-                //   $errorMessage = GenericMethod::resultLaravelFormat("po_group", ["PO group required"]);
-                //   return $this->resultResponse("invalid", "", $errorMessage);
-                // }
-
-                // $duplicatePO = GenericMethod::validatePOFullUpdate(
-                //   $fields["document"]["company"]["id"],
-                //   $fields["po_group"],
-                //   $id
-                // );
-                // if (isset($duplicatePO)) {
-                //   return $this->resultResponse("invalid", "", $duplicatePO);
-                // }
-
-                // $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
-
-                // $errorMessage = GenericMethod::validateWith1PesoDifference(
-                //   "po_group.amount",
-                //   "Document",
-                //   $fields["document"]["amount"],
-                //   $po_total_amount
-                // );
-                // if (!empty($errorMessage)) {
-                //   return GenericMethod::resultResponse("invalid", "", $errorMessage);
-                // }
-
-                // $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
-                // GenericMethod::updatePO(
-                //   $request_id,
-                //   $fields["po_group"],
-                //   $po_total_amount,
-                //   strtoupper($fields["document"]["payment_type"]),
-                //   $id
-                // );
-
-                // $transaction = GenericMethod::updateTransaction(
-                //   $id,
-                //   $po_total_amount,
-                //   $request_id,
-                //   $date_requested,
-                //   $request,
-                //   0,
-                //   $changes
-                // );
-
-                // if ($transaction == "Nothing Has Changed") {
-                //   return $this->resultResponse("nothing-has-changed", "Transaction", []);
-                // }
-                // if (isset($transaction->transaction_id)) {
-                //   return $this->resultResponse("update", "Transaction", []);
-                // }
                 break;
 
             case 5: //Contractor's Billing
@@ -3776,6 +4125,21 @@ class TransactionController extends Controller
                     0,
                     $changes
                 );
+
+                if (isset($fields["service_group"])) {
+                    $transaction->service_batches()->delete();
+                    foreach($fields["service_group"] as $services_group) {
+                        $transaction->service_batches()->create([
+                            'company_name' => $services_group['company'],
+                            'business_unit_name' => $services_group['business_unit'],
+                            'department_name' => $services_group['department'],
+                            'sub_unit_name' => $services_group['sub_unit'],
+                            'location_name' => $services_group['location'],
+                            'amount' => $services_group['amount'],
+                        ]);
+                    }
+                }
+
                 if (isset($transaction->transaction_id)) {
                     return $this->resultResponse("update", "Transaction", []);
                 }
@@ -3848,19 +4212,6 @@ class TransactionController extends Controller
                 break;
 
             case 4: //Receipt
-                // $row = Transaction::find($id);
-                // $row->receipt()->create($row->toArray());
-
-                // $row->receipt->update([
-                //   'transactions_id' => $id,
-                //   'remarks' => $fields['document']['remarks'],
-                // ]);
-
-                // Transaction::where('id', $id)->update($row->receipt->toArray());
-                // return;
-
-                //-------------------------------------------------------------------
-
                 $isFull = strtoupper($fields["document"]["payment_type"]) === "FULL";
 
                 if (empty($fields["po_group"])) {
@@ -3973,39 +4324,40 @@ class TransactionController extends Controller
                     return $this->resultResponse("update", "Transaction", []);
                 }
 
-                $fields["po_group"] = GenericMethod::ValidateIfPOExists(
-                    $fields["po_group"],
-                    $fields["document"]["company"]["id"],
-                    $id
-                );
-
-                $getAndValidatePOBalance = GenericMethod::getAndValidatePOBalance(
-                    $fields,
-                    $fields["document"]["company"]["id"],
-                    last($fields["po_group"])["no"],
-                    $fields["document"]["reference"]["amount"],
-                    $fields["po_group"],
-                    $id
-                );
-
-                if (gettype($getAndValidatePOBalance) == "object") {
-                    return $this->resultResponse("invalid", "", $getAndValidatePOBalance);
-                }
-
-                if (gettype($getAndValidatePOBalance) == "array") {
-                    //Additional PO Validation
-                    $new_po = $getAndValidatePOBalance["new_po_group"];
-                    $po_total_amount = $getAndValidatePOBalance["po_total_amount"];
-                    $balance_with_additional_total_po_amount = $getAndValidatePOBalance["balance"];
-
-                    $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
-                    GenericMethod::updatePO(
-                        $request_id,
+                if (!$currentTransaction->is_new) {
+                    $fields["po_group"] = GenericMethod::ValidateIfPOExists(
                         $fields["po_group"],
-                        $po_total_amount,
-                        strtoupper($fields["document"]["payment_type"]),
+                        $fields["document"]["company"]["id"],
                         $id
                     );
+
+                    $getAndValidatePOBalance = GenericMethod::getAndValidatePOBalance(
+                        $fields,
+                        $fields["document"]["company"]["id"],
+                        last($fields["po_group"])["no"],
+                        $fields["document"]["reference"]["amount"],
+                        $fields["po_group"],
+                        $id
+                    );
+
+                    if (gettype($getAndValidatePOBalance) == "object") {
+                        return $this->resultResponse("invalid", "", $getAndValidatePOBalance);
+                    }
+
+                    if (gettype($getAndValidatePOBalance) == "array") {
+                        //Additional PO Validation
+                        $new_po = $getAndValidatePOBalance["new_po_group"];
+                        $po_total_amount = $getAndValidatePOBalance["po_total_amount"];
+                        $balance_with_additional_total_po_amount = $getAndValidatePOBalance["balance"];
+
+                        $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
+                        GenericMethod::updatePO(
+                            $request_id,
+                            $fields["po_group"],
+                            $po_total_amount,
+                            strtoupper($fields["document"]["payment_type"]),
+                            $id
+                        );
 
 //                    if (!$currentTransaction->is_new) {
 //                        GenericMethod::updatePO(
@@ -4017,44 +4369,44 @@ class TransactionController extends Controller
 //                        );
 //                    }
 
-                    $transaction = GenericMethod::updateTransaction(
-                        $id,
-                        $po_total_amount,
+                        $transaction = GenericMethod::updateTransaction(
+                            $id,
+                            $po_total_amount,
+                            $request_id,
+                            $date_requested,
+                            $request,
+                            $balance_with_additional_total_po_amount,
+                            $changes
+                        );
+                        if (isset($transaction->transaction_id)) {
+                            return $this->resultResponse("update", "Transaction", []);
+                        }
+                    }
+
+                    $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
+                    $balance_po_ref_amount = $po_total_amount - $fields["document"]["reference"]["amount"];
+
+                    if ($po_total_amount < $fields["document"]["reference"]["amount"]) {
+                        if (!$fields["document"]["reference"]["allowable"]) {
+                            $amountValdiation = GenericMethod::resultLaravelFormat("document.reference.no", [
+                                "Insufficient PO balance.",
+                            ]);
+                            return $this->resultResponse("invalid", "", $amountValdiation);
+                        }
+                    }
+
+                    if (isset($getAndValidatePOBalance)) {
+                        $balance_po_ref_amount = $getAndValidatePOBalance;
+                    }
+
+                    $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
+                    GenericMethod::updatePO(
                         $request_id,
-                        $date_requested,
-                        $request,
-                        $balance_with_additional_total_po_amount,
-                        $changes
+                        $fields["po_group"],
+                        $po_total_amount,
+                        strtoupper($fields["document"]["payment_type"]),
+                        $id
                     );
-                    if (isset($transaction->transaction_id)) {
-                        return $this->resultResponse("update", "Transaction", []);
-                    }
-                }
-
-                $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
-                $balance_po_ref_amount = $po_total_amount - $fields["document"]["reference"]["amount"];
-
-                if ($po_total_amount < $fields["document"]["reference"]["amount"]) {
-                    if (!$fields["document"]["reference"]["allowable"]) {
-                        $amountValdiation = GenericMethod::resultLaravelFormat("document.reference.no", [
-                            "Insufficient PO balance.",
-                        ]);
-                        return $this->resultResponse("invalid", "", $amountValdiation);
-                    }
-                }
-
-                if (isset($getAndValidatePOBalance)) {
-                    $balance_po_ref_amount = $getAndValidatePOBalance;
-                }
-
-                $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
-                GenericMethod::updatePO(
-                    $request_id,
-                    $fields["po_group"],
-                    $po_total_amount,
-                    strtoupper($fields["document"]["payment_type"]),
-                    $id
-                );
 
 //                if (!$currentTransaction->is_new) {
 //                    GenericMethod::updatePO(
@@ -4066,17 +4418,49 @@ class TransactionController extends Controller
 //                    );
 //                }
 
-                $transaction = GenericMethod::updateTransaction(
-                    $id,
-                    $po_total_amount,
-                    $request_id,
-                    $date_requested,
-                    $request,
-                    $balance_po_ref_amount,
-                    $changes
-                );
-                if (isset($transaction->transaction_id)) {
-                    return $this->resultResponse("update", "Transaction", []);
+                    $transaction = GenericMethod::updateTransaction(
+                        $id,
+                        $po_total_amount,
+                        $request_id,
+                        $date_requested,
+                        $request,
+                        $balance_po_ref_amount,
+                        $changes
+                    );
+                    if (isset($transaction->transaction_id)) {
+                        return $this->resultResponse("update", "Transaction", []);
+                    }
+                } else {
+                    $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
+                    $balance_po_ref_amount = $po_total_amount - $fields["document"]["reference"]["amount"];
+                    $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
+
+                    $transaction = GenericMethod::updateTransaction(
+                        $id,
+                        $po_total_amount,
+                        $request_id,
+                        $date_requested,
+                        $request,
+                        $balance_po_ref_amount,
+                        $changes
+                    );
+
+                    foreach ($fields["po_group"] as $po) {
+                        $transaction->po_details()->update([
+                            "request_id" => $transaction->id,
+                            "po_no" => $po["no"],
+                            "po_amount" => $po["amount"],
+//                            "is_add" => $po["is_add"],
+//                            "is_editable" => $po["is_editable"],
+                            "previous_balance" => $request->po_balance,
+                            "po_total_amount" => $po_total_amount,
+                            "rr_group" => $po["rr_no"],
+                        ]);
+                    }
+
+                    if (isset($transaction->transaction_id)) {
+                        return $this->resultResponse("update", "Transaction", []);
+                    }
                 }
 
                 break;
@@ -4145,7 +4529,15 @@ class TransactionController extends Controller
         $po_batch = POBatch::query();
 
         if ($payment_type == 'Full') {
-            $po_batch->where('po_no', $po_number)->exists();
+            $po_batch->where('po_no', $po_number)
+                ->whereHas('request', function ($query) use ($company_id) {
+                    $query->where('state', '!=', 'void')
+                        ->where('company_id', $company_id)
+                        ->withTrashed(function ($query) {
+                            $query->where('deleted_at', '=', '2024-08-28 00:00:00');
+                        });
+                })
+                ->exists();
 
             if ($po_batch->count() > 0) {
                 $errorMessage = GenericMethod::resultLaravelFormat("po_group.no", ["PO number already exist."]);
@@ -4154,41 +4546,61 @@ class TransactionController extends Controller
                 return $this->resultResponse("success-no-content", "", []);
             }
         } else {
-            $requestIds = $po_batch
-                ->whereHas('request', function ($query) use ($company_id){
-                    $query->where('state', '!=', 'void')
-                        ->where('company_id', $company_id)
-                        ->withTrashed(function ($query) {
-                            $query->where('deleted_at', '=', '2024-08-28 00:00:00');
-                        });
-                })
-                ->where('po_no', $po_number)
-                ->pluck('request_id');
+//            $requestIds = $po_batch
+//                 ->whereHas("request", function ($query) use ($company_id) {
+//                   $query
+//                     ->where("state", "!=", "void")
+//                     ->where("company_id", $company_id)
+//                     ->withTrashed(function ($query) {
+//                       $query->where("deleted_at", "=", "2024-08-28 00:00:00");
+//                     })->select("request_id");
+//                 })
+//                ->where("po_no", $po_number)
+//                ->pluck("request_id");
 
-//            $po_no = POBatch::whereIn('request_id', $requestIds)
-//                ->whereNull('deleted_at')
-//                ->get()
-//                ->collect();
+            $requestIds = $po_batch->select('p_o_batches.*')->leftJoin('transactions', 'p_o_batches.request_id', '=', 'transactions.request_id')
+                ->where('transactions.state', '!=', 'void')
+                ->where('transactions.company_id', $company_id)
+                ->where('p_o_batches.po_no', $po_number)
+                ->select('transactions.request_id')
+                ->pluck('transactions.request_id');
 
-             $po_no = POBatch::whereIn('request_id', $requestIds)
-                ->whereNull('deleted_at')
+            $po_no = POBatch::whereIn("request_id", $requestIds)
+                ->whereNull("deleted_at")
+                ->select("po_no", "po_amount", "po_total_amount", "rr_group")
                 ->get()
                 ->collect();
 
-            $requestIds = POBatch::whereIn('po_no', $po_no->pluck('po_no', 'po_amount')->unique())
-                ->whereHas('request', function ($query) {
-                    $query->where('state', '!=', 'void')
-                    ->withTrashed(function ($query) {
-                        $query->where('deleted_at', '=', '2024-08-28 00:00:00');
-                    });
-                })
-                ->get()->pluck('request_id')->unique()->values();
+//            $requestIds = $po_batch->whereIn("po_no", $po_no->pluck("po_no", "po_amount")->unique())
+//                ->whereHas("request", function ($query) use ($company_id) {
+//                    $query
+//                        ->where("state", "!=", "void")
+//                        ->where("company_id", $company_id)
+//                        ->withTrashed(function ($query) {
+//                            $query->where("deleted_at", "=", "2024-08-28 00:00:00");
+//                        })->select("request_id");
+//                })
+//                ->select("request_id")
+//                ->pluck("request_id")
+//                ->unique()
+//                ->values();
+
+//            $requestIds = POBatch::select('p_o_batches.*')
+//                ->whereIn('po_no', $po_no->pluck('po_no')->unique())
+//                ->leftJoin('transactions', 'p_o_batches.request_id', '=', 'transactions.request_id')
+//                ->where('transactions.state', '!=', 'void')
+//                ->where('transactions.company_id', $company_id)
+//                ->where('p_o_batches.po_no', $po_number)
+//                ->select('transactions.request_id')
+//                ->pluck('transactions.request_id');
+
+
             $sums = Transaction::whereIn('request_id', $requestIds)
                 ->withTrashed(function ($query) {
                     $query->where('deleted_at', '=', '2024-08-28 00:00:00');
                 })
                 ->where('state', '!=', 'void')
-                ->where('company_id', $company_id)
+//                ->where('company_id', $company_id)
                 ->select(['document_amount', 'referrence_amount'])
                 ->get()
                 ->reduce(function ($carry, $item) {
@@ -4257,42 +4669,39 @@ class TransactionController extends Controller
             ->whereNull('p_o_batches.deleted_at')
             ->get(["balance_po_ref_amount as po_balance", "transactions.request_id", "p_o_batches.created_at"]);
 
-        if (count($po_details) > 0) {
+        $isAllDatesNotLessThanToday = $po_details->pluck('created_at')->every(function ($date) {
+            $date = \Carbon\Carbon::parse($date);
+            return $date->startOfDay()->greaterThanOrEqualTo('July 13, 2024');
+        });
 
-            $isAllDatesNotLessThanToday = $po_details->pluck('created_at')->every(function ($date) {
-                $date = \Carbon\Carbon::parse($date);
-                return $date->startOfDay()->greaterThanOrEqualTo('July 13, 2024');
-            });
-
-            if ($isAllDatesNotLessThanToday) {
-                return $this->newGetPODetails($request);
-            }
-
-            if (strtoupper($fields["payment_type"]) == "FULL") {
-                $errorMessage = GenericMethod::resultLaravelFormat("po_group.no", ["PO number already exist."]);
-                return $this->resultResponse("invalid", "", $errorMessage);
-            }
-
-            if ($po_details->last()->po_balance <= 0 || $po_details->last()->po_balance == null) {
-                $errorMessage = GenericMethod::resultLaravelFormat("po_group.no", ["No available balance."]);
-                return $this->resultResponse("invalid", "", $errorMessage);
-            }
-            $po_group = collect();
-            $balance = $po_details->last()->po_balance;
-            $po_details = POBatch::where("request_id", $po_details->last()->request_id)
-                ->orderByDesc("id")
-                ->whereNull('deleted_at')
-                ->get(["request_id as batch", "po_no as no", "po_amount as amount", "rr_group as rr_no"]);
-
-            $po_details->mapToGroups(function ($item, $v) use ($balance) {
-                return [($item["balance"] = 0), ($item["rr_no"] = json_decode($item["rr_no"], true))];
-            });
-
-            $po_details = $po_details->reverse()->values();
-            $po_details->first()->balance = $balance;
-            $po_object = (object)["po_group" => $po_details];
-            return $this->resultResponse("fetch", "PO number", $po_object);
+        if ($isAllDatesNotLessThanToday) {
+            return $this->newGetPODetails($request);
         }
+
+        if (strtoupper($fields["payment_type"]) == "FULL") {
+            $errorMessage = GenericMethod::resultLaravelFormat("po_group.no", ["PO number already exist."]);
+            return $this->resultResponse("invalid", "", $errorMessage);
+        }
+
+        if ($po_details->last()->po_balance <= 0 || $po_details->last()->po_balance == null) {
+            $errorMessage = GenericMethod::resultLaravelFormat("po_group.no", ["No available balance."]);
+            return $this->resultResponse("invalid", "", $errorMessage);
+        }
+        $po_group = collect();
+        $balance = $po_details->last()->po_balance;
+        $po_details = POBatch::where("request_id", $po_details->last()->request_id)
+            ->orderByDesc("id")
+            ->whereNull('deleted_at')
+            ->get(["request_id as batch", "po_no as no", "po_amount as amount", "rr_group as rr_no"]);
+
+        $po_details->mapToGroups(function ($item, $v) use ($balance) {
+            return [($item["balance"] = 0), ($item["rr_no"] = json_decode($item["rr_no"], true))];
+        });
+
+        $po_details = $po_details->reverse()->values();
+        $po_details->first()->balance = $balance;
+        $po_object = (object)["po_group" => $po_details];
+        return $this->resultResponse("fetch", "PO number", $po_object);
 
         if ($po_details->isEmpty()) {
             return $this->getPODetailsv1($request);
@@ -4649,12 +5058,21 @@ class TransactionController extends Controller
                 "users:id,first_name,middle_name,last_name,department,position",
                 "supplier.supplier_type:id,type as name",
                 "account_titles",
-                "treasuryCheque"
+                "treasuryCheque",
+                "treasuryAccountTitle",
+                "cheques.assignedTreasury"
             ])
 
             ->when($status == 'cheque', function ($query) {
                 return $query->whereHas('cheques', function ($query) {
                     $query->where('status', 'cheque-cheque')
+                        ->latest('updated_at');
+                });
+            })
+
+            ->when($status == 'return', function ($query) {
+                return $query->whereHas('cheques', function ($query) {
+                    $query->where('status', 'cheque-return')
                         ->latest('updated_at');
                 });
             })
@@ -4675,10 +5093,24 @@ class TransactionController extends Controller
                                     ->where('is_mc', 1);
                             });
                         });
+                })->where(function ($query) {
+                    $query->where('assigned_id', auth()->user()->id)
+                        ->orWhere('assigned_id', null);
                 });
             })
             ->when($status == "cheque-receive", function ($query) {
-                return $query->whereIn("status", ["cheque-receive", "cheque-unhold", "cheque-unreturn"]);
+                return $query->whereIn("status", ["cheque-receive", "cheque-unhold", "cheque-unreturn"])
+                    ->where(function ($query) {
+                        $query->where('assigned_id', auth()->user()->id)
+                            ->orWhere('assigned_id', null);
+                    });
+            })
+            ->when($status == "cheque-cheque", function ($query) {
+                return $query->whereIn("status", ["cheque-cheque", "cheque-unhold", "cheque-unreturn"])
+                    ->where(function ($query) {
+                        $query->where('assigned_id', auth()->user()->id)
+                            ->orWhere('assigned_id', null);
+                    });
             })
             ->when($status == "return-cheque", function ($query) {
                 return $query->whereIn("status", ["audit-return", "release-return"]);
@@ -4741,7 +5173,8 @@ class TransactionController extends Controller
                     "hold-issue",
                     "pending-release",
                     "release-receive",
-                    "cheque"
+                    "cheque",
+                    "return"
                 ]),
                 function ($query) use ($status) {
                     return $query->where("status", preg_replace("/\s+/", "", $status));
@@ -4870,7 +5303,11 @@ class TransactionController extends Controller
             $cheques = $transaction->treasuryCheque;
 
 //            $account_title = $transaction->voucher->first()->account_title;
-            $account_title = $transaction->account_titles;
+            $account_title = $transaction->treasuryAccountTitle->isEmpty()
+                ? $transaction->account_titles
+                : $transaction->treasuryAccountTitle->filter(function ($query) {
+                    return $query->entry == "Credit" || (strpos($query->account_title_name, "Accounts Payable") !== false && $query->entry == "Debit");
+                })->values();
 
             return [
                 "id" => $transaction->id,
@@ -4964,7 +5401,16 @@ class TransactionController extends Controller
                 "status" => $transaction->state,
                 "state" => $transaction->status,
                 "is_confidential" => $transaction->is_confidential,
-                "is_mc" => $transaction->is_mc
+                "is_mc" => $transaction->is_mc,
+                'dates' => [
+                    'created' => $this->getDateEveryStatus($transaction->cheques, 'cheque-cheque'),
+                ],
+                "treasury" => $transaction->cheques->first() && $transaction->cheques->first()->user_id
+                    ? $transaction->cheques->first()->assignedTreasury->first_name . ' ' . $transaction->cheques->first()->assignedTreasury->last_name
+                    : null,
+                "batch_no" => $transaction->cheques->first() && $transaction->cheques->first()->batch_no
+                    ? $transaction->cheques->first()->batch_no
+                    : null,
             ];
         });
 
@@ -5077,67 +5523,6 @@ class TransactionController extends Controller
         }
     }
 
-    //    public function chequeClear1(Request $request) {
-    //        $accounts = $request->accounts;
-    //        $cheque = Cheque::where('bank_id', $request->bank_id)
-    //            ->where('cheque_no', $request->cheque_no)
-    //            ->first();
-    //        $clear_date = date('Y-m-d', strtotime($request->date));
-    //
-    //        if ($cheque) {
-    //            $sameCheques = Cheque::where('bank_id', $cheque->bank_id)->where('cheque_no', $cheque->cheque_no)->get()->pluck('id');
-    //            $sameTransactionIds = Cheque::where('bank_id', $cheque->bank_id)->where('cheque_no', $cheque->cheque_no)->get()->pluck('transaction_id');
-    //            Cheque::where('bank_id', $cheque->bank_id)
-    //                ->where('cheque_no', $cheque->cheque_no)
-    //                ->update([
-    //                    'date_cleared' => $clear_date,
-    //                    'is_cleared' => true
-    //                ]);
-    //
-    //            foreach ($sameTransactionIds as $sameTransactionId) {
-    //                Clear::create([
-    //                    'transaction_id' => $sameTransactionId,
-    //                    'tag_id' => Transaction::where('id', $sameTransactionId)->first()->tag_no,
-    //                    'status' => 'clear-clear',
-    //                    'date_status' => date('Y-m-d'),
-    //                    'date_cleared' => $clear_date,
-    //                ]);
-    //            }
-    //
-    //            foreach ($accounts as $account) {
-    //                foreach ($sameCheques as $sameCheque) {
-    //                    ClearingAccountTitle::create([
-    //                        'clear_id' => $sameCheque,
-    //                        'entry' => $account['entry'],
-    //                        'account_title_id' => $account['account_title']['id'],
-    //                        'account_title_name' => $account['account_title']['name'],
-    //                        'company_id' => data_get($account, 'company.id'),
-    //                        'company_code' => data_get($account, 'company.code'),
-    //                        'company_name' => data_get($account, 'company.name'),
-    //                        'department_id' => data_get($account, 'department.id'),
-    //                        'department_code' => data_get($account, 'department.code'),
-    //                        'department_name' => data_get($account, 'department.name'),
-    //                        'location_id' => data_get($account, 'location.id'),
-    //                        'location_code' => data_get($account, 'location.code'),
-    //                        'location_name' => data_get($account, 'location.name'),
-    //                        'business_unit_id' => data_get($account, 'business_unit.id'),
-    //                        'business_unit_code' => data_get($account, 'business_unit.code'),
-    //                        'business_unit_name' => data_get($account, 'business_unit.name'),
-    //                        'sub_unit_id' => data_get($account, 'sub_unit.id'),
-    //                        'sub_unit_code' => data_get($account, 'sub_unit.code'),
-    //                        'sub_unit_name' => data_get($account, 'sub_unit.name'),
-    //                        'amount' => $account['amount'],
-    //                        'remarks' => $account['remarks'],
-    //                        'transaction_type' => 'new'
-    //                    ]);
-    //                }
-    //            }
-    //            return $this->resultResponse("update", "Transaction", []);
-    //        } else {
-    //            return $this->resultResponse("not-found", "Transaction", []);
-    //        }
-    //    }
-
     public function generateBatchNo()
     {
         $maxBatchNo = Treasury::max('batch_no');
@@ -5245,7 +5630,8 @@ class TransactionController extends Controller
             : null;
         $is_confidential = $request->input("is_confidential", 0);
 
-        $cheques = Cheque::with([
+        $cheques  = Cheque::query();
+        $cheques = $cheques->with([
             'bank' => function ($query) {
                 $query->with([
                     'AccountTitleOne',
@@ -5285,6 +5671,11 @@ class TransactionController extends Controller
                     return $query->where("status", "audit-return");
                 });
             })
+            ->when($status == 'return-audit', function ($query) {
+                $query->whereHas("transaction", function ($query) {
+                    return $query->where("status", "executive-return");
+                });
+            })
 
             //executive
             ->when($status == "pending-executive", function ($query) {
@@ -5313,7 +5704,11 @@ class TransactionController extends Controller
             ->when($status == "pending-issue", function ($query) {
                 $query
                     ->whereHas("transaction", function ($query) {
-                        return $query->where("status", "executive-executive");
+                        return $query->where("status", "executive-executive")
+                            ->where(function ($query) {
+                                $query->where('assigned_id', auth()->user()->id)
+                                    ->orWhere('assigned_id', null);
+                            });
                     })
                     ->whereNull("is_received")
                     ->whereNull("is_returned")
@@ -5328,18 +5723,30 @@ class TransactionController extends Controller
                             "issue-receive",
                             "issue-unhold",
                             "issue-unreturn",
-                        ]);
+                        ])
+                            ->where(function ($query) {
+                                $query->where('assigned_id', auth()->user()->id)
+                                    ->orWhere('assigned_id', null);
+                            });
                     })
                     ->where("is_received", true);
             })
             ->when($status == "return-issue", function ($query) {
                 $query->whereHas("transaction", function ($query) {
-                    return $query->where("status", "release-return");
+                    return $query->where("status", "release-return")
+                        ->where(function ($query) {
+                            $query->where('assigned_id', auth()->user()->id)
+                                ->orWhere('assigned_id', null);
+                        });
                 });
             })
             ->when($status == "hold-issue", function ($query) {
                 $query->whereHas("transaction", function ($query) {
-                    return $query->where("status", "release-hold");
+                    return $query->where("status", "release-hold")
+                        ->where(function ($query) {
+                            $query->where('assigned_id', auth()->user()->id)
+                                ->orWhere('assigned_id', null);
+                        });
                 });
             })
 
@@ -5421,17 +5828,8 @@ class TransactionController extends Controller
                     "clear-receive",
                 ]),
                 function ($query) use ($status) {
-                    //                $query->whereHas('transaction', function ($query) use ($status) {
-                    //                    return $query->where("status", preg_replace("/\s+/", "", $status));
-                    //                });
                     $query
                         ->when($status == "issue-issue", function ($query) {
-                            //                    $query->whereNotNull('issue_id')->whereHas('transaction', function ($query) {
-                            //                        return $query->whereIn("status", ["issue-issue", "issue-receive"]);
-                            //                    })
-                            //                        ->orWhere(function ($query) {
-                            //                            $query->whereNotNull('issue_id');
-                            //                        });
                             return $query
                                 ->whereHas("transaction", function ($query) {
 //                                    return $query->whereIn("status", ["issue-issue", "issue-receive", "executive-executive"]);
@@ -5459,7 +5857,6 @@ class TransactionController extends Controller
                                     return $query->whereIn("status", ["release-release", "release-receive"])->where('is_mc', 0);
                                 })
                                 ->where("is_released", true);
-//                                ->whereNull("is_received");
                         })
                         ->when($status == "clear-clear", function ($query) {
                             return $query->whereNotNull("is_cleared");
@@ -5475,11 +5872,6 @@ class TransactionController extends Controller
                                     ->whereNull("is_returned")
                                     ->whereNull("is_received");
                             }
-                        //                        , function ($query) use ($status) {
-                        //                            $query->whereHas('transaction', function ($query) use ($status) {
-                        //                                return $query->where("status", preg_replace("/\s+/", "", $status));
-                        //                            });
-                        //                        }
                         )
                         ->when(in_array($status, ["audit-hold", "release-return", "hold-release"]), function ($query) use ($status) {
                             $query->whereHas("transaction", function ($query) use ($status) {
@@ -5488,30 +5880,12 @@ class TransactionController extends Controller
                         });
                 }
             )
-
-            //            ->when($status == $status, function ($query) use ($status) {
-            //            $query->whereHas('transaction', function ($query) use ($status) {
-            //                return $query->where('status', $status);
-            //            });
-            //        })
             ->select("bank_id", "bank_name", "cheque_no", DB::raw("MAX(updated_at) as latest_updated_at"))
             ->groupBy("bank_name", "cheque_no", "bank_id")
 
             // Search
             ->where(function ($query) use ($search) {
                 $query->whereHas("transaction", function ($query) use ($search) {
-//                    $query
-//                        ->where("remarks", "like", "%" . $search . "%")
-//                        ->orWhere("payment_type", "like", "%" . $search . "%")
-//                        ->orWhere("voucher_no", "like", "%" . $search . "%")
-////                        ->orWhere("tag_no", "like", "%" . $search . "%")
-//                        ->orWhere('tag_no', $tag_search)
-//                        ->orWhere("company", "like", "%" . $search . "%")
-//                        ->orWhere("department", "like", "%" . $search . "%")
-//                        ->orWhere("location", "like", "%" . $search . "%")
-//                        ->orWhere("supplier", "like", "%" . $search . "%")
-//                        ->orWhere("document_no", "like", "%" . $search . "%")
-//                        ->orWhere("referrence_no", "like", "%" . $search . "%");
                     $query->whereLike([
                         "remarks",
                         "voucher_no",
@@ -5547,7 +5921,6 @@ class TransactionController extends Controller
                 })
 
                 //Confidential
-
                 ->when($status != in_array($status, [
                         'pending-audit',
                         'audit-receive',
@@ -5958,6 +6331,7 @@ class TransactionController extends Controller
                     case 'Transmittal of Document':
                     case 'Approval of Voucher':
                     case 'Filing of Voucher':
+                    case 'Creation of Cheque':
                         $user_id = auth()->user()->id;
                         break;
 
@@ -6012,11 +6386,15 @@ class TransactionController extends Controller
                             });
 
                     })
-                    ->when($user_id, function ($query) use ($user_id) {
-                        $query->where(function ($query) use ($user_id) {
+                    ->when($user_id, function ($query) use ($user_id, $permissionName) {
+                        $query->where(function ($query) use ($user_id, $permissionName) {
                             $query->where('distributed_id', $user_id)
                                 ->orWhere('approver_id', $user_id)
-                                ->orWhere('users_id', $user_id);
+                                ->orWhere('users_id', $user_id)
+                                ->orWhere(function ($query) use ($user_id, $permissionName) {
+                                    $query->where('assigned_id', $permissionName == 'Creation of Cheque' ? '=' : '<>', $user_id);
+//                                        ->orWhereNull('assigned_id');
+                                });
                         });
                     })
                     ->when($receipt_type, function ($query) use ($receipt_type, $status) {
@@ -6124,7 +6502,7 @@ class TransactionController extends Controller
         $permissions = auth()->user()->permissions;
 
         $statusMap = [
-            5 => ['cheque-cheque'], //Auditing of Cheque
+            5 => ['cheque-cheque', 'executive-return'], //Auditing of Cheque
             6 => ['issue-issue'], // External Releasing of Cheque
             8 => ['release-release'], //Clearing of Cheque
             9 => [], //Creation of Debit Memo
@@ -6144,6 +6522,7 @@ class TransactionController extends Controller
                 $permissionName = Permission::where('id', $permission)->first()->name;
                 $is_confidential = 0;
                 $is_mc = 0;
+                $user_id = null;
 
                 // Initialize all status counts to zero
 //                $result = array_fill_keys($status, 0);
@@ -6155,6 +6534,10 @@ class TransactionController extends Controller
                 switch ($permissionName) {
                     case 'Releasing of Confidential Cheque':
                         $is_confidential = 1;
+                        break;
+
+                    case 'Internal Releasing of Cheque':
+                        $user_id = auth()->user()->id;
                         break;
                 }
 
@@ -6208,6 +6591,17 @@ class TransactionController extends Controller
                                 $query->whereIn('status', ['release-return']);
                             });
                         })
+                        ->when($stat == 'executive-return', function ($query) {
+                            $query->whereHas('transaction', function ($query) {
+                                $query->whereIn('status', ['executive-return']);
+                            });
+                        })
+                        ->when($user_id, function ($query) use ($user_id) {
+                            $query->whereHas('transaction', function ($query) use ($user_id) {
+                                $query->where('assigned_id', $user_id)
+                                    ->orWhereNull('assigned_id');
+                            });
+                        })
                         ->groupBy('bank_id', 'cheque_no')->get();
 
                     $counts = $counts->count();
@@ -6228,6 +6622,7 @@ class TransactionController extends Controller
                             case 'voucher-return':
                             case 'approve-return':
                             case 'release-return':
+                            case 'executive-return':
                                 $result['return'] = $counts;
                                 break;
                         }
@@ -6502,52 +6897,38 @@ class TransactionController extends Controller
         $is_mc = $request->input('is_mc', 0);
 
         $statusMapping = [
-//            'tag' => ['relation' => 'tag', 'status' => 'tag-tag', 'table' => 'taggings'],
-//            'inspect' => ['relation' => 'inspect', 'status' => 'inspect-inspect', 'table' => 'audits'],
-//            'voucher' => ['relation' => 'voucher', 'status' => 'voucher-voucher', 'table' => 'associates', 'user' => 'distributed_id'],
-//            'approve' => ['relation' => 'approve', 'status' => 'approve-approve', 'table' => 'approvers', 'user' => 'approver_id', 'role' => 'approver'],
-
             'tag' => ['relation' => 'tagHistory', 'table' => 'taggings'],
             'inspect' => ['relation' => 'inspectHistory', 'table' => 'audits'],
             'voucher' => ['relation' => 'voucherHistory', 'table' => 'associates', 'user' => 'distributed_id'],
             'approve' => ['relation' => 'approveHistory', 'table' => 'approvers', 'user' => 'approver_id', 'role' => 'approver'],
         ];
-
-        $transactions = Transaction::with([
+;
+        $transactions = Transaction::
+        with([
+            $statusMapping[$status]['relation'],
             "users:id,first_name,middle_name,last_name,department,position",
             "supplier.supplier_type:id,type as name,transaction_days",
             "po_details:id,request_id,po_no,po_total_amount",
-//            "company_info:id,code",
-//            "department_info:id,code",
-//            "location_info:id,code",
-//            "treasuryCheque",
-//            "account_titles"
         ])
-            ->when(isset($statusMapping[$status]), function ($query) use ($statusMapping, $status, $transaction_from, $transaction_to) {
-                $query->whereHas($statusMapping[$status]['relation'], function ($query) use ($statusMapping, $status, $transaction_from, $transaction_to) {
-//                    $query->where('status', $statusMapping[$status]['status'])
-                        $query->when(isset($transaction_from) || isset($transaction_to), function ($query) use ($transaction_from, $transaction_to) {
-                            $query->whereBetween('created_at', [$transaction_from, $transaction_to]);
-                        });
-                });
-            })
             ->select([
                 "id",
                 "users_id",
                 "request_id",
                 "supplier_id",
-                "document_id",
                 "tag_no",
+                "document_id",
                 "transaction_id",
                 "document_type",
                 "payment_type",
                 "remarks",
                 "date_requested",
+                "document_date",
                 "company_id",
                 "company",
                 "department",
                 "location",
                 "document_no",
+                "document_type",
                 "document_amount",
                 "referrence_no",
                 "referrence_amount",
@@ -6570,10 +6951,13 @@ class TransactionController extends Controller
                 "voucher_month",
                 "distributed_id",
                 "distributed_name",
-                "is_confidential",
-                "is_mc",
-                "distributed_name"
+                'is_confidential',
+                'is_mc',
+                'is_new'
             ])
+            ->whereHas($statusMapping[$status]['relation'], function ($query) use ($transaction_from, $transaction_to) {
+                $query->whereBetween('created_at', [$transaction_from, $transaction_to]);
+            })
             ->when(isset($statusMapping[$status]['role']), function ($query) use ($statusMapping, $status, $my_approve) {
                 $query->when($my_approve == 1, function ($query) {
                     $query->where('approver_id', auth()->user()->id);
@@ -6600,32 +6984,13 @@ class TransactionController extends Controller
                 $query->whereIn("company_id", $companies);
             })
             ->whereLike([
-                "date_requested",
-                "remarks",
-                "tag_no",
-                "transaction_id",
-                "document_amount",
-                "document_type",
-                "payment_type",
-                "company",
-                "department",
-                "location",
-                "supplier",
-                "document_no",
-                "referrence_no",
-                "po_total_amount",
-                "referrence_total_amount",
-                "po_details.po_no",
-                "users.first_name",
-                "users.last_name",
-                "users.suffix",
+                'tag_no',
+                'voucher_no'
             ], $search)
 //            ->orderBy(DB::raw("(SELECT t.created_at FROM " . $statusMapping[$status]['table'] . " as t WHERE t.transaction_id = transactions.id ORDER BY t.created_at DESC LIMIT 1)"), 'desc')
             ->paginate($rows);
 
-//        TransactionIndex::collection($transactions)
         $transactions = $this->historyIndexFormatter($transactions);
-
 
         if (count($transactions)) {
             return $this->resultResponse("fetch", "Transaction", $transactions);
@@ -6633,20 +6998,92 @@ class TransactionController extends Controller
         return $this->resultResponse("not-found", "Transaction", []);
     }
 
+    public function exportHiistory(Request $request) {
+        $dateToday = Carbon::now()->timezone("Asia/Manila");
+        $transaction_from = Carbon::parse($this->getTransactionDate($request, "transaction_from", $dateToday->format("Y-m-d")))->startOfDay();
+        $transaction_to = Carbon::parse($this->getTransactionDate($request, "transaction_to", $dateToday->format("Y-m-d")))->endOfDay();
+        $status = $request->status;
+//        $table = $request->table;
+
+        $transactions = Transaction::
+        with([
+            'supplier',
+            'supplier.supplier_type',
+            'po_details',
+            $status
+        ])
+            ->whereHas($status, function ($query) use ($transaction_from, $transaction_to) {
+                $query->whereBetween('created_at', [$transaction_from, $transaction_to]);
+            })
+            ->select([
+                "id",
+                "document_id",
+                "tag_no",
+                "supplier_id",
+                "date_requested",
+                "category",
+                "receipt_type",
+                "state",
+                "status",
+                "document_no",
+                "referrence_no",
+                "remarks",
+                "document_amount",
+                "gross_amount",
+                "principal",
+                "interest",
+                "referrence_amount",
+                "referrence_type"
+            ])
+//            ->orderBy(DB::raw("(SELECT t.created_at FROM " . $table . " as t WHERE t.transaction_id = transactions.id ORDER BY t.created_at DESC LIMIT 1)"), 'desc')
+            ->get();
+
+        return $transactions->transform(function ($item) use ($status) {
+            $stateChange = (new TransactionResource($item))->stateChange(($item->state));
+            return [
+                'fisto_tag_no' => $item->receipt_type == 'Unofficial' ? 'U-' . $item->tag_no : $item->tag_no,
+                'color_of_receipt' => $item->referrence_type,
+                'supplier' => $item->supplier,
+                'date' => [
+                    $stateChange => $this->getDateEveryStatus($item->$status, $item->status)
+                ],
+                'accnt_tag' => null,
+                'transaction_date' => $item->date_requested,
+                'po' => $item->po_details->map(function ($po) {
+                    return [
+                        'po_no' => $po->po_no,
+                    ];
+                }),
+                'reference' => $item->document_no . ' ' . $item->referrence_no . ' ' . $item->remarks,
+                'amount' => ($item->document_id == 3)
+                    ? ($item->category == in_array($item->category, (new TransactionResource1($item))->getRental()) ? $item->gross_amount : (($item->principal + $item->interest)))
+                    : $item->document_amount ?? $item->referrence_amount,
+                'T' => null,
+                'A' => null,
+                'G' => null,
+                'CV (13)' => null,
+                'check_received_from_treasury' => null,
+                'check_received_by_supplier/purchasing' => null,
+                'remarks' => null,
+                'date_returned_(PAD)_with_attachments_-_Maam_Vic' => null,
+                'month' => null,
+                'type1' => null,
+                'PAD_REMARKS_(FULL_PAYMENT)' => null,
+                'OLD_REMARKS' => null,
+                'Status' => null,
+                'month1' => null
+            ];
+        });
+    }
+
     public function historyIndexFormatter($transactions) {
         $transactions->getCollection()->transform(function ($transaction) {
             $resource = new TransactionResource1($transaction);
             $rental = $resource->getRental();
-//            $accounts = $transaction->account_titles->filter(function ($item) {
-//                return $item->account_title_name == 'Accounts Payable' || $item->account_title_name == 'Accounts Payable - RHL';
-//            });
-
-
             return [
                 "id" => $transaction->id,
                 "tag_no" => $transaction->tag_no,
                 "users_id" => $transaction->users_id,
-//                "request_id" => $transaction->request_id,
                 "document_id" => $transaction->document_id,
                 "transaction_id" => $transaction->transaction_id,
                 "document_type" => $transaction->document_type,
@@ -6654,14 +7091,8 @@ class TransactionController extends Controller
                 "supplier" => $transaction->supplier,
                 "remarks" => $transaction->remarks,
                 "date_requested" => $transaction->date_requested,
-//                "company_id" => $transaction->company_info->id,
-//                "company_code" => $transaction->company_info->code,
                 "company" => $transaction->company,
-//                'department_id' => $transaction->department_id,
-//                'department_code' => $transaction->department_info->code,
                 "department" => $transaction->department,
-//                "location_id" => $transaction->location_id,
-//                "location_code" => $transaction->location_info->code,
                 "location" => $transaction->location,
                 "document_no" => $transaction->document_no,
                 "document_amount" => ($transaction->document_id == 3)
@@ -6671,8 +7102,6 @@ class TransactionController extends Controller
                 "period_covered" => $transaction->document_id == 3 ? $transaction->period_covered : null,
                 "referrence_no" => $transaction->referrence_no,
                 "referrence_amount" => $transaction->referrence_amount,
-//                "status" => $state,
-//                "state" => $transaction->status == 'cheque-cheque' ? 'cheque-create' : $transaction->status,
                 "users" => $transaction->users,
                 "po_details" => in_array($transaction->document_id, [1,  2, 4, 5])
                     ? $transaction->po_details->map(function ($po) {
@@ -6686,26 +7115,9 @@ class TransactionController extends Controller
                     : [],
                 'receipt_type' => $transaction->receipt_type,
                 'input_tax' => $transaction->input_tax,
-//                'cheques' => $transaction->treasuryCheque->map(function ($item) {
-//                    return [
-//                        'bank' => $item->bank_name,
-//                        'cheque_no' => $item->cheque_no,
-//                        'amount' => $item->cheque_amount,
-//                        'is_cleared' => $item->is_cleared,
-//                    ];
-//                }),
-//                'accounts' => $accounts->map(function ($item) {
-//                    return [
-//                        'account_title' => [
-//                            'name' => $item->account_title_name
-//                        ],
-//                        'amount' => $item->amount,
-//                    ];
-//                })->values(),
                 'voucher' => [
                     'no' => $transaction->voucher_no,
                 ],
-//                'is_cheque' => $is_cheque,
                 'is_confidential' => $transaction->is_confidential,
                 'is_mc' => $transaction->is_mc,
                 "is_new" => $transaction->is_new ? 1 : 0,
@@ -7010,410 +7422,390 @@ class TransactionController extends Controller
             ])->get();
     }
 
-
     public function generateAPReport(Request $request)
     {
-        $boa = $request->boa;
+        $boa = $request->input('boa', []);
+        if (!empty($boa)) {
+            $boa = explode(',', $boa);
+        }
         $dateToday = Carbon::now()->timezone("Asia/Manila");
-//        $transaction_from = Carbon::parse($this->getTransactionDate($request, "transaction_from", $dateToday->startOfMonth()->format("Y-m-d")))->startOfDay();
-//        $transaction_to = Carbon::parse($this->getTransactionDate($request, "transaction_to", $dateToday->endOfMonth()->format("Y-m-d")))->endOfDay();
-        $adjustment_month = $request->input('adjustment_month', $dateToday->startOfMonth()->format("Y-m-d"));
+        $adjustment_month = $request->input('adjustment_month', $dateToday->startOfMonth()->day(15)->format("Y-m-d"));
 //        $adjustment_month = Carbon::parse($this->getTransactionDate($request, "transaction_from", $dateToday->startOfMonth()->format("Y-m-d")))->startOfDay();
+        $user = $request->user;
         $year = date('Y', strtotime($adjustment_month));
         $month = date('m', strtotime($adjustment_month));
-
         $companies = $this->getRequestData($request, 'companies');
 
-        if ($boa == 'adjustments') {
-            $generalJournal = GeneralJournal::where('user_id', auth()->user()->id)
-                ->with([
-                    'account_titles.greatGrandParents',
-                    'account_titles.grandParents',
-                    'payableAssociates'
-                ])
-                ->when($adjustment_month, function ($query) use ($month, $year) {
+        $generalJournal = GeneralJournal::
+            with([
+                'account_titles.greatGrandParents',
+                'account_titles.grandParents',
+                'payableAssociates'
+            ])
+            ->when($adjustment_month, function ($query) use ($month, $year) {
+                $query->where(function ($query) use ($month, $year) {
                     $query->whereMonth('adjustment_month', $month)
                         ->whereYear('adjustment_month', $year);
-                })
-                ->when(!empty($companies), function ($query) use ($companies) {
-                    $query->whereIn("division_id", $companies);
-                })
-                ->where('is_posted', true)
-                ->get();
+                })->orWhere(function ($query) use ($month, $year) {
+                    $query->whereMonth('posted_at', $month)
+                        ->whereYear('posted_at', $year)
+                        ->where('is_posted', true);
+                });
+            })
+            ->when($user, function ($query) use ($user) {
+                $query->where('user_id', $user);
+            }, function ($query) use ($companies){
+                $query->whereIn("division_id", $companies);
+            })
+            ->select([
+                'id',
+                'adjustment_month',
+                'division_id',
+                'division_name',
+                'tag_no',
+                'transaction_date',
+                'supplier_id',
+                'supplier_code',
+                'supplier_name',
+                'entry',
+                'account_title_id',
+                'account_title_code',
+                'account_title_name',
+                'company_id',
+                'company_code',
+                'company_name',
+                'department_id',
+                'department_code',
+                'department_name',
+                'location_id',
+                'location_code',
+                'location_name',
+                'business_unit_id',
+                'business_unit_code',
+                'business_unit_name',
+                'sub_unit_id',
+                'sub_unit_code',
+                'sub_unit_name',
+                'amount',
+                'description',
+                'po_no',
+                'reference_no',
+                'quantity',
+                'unit',
+                'unit_price',
+                'voucher_number',
+                'asset_code',
+                'asset_name',
+                'service_provider_code',
+                'service_provider_name',
+                'remarks',
+                'boa',
+                'user_id',
+                'journal_name',
+                'journal_description',
+                'gj_number',
+                'batch_no',
+                'is_posted',
+                'posted_at'
+            ])
+            ->get();
 
-            $generalJournal->transform(function ($item) {
-                return [
-                    'mark' => "",
-                    'mark_2' => "",
-                    'asset/cip_no' => "",
-                    'account_tag' => $item->tag_no,
-                    'transaction_date' => $item->transaction_date,
-                    'supplier' => $item->supplier_name,
-                    'account_title' => [
-                        'code' => $item->account_title_code,
-                        'name' => $item->account_title_name,
-                    ],
-                    'company' => [
-                        'code' => '0000',
-                        'name' => 'RDFFLFi',
-                    ],
-                    'division' => [
-                        'code' => $item->company_code,
-                        'name' => $item->company_name,
-                    ],
-                    'department' => [
-                        'code' => $item->department_code,
-                        'name' => $item->department_name,
-                    ],
-                    'location' => [
-                        'code' => $item->location_code,
-                        'name' => $item->location_name,
-                    ],
-                    'business_unit' => [
-                        'code' => $item->business_unit_code,
-                        'name' => $item->business_unit_name,
-                    ],
-                    'sub_unit' => [
-                        'code' => $item->sub_unit_code,
-                        'name' => $item->sub_unit_name,
-                    ],
-                    'amount' => $item->amount,
-                    'po_no' => $item->po_no,
-                    'reference_no' => $item->reference_no,
-                    'item_code' => "",
-                    'description' => "",
-                    'quantity' => "",
-                    'unit' => "",
-                    'unit_price' => "",
-                    'line_amount' => "",
-                    'voucher_number' => $item->voucher_number ?? $item->gj_number,
-                    'account_type' => $item->account_titles->first()->greatGrandParents->name ?? null,
-                    'dr/cr' => $item->entry,
-                    'asset_code' => "",
-                    'asset' => "",
-                    'service_provider_code' => $item->payableAssociates->first()->id_prefix . ' - ' . $item->payableAssociates->first()->id_no,
-                    'service_provider' => $item->payableAssociates->first()->first_name . ' ' . $item->payableAssociates->first()->last_name,
-                    'boa' => 'General Journal',
-                    'allocation' => "",
-                    'account_group' => "",
-                    'account_sub_group' => "",
-                    'financial_statement' => "",
-                    'unit_responsible' => "",
-                    'batch' => "",
-                    'remarks' => $item->remarks,
-                    'payroll_period' => "",
-                    'payroll_position' => "",
-                    'payroll_type_1' => "",
-                    'payroll_type_2' => "",
-                    'additional_description_for_depr' => "",
-                    'remaining_bv_for_depr' => "",
-                    'useful_life' => "",
-                    'month' => date('M', strtotime($item->adjustment_month)),
-                    'year' => date('Y', strtotime($item->adjustment_month)),
-                    'division_name' => $item->division_name,
-                    'particular' => "",
-                    'month_2' => "",
-                    'farm_type' => "",
-                    'jean_remarks' => "",
-                    'from' => "",
-                    'changed_to' => "",
-                    'reason' => "",
-                    'checking_remarks' => "",
-                    'boa_2' => "",
-                    'books' => 'GJ',
-                    'system' => 'FISTO'
-                ];
-            });
-        } else if ($boa == 'accruals' || $boa == 'reversals') {
-            $generalJournal = Accruals::where('user_id', auth()->user()->id)
-                ->with([
-                    'account_titles.greatGrandParents',
-                    'account_titles.grandParents',
-                    'account_titles.parents',
-                    'account_titles.children',
-                    'account_titles.units',
-                    'payableAssociates'
-                ])
-                ->when($boa == 'accruals', function ($query) use ($month, $year) {
+        $generalJournal = $generalJournal->transform(function ($item) {
+            return [
+                'id' => $item->id,
+                'mark' => "",
+                'mark_2' => "",
+                'asset/cip_no' => "",
+                'account_tag' => $item->tag_no,
+                'transaction_date' => $item->transaction_date,
+                'supplier' => $item->supplier_name,
+                'account_title' => [
+                    'code' => $item->account_title_code,
+                    'name' => $item->account_title_name,
+                ],
+                'company' => [
+                    'code' => '0000',
+                    'name' => 'RDFFLFi',
+                ],
+                'division' => [
+                    'code' => $item->company_code,
+                    'name' => $item->company_name,
+                ],
+                'department' => [
+                    'code' => $item->department_code,
+                    'name' => $item->department_name,
+                ],
+                'location' => [
+                    'code' => $item->location_code,
+                    'name' => $item->location_name,
+                ],
+                'business_unit' => [
+                    'code' => $item->business_unit_code,
+                    'name' => $item->business_unit_name,
+                ],
+                'sub_unit' => [
+                    'code' => $item->sub_unit_code,
+                    'name' => $item->sub_unit_name,
+                ],
+                'po_no' => $item->po_no,
+                'reference_no' => $item->reference_no,
+                'item_code' => "",
+                'description' => "",
+                'quantity' => "",
+                'unit' => "",
+                'unit_price' => "",
+                'line_amount' => $item->amount,
+                'voucher_number' => $item->voucher_number ?? $item->gj_number,
+                'account_type' => $item->account_titles->first()->greatGrandParents->name ?? null,
+                'dr/cr' => $item->entry,
+                'asset_code' => "",
+                'asset' => "",
+                'service_provider_code' => $item->payableAssociates->first()->id_prefix . ' - ' . $item->payableAssociates->first()->id_no,
+                'service_provider' => $item->payableAssociates->first()->first_name . ' ' . $item->payableAssociates->first()->last_name,
+                'boa' => 'GJ',
+                'allocation' => "",
+                'account_group' => "",
+                'account_sub_group' => "",
+                'financial_statement' => "",
+                'unit_responsible' => "",
+                'batch' => "",
+                'remarks' => $item->remarks,
+                'payroll_period' => "",
+                'payroll_position' => "",
+                'payroll_type_1' => "",
+                'payroll_type_2' => "",
+                'additional_description_for_depr' => "",
+                'remaining_bv_for_depr' => "",
+                'useful_life' => "",
+                'month' => $item->is_posted ? date('M', strtotime($item->posted_at)) : date('M', strtotime($item->adjustment_month)),
+                'year' => $item->is_posted ? date('Y', strtotime($item->posted_at)) : date('Y', strtotime($item->adjustment_month)),
+                'division_name' => $item->division_name,
+                'particular' => "",
+                'month_2' => "",
+                'farm_type' => "",
+                'jean_remarks' => "",
+                'from' => "",
+                'changed_to' => "",
+                'reason' => "",
+                'checking_remarks' => "",
+                'boa_2' => "",
+                'system' => 'FISTO',
+                'books' => 'GJ',
+            ];
+        });
+
+        $accruals = Accruals::
+            with([
+                'account_titles.greatGrandParents',
+                'account_titles.grandParents',
+                'account_titles.parents',
+                'account_titles.children',
+                'account_titles.units',
+                'payableAssociates'
+            ])
+//            ->when($boa == 'accruals', function ($query) use ($month, $year) {
+//                $query->whereMonth('adjustment_month', $month)
+//                    ->whereYear('adjustment_month', $year)
+//                    ->where('is_reversed', false);
+//            }, function ($query) use ($month, $year) {
+//                $query->whereMonth('reversed_at', $month)
+//                    ->whereYear('reversed_at', $year)
+//                    ->where('is_reversed', true);
+//            })
+            ->when($adjustment_month, function ($query) use ($month, $year, $boa) {
+//                $query->when($boa == 'accruals', function ($query) use ($month, $year) {
+//                    $query->whereMonth('adjustment_month', $month)
+//                        ->whereYear('adjustment_month', $year);
+//                }, function ($query) use ($month, $year) {
+//                    $query->whereMonth('reversed_at', $month)
+//                        ->whereYear('reversed_at', $year);
+//                });
+
+                $query->where(function ($query) use ($month, $year) {
                     $query->whereMonth('adjustment_month', $month)
-                        ->whereYear('adjustment_month', $year)
-                        ->where('is_reversed', false);
-                }, function ($query) use ($month, $year) {
+                        ->whereYear('adjustment_month', $year);
+                })->orWhere(function ($query) use ($month, $year) {
                     $query->whereMonth('reversed_at', $month)
                         ->whereYear('reversed_at', $year)
                         ->where('is_reversed', true);
-                })
-                ->when($adjustment_month, function ($query) use ($month, $year, $boa) {
-                    $query->when($boa == 'accruals', function ($query) use ($month, $year) {
-                        $query->whereMonth('adjustment_month', $month)
-                            ->whereYear('adjustment_month', $year);
-                    }, function ($query) use ($month, $year) {
-                        $query->whereMonth('reversed_at', $month)
-                            ->whereYear('reversed_at', $year);
-                    });
-                })
-                ->when(!empty($companies), function ($query) use ($companies) {
-                    $query->whereIn("division_id", $companies);
-                })
-                ->get();
+                });
+            })
+//            ->where('user_id', auth()->user()->id)
+//            ->when(!empty($companies), function ($query) use ($companies) {
+//                $query->whereIn("division_id", $companies);
+//            })
+            ->when($user, function ($query) use ($user) {
+                $query->where('user_id', $user);
+            }, function ($query) use ($companies){
+                $query->whereIn("division_id", $companies);
+            })
+            ->get();
 
-            $generalJournal->transform(function ($item) {
+        $accruals = $accruals->transform(function ($item) {
+            return [
+                'id' => $item->id,
+                'mark' => "",
+                'mark_2' => "",
+                'asset/cip_no' => "",
+                'account_tag' => $item->tag_no,
+                'transaction_date' => $item->transaction_date,
+                'supplier' => $item->supplier_name,
+                'account_title' => [
+                    'code' => $item->account_title_code,
+                    'name' => $item->account_title_name,
+                ],
+                'company' => [
+                    'code' => '0000',
+                    'name' => 'RDFFLFi',
+                ],
+                'division' => [
+                    'code' => $item->company_code,
+                    'name' => $item->company_name,
+                ],
+                'department' => [
+                    'code' => $item->department_code,
+                    'name' => $item->department_name,
+                ],
+                'location' => [
+                    'code' => $item->location_code,
+                    'name' => $item->location_name,
+                ],
+                'business_unit' => [
+                    'code' => $item->business_unit_code,
+                    'name' => $item->business_unit_name,
+                ],
+                'sub_unit' => [
+                    'code' => $item->sub_unit_code,
+                    'name' => $item->sub_unit_name,
+                ],
+                'po_no' => $item->po_no,
+                'reference_no' => $item->reference_no,
+                'item_code' => "",
+                'description' => "",
+                'quantity' => "",
+                'unit' => "",
+                'unit_price' => "",
+                'line_amount' => $item->amount,
+                'voucher_number' => $item->voucher_number ?? $item->gj_number,
+                'account_type' => $item->account_titles->first()->greatGrandParents->name ?? null,
+                'dr/cr' => $item->entry,
+                'asset_code' => "",
+                'asset' => "",
+                'service_provider_code' => $item->payableAssociates->first()->id_prefix . ' - ' . $item->payableAssociates->first()->id_no,
+                'service_provider' => $item->payableAssociates->first()->first_name . ' ' . $item->payableAssociates->first()->last_name,
+                'boa' => $item->is_reversed ? 'Reversal' : $item->boa,
+                'allocation' => "",
+                'account_group' => $item->account_titles->first()->grandParents->name ?? null,
+                'account_sub_group' => $item->account_titles->first()->parents->name ?? null,
+                'financial_statement' => $item->account_titles->first()->children->name ?? null,
+                'unit_responsible' => $item->account_titles->first()->units->name ?? null,
+                'batch' => "",
+                'remarks' => $item->remarks,
+                'payroll_period' => "",
+                'payroll_position' => "",
+                'payroll_type_1' => "",
+                'payroll_type_2' => "",
+                'additional_description_for_depr' => "",
+                'remaining_bv_for_depr' => "",
+                'useful_life' => "",
+                'month' => $item->is_reversed ? date('M', strtotime($item->reversed_at)) : date('M', strtotime($item->adjustment_month)),
+                'year' => $item->is_reversed ? date('Y', strtotime($item->reversed_at)) : date('Y', strtotime($item->adjustment_month)),
+                'division_name' => $item->division_name,
+                'particular' => "",
+                'month_2' => "",
+                'farm_type' => "",
+                'jean_remarks' => "",
+                'from' => "",
+                'changed_to' => "",
+                'reason' => "",
+                'checking_remarks' => "",
+                'boa_2' => "",
+                'system' => 'FISTO',
+                'books' => 'GJ',
+            ];
+        });
+
+        $vouchersPrepared = Transaction::
+        with([
+            'po_details',
+            'account_titles',
+            'account_titles.accountType',
+            'account_titles.normalBalance',
+            'account_titles.accountGroup',
+            'account_titles.accountSubGroup',
+            'account_titles.financialStatement',
+            'account_titles.unit',
+            'payableAssociates'
+        ])
+            ->when(isset($user), function ($query) use ($user) {
+                $query->where('distributed_id', $user);
+            }, function ($query) use ($companies){
+                $query->whereIn("company_id", $companies);
+            })
+            ->when($adjustment_month, function ($query) use ($month, $year) {
+                $query->whereMonth('voucher_month', $month)
+                    ->whereYear('voucher_month', $year);
+            })
+            ->withTrashed(function ($query) {
+                $query->where('deleted_at', '=', '2024-08-28 00:00:00');
+            })
+            ->select(
+                'id',
+                'tag_no',
+                'date_requested',
+                'supplier',
+                'referrence_no',
+                'voucher_no',
+                'voucher_month',
+                'capex_no',
+                'document_no',
+                'utilities_receipt_no',
+                'company',
+                'distributed_id',
+                'distributed_name'
+            )
+            ->get();
+
+
+        $vouchersPrepared = $vouchersPrepared->flatMap(function ($item) {
+            return $item->account_titles->map(function ($accountTitle) use ($item) {
                 return [
-                    'mark' => "",
-                    'mark_2' => "",
-                    'asset/cip_no' => "",
-                    'account_tag' => $item->tag_no,
-                    'transaction_date' => $item->transaction_date,
-                    'supplier' => $item->supplier_name,
-                    'account_title' => [
-                        'code' => $item->account_title_code,
-                        'name' => $item->account_title_name,
-                    ],
-                    'company' => [
-                        'code' => '0000',
-                        'name' => 'RDFFLFi',
-                    ],
-                    'division' => [
-                        'code' => $item->company_code,
-                        'name' => $item->company_name,
-                    ],
-                    'department' => [
-                        'code' => $item->department_code,
-                        'name' => $item->department_name,
-                    ],
-                    'location' => [
-                        'code' => $item->location_code,
-                        'name' => $item->location_name,
-                    ],
-                    'business_unit' => [
-                        'code' => $item->business_unit_code,
-                        'name' => $item->business_unit_name,
-                    ],
-                    'sub_unit' => [
-                        'code' => $item->sub_unit_code,
-                        'name' => $item->sub_unit_name,
-                    ],
-                    'amount' => $item->amount,
-                    'po_no' => $item->po_no,
-                    'reference_no' => $item->reference_no,
-                    'item_code' => "",
-                    'description' => "",
-                    'quantity' => "",
-                    'unit' => "",
-                    'unit_price' => "",
-                    'line_amount' => "",
-                    'voucher_number' => $item->voucher_number ?? $item->gj_number,
-                    'account_type' => $item->account_titles->first()->greatGrandParents->name ?? null,
-                    'dr/cr' => $item->entry,
-                    'asset_code' => "",
-                    'asset' => "",
-                    'service_provider_code' => $item->payableAssociates->first()->id_prefix . ' - ' . $item->payableAssociates->first()->id_no,
-                    'service_provider' => $item->payableAssociates->first()->first_name . ' ' . $item->payableAssociates->first()->last_name,
-                    'boa' => $item->is_reversed ? 'Reversal' : $item->boa,
-                    'allocation' => "",
-                    'account_group' => $item->account_titles->first()->grandParents->name ?? null,
-                    'account_sub_group' => $item->account_titles->first()->parents->name ?? null,
-                    'financial_statement' => $item->account_titles->first()->children->name ?? null,
-                    'unit_responsible' => $item->account_titles->first()->units->name ?? null,
-                    'batch' => "",
-                    'remarks' => $item->remarks,
-                    'payroll_period' => "",
-                    'payroll_position' => "",
-                    'payroll_type_1' => "",
-                    'payroll_type_2' => "",
-                    'additional_description_for_depr' => "",
-                    'remaining_bv_for_depr' => "",
-                    'useful_life' => "",
-                    'month' => $item->is_reversed ? date('M', strtotime($item->reversed_at)) : date('M', strtotime($item->adjustment_month)),
-                    'year' => $item->is_reversed ? date('Y', strtotime($item->reversed_at)) : date('Y', strtotime($item->adjustment_month)),
-                    'division_name' => $item->division_name,
-                    'particular' => "",
-                    'month_2' => "",
-                    'farm_type' => "",
-                    'jean_remarks' => "",
-                    'from' => "",
-                    'changed_to' => "",
-                    'reason' => "",
-                    'checking_remarks' => "",
-                    'boa_2' => "",
-                    'books' => 'GJ',
-                    'system' => 'FISTO'
-                ];
-            });
-
-//            $generalJournal->transform(function ($item) {
-//                return [
-//                    'journal_name' => $item->journal_name,
-//                    'journal_description' => $item->journal_description,
-//                    'adjustment_month' => $item->is_reversed ? $item->reversed_at : $item->adjustment_month,
-//                    'account_tag' => $item->tag_no,
-//                    'transaction_date' => $item->transaction_date,
-//                    'supplier' => $item->supplier_name,
-//                    'account_title' => [
-//                        'code' => $item->account_title_code,
-//                        'name' => $item->account_title_name,
-//                    ],
-//                    'company' => [
-//                        'code' => $item->company_code,
-//                        'name' => $item->company_name,
-//                    ],
-//                    'department' => [
-//                        'code' => $item->department_code,
-//                        'name' => $item->department_name,
-//                    ],
-//                    'location' => [
-//                        'code' => $item->location_code,
-//                        'name' => $item->location_name,
-//                    ],
-//                    'business_unit' => [
-//                        'code' => $item->business_unit_code,
-//                        'name' => $item->business_unit_name,
-//                    ],
-//                    'sub_unit' => [
-//                        'code' => $item->sub_unit_code,
-//                        'name' => $item->sub_unit_name,
-//                    ],
-//                    'category' => $item->account_titles->first()->greatGrandParents->name ?? null,
-//                    'allocation' => $item->account_titles->first()->grandParents->name ?? null,
-//                    'description' => $item->description,
-//                    'amount' => $item->amount,
-//                    'po_no' => $item->po_no,
-//                    'reference_no' => $item->reference_no,
-//                    'quantity' => $item->quantity,
-//                    'unit' => $item->unit,
-//                    'unit_price' => $item->unit_price,
-//                    'voucher_number' => $item->voucher_number,
-//                    'gj_number' => $item->gj_number,
-//                    'dr/cr' => $item->entry,
-//                    'asset' => [
-//                        'code' => $item->asset_code,
-//                        'name' => $item->asset_name
-//                    ],
-//                    'service_provider' => [
-//                        'code' => $item->service_provider_code,
-//                        'name' => $item->service_provider_name
-//                    ],
-//                    'boa' => $item->boa,
-//                    'is_reversed' => $item->is_reversed
-//                ];
-//            });
-        } else {
-            $generalJournal = Transaction::
-            with([
-                'po_details',
-                'account_titles',
-                'account_titles.accountType',
-                'account_titles.normalBalance',
-                'account_titles.accountGroup',
-                'account_titles.accountSubGroup',
-                'account_titles.financialStatement',
-                'account_titles.unit',
-                'payableAssociates'
-            ])
-                ->where('distributed_id', auth()->user()->id)
-                ->when($adjustment_month, function ($query) use ($month, $year) {
-                    $query->whereMonth('voucher_month', $month)
-                        ->whereYear('voucher_month', $year);
-                })
-                ->when(!empty($companies), function ($query) use ($companies) {
-                    $query->whereIn("company_id", $companies);
-                })
-                ->withTrashed(function ($query) {
-                    $query->where('deleted_at', '=', '2024-08-28 00:00:00');
-                })
-                ->select(
-                    'id',
-                    'tag_no',
-                    'date_requested',
-                    'supplier',
-                    'referrence_no',
-                    'voucher_no',
-                    'voucher_month',
-                    'capex_no',
-                    'document_no',
-                    'utilities_receipt_no',
-                    'company',
-                    'distributed_id',
-                    'distributed_name'
-                )
-                ->get();
-
-//            $generalJournal->transform(function ($item) {
-//                return [
-//                    'account_tag' => $item->tag_no,
-//                    'boa' => 'VP',
-//                    'division' => $item->company,
-//                    'capex_no' => $item->capex_no,
-//                    'transaction_date' => $item->date_requested,
-//                    'supplier' => $item->supplier,
-//                    'voucher_month' => $item->voucher_month,
-//                    'voucher_no' => $item->voucher_no,
-//                    'reference_no' => $item->document_no ?? $item->referrence_no ?? $item->utilities_receipt_no ?? 'x',
-//                    'batch' => $item->pcf_letter . $item->pcf_date ?? '',
-//                    'vouchers' => $item->account_titles->map(function ($item) {
-//                        return [
-//                            'entry' => $item->entry,
-//                            'amount' => $item->amount,
-//                            'account_title_code' => $item->account_title_code,
-//                            'account_title' => $item->account_title_name,
-//                            'company_code' => $item->company_code,
-//                            'company' => $item->company_name,
-//                            'department_code' => $item->department_code,
-//                            'department' => $item->department_name,
-//                            'location_code' => $item->location_code,
-//                            'location' => $item->location_name,
-//                            'description' => $item->remarks,
-//                            "category" => $item->accountType->first()->name ?? null,
-//                            "dr/cr" => $item->normalBalance->first()->name ?? null,
-//                            "allocation" => $item->accountGroup->first()->name ?? null,
-//                        ];
-//                    }),
-//                    'po_details' => $item->po_details->map(function ($item) {
-//                        return [
-//                            'po_no' => $item->po_no,
-//                        ];
-//                    }),
-//                ];
-//            });
-
-            $generalJournal->transform(function ($item) {
-                return [
+                    'id' => $accountTitle->id,
                     'mark' => "",
                     'mark_2' => "",
                     'asset/cip_no' => "",
                     'account_tag' => $item->tag_no,
                     'transaction_date' => $item->date_requested,
                     'supplier' => $item->supplier,
-                    'vouchers' => $item->account_titles->map(function ($item) {
-                        return [
-                            'entry' => $item->entry,
-                            'amount' => $item->amount,
-                            'account_title_code' => $item->account_title_code,
-                            'account_title' => $item->account_title_name,
-                            'company_code' => '0000',
-                            'company' => 'RDFFLFI',
-                            'division_code' => $item->company_code,
-                            'division' => $item->company_name,
-                            'department_code' => $item->department_code,
-                            'department' => $item->department_name,
-                            'location_code' => $item->location_code,
-                            'location' => $item->location_name,
-                            'business_unit_code' => $item->business_unit_code,
-                            'business_unit' => $item->business_unit_name,
-                            'sub_unit_code' => $item->sub_unit_code,
-                            'sub_unit' => $item->sub_unit_name,
-                            'description' => $item->remarks,
-                            'allocation' => null,
-                            'account_type' => $item->accountType->first()->name ?? null,
-                            'account_group' => $item->accountGroup->first()->name ?? null,
-                            'account_sub_group' => $item->accountSubGroup->first()->name ?? null,
-                            'financial_statement' => $item->financialStatement->first()->name ?? null,
-                            'unit_responsible' => $item->unit->first()->name ?? null,
-                            'dr/cr' => $item->entry,
-                            'remarks' => $item->remarks
-                        ];
-                    }),
-                    'po_details' => $item->po_details->map(function ($item) {
+                    'account_title' => [
+                        'code' => $accountTitle->account_title_code,
+                        'name' => $accountTitle->account_title_name,
+                    ],
+                    'company' => [
+                        'code' => '0000',
+                        'name' => 'RDFFLFi',
+                    ],
+                    'division' => [
+                        'code' => $accountTitle->company_code,
+                        'name' => $accountTitle->company_name,
+                    ],
+                    'department' => [
+                        'code' => $accountTitle->department_code,
+                        'name' => $accountTitle->department_name,
+                    ],
+                    'location' => [
+                        'code' => $accountTitle->location_code,
+                        'name' => $accountTitle->location_name,
+                    ],
+                    'business_unit' => [
+                        'code' => $accountTitle->business_unit_code,
+                        'name' => $accountTitle->business_unit_name,
+                    ],
+                    'sub_unit' => [
+                        'code' => $accountTitle->sub_unit_code,
+                        'name' => $accountTitle->sub_unit_name,
+                    ],
+                    'po_no' => $item->po_details->map(function ($item) {
                         return [
                             'po_no' => $item->po_no,
                         ];
@@ -7423,18 +7815,23 @@ class TransactionController extends Controller
                     'item_description' => "",
                     'quantity' => "",
                     'unit' => "",
-                    'uom' => "",
                     'unit_price' => "",
-                    'line_amount' => "",
-                    'voucher_no' => $item->voucher_no,
+                    'line_amount' => $accountTitle->amount,
+                    'voucher_number' => $item->voucher_no,
+                    'account_type' => $accountTitle->accountType->first()->name ?? null,
+                    'dr/cr' => $accountTitle->entry,
                     'asset_code' => "",
                     'asset' => "",
                     'service_provider_code' => $item->payableAssociates->id_prefix . ' - ' . $item->payableAssociates->id_no,
                     'service_provider' => $item->distributed_name,
                     'boa' => 'VP',
-                    'capex_no' => $item->capex_no,
-                    'voucher_month' => date('M', strtotime($item->voucher_month)) . ' ' . date('Y', strtotime($item->voucher_month)),
+                    'allocation' => null,
+                    'account_group' => $accountTitle->accountGroup->first()->name ?? null,
+                    'account_sub_group' => $accountTitle->accountSubGroup->first()->name ?? null,
+                    'financial_statement' => $accountTitle->financialStatement->first()->name ?? null,
+                    'unit_responsible' => $accountTitle->unit->first()->name ?? null,
                     'batch' => $item->pcf_letter . $item->pcf_date ?? '',
+                    'remarks' => $accountTitle->remarks,
                     'payroll_period' => '',
                     'payroll_position' => '',
                     'payroll_type_1' => '',
@@ -7444,8 +7841,7 @@ class TransactionController extends Controller
                     'useful_life' => '',
                     'month' => date('M', strtotime($item->voucher_month)),
                     'year' => date('Y', strtotime($item->voucher_month)),
-                    'division' => $item->company,
-                    'division_code' => $item->company_code,
+                    'division1' => $item->company,
                     'particular' => '',
                     'month_2' => '',
                     'farm_type' => '',
@@ -7455,25 +7851,93 @@ class TransactionController extends Controller
                     'reason' => '',
                     'checking_remarks' => '',
                     'boa_2' => '',
+                    'system' => 'FISTO',
                     'books' => 'Purchases',
-                    'system' => 'FISTO'
                 ];
             });
-        }
+        });
 
-        return $generalJournal;
+        $mergedReports = collect($vouchersPrepared->merge($generalJournal)->merge($accruals));
+
+        if (!empty($boa)) {
+            return $mergedReports->filter(function ($item) use ($boa, $companies) {
+                return in_array($item['boa'], $boa);
+            })->values();
+        } else {
+            return $mergedReports->values();
+        }
     }
 
     public function treasuryReport(Request $request) {
-        $dateToday = Carbon::now()->timezone("Asia/Manila");
-        $year = date('Y', strtotime($dateToday));
-        $month = date('m', strtotime($dateToday));
-        $transactions = Transaction::whereHas('cheques', function ($query) use ($year, $month){
-            $query->whereMonth('created_at', $month)
-                ->whereYear('created_at', $year);
-        })->get();
+//        $dateToday = Carbon::now()->timezone("Asia/Manila");
+        $date = Carbon::parse($request->input('date'))->timezone("Asia/Manila")->day(15)->format('Y-m-d');
+        $year = date('Y', strtotime($date));
+        $month = date('m', strtotime($date));
 
-        return $transactions;
+        $transactions = Transaction::
+        with([
+            'company_info:id,code',
+            'chequeHistory',
+            'treasuryCheque',
+            'company_info',
+            'cheques'
+        ])
+            ->whereHas('chequeHistory', function ($query) use ($year, $month) {
+                $query->whereMonth('created_at', $month)
+                    ->whereYear('created_at', $year);
+            })
+            ->select(
+                'id',
+                'tag_no',
+                'company_id',
+                'company',
+                'supplier',
+                'remarks',
+                'voucher_no',
+                'document_date'
+            )
+            ->get();
+
+        return $transactions->transform(function ($item) {
+            $datetime = Carbon::parse($this->getDateEveryStatus($item->cheques, 'cheque-receive'))->setTimezone('Asia/Manila');
+            return [
+                'id' => $item->id,
+                'dates' => [
+                    'date_received' => $datetime->format('d/m/Y'),
+                    'time_received' => $datetime->format('h:ia'),
+                ],
+                'tag_no' => $item->tag_no,
+                'company' => [
+                    'code' => $item->company_info->code,
+                    'name' => $item->company,
+                ],
+                'type' => null,
+                'supplier' => $item->supplier,
+                'cheque' => $item->treasuryCheque->map(function ($item) {
+                    return [
+                        'bank' => $item->bank_name,
+                        'cheque_no' => $item->cheque_no,
+                        'amount' => -abs($item->cheque_amount),
+                        'cheque_date' => Carbon::parse($item->cheque_date)->format('m/d/Y'),
+                    ];
+                }),
+                'transaction' => $item->remarks,
+                'cv/ref_no' => $item->voucher_no,
+                'invoice_date' => Carbon::parse($item->document_date)->format('d/m/Y'),
+                'date_cleared/deposited' => null,
+                'date_transmitted' => null,
+                'transmitted_to' => null,
+                'a-tag_no' => null,
+                'month_cleared' => null,
+                'remarks' => null,
+                'status' => null,
+                'db' => null,
+                'rem' => null,
+                'terms' => null,
+                'for_budget' => null,
+                'gas_remarks' => null,
+            ];
+        });
     }
     public function generalNumbersDropdown(Request $request) {
         $voucher_month = $request->voucher_month;
@@ -7537,5 +8001,334 @@ class TransactionController extends Controller
 
         return TransactionResource1::collection(Transaction::whereIn('id', $transactions)
             ->get());
+    }
+
+    public function glReport(Request $request) {
+
+        $dateToday = Carbon::now()->timezone("Asia/Manila");
+        $adjustment_month = $request->input('adjustment_month');
+
+        if (!isset($adjustment_month)) {
+            return response()->json([
+                'message' => 'Connection established'
+            ], 200);
+        }
+
+        $year = date('Y', strtotime($adjustment_month));
+        $month = date('m', strtotime($adjustment_month));
+
+        $vouchersPrepared = Transaction::
+        with([
+            'po_details',
+            'account_titles',
+            'account_titles.accountType',
+            'account_titles.normalBalance',
+            'account_titles.accountGroup',
+            'account_titles.accountSubGroup',
+            'account_titles.financialStatement',
+            'account_titles.unit',
+            'payableAssociates'
+        ])
+            ->when($adjustment_month, function ($query) use ($month, $year) {
+                $query->whereMonth('voucher_month', $month)
+                    ->whereYear('voucher_month', $year);
+            })
+            ->withTrashed(function ($query) {
+                $query->where('deleted_at', '=', '2024-08-28 00:00:00');
+            })
+            ->select(
+                'id',
+                'tag_no',
+                'date_requested',
+                'supplier',
+                'referrence_no',
+                'voucher_no',
+                'voucher_month',
+                'capex_no',
+                'document_no',
+                'utilities_receipt_no',
+                'company',
+                'distributed_id',
+                'distributed_name'
+            )
+            ->get();
+
+
+        $vouchersPrepared = $vouchersPrepared->flatMap(function ($item) {
+            return $item->account_titles->map(function ($accountTitle) use ($item) {
+                return [
+                    'syncId' => $accountTitle->id,
+                    'mark1' => "",
+                    'mark2' => "",
+                    'assetCIP' => "",
+                    'accountingTag' => $item->tag_no,
+                    'transactionDate' => Carbon::parse($item->date_requested)->format('m/d/Y'),
+                    'clientSupplier' => $item->supplier,
+//                    'account_title' => [
+//                        'code' => $accountTitle->account_title_code,
+//                        'name' => $accountTitle->account_title_name,
+//                    ],
+                    'accountTitleCode' => $accountTitle->account_title_code,
+                    'accountTitle' => $accountTitle->account_title_name,
+//                    'company' => [
+//                        'code' => '0000',
+//                        'name' => 'RDFFLFi',
+//                    ],
+                    'companyCode' => '0000',
+                    'companyName' => 'RDFFLFi',
+//                    'division' => [
+//                        'code' => $accountTitle->company_code,
+//                        'name' => $accountTitle->company_name,
+//                    ],
+                    'divisionCode' => $accountTitle->company_code,
+                    'divisionName' => $accountTitle->company_name,
+//                    'department' => [
+//                        'code' => $accountTitle->department_code,
+//                        'name' => $accountTitle->department_name,
+//                    ],
+                    'departmentCode' => $accountTitle->department_code,
+                    'departmentName' => $accountTitle->department_name,
+//                    'location' => [
+//                        'code' => $accountTitle->location_code,
+//                        'name' => $accountTitle->location_name,
+//                    ],
+                    'locationCode' => $accountTitle->location_code,
+                    'locationName' => $accountTitle->location_name,
+//                    'business_unit' => [
+//                        'code' => $accountTitle->business_unit_code,
+//                        'name' => $accountTitle->business_unit_name,
+//                    ],
+                    'unitCode' => $accountTitle->business_unit_code,
+                    'unit' => $accountTitle->business_unit_name,
+//                    'sub_unit' => [
+//                        'code' => $accountTitle->sub_unit_code,
+//                        'name' => $accountTitle->sub_unit_name,
+//                    ],
+                    'subUnitCode' => $accountTitle->sub_unit_code,
+                    'subUnit' => $accountTitle->sub_unit_name,
+                    'poNumber' => $item->po_details->pluck('po_no')->implode(','),
+                    'referenceNo' => $item->document_no ?? $item->referrence_no ?? $item->utilities_receipt_no ?? 'x',
+                    'itemCode' => "",
+                    'itemDescription' => "",
+                    'quantity' => "",
+                    'uom' => "",
+                    'unitPrice' => "",
+                    'lineAmount' => $accountTitle->entry == 'Credit' ? -abs($accountTitle->amount) : $accountTitle->amount,
+                    'voucherJournal' => $item->voucher_no,
+                    'accountType' => $accountTitle->accountType->first()->name ?? null,
+                    'drcp' => $accountTitle->entry,
+                    'assetCode' => "",
+                    'asset' => "",
+                    'serviceProviderCode' => $item->payableAssociates->id_prefix . ' - ' . $item->payableAssociates->id_no,
+                    'serviceProvider' => $item->distributed_name,
+                    'boa' => 'VP',
+                    'allocation' => null,
+                    'accountGroup' => $accountTitle->accountGroup->first()->name ?? null,
+                    'accountSubGroup' => $accountTitle->accountSubGroup->first()->name ?? null,
+                    'financialStatement' => $accountTitle->financialStatement->first()->name ?? null,
+                    'unitResponsible' => $accountTitle->unit->first()->name ?? null,
+                    'batch' => $item->pcf_letter . $item->pcf_date ?? '',
+                    'remarks' => $accountTitle->remarks,
+                    'payrollPeriod' => '',
+                    'position' => '',
+                    'payrollType' => '',
+                    'payrollType2' => '',
+                    'depreciationDescription' => '',
+                    'remainingDepreciationValue' => '',
+                    'usefulLife' => '',
+                    'month' => date('M', strtotime($item->voucher_month)),
+                    'year' => date('Y', strtotime($item->voucher_month)),
+                    'division1' => $item->company,
+                    'particulars' => '',
+                    'month2' => '',
+                    'farmType' => '',
+                    'jeanRemarks' => '',
+                    'from' => '',
+                    'changeTo' => '',
+                    'reason' => '',
+                    'checkingRemarks' => '',
+                    'boA2' => '',
+                    'system' => 'FISTO',
+                    'books' => 'Purchases',
+                ];
+            });
+        });
+
+        $generalJournal = GeneralJournal::
+        with([
+            'account_titles.greatGrandParents',
+            'account_titles.grandParents',
+            'payableAssociates'
+        ])
+            ->when($adjustment_month, function ($query) use ($month, $year) {
+                $query->where(function ($query) use ($month, $year) {
+                    $query->whereMonth('adjustment_month', $month)
+                        ->whereYear('adjustment_month', $year);
+                })->orWhere(function ($query) use ($month, $year) {
+                    $query->whereMonth('posted_at', $month)
+                        ->whereYear('posted_at', $year)
+                        ->where('is_posted', true);
+                });
+            })
+            ->select([
+                'id',
+                'adjustment_month',
+                'division_id',
+                'division_name',
+                'tag_no',
+                'transaction_date',
+                'supplier_id',
+                'supplier_code',
+                'supplier_name',
+                'entry',
+                'account_title_id',
+                'account_title_code',
+                'account_title_name',
+                'company_id',
+                'company_code',
+                'company_name',
+                'department_id',
+                'department_code',
+                'department_name',
+                'location_id',
+                'location_code',
+                'location_name',
+                'business_unit_id',
+                'business_unit_code',
+                'business_unit_name',
+                'sub_unit_id',
+                'sub_unit_code',
+                'sub_unit_name',
+                'amount',
+                'description',
+                'po_no',
+                'reference_no',
+                'quantity',
+                'unit',
+                'unit_price',
+                'voucher_number',
+                'asset_code',
+                'asset_name',
+                'service_provider_code',
+                'service_provider_name',
+                'remarks',
+                'boa',
+                'user_id',
+                'journal_name',
+                'journal_description',
+                'gj_number',
+                'batch_no',
+                'is_posted',
+                'posted_at'
+            ])
+            ->get();
+
+        $generalJournal = $generalJournal->transform(function ($item) {
+            return [
+                'syncId' => $item->id,
+                'mark1' => "",
+                'mark2' => "",
+                'assetCIP' => "",
+                'accountingTag' => $item->tag_no,
+                'transactionDate' => $item->transaction_date,
+                'clientSupplier' => $item->supplier_name,
+//                'account_title' => [
+//                    'code' => $item->account_title_code,
+//                    'name' => $item->account_title_name,
+//                ],
+                'accountTitleCode' => $item->account_title_code,
+                'accountTitle' => $item->account_title_name,
+//                'company' => [
+//                    'code' => '0000',
+//                    'name' => 'RDFFLFi',
+//                ],
+                'companyCode' => '0000',
+                'companyName' => 'RDFFLFi',
+//                'division' => [
+//                    'code' => $item->company_code,
+//                    'name' => $item->company_name,
+//                ],
+                'divisionCode' => $item->company_code,
+                'divisionName' => $item->company_name,
+//                'department' => [
+//                    'code' => $item->department_code,
+//                    'name' => $item->department_name,
+//                ],
+                'departmentCode' => $item->department_code,
+                'departmentName' => $item->department_name,
+//                'location' => [
+//                    'code' => $item->location_code,
+//                    'name' => $item->location_name,
+//                ],
+                'locationCode' => $item->location_code,
+                'locationName' => $item->location_name,
+//                'business_unit' => [
+//                    'code' => $item->business_unit_code,
+//                    'name' => $item->business_unit_name,
+//                ],
+                'unitCode' => $item->business_unit_code,
+                'unit' => $item->business_unit_name,
+//                'sub_unit' => [
+//                    'code' => $item->sub_unit_code,
+//                    'name' => $item->sub_unit_name,
+//                ],
+                'subUnitCode' => $item->sub_unit_code,
+                'subUnit' => $item->sub_unit_name,
+                'poNumber' => $item->po_no,
+                'referenceNo' => $item->reference_no,
+                'itemCode' => "",
+                'itemDescription' => "",
+                'quantity' => "",
+                'uom' => "",
+                'unitPrice' => "",
+                'lineAmount' => $item->amount,
+                'voucherJournal' => $item->voucher_number ?? $item->gj_number,
+                'accountType' => $item->account_titles->first()->greatGrandParents->name ?? null,
+                'drcp' => $item->entry,
+                'assetCode' => "",
+                'asset' => "",
+                'serviceProviderCode' => $item->payableAssociates->first()->id_prefix . ' - ' . $item->payableAssociates->first()->id_no,
+                'serviceProvider' => $item->payableAssociates->first()->first_name . ' ' . $item->payableAssociates->first()->last_name,
+                'boa' => 'GJ',
+                'allocation' => "",
+                'accountGroup' => "",
+                'accountSubGroup' => "",
+                'financialStatement' => "",
+                'unitResponsible' => "",
+                'batch' => "",
+                'remarks' => $item->remarks,
+                'payrollPeriod' => "",
+                'position' => "",
+                'payrollType' => "",
+                'payrollType2' => "",
+                'depreciationDescription' => "",
+                'remainingDepreciationValue' => "",
+                'usefulLife' => "",
+                'month' => $item->is_posted ? date('M', strtotime($item->posted_at)) : date('M', strtotime($item->adjustment_month)),
+                'year' => $item->is_posted ? date('Y', strtotime($item->posted_at)) : date('Y', strtotime($item->adjustment_month)),
+                'division_name' => $item->division_name,
+                'particulars' => "",
+                'month2' => "",
+                'farmType' => "",
+                'jeanRemarks' => "",
+                'from' => "",
+                'changeTo' => "",
+                'reason' => "",
+                'checkingRemarks' => "",
+                'boA2' => "",
+                'system' => 'FISTO',
+                'books' => 'GJ',
+            ];
+        });
+
+        $mergedReports = collect($vouchersPrepared->merge($generalJournal));
+
+        if (!empty($mergedReports)) {
+            return $mergedReports->values();
+        } else {
+            return response()->json([
+                'message' => 'No data found'
+            ], 404);
+        }
     }
 }

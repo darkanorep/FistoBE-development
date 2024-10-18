@@ -31,6 +31,7 @@ class Transaction extends Model
         "date_requested",
         "capex_no",
         "document_id",
+        "document_type",
         "document_no",
         "document_amount",
         "document_date",
@@ -112,7 +113,8 @@ class Transaction extends Model
         "box_no",
         "is_confidential",
         "is_mc",
-        "is_mcl"
+        "is_mcl",
+        "assigned_id"
     ];
 
     public $timestamps = ["created_at"];
@@ -166,6 +168,11 @@ class Transaction extends Model
         ]);
     }
 
+    public function service_batches() {
+        return $this->hasMany(ServiceBatch::class, 'transaction_id', 'id')
+            ->select('transaction_id', 'company_name', 'business_unit_name', 'department_name', 'sub_unit_name', 'location_name', 'amount');
+    }
+
     public function cheque()
     {
 //        return $this->hasMany(Cheque::class, "transaction_id", "transaction_id")->latest();
@@ -209,6 +216,12 @@ class Transaction extends Model
             ->where("status", "cheque-cheque")
             ->latest();
     }
+    public function chequeHistory() {
+        return $this->hasMany(Treasury::class, "transaction_id", "id")
+            ->where('status', 'cheque-cheque')
+            ->select('transaction_id', 'status', 'created_at')
+            ->latest();
+    }
 
     public function clear()
     {
@@ -232,10 +245,10 @@ class Transaction extends Model
 
     public function tagHistory() {
         return $this->hasMany(Tagging::class)
-            ->select("transaction_id")
+            ->select("transaction_id", "status", "created_at")
             ->where('status', 'tag-tag')
-            ->latest()
-            ->limit(1);
+            ->latest();
+//            ->limit(1);
     }
 
     public function extract() {
@@ -309,7 +322,7 @@ class Transaction extends Model
     public function cheques()
     {
         return $this->hasMany(Treasury::class, "transaction_id", "id")
-            ->select('id', 'transaction_id', 'status', 'batch_no', 'created_at')
+            ->select('id', 'transaction_id', 'status', 'batch_no', 'user_id', 'created_at')
             ->latest();
 //            ->limit(1);
     }

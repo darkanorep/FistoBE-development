@@ -120,6 +120,7 @@ return [
     */
 
     'key' => env('APP_KEY'),
+    'api_key' => env('GL_API_KEY'),
 
     'cipher' => 'AES-256-CBC',
 
@@ -174,7 +175,7 @@ return [
         // App\Providers\BroadcastServiceProvider::class,
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
-        App\Providers\TelescopeServiceProvider::class,
+//        App\Providers\TelescopeServiceProvider::class,
 
     ],
 

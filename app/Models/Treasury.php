@@ -18,7 +18,8 @@ class Treasury extends Model
         "date_status",
         "reason_id",
         "reason_remarks",
-        'batch_no'
+        'batch_no',
+        'user_id'
     ];
 
     public function account_title(){
@@ -49,5 +50,10 @@ class Treasury extends Model
 
     public function chequeViaTransaction() {
         return $this->hasMany(Cheque::class,'transaction_id','transaction_id');
+    }
+
+    public function assignedTreasury() {
+        return $this->hasOne(User::class, 'id', 'user_id')
+            ->select('id', 'first_name', 'last_name');
     }
 }

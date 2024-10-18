@@ -28,6 +28,7 @@ class TransactionPostRequest extends FormRequest
     public function rules()
     {
         return [
+            "type" => "required",
             "requestor.id" => "required",
             "requestor.id_prefix" => "required",
             "requestor.id_no" => "required",
@@ -60,8 +61,9 @@ class TransactionPostRequest extends FormRequest
             "document.category.id" => "required_if:document.id,1,2,4,5",
             "document.category.name" => "required_if:document.id,1,2,4,5",
 
-            "po_group.*.no" => "required",
-            "po_group.*.amount" => "required|numeric",
+            "po_group" => "required_if:document.id,1,5,4",
+            "po_group.*.no" => "required_if:document.id,1,5,4",
+            "po_group.*.amount" => "required_if:document.id,1,5,4|numeric",
             "po_group.*.rr_no" => "nullable",
 
             "document.utility.receipt_no" => [
@@ -139,6 +141,13 @@ class TransactionPostRequest extends FormRequest
             "autoDebit_group.*.cwt" => "nullable",
             "autoDebit_group.*.dst" => "nullable",
 
+            "service_group.*.company" => 'nullable',
+            "service_group.*.business_unit" => 'nullable',
+            "service_group.*.department" => 'nullable',
+            "service_group.*.sub_unit" => 'nullable',
+            "service_group.*.location" => 'nullable',
+            "service_group.*.amount" => 'nullable',
+
             "document.business_unit.id" => [
                 "nullable"
             ],
@@ -151,6 +160,7 @@ class TransactionPostRequest extends FormRequest
             "document.sub_unit.name" => [
                 "nullable"
             ],
+            "po_balance" => 'nullable'
         ];
     }
 

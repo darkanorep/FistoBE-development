@@ -55,6 +55,7 @@ class Accruals extends Model
         'journal_description',
         'gj_number',
         'is_reversed',
+        'reversed_no',
         'reversed_at',
         'batch_no'
     ];

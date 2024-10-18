@@ -23,7 +23,8 @@ class Audit extends Model
 
   public function auditedBy()
   {
-    return $this->belongsTo(User::class, "user_id");
+      return $this->hasOne(User::class, 'id', 'user_id')
+          ->select('id', 'first_name', 'last_name');
   }
 
   public function reason()

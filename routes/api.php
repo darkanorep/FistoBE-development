@@ -56,6 +56,10 @@ Route::get('/ymir', [MasterlistController::class, 'projectYmir']);
 //     return $request->user();
 // });
 
+Route::middleware('api.key')->group(function () {
+    Route::get('gl-report', [TransactionController::class, 'glReport']);
+});
+
 Route::group(["middleware" => "auth:sanctum"], function () {
 //    Route::get('sync-sedar', [UserController::class, 'syncSedar']);
     Route::post("logout/", [UserController::class, "logout"]);
@@ -114,7 +118,6 @@ Route::group(["middleware" => "auth:sanctum"], function () {
             Route::get("account-title-child", [MasterlistController::class, "accountTitleChildrenDropdown"]);
             Route::get("account-title-pnl", [MasterlistController::class, "accountTitlePnlsDropdown"]);
             Route::get("account-title-unit", [MasterlistController::class, "accountTitleUnitsDropdown"]);
-//      Route::get("transaction-type", [MasterlistController::class, "transactionTypeDropdown"]);
         });
 
         // CATEGORY
@@ -123,93 +126,76 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         Route::resource("categories", CategoryController::class);
 
         // DOCUMENTS
-//    Route::get("documents/", [DocumentController::class, "index"]);
         Route::patch("documents/{id}", [DocumentController::class, "change_status"]);
         Route::resource("documents", DocumentController::class);
 
         // REASON
-//    Route::get("reasons/", [ReasonController::class, "index"]);
         Route::patch("reasons/{id}", [ReasonController::class, "change_status"]);
         Route::resource("reasons", ReasonController::class);
 
         // BANK
-//    Route::get("banks/", [BankController::class, "index"]);
         Route::patch("banks/{id}", [BankController::class, "change_status"]);
         Route::post("banks/import/", [BankController::class, "import"]);
         Route::resource("banks", BankController::class);
 
         // SUPPLIER TYPE
-//    Route::get("supplier-types/", [SupplierTypeController::class, "index"]);
         Route::patch("supplier-types/{id}", [SupplierTypeController::class, "change_status"]);
         Route::resource("supplier-types", SupplierTypeController::class);
 
         // SUPPLIER
-//    Route::get("suppliers/", [SupplierController::class, "index"]);
         Route::patch("suppliers/{id}", [SupplierController::class, "change_status"]);
         Route::post("suppliers/import/", [SupplierController::class, "import"]);
         Route::resource("suppliers", SupplierController::class);
 
         // REFERRENCE
-//    Route::get("referrences/", [ReferrenceController::class, "index"]);
         Route::patch("referrences/{id}", [ReferrenceController::class, "change_status"]);
         Route::resource("referrences", ReferrenceController::class);
 
         // ACCOUNT TITLE
-//    Route::get("account-title/", [AccountTitleController::class, "index"]);
         Route::patch("account-title/{id}", [AccountTitleController::class, "change_status"]);
         Route::post("account-title/import", [AccountTitleController::class, "import"]);
         Route::resource("account-title", AccountTitleController::class);
 
         // ACCOUNT #
-//    Route::get("account-number/", [AccountNumberController::class, "index"]);
         Route::patch("account-number/{id}", [AccountNumberController::class, "change_status"]);
         Route::post("account-number/import/", [AccountNumberController::class, "import"]);
         Route::resource("account-number", AccountNumberController::class);
 
         // PAYROLL CLIENT
-//    Route::get("payroll-client/", [PayrollClientController::class, "index"]);
         Route::patch("payroll-client/{id}", [PayrollClientController::class, "change_status"]);
         Route::resource("payroll-client", PayrollClientController::class);
 
         // PAYROLL CATEGORY
-//    Route::get("payroll-category/", [PayrollCategoryController::class, "index"]);
         Route::patch("payroll-category/{id}", [PayrollCategoryController::class, "change_status"]);
         Route::resource("payroll-category", PayrollCategoryController::class);
 
         // UTILITY CATEGORY
-//    Route::get("utility-category/", [UtilityCategoryController::class, "index"]);
         Route::patch("utility-category/{id}", [UtilityCategoryController::class, "change_status"]);
         Route::resource("utility-category", UtilityCategoryController::class);
 
         // UTILITY LOCATION
-//    Route::get("utility-location", [UtilityLocationController::class, "index"]);
         Route::patch("utility-location/{id}", [UtilityLocationController::class, "change_status"]);
         Route::resource("utility-location", UtilityLocationController::class);
 
         // CREDIT CARD
-//    Route::get("credit-card/", [CreditCardController::class, "index"]);
         Route::patch("credit-card/{id}", [CreditCardController::class, "change_status"]);
         Route::resource("credit-card", CreditCardController::class);
 
         // USER
-//    Route::get("users/", [UserController::class, "index"]);
         Route::patch("users/{id}", [UserController::class, "change_status"]);
         Route::patch("users/reset/{id}", [UserController::class, "reset"]);
         Route::resource("users", UserController::class);
 
         // COMPANY
-//        Route::get("companies/", [CompanyController::class, "index"]);
         Route::patch("companies/{id}", [CompanyController::class, "change_status"]);
         Route::resource("companies", CompanyController::class);
 
         // DEPARTMENT
-//    Route::get("departments/", [DepartmentController::class, "index"]);
         Route::post("departments/import", [DepartmentController::class, "import"]);
         Route::patch("departments/{id}", [DepartmentController::class, "change_status"]);
         Route::resource("departments", DepartmentController::class);
 
         // LOCATION
-//    Route::get("locations/", [LocationController::class, "index"]);
         Route::post("locations/import", [LocationController::class, "import"]);
         Route::patch("locations/{id}", [LocationController::class, "change_status"]);
         Route::resource("locations", LocationController::class);
@@ -219,7 +205,6 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         Route::resource("organization", OrganizationDepartmentController::class);
 
         //BUSINESS UNIT
-//      Route::get("business-units/", [BusinessUnitController::class, "index"]);
         Route::patch('business-units/{id}', [BusinessUnitController::class, 'change_status']);
         Route::resource("business-units", BusinessUnitController::class);
 
@@ -275,26 +260,6 @@ Route::group(["middleware" => "auth:sanctum"], function () {
 
     // USER
     Route::post("users/department-validation/", [UserController::class, "departmentValidation"]);
-//    Route::get("adjust-entries", [TransactionFlowController::class, 'adjustEntries']);
-
-    // TRANSACTION
-//  Route::put("transactions/{id}", [TransactionController::class, "update"]);
-//  Route::resource("transactions/", TransactionController::class);
-//  Route::get("transactions/logs/request", [TransactionController::class, "viewRequestorLogs"]);
-//  Route::get("transactions/{id}", [TransactionController::class, "showTransaction"]);
-//  Route::get("transactions/status_group/", [TransactionController::class, "status_group"]);
-//  Route::post("transactions/void/{id}", [TransactionController::class, "voidTransaction"]);
-//  Route::post("transactions/validate-po-no", [TransactionController::class, "getPODetails"]);
-//  Route::post("transactions/validate-document-no", [TransactionController::class, "validateDocumentNo"]);
-//  Route::post("transactions/validate-reference-no", [TransactionController::class, "validateReferenceNo"]);
-//  Route::post("transactions/validate-pcf-name/", [TransactionController::class, "validatePCFName"]);
-//  Route::post("transactions/validate-soa-no/", [TransactionController::class, "validateSOANumber"]);
-//
-//
-//    Route::post("transactions/flow/update-transaction/{id}", [TransactionFlowController::class, "updateInTransactionFlow"]);
-//    Route::post("transactions/flow/validate-voucher-no", [TransactionFlowController::class, "validateVoucherNo"]);
-//    Route::post("transactions/flow/validate-cheque-no", [TransactionFlowController::class, "validateChequeNo"]);
-//    Route::put("transactions/flow/transfer/{id}", [TransactionFlowController::class, "transfer"]);
 
     // COUNTER RECEIPT
 
@@ -320,34 +285,20 @@ Route::group(["middleware" => "auth:sanctum"], function () {
     Route::post("transactions/flow/clear-cheques/{id}", [TransactionController::class, "chequeClear"]);
     Route::post('transactions/flow/cheque-revert/{id}', [TransactionController::class, "chequeRevert"]);
 
-    // Route::get('transactions/flow/',[TransactionFlowController::class,'pullRequest']);
-    // Route::get('transactions/flow/{id}',[TransactionFlowController::class,'pullSingleRequest']);
-    // Route::post('transactions/flow/update-status/{id}',[TransactionFlowController::class,'receivedRequest']);
-    // Route::post('transactions/flow/search',[TransactionFlowController::class,'searchRequest']);
-
-    //===TEST MODULE===//
     //Cheque Index distinct
     Route::get("cheques1", [TransactionController::class, "chequeIndex1"]);
 
-    //Revert Cheque
-//    Route::post('transactions/flow/cheque-revert', [TransactionController::class, "chequeRevert1"]);
     //Cheque Flow
-//    Route::post('cheque/flow', [TransactionFlow::class, "chequeFlow"]);
-//    Route::get('cheque/history/{id}', [TransactionController::class, "chequeHistory"]);
     Route::group(["prefix" => "cheque"], function () {
         Route::post('flow', [TransactionFlow::class, "chequeFlow"]);
         Route::post('flow/multiple-process', [TransactionFlow::class, "multipleChequeProcess"]);
         Route::get('history/{id}', [TransactionController::class, "chequeHistory"]);
     });
-    //ClearUser::where('role', 'approver')->pluck('id')
-//    Route::post("cheque/clear", [TransactionController::class, "chequeClear1"]);
-
-    //MultiReceive
-//    Route::post("cheques/flow/receive-test", [TransactionFlowController::class, "multipleChequeReceiveTest"]);
 
     Route::get('/status-transactions-count', [TransactionController::class, 'statusTransactionCounter']);
     Route::get('/status-cheques-count', [TransactionController::class, 'statusChequeCounter']);
     Route::get("transactions-history", [TransactionController::class, "history"]);
+    Route::get("transactions-history-export", [TransactionController::class, "exportHiistory"]);
     Route::get("cheques-history", [TransactionController::class, "historyChequeIndex"]);
     Route::get("voucher-transaction/{id}", [TransactionController::class, 'voucherTransaction']);
     Route::get("cheque-transaction/{id}", [TransactionController::class, 'chequeTransaction']);
@@ -358,8 +309,10 @@ Route::group(["middleware" => "auth:sanctum"], function () {
     Route::post("general-journals/import", [\App\Http\Controllers\GeneralJournalController::class, 'import']);
 
     //ACCRUALS/REVERSALS
+    Route::patch('accruals/reverse', [\App\Http\Controllers\AccrualsController::class, 'reverse']);
+    Route::get('test-index', [\App\Http\Controllers\AccrualsController::class, 'testIndex']);
     Route::resource('accruals', \App\Http\Controllers\AccrualsController::class);
-    Route::patch('accruals/reverse/{id}', [\App\Http\Controllers\AccrualsController::class, 'reverse']);
+//    Route::patch('accruals/reverse/{id}', [\App\Http\Controllers\AccrualsController::class, 'reverse']);
     Route::post('accruals/import', [\App\Http\Controllers\AccrualsController::class, 'import']);
 
     Route::resource("transactions", TransactionController::class);
@@ -367,14 +320,10 @@ Route::group(["middleware" => "auth:sanctum"], function () {
 
     Route::group(["prefix" => "transactions"], function () {
         //TRANSACTION
-//        Route::put("{id}", [TransactionController::class, "update"])
         Route::get("logs/request", [TransactionController::class, "viewRequestorLogs"]);
-//        Route::get("{id}", [TransactionController::class, "showTransaction"]);
         Route::get("status_group/", [TransactionController::class, "status_group"]);
         Route::post("void/{id}", [TransactionController::class, "voidTransaction"]);
         Route::post("validate-po-no", [TransactionController::class, "getPODetails"]);
-//        Route::post("validate-po-no-test", [TransactionController::class, "getPOTest"]);
-//        Route::post("validate-po-no-v1", [TransactionController::class, "getPODetailsv1"]);
         Route::post("validate-document-no", [TransactionController::class, "validateDocumentNo"]);
         Route::post("validate-reference-no", [TransactionController::class, "validateReferenceNo"]);
         Route::post("validate-pcf-name/", [TransactionController::class, "validatePCFName"]);
@@ -400,11 +349,12 @@ Route::group(["middleware" => "auth:sanctum"], function () {
             Route::post("clear-cheques/{id}", [TransactionController::class, "chequeClear"]);
             Route::post('cheque-revert/{id}', [TransactionController::class, "chequeRevert"]);
 
-            //===TEST MODULE===//
             Route::post('cheque-revert', [TransactionController::class, "chequeRevert1"]);
-            Route::get('report', [TransactionController::class, 'generateAPReport']);
-            Route::get('multiple-vouchers', [TransactionController::class, 'multipleVouchers']);
+//            Route::get('multiple-vouchers', [TransactionController::class, 'multipleVouchers']);
+
+            //REPORT
             Route::get('treasury-report', [TransactionController::class, 'treasuryReport']);
+            Route::get('report', [TransactionController::class, 'generateAPReport']);
 
         });
     });

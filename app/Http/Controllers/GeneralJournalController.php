@@ -15,6 +15,7 @@ use App\Models\Transaction;
 use Carbon\Carbon;
 use DateTime;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
 class GeneralJournalController extends Controller
@@ -22,106 +23,173 @@ class GeneralJournalController extends Controller
 
     public function index(Request $request)
     {
-        $rows = $request->rows;
+        $rows = $request->input('rows', 10);
         $companies = $this->getRequestData($request, 'companies');
-//        $transactionFrom = $this->getTransactionDate($request, 'transaction_from', Carbon::now()->startOfMonth()->format('Y-m-d H:i:s'));
-//        $transactionTo = $this->getTransactionDate($request, 'transaction_to', Carbon::now()->endOfMonth()->format('Y-m-d H:i:s'));
         $is_posted = $request->input('is_posted', 0);
         $search = $request->search;
-        $adjustment_month = $request->input('adjustment_month');
-        $year = date('Y', strtotime($adjustment_month));
-        $month = date('m', strtotime($adjustment_month));
+//        $adjustment_month = $request->input('adjustment_month');
+//        $year = date('Y', strtotime($adjustment_month));
+//        $month = date('m', strtotime($adjustment_month));
+        $year = $request->input('year');
+        $month = $request->input('month');
 
-        $generalJournals = GeneralJournal::select(['gj_number', 'journal_name', 'journal_description', 'is_posted', DB::raw("MAX(updated_at) as latest_updated_at")])
+
+
+        if (!empty($month) && !empty($year)) {
+             $generalJournals = GeneralJournal::select([
+                 'gj_number',
+                 'journal_name',
+                 'journal_description',
+                 'is_posted',
+                 'adjustment_month',
+                 DB::raw("MAX(updated_at) as latest_updated_at")
+             ])
 //            ->whereBetween('created_at', [$transactionFrom, $transactionTo])
-            ->when($is_posted == 1, function ($query) {
-                $query->where('is_posted', true);
-            }, function ($query) {
-                $query->where('is_posted', false);
-            })
-            ->when(!empty($companies), function ($query) use ($companies) {
-                $query->whereIn('division_id', $companies);
-            })
-            ->when(isset($adjustment_month), function ($query) use ($year, $month) {
-                $query->whereYear('adjustment_month', $year)
-                    ->whereMonth('adjustment_month', $month);
-            })
-            ->where('user_id', auth()->user()->id)
-            ->groupBy('gj_number', 'journal_name', 'journal_description', 'is_posted')
-            ->orderBy('latest_updated_at', 'desc')
-            ->whereLike(['gj_number', 'journal_name', 'journal_description'], $search)
-            ->paginate($rows);
+                ->when($is_posted == 1, function ($query) {
+                    $query->where('is_posted', true);
+                }, function ($query) {
+                    $query->where('is_posted', false);
+                })
+//            ->when(!empty($companies), function ($query) use ($companies) {
+//                $query->whereIn('division_id', $companies);
+//            })
+//            ->when(isset($adjustment_month), function ($query) use ($year, $month) {
+//                $query->whereYear('adjustment_month', $year)
+//                    ->whereMonth('adjustment_month', $month);
+//            })
+                ->where('user_id', auth()->user()->id)
+                ->groupBy('gj_number', 'journal_name', 'journal_description', 'is_posted', 'adjustment_month')
+                ->orderBy('latest_updated_at', 'desc')
+                ->whereLike(['gj_number', 'journal_name', 'journal_description'], $search)
+                 ->get();
+//                 ->paginate($rows);
 
-        $gjNumbers = $generalJournals->pluck('gj_number')->toArray();
-        $allAccountTitles = GeneralJournal::whereIn('gj_number', $gjNumbers)->get()->groupBy('gj_number');
+            $allAccountTitles = GeneralJournal::whereIn('gj_number', $generalJournals->pluck('gj_number')->toArray())
+                ->get()
+                ->groupBy('gj_number');
 
-        $generalJournals->transform(function ($item) use ($allAccountTitles) {
-            $account_titles = $allAccountTitles[$item->gj_number];
 
-            return [
-                'id' => $account_titles->first()->id,
-                'division' => [
-                    'name' => $account_titles->first()->division_name
-                ],
-                'boa' => $account_titles->first()->boa,
-                'gj_number' => $item->gj_number,
-                'journal_name' => $item->journal_name,
-                'journal_description' => $item->journal_description,
-                'created_at' => $item->latest_updated_at,
-                'adjustment_month' => $account_titles->first()->adjustment_month,
-                'account_titles' => $account_titles->transform(function ($item) {
-                    return [
-                        'po_no' => $item->po_no,
-                        'tag_no' => $item->tag_no,
-                        'reference_no' => $item->reference_no,
-                        'voucher_number' => $item->voucher_number,
-                        'supplier' => [
-                            'name' => $item->supplier_name
-                        ],
-                        'entry' => $item->entry,
-                        'amount' => $item->amount,
-                        'account_title' => [
-                            'id' => $item->account_title_id,
-                            'code' => $item->account_title_code,
-                            'name' => $item->account_title_name
-                        ],
-                        'company' => [
-                            'id' => $item->company_id,
-                            'code' => $item->company_code,
-                            'name' => $item->company_name
-                        ],
-                        'department' => [
-                            'id' => $item->department_id,
-                            'code' => $item->department_code,
-                            'name' => $item->department_name
-                        ],
-                        'location' => [
-                            'id' => $item->location_id,
-                            'code' => $item->location_code,
-                            'name' => $item->location_name
-                        ],
-                        'business_unit' => [
-                            'id' => $item->business_unit_id,
-                            'code' => $item->business_unit_code,
-                            'name' => $item->business_unit_name
-                        ],
-                        'sub_unit' => [
-                            'id' => $item->sub_unit_id,
-                            'code' => $item->sub_unit_code,
-                            'name' => $item->sub_unit_name
-                        ],
-                        'remarks' => $item->description,
-                    ];
-                }),
-                'is_posted' => $item->is_posted
-            ];
-        });
+            $generalJournals->transform(function ($item) use ($allAccountTitles) {
+//            $account_titles = $allAccountTitles[$item->gj_number];
+                $account_titles = $allAccountTitles->get($item->gj_number);
 
-        if ($generalJournals->isEmpty()) {
-            return $this->resultResponse("not-found", "General Journals", []);
+                return (object) [
+                    'id' => $account_titles->first()->id,
+                    'division' => [
+                        'name' => $account_titles->first()->division_name
+                    ],
+                    'boa' => $account_titles->first()->boa,
+                    'gj_number' => $item->gj_number,
+                    'journal_name' => $item->journal_name,
+                    'journal_description' => $item->journal_description,
+                    'created_at' => $item->latest_updated_at,
+                    'adjustment_month' => $account_titles->first()->adjustment_month,
+                    'account_titles' => $account_titles->transform(function ($item) {
+                        return (object) [
+                            'po_no' => $item->po_no,
+                            'tag_no' => $item->tag_no,
+                            'reference_no' => $item->reference_no,
+                            'voucher_number' => $item->voucher_number,
+                            'supplier' => [
+                                'name' => $item->supplier_name
+                            ],
+                            'entry' => $item->entry,
+                            'amount' => $item->amount,
+                            'account_title' => [
+                                'id' => $item->account_title_id,
+                                'code' => $item->account_title_code,
+                                'name' => $item->account_title_name
+                            ],
+                            'company' => [
+                                'id' => $item->company_id,
+                                'code' => $item->company_code,
+                                'name' => $item->company_name
+                            ],
+                            'department' => [
+                                'id' => $item->department_id,
+                                'code' => $item->department_code,
+                                'name' => $item->department_name
+                            ],
+                            'location' => [
+                                'id' => $item->location_id,
+                                'code' => $item->location_code,
+                                'name' => $item->location_name
+                            ],
+                            'business_unit' => [
+                                'id' => $item->business_unit_id,
+                                'code' => $item->business_unit_code,
+                                'name' => $item->business_unit_name
+                            ],
+                            'sub_unit' => [
+                                'id' => $item->sub_unit_id,
+                                'code' => $item->sub_unit_code,
+                                'name' => $item->sub_unit_name
+                            ],
+                            'remarks' => $item->description,
+                        ];
+                    }),
+                    'is_posted' => $item->is_posted,
+                    'posted_at' => $item->posted_at
+                ];
+            });
+        } else {
+            $generalJournals = GeneralJournal::select(['gj_number', 'journal_name', 'journal_description', 'is_posted', 'adjustment_month', DB::raw("MAX(updated_at) as latest_updated_at")])
+                ->when($is_posted == 1, function ($query) {
+                    $query->where('is_posted', true);
+                }, function ($query) {
+                    $query->where('is_posted', false);
+                })
+                ->where('user_id', auth()->user()->id)
+                ->groupBy('gj_number', 'journal_name', 'journal_description', 'is_posted', 'adjustment_month')
+                ->orderBy('latest_updated_at', 'desc')
+                ->get();
         }
 
-        return $generalJournals;
+        if (empty($year) && empty($month)) {
+            $groupedGeneralJournals = $generalJournals->map(function ($item) use ($is_posted){
+//                return Carbon::parse($item->adjustment_month)->format('Y');
+                return $is_posted ? Carbon::parse($item->posted_at)->format('Y') : Carbon::parse($item->adjustment_month)->format('Y');
+            })->unique()->values();
+        } elseif (!empty($year) && empty($month)) {
+            $groupedGeneralJournals = $generalJournals->filter(function ($item) use ($year, $is_posted) {
+                return $is_posted ? Carbon::parse($item->posted_at)->format('Y') == $year : Carbon::parse($item->adjustment_month)->format('Y') == $year;
+            })->groupBy(function ($item) use ($is_posted) {
+                return $is_posted ? Carbon::parse($item->posted_at)->format('F') : Carbon::parse($item->adjustment_month)->format('F');
+            });
+        } elseif (!empty($year) && !empty($month)) {
+            $groupedGeneralJournals = $generalJournals->filter(function ($item) use ($year, $month, $is_posted) {
+//                return Carbon::parse($item->posted_at)->format('Y') == $year &&
+//                    Carbon::parse($item->posted_at)->format('m') == str_pad($month, 2, '0', STR_PAD_LEFT);
+
+                return $is_posted ?
+                    Carbon::parse($item->posted_at)->format('Y') == $year &&
+                    Carbon::parse($item->posted_at)->format('m') == str_pad($month, 2, '0', STR_PAD_LEFT)
+                    :  Carbon::parse($item->adjustment_month)->format('Y') == $year &&
+                    Carbon::parse($item->adjustment_month)->format('m') == str_pad($month, 2, '0', STR_PAD_LEFT);
+            });
+
+            $currentPage = LengthAwarePaginator::resolveCurrentPage();
+            $currentItems = $groupedGeneralJournals->slice(($currentPage - 1) * $rows, $rows)->values();
+            $totalItems = $groupedGeneralJournals->count();
+
+            return new LengthAwarePaginator($currentItems, $totalItems, $rows);
+
+        } else {
+            $groupedGeneralJournals = $generalJournals->groupBy(function ($item) use ($is_posted) {
+                return $is_posted ? Carbon::parse($item->posted_at)->format('Y') : Carbon::parse($item->adjustment_month)->format('Y');
+            })->map(function ($yearGroup) use ($is_posted){
+                return $yearGroup->groupBy(function ($item) use ($is_posted) {
+                    return $is_posted ? Carbon::parse($item->posted_at)->format('F') : Carbon::parse($item->adjustment_month)->format('F');
+                });
+            });
+        }
+
+//        if ($generalJournals->isEmpty()) {
+//            return $this->resultResponse("not-found", "General Journals", []);
+//        }
+
+        return $groupedGeneralJournals;
+
     }
 
 
@@ -393,7 +461,11 @@ class GeneralJournalController extends Controller
         $generalJournal = GeneralJournal::find($id);
 
         if ($generalJournal) {
-            GeneralJournal::where('batch_no', $generalJournal->batch_no)->update(['is_posted' => true]);
+            GeneralJournal::where('batch_no', $generalJournal->batch_no)
+                ->update([
+                    'is_posted' => true,
+                    'posted_at' => Carbon::now()->format('Y-m-d')
+                ]);
         }
 
         return response()->json(

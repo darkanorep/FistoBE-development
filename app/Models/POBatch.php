@@ -43,7 +43,8 @@ class POBatch extends Model
     }
 
     public function request() {
-        return $this->belongsTo(Transaction::class, 'request_id', 'request_id');
+        return $this->belongsTo(Transaction::class, 'request_id', 'request_id')
+            ->select('id', 'request_id', 'company_id', 'referrence_amount', 'document_amount', 'state', 'is_new');
     }
 
 }

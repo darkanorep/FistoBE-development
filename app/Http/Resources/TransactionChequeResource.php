@@ -192,6 +192,8 @@ class TransactionChequeResource extends JsonResource
                     'cheque_history' => $chequeHistory,
                     'vouchers' => $relatedVouchers,
                     'reason' => $transactionResource->reason($cheque_transaction, $cheque_transaction->reason_id),
+                    'treasury' => $cheque_transaction->user_id ? $cheque_transaction->assignedTreasury->first_name . ' ' . $cheque_transaction->assignedTreasury->last_name : null,
+                    'batch_no' => $cheque_transaction->batch_no,
                 ];
             }
         }
@@ -204,7 +206,8 @@ class TransactionChequeResource extends JsonResource
                 $audit = [
                     'dates' => $transactionResource->get_transaction_dates(Audit::class, $this->id, 'audit', ["receive", "audit"]),
                     'status' => $audit_transaction->status,
-                    'reason' => $transactionResource->reason($audit_transaction, $audit_transaction->reason_id)
+                    'reason' => $transactionResource->reason($audit_transaction, $audit_transaction->reason_id),
+                    'audit' => $audit_transaction->user_id ? $audit_transaction->auditedBy->first_name . ' ' . $audit_transaction->auditedBy->last_name : null,
                 ];
             }
         }

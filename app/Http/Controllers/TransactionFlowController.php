@@ -145,7 +145,8 @@ class TransactionFlowController extends Controller
                         'transaction_id' => $transaction,
                         'type' => 'Cheque',
                         'status' => $process . '-receive',
-                        'date_status' => date('Y-m-d')
+                        'date_status' => date('Y-m-d'),
+                        'user_id' => auth()->user()->id
                     ]);
                     break;
             }
@@ -181,42 +182,6 @@ class TransactionFlowController extends Controller
         foreach ($transactions as $transaction) {
             $trx = Transaction::where('id',$transaction)->first();
             switch ($process) {
-//                case 'tag':
-//                    $trx->tag()->create([
-//                        'status' => $process . '-'. $process,
-//                        'date_status' => date('Y-m-d'),
-//                        'distributed_id' => data_get($distributed_to, 'id'),
-//                        'distributed_name' => data_get($distributed_to, 'name'),
-//                    ]);
-//
-//                    $trx
-//                        ->update([
-//                            'state' => $process,
-//                            'status' => $process . '-'. $process,
-//                            'receipt_type' => $receipt_type ?? $transaction->receipt_type ?? null,
-//                            'distributed_id' => data_get($distributed_to, 'id'),
-//                            'distributed_name' => data_get($distributed_to, 'name'),
-//                            'tag_no' => GenericMethod::generateTagNo($receipt_type, $transaction, $trx->is_confidential),
-//                            'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
-//                        ]);
-//                    break;
-//
-//                case 'extract':
-//
-//                    $trx->extract()->create([
-//                        'status' => $process . '-'. $process,
-//                        'date_status' => date('Y-m-d'),
-////                        'distributed_id' => $trx->distributed_id,
-////                        'distributed_name' => $trx->distributed_name
-//                    ]);
-//
-//                    $trx->update([
-//                        'state' => 'transmit',
-//                        'status' => $process . '-'. $process,
-//                        'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
-//                    ]);
-//
-//                    break;
 
                 case 'tag':
                 case 'extract':
@@ -246,13 +211,6 @@ class TransactionFlowController extends Controller
 
                 case 'gas':
                     (new GenericMethod())->gasTransaction($transaction, $process, null, null);
-
-//                    Transaction::where('id', $transaction)
-//                        ->update([
-//                            'state' => 'transmit',
-//                            'status' => $process . '-'. $process,
-//                            'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
-//                        ]);
                     $trx->update([
                         'state' => 'transmit',
                         'status' => $process . '-'. $process,
@@ -279,25 +237,12 @@ class TransactionFlowController extends Controller
                     break;
                 case 'transmit':
                 case 'pass':
-//                    Transmit::create([
-//                        'transaction_id' => $transaction,
-//                        'tag_id' => Transaction::where('id', $transaction)->first()->tag_no,
-//                        'status' => $process . '-'. $process,
-//                        'date_status' => date('Y-m-d')
-//                    ]);
-
                     $trx->transmit()->create([
                         'status' => $process . '-'. $process,
                         'date_status' => date('Y-m-d'),
                         'tag_id' => $trx->tag_no,
                     ]);
 
-//                    Transaction::where('id', $transaction)
-//                        ->update([
-//                            'state' => $process,
-//                            'status' => $process . '-'. $process,
-//                            'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
-//                        ]);
                     $trx->update([
                         'state' => $process,
                         'status' => $process . '-'. $process,
@@ -314,7 +259,8 @@ class TransactionFlowController extends Controller
 
     public function multipleCheque(Request $request) {
         $process = $request->process;
-        $transactions = $request->transactions;
+//        $transactions = $request->transactions;
+        $transactions = $request->input('transactions', []);
         $accounts = $request->accounts;
         $cheques = $request->cheques;
 
@@ -329,6 +275,7 @@ class TransactionFlowController extends Controller
                 'status' => $process . '-' . $process,
                 'date_status' => Carbon::now("Asia/Manila")->format("Y-m-d"),
                 'batch_no' => $batch_no,
+                'user_id' => auth()->user()->id
             ]);
 
             foreach ($accounts as $account) {
@@ -364,14 +311,14 @@ class TransactionFlowController extends Controller
                     'entry_type' => data_get($cheque, 'type')
                 ]);
             }
-
-            Transaction::where('id', $transaction)
-                ->update([
-                    'state' => $process,
-                    'status' => $process . '-' . $process,
-                    'is_for_releasing' => false
-                ]);
         }
+
+        Transaction::whereIn('id', $transactions)
+            ->update([
+                'state' => $process,
+                'status' => $process . '-' . $process,
+                'is_for_releasing' => false
+            ]);
         return GenericMethod::result(200, "Transaction has been saved.", []);
     }
 
