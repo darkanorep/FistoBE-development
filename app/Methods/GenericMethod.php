@@ -2332,7 +2332,7 @@ class GenericMethod
       ->first();
     $currentTransaction->isClean();
     $status = "update";
-
+    $transaction_type = $fields["type"];
     $capex_no = $fields["document"]["capex_no"] ?? null;
     $document_no = $fields["document"]["no"] ?? null;
     $document_date = $fields["document"]["date"] ?? null;
@@ -2383,7 +2383,7 @@ class GenericMethod
     // $currentTransaction->department_details = $fields["requestor"]["department"];
 
     $requestor = Auth::user();
-
+    $currentTransaction->transaction_type = $transaction_type;
     $currentTransaction->users_id = $requestor->id;
     $currentTransaction->id_prefix = $requestor->id_prefix;
     $currentTransaction->id_no = $requestor->id_no;

@@ -1870,7 +1870,8 @@ class TransactionController extends Controller
                     'amount' => floatVal($po->po_amount),
 //                    'previous_balance' => $index === $transaction->po_details->count() - 1 ? floatval($po->po_total_amount - $totalDeduction) : 0,
                     'previous_balance' => $index === $transaction->po_details->count() - 1 ? floatval($po->previous_balance) : 0,
-                    'balance' => 0,
+//                    'balance' => 0,
+                    'balance' => $index === $transaction->po_details->count() - 1 ? floatval($po->previous_balance) : 0,
                     'rr_no' => $po->rr_group,
                 ];
             })  ?? [];
@@ -6897,67 +6898,70 @@ class TransactionController extends Controller
         $is_mc = $request->input('is_mc', 0);
 
         $statusMapping = [
-            'tag' => ['relation' => 'tagHistory', 'table' => 'taggings'],
-            'inspect' => ['relation' => 'inspectHistory', 'table' => 'audits'],
-            'voucher' => ['relation' => 'voucherHistory', 'table' => 'associates', 'user' => 'distributed_id'],
-            'approve' => ['relation' => 'approveHistory', 'table' => 'approvers', 'user' => 'approver_id', 'role' => 'approver'],
+            'tag' => ['relation' => 'tagHistory', 'table' => 'taggings', 'status' => 'tag-tag'],
+            'inspect' => ['relation' => 'inspectHistory', 'table' => 'audits', 'status' => 'inspect-inspect'],
+            'voucher' => ['relation' => 'voucherHistory', 'table' => 'associates', 'user' => 'distributed_id', 'status' => 'voucher-voucher'],
+            'approve' => ['relation' => 'approveHistory', 'table' => 'approvers', 'user' => 'approver_id', 'role' => 'approver', 'status' => 'approve-approve'],
         ];
-;
+
         $transactions = Transaction::
-        with([
+        leftJoin($statusMapping[$status]['table'], 'transactions.id', '=', $statusMapping[$status]['table'] . '.transaction_id')
+            ->where('transactions.status', '=', $statusMapping[$status]['status'])
+            ->whereBetween($statusMapping[$status]['table'] . '.created_at', [$transaction_from, $transaction_to])
+        ->with([
             $statusMapping[$status]['relation'],
             "users:id,first_name,middle_name,last_name,department,position",
             "supplier.supplier_type:id,type as name,transaction_days",
             "po_details:id,request_id,po_no,po_total_amount",
         ])
             ->select([
-                "id",
-                "users_id",
-                "request_id",
-                "supplier_id",
-                "tag_no",
-                "document_id",
-                "transaction_id",
-                "document_type",
-                "payment_type",
-                "remarks",
-                "date_requested",
-                "document_date",
-                "company_id",
-                "company",
-                "department",
-                "location",
-                "document_no",
-                "document_type",
-                "document_amount",
-                "referrence_no",
-                "referrence_amount",
-                "net_amount",
-                "cheque_date",
-                "receipt_type",
-                "is_not_editable",
-                "approver_id",
-                "approver_name",
-                "status",
-                "state",
-                "principal",
-                "interest",
-                "gross_amount",
-                "category",
-                "department_id",
-                "location_id",
-                "input_tax",
-                "voucher_no",
-                "voucher_month",
-                "distributed_id",
-                "distributed_name",
-                'is_confidential',
-                'is_mc',
-                'is_new'
+                "transactions.id",
+                "transactions.users_id",
+                "transactions.request_id",
+                "transactions.supplier_id",
+                "transactions.tag_no",
+                "transactions.document_id",
+                "transactions.transaction_id",
+                "transactions.document_type",
+                "transactions.payment_type",
+                "transactions.remarks",
+                "transactions.date_requested",
+                "transactions.document_date",
+                "transactions.company_id",
+                "transactions.company",
+                "transactions.department",
+                "transactions.location",
+                "transactions.document_no",
+                "transactions.document_type",
+                "transactions.document_amount",
+                "transactions.referrence_no",
+                "transactions.referrence_amount",
+                "transactions.net_amount",
+                "transactions.cheque_date",
+                "transactions.receipt_type",
+                "transactions.is_not_editable",
+                "transactions.approver_id",
+                "transactions.approver_name",
+                "transactions.status",
+                "transactions.state",
+                "transactions.principal",
+                "transactions.interest",
+                "transactions.gross_amount",
+                "transactions.category",
+                "transactions.department_id",
+                "transactions.location_id",
+                "transactions.input_tax",
+                "transactions.voucher_no",
+                "transactions.voucher_month",
+                "transactions.distributed_id",
+                "transactions.distributed_name",
+                'transactions.is_confidential',
+                'transactions.is_mc',
+                'transactions.is_new'
             ])
-            ->whereHas($statusMapping[$status]['relation'], function ($query) use ($transaction_from, $transaction_to) {
-                $query->whereBetween('created_at', [$transaction_from, $transaction_to]);
-            })
+//            ->whereHas($statusMapping[$status]['relation'], function ($query) use ($transaction_from, $transaction_to) {
+//                $query->whereBetween('created_at', [$transaction_from, $transaction_to]);
+//            })
             ->when(isset($statusMapping[$status]['role']), function ($query) use ($statusMapping, $status, $my_approve) {
                 $query->when($my_approve == 1, function ($query) {
                     $query->where('approver_id', auth()->user()->id);
@@ -6983,10 +6987,15 @@ class TransactionController extends Controller
             ->when(!empty($companies), function ($query) use ($companies) {
                 $query->whereIn("company_id", $companies);
             })
-            ->whereLike([
-                'tag_no',
-                'voucher_no'
-            ], $search)
+            ->where(function ($query) use ($search, $tag_search) {
+                $query
+                    ->where("tag_no", "like", "%" . $tag_search)
+                    ->orWhere("voucher_no", "like", "%" . $search . "%");
+            })
+//            ->whereLike([
+//                'transactions.tag_no',
+//                'transactions.voucher_no'
+//            ], $search)
 //            ->orderBy(DB::raw("(SELECT t.created_at FROM " . $statusMapping[$status]['table'] . " as t WHERE t.transaction_id = transactions.id ORDER BY t.created_at DESC LIMIT 1)"), 'desc')
             ->paginate($rows);
 
@@ -7006,36 +7015,35 @@ class TransactionController extends Controller
 //        $table = $request->table;
 
         $transactions = Transaction::
-        with([
-            'supplier',
-            'supplier.supplier_type',
-            'po_details',
-            $status
-        ])
-            ->whereHas($status, function ($query) use ($transaction_from, $transaction_to) {
-                $query->whereBetween('created_at', [$transaction_from, $transaction_to]);
-            })
-            ->select([
-                "id",
-                "document_id",
-                "tag_no",
-                "supplier_id",
-                "date_requested",
-                "category",
-                "receipt_type",
-                "state",
-                "status",
-                "document_no",
-                "referrence_no",
-                "remarks",
-                "document_amount",
-                "gross_amount",
-                "principal",
-                "interest",
-                "referrence_amount",
-                "referrence_type"
+        leftJoin('taggings', 'transactions.id', '=', 'taggings.transaction_id')
+            ->where('taggings.status', '=', 'tag-tag')
+            ->whereBetween('taggings.created_at', [$transaction_from, $transaction_to])
+            ->with([
+                'supplier',
+                'supplier.supplier_type',
+                'po_details',
+                $status
             ])
-//            ->orderBy(DB::raw("(SELECT t.created_at FROM " . $table . " as t WHERE t.transaction_id = transactions.id ORDER BY t.created_at DESC LIMIT 1)"), 'desc')
+            ->select([
+                'transactions.id',
+                'transactions.document_id',
+                'transactions.tag_no',
+                'transactions.supplier_id',
+                'transactions.date_requested',
+                'transactions.category',
+                'transactions.receipt_type',
+                'transactions.state',
+                'transactions.status',
+                'transactions.document_no',
+                'transactions.referrence_no',
+                'transactions.remarks',
+                'transactions.document_amount',
+                'transactions.gross_amount',
+                'transactions.principal',
+                'transactions.interest',
+                'transactions.referrence_amount',
+                'transactions.referrence_type'
+            ])
             ->get();
 
         return $transactions->transform(function ($item) use ($status) {

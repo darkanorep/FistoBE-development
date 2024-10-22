@@ -28,7 +28,7 @@ class TransactionPostRequest extends FormRequest
     public function rules()
     {
         return [
-            "type" => "required",
+            "type" => "nullable",
             "requestor.id" => "required",
             "requestor.id_prefix" => "required",
             "requestor.id_no" => "required",
