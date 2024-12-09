@@ -16,6 +16,7 @@ use App\Models\AccountTitleParent;
 use App\Models\AccountTitlePnL;
 use App\Models\AccountTitleUnit;
 use App\Models\TransactionType;
+use App\Models\TreasuryCheque;
 use App\Models\User;
 use App\Models\Company;
 use App\Models\Department;
@@ -31,6 +32,7 @@ use App\Models\AccountTitle;
 use App\Models\OrganizationDepartment;
 
 use App\Models\VoucherCode;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -78,6 +80,25 @@ class MasterlistController extends Controller
             "account_titles"=>AccountTitle::whereNull('deleted_at')->get(['id','title', 'code']));
         return $this->resultResponse('fetch','Account Title',$data);
     }
+
+    public function chequeTypesDropdown() {
+    $treasuryCheques = TreasuryCheque::with('user')
+        ->get()
+        ->groupBy('type')
+        ->map(function ($item) {
+            return $item->groupBy('companies')
+                ->map(function ($item) {
+                    return [
+                        'user' => [
+                            'id' => $item[0]->user->id,
+                            'name' => $item[0]->user->first_name . ' ' . $item[0]->user->last_name,
+                        ]
+                    ];
+                });
+        });
+
+    return $this->resultResponse('fetch', 'Cheque Types', $treasuryCheques);
+}
 
 //    public function accountTitleDocumentDropdown($id){
 //        $data = Document::where('id',$id)
@@ -159,6 +180,24 @@ class MasterlistController extends Controller
 
     return $this->resultResponse('fetch','Approver',$data);
   }
+
+    public function specialistDropdown(){
+        $data =  array("specialists"=>User::where('role','AP Specialist')->get(['id','position',DB::raw("CONCAT(users.first_name,' ',users.last_name)  AS name")]));
+        if(count($data['specialists'])==0){
+            return $this->resultResponse('not-found','',[]);
+        }
+
+        return $this->resultResponse('fetch','Specialists',$data);
+    }
+
+    public function treasuriesDropdown(){
+        $data =  array("treasuries"=>User::where('role','Treasury Associate')->get(['id','position',DB::raw("CONCAT(users.first_name,' ',users.last_name)  AS name")]));
+        if(count($data['treasuries'])==0){
+            return $this->resultResponse('not-found','',[]);
+        }
+
+        return $this->resultResponse('fetch','Treasuries',$data);
+    }
 
 
   public function creditCardAccountNoDropdown(Request $request){
@@ -361,7 +400,65 @@ class MasterlistController extends Controller
     return $result;
   }
 
-  public function projectYmir() {
-      $transaction = Http::withToken('331|TebEaClifJ0drfTGIoe0NfK1pet2GAW9Xhy58eFI')->get('10.10.13.6:8080/api/fisto_api');
-  }
+    public function projectYmir(Request $request)
+    {
+        $rr_no = $request->rr_no;
+        $po_no = $request->po_no;
+//        $transaction = Http::withToken('1196|kLQEntbfJxoMkcrVuW36vuWYH00hqwQ9fe2lYBFK')
+//            ->get('http://10.10.13.6:8080/api/fisto_api', [
+//                'pagination' => 'none'
+//            ]);
+
+        $transaction = Http::withHeaders([
+            'Token' => 'Bearer 1686|UeZtf76cXc4l4WU0EMMMTO1J7lZmd3EgCtGKfBYZ'
+        ])
+            ->get('https://rdfymir.com/backend/public/api/fisto_api', [
+                'pagination' => 'none'
+            ]);
+
+        $data = json_decode($transaction->body(), true);
+        if (isset($data['result'])) {
+            $data = $data['result'];
+        } else {
+            $data = [];
+        }
+
+        $data = array_map(function ($item) {
+            return [
+                'is_new_po' => true,
+                'rr_year_number_id' => $item['rr_year_number_id'],
+                'po_transaction' => [
+                    'po_year_number_id' => $item['po_transaction']['po_year_number_id'],
+                    'po_description' => $item['po_transaction']['po_description'],
+                ],
+                'rr_orders' => array_map(function ($rr) {
+                    return [
+                        'item_code' => $rr['item_code'],
+                        'item_name' => $rr['item_name'],
+                        'quantity_receive' => $rr['quantity_receive'],
+                        'order' => [
+                            'item_code' => $rr['order']['item_code'],
+                            'item_name' => $rr['order']['item_name'],
+                            'price' => $rr['order']['price'],
+                            'uom' => [
+                                'code' => $rr['order']['uom']['code'],
+                                'name' => $rr['order']['uom']['name'],
+                            ],
+                        ],
+                    ];
+                }, $item['rr_orders']),
+            ];
+        }, $data);
+
+        $filtered = collect($data)->filter(function ($value, $key) use ($rr_no, $po_no) {
+            return ($value['rr_year_number_id'] == $rr_no && $value['po_transaction']['po_year_number_id'] == $po_no);
+        });
+
+
+        return response()->json([
+            'code' => $filtered->isEmpty() ? 404 : 200,
+            'message' => 'Po numbers has been fetched.',
+            'result' => $filtered->values(),
+        ], $filtered->isEmpty() ? 404 : 200);
+    }
 }

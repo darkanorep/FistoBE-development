@@ -41,6 +41,7 @@ class GeneralJournal extends Model
         'amount',
         'description',
         'po_no',
+        'rr_no',
         'reference_no',
         'quantity',
         'unit',

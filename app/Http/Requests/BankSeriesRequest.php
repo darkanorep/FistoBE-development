@@ -49,7 +49,8 @@ class BankSeriesRequest extends FormRequest
             ],
             'to' => [
                 'required_if:category,prenumbered stock',
-                new ValidTo('bank_series', $this->from, $this->to, $this->bank_id, $currentId, $this->category)
+                'sometimes',
+                new ValidTo('bank_series', $this->from, $this->to, $this->bank_id, $currentId, $this->category),
             ],
         ];
     }

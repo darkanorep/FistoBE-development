@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Audit;
+use App\Models\Bank;
 use App\Models\Cheque;
 use App\Models\Executive;
 use App\Models\Issue;
@@ -57,12 +58,13 @@ class TransactionChequeResource extends JsonResource
                     ? $issuedCheques
                     : $distinctCheques;
 
-                $cheques = $cheque->map(function ($item) {
+                $cheques = $cheque->load('bank')->map(function ($item) {
                     return [
                         'type' => $item->entry_type,
                         'bank' => [
                             'id' => (int)$item->bank_id,
                             'name' => $item->bank_name,
+                            'account_number' => $item->bank->account_no,
                         ],
                         'no' => $item->cheque_no,
                         'date' => $item->cheque_date,
@@ -70,6 +72,7 @@ class TransactionChequeResource extends JsonResource
                         'date_cleared' => $item->date_cleared,
                     ];
                 });
+
 
                 $chequeHistory = null;
 

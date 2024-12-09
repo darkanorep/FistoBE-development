@@ -57,7 +57,15 @@ class GeneralJournalController extends Controller
 //                $query->whereYear('adjustment_month', $year)
 //                    ->whereMonth('adjustment_month', $month);
 //            })
-                ->where('user_id', auth()->user()->id)
+//                ->where('user_id', auth()->user()->id)
+                     ->where(function ($query) {
+                     $query->where('user_id', auth()->user()->id)
+                         ->orWhere(function ($query) {
+                             if (auth()->user()->position == 'SUPERVISOR' && auth()->user()->role == 'Approver') {
+                                 $query->where('user_id', '<>', auth()->user()->id);
+                             }
+                         });
+                 })
                 ->groupBy('gj_number', 'journal_name', 'journal_description', 'is_posted', 'adjustment_month')
                 ->orderBy('latest_updated_at', 'desc')
                 ->whereLike(['gj_number', 'journal_name', 'journal_description'], $search)
@@ -86,7 +94,8 @@ class GeneralJournalController extends Controller
                     'adjustment_month' => $account_titles->first()->adjustment_month,
                     'account_titles' => $account_titles->transform(function ($item) {
                         return (object) [
-                            'po_no' => $item->po_no,
+                            'po_no' => $item->po_no ? array($item->po_no) : [],
+                            'rr_no' => $item->rr_no ? array($item->rr_no) : [],
                             'tag_no' => $item->tag_no,
                             'reference_no' => $item->reference_no,
                             'voucher_number' => $item->voucher_number,
@@ -139,7 +148,15 @@ class GeneralJournalController extends Controller
                 }, function ($query) {
                     $query->where('is_posted', false);
                 })
-                ->where('user_id', auth()->user()->id)
+//                ->where('user_id', auth()->user()->id)
+                ->where(function ($query) {
+                    $query->where('user_id', auth()->user()->id)
+                        ->orWhere(function ($query) {
+                            if (auth()->user()->position == 'SUPERVISOR' && auth()->user()->role == 'Approver') {
+                                $query->where('user_id', '<>', auth()->user()->id);
+                            }
+                        });
+                })
                 ->groupBy('gj_number', 'journal_name', 'journal_description', 'is_posted', 'adjustment_month')
                 ->orderBy('latest_updated_at', 'desc')
                 ->get();
@@ -221,7 +238,10 @@ class GeneralJournalController extends Controller
                 'division_name' => $division_name,
                 'tag_no' => data_get($account_title, "tag_no"),
                 'description' => data_get($account_title, "remarks"),
-                'po_no' => data_get($account_title, "po_no"),
+//                'po_no' => data_get($account_title, "po_no"),
+//                'rr_no' => data_get($account_title, "rr_no"),
+                'po_no' => implode(', ', data_get($account_title, "po_no", [])),
+                'rr_no' => implode(', ', data_get($account_title, "rr_no", [])),
                 'reference_no' => data_get($account_title, "reference_no"),
                 'voucher_number' => data_get($account_title, "voucher_number"),
                 'transaction_date' => Carbon::now(),
@@ -333,65 +353,65 @@ class GeneralJournalController extends Controller
         $keys = array_keys(current($journals));
         $this->validateHeader($template, $keys, $headers);
 
-        $index = 2;
-        foreach ($journals as $journal) {
-            $account_title = $journal['account_title'];
-            $company = $journal['company'];
-            $department = $journal['department'];
-            $location = $journal['location'];
-//            $business_unit = $journal['business_unit'];
-//            $sub_unit = $journal['sub_unit'];
-            $boa = $journal['boa'];
+//        $index = 2;
+//        foreach ($journals as $journal) {
+//            $account_title = $journal['account_title'];
+//            $company = $journal['company'];
+//            $department = $journal['department'];
+//            $location = $journal['location'];
+////            $business_unit = $journal['business_unit'];
+////            $sub_unit = $journal['sub_unit'];
+//            $boa = $journal['boa'];
+//
+//            if (!in_array($account_title, $account_title_list) && !empty($account_title)) {
+//                $error[] = (object)[
+//                    "line" => $index,
+//                    "description" => $account_title . " is not registered.",
+//                ];
+//            }
+//
+//            if (!in_array($department, $department_list) && !empty($department)) {
+//                $error[] = (object)[
+//                    "line" => $index,
+//                    "description" => $department . " is not registered.",
+//                ];
+//            }
+//
+//            if (!in_array($location, $location_list) && !empty($location)){
+//                $error[] = (object)[
+//                    "line" => $index,
+//                    "description" => $location . " is not registered.",
+//                ];
+//            }
+//
+//            if (!in_array($company, $company_list) && !empty($company)) {
+//                $error[] = (object)[
+//                    "line" => $index,
+//                    "description" => $company . " is not registered.",
+//                ];
+//            }
+//
+//            if ($boa != 'Adjustment') {
+//                $error[] = (object)[
+//                    "line" => $index,
+//                    "description" => "BOA must be Adjustment.",
+//                ];
+//            }
+//
+//            foreach ($journal as $key => $value) {
+//                if (in_array($key, $required) && empty($value)) {
+//                    $error[] = (object)[
+//                        "error_type" => "empty",
+//                        "line" => $index,
+//                        "description" => $key . " is empty.",
+//                    ];
+//                }
+//            }
+//
+//            $index++;
+//        }
 
-            if (!in_array($account_title, $account_title_list) && !empty($account_title)) {
-                $error[] = (object)[
-                    "line" => $index,
-                    "description" => $account_title . " is not registered.",
-                ];
-            }
-
-            if (!in_array($department, $department_list) && !empty($department)) {
-                $error[] = (object)[
-                    "line" => $index,
-                    "description" => $department . " is not registered.",
-                ];
-            }
-
-            if (!in_array($location, $location_list) && !empty($location)){
-                $error[] = (object)[
-                    "line" => $index,
-                    "description" => $location . " is not registered.",
-                ];
-            }
-
-            if (!in_array($company, $company_list) && !empty($company)) {
-                $error[] = (object)[
-                    "line" => $index,
-                    "description" => $company . " is not registered.",
-                ];
-            }
-
-            if ($boa != 'Adjustment') {
-                $error[] = (object)[
-                    "line" => $index,
-                    "description" => "BOA must be Adjustment.",
-                ];
-            }
-
-            foreach ($journal as $key => $value) {
-                if (in_array($key, $required) && empty($value)) {
-                    $error[] = (object)[
-                        "error_type" => "empty",
-                        "line" => $index,
-                        "description" => $key . " is empty.",
-                    ];
-                }
-            }
-
-            $index++;
-        }
-
-        if (empty($error)) {
+        if (isset($journals)) {
             foreach ($journals as $journal) {
                 $supplier = Supplier::where('name', $journal['supplier'])->first();
                 $account_title = AccountTitle::where('title', $journal['account_title'])->first();
@@ -404,6 +424,7 @@ class GeneralJournalController extends Controller
                 $formattedJournal[] = [
                     'account_tag' => $journal['tag_no'],
                     'po_no' => $journal['po_no'],
+                    'rr_no' => $journal['rr_no'],
                     'reference_no' => $journal['reference_no'],
                     'voucher_number' => $journal['voucher_number'],
                     'supplier' => [

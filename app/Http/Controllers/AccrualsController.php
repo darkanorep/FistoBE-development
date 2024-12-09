@@ -10,6 +10,7 @@ use App\Models\Department;
 use App\Models\Location;
 use App\Models\SubUnit;
 use App\Models\Supplier;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -22,6 +23,7 @@ class AccrualsController extends Controller
     {
         $rows = $request->input('rows', 10);
         $companies = $this->getRequestData($request, 'companies');
+        $suppliers = $this->getRequestData($request, 'suppliers');
         $search = $request->search;
 //        $adjustment_month = $request->input('adjustment_month', Carbon::now()->format('Y-m'));
 //        $year = date('Y', strtotime($adjustment_month));
@@ -30,7 +32,84 @@ class AccrualsController extends Controller
         $year = $request->input('year');
         $month = $request->input('month');
 
-        if (!empty($month) && !empty($year)) {
+        if ($year == 'all') {
+            $accruals = Accruals::when($is_reversed, function ($query) {
+                $query->where('is_reversed', 1);
+            }, function ($query) {
+                $query->whereIn('is_reversed', [0]);
+            })
+                ->when(!empty($suppliers), function ($query) use ($suppliers) {
+                    $query->whereIn('supplier_id', $suppliers);
+                })
+                ->when(!empty($companies), function ($query) use ($companies) {
+                    $query->whereIn('company_id', $companies);
+                })
+                ->select([
+                'id',
+                'adjustment_month',
+                'supplier_id',
+                'supplier_code',
+                'supplier_name',
+                'entry',
+                'account_title_id',
+                'account_title_code',
+                'account_title_name',
+                'company_id',
+                'company_code',
+                'company_name',
+                'department_id',
+                'department_code',
+                'department_name',
+                'location_id',
+                'location_code',
+                'location_name',
+                'amount',
+                'description',
+                'po_no',
+                'reference_no',
+                'voucher_number',
+                'is_reversed'
+            ])->get();
+
+            $accruals->transform(function ($item) {
+                return (object) [
+                    'id' => $item->id,
+                    'adjustment_month' => $item->adjustment_month,
+                    'supplier' => [
+                        'id' => $item->supplier_id,
+                        'code' => $item->supplier_code,
+                        'name' => $item->supplier_name
+                    ],
+                    'entry' => $item->entry,
+                    'account_title' => [
+                        'id' => $item->account_title_id,
+                        'code' => $item->account_title_code,
+                        'name' => $item->account_title_name
+                    ],
+                    'company' => [
+                        'id' => $item->company_id,
+                        'code' => $item->company_code,
+                        'name' => $item->company_name
+                    ],
+                    'department' => [
+                        'id' => $item->department_id,
+                        'code' => $item->department_code,
+                        'name' => $item->department_name
+                    ],
+                    'location' => [
+                        'id' => $item->location_id,
+                        'code' => $item->location_code,
+                        'name' => $item->location_name
+                    ],
+                    'amount' => $item->amount,
+                    'description' => $item->description,
+                    'po_no' => $item->po_no,
+                    'reference_no' => $item->reference_no,
+                    'voucher_number' => $item->voucher_number,
+                    'is_reversed' => $item->is_reversed
+                ];
+            });
+        } elseif(!empty($month) && !empty($year)) {
             $accruals = Accruals::select(
                 'journal_name',
                 'journal_description',
@@ -38,21 +117,18 @@ class AccrualsController extends Controller
                 'batch_no',
                 'reversed_no',
                 DB::raw("MAX(updated_at) as latest_updated_at"))
-            ->when(!empty($companies), function ($query) use ($companies) {
-                $query->whereIn('division_id', $companies);
-            })
-//            ->when($adjustment_month, function ($query) use ($year, $month, $is_reversed) {
-//                $query->when($is_reversed, function ($query) use ($year, $month) {
-//                    $query->where('is_reversed', 1)
-//                        ->whereYear('reversed_at', $year)
-//                        ->whereMonth('reversed_at', $month);
-//                }, function ($query) use ($year, $month) {
-//                    $query->where('is_reversed', 0)
-//                        ->whereYear('adjustment_month', $year)
-//                        ->whereMonth('adjustment_month', $month);
-//                });
-//            })
-                ->where('user_id', auth()->user()->id)
+                ->when(!empty($companies), function ($query) use ($companies) {
+                    $query->whereIn('division_id', $companies);
+                })
+//                ->where('user_id', auth()->user()->id)
+                ->where(function ($query) {
+                    $query->where('user_id', auth()->user()->id)
+                        ->orWhere(function ($query) {
+                            if (auth()->user()->position == 'SUPERVISOR' && auth()->user()->role == 'Approver') {
+                                $query->where('user_id', '<>', auth()->user()->id);
+                            }
+                        });
+                })
                 ->whereLike(['journal_name', 'journal_description'], $search)
                 ->groupBy(
                     'journal_name',
@@ -64,17 +140,15 @@ class AccrualsController extends Controller
                 ->orderBy('latest_updated_at', 'desc')
                 ->whereLike(['journal_name', 'journal_description'], $search)
                 ->get();
-//                ->paginate($rows);
 
             $allAccountTitles = Accruals::
-                when($is_reversed, function ($query) {
+            when($is_reversed, function ($query) {
                 $query->where('is_reversed', 1);
             }, function ($query) {
-                $query->whereIn('is_reversed', [0, 1]);
+                $query->whereIn('is_reversed', [0]);
             })
                 ->whereIn('batch_no', $accruals->pluck('batch_no'))
                 ->get()
-//                ->groupBy('batch_no');
                 ->groupBy(function ($query) use ($is_reversed) {
                     return $is_reversed ? $query->reversed_no : $query->batch_no;
                 });
@@ -154,15 +228,45 @@ class AccrualsController extends Controller
                 ->when($is_reversed, function ($query) {
                     $query->where('is_reversed', 1);
                 }, function ($query) {
-                    $query->whereIn('is_reversed', [0, 1]);
+                    $query->whereIn('is_reversed', [0]);
                 })
-                ->where('user_id', auth()->user()->id)
+//                ->where('user_id', auth()->user()->id)
+                ->where(function ($query) {
+                    $query->where('user_id', auth()->user()->id)
+                        ->orWhere(function ($query) {
+                            if (auth()->user()->position == 'SUPERVISOR' && auth()->user()->role == 'Approver') {
+                                $query->where('user_id', '<>', auth()->user()->id);
+                            }
+                        });
+                })
                 ->groupBy('journal_name', 'journal_description', 'adjustment_month', 'batch_no', 'is_reversed', 'reversed_at', 'reversed_no')
                 ->orderBy('latest_updated_at', 'desc')
                 ->get();
         }
 
 
+        if ($year == 'all') {
+//            $groupedAccruals = $accruals->groupBy(function ($item) {
+//                return Carbon::parse($item->adjustment_month)->format('Y');
+//            })->mapWithKeys(function ($yearGroup, $year) {
+//                return [$year => $yearGroup->groupBy(function ($item) {
+//                    return Carbon::parse($item->adjustment_month)->format('F');
+//                })];
+//            });
+
+            $groupedAccruals = $accruals->groupBy(function ($item) {
+                return Carbon::parse($item->adjustment_month)->format('Y');
+            });
+
+            return $groupedAccruals;
+
+//            $currentPage = LengthAwarePaginator::resolveCurrentPage();
+//            $currentItems = $groupedAccruals->slice(($currentPage - 1) * $rows, $rows)->values();
+//            $totalItems = $groupedAccruals->count();
+//
+//            return new LengthAwarePaginator($currentItems, $totalItems, $rows);
+
+        }
         if (empty($year) && empty($month)) {
             $groupedAccruals = $accruals->map(function ($item) use ($is_reversed) {
                 return $is_reversed ? Carbon::parse($item->reversed_at)->format('Y')
@@ -211,9 +315,7 @@ class AccrualsController extends Controller
         if ($accruals->isEmpty()) {
             return $this->resultResponse("not-found", "General Journals", []);
         }
-
         return $groupedAccruals;
-
     }
 
 
@@ -276,11 +378,6 @@ class AccrualsController extends Controller
     }
 
 
-    public function show($id)
-    {
-
-    }
-
 
     public function update(Request $request, $id)
     {
@@ -301,31 +398,6 @@ class AccrualsController extends Controller
     }
 
 
-//    public function reverse($id)
-//    {
-//        $accruals = Accruals::find($id);
-//
-//        if (!$accruals) {
-//            return response()->json(['message' => 'General Journal not found.'], 404);
-//        }
-//
-//        $batchNo = $accruals->batch_no;
-//
-//        Accruals::where('batch_no', $batchNo)->get()->each(function ($gj) {
-//            $gj->update([
-//                'entry' => $gj->entry == 'Credit' ? 'Debit' : 'Credit',
-//                'is_reversed' => true
-//            ]);
-//        });
-//
-//        Accruals::where('batch_no', $batchNo)->update([
-//            'is_reversed' => true,
-//            'reversed_at' => Carbon::now()
-//        ]);
-//
-//        return response()->json(['message' => 'Accrual successfully reversed.'], 200);
-//    }
-
     public function reverse(Request $request)
     {
         $request = $request->validate([
@@ -337,7 +409,7 @@ class AccrualsController extends Controller
         Accruals::whereIn('id', $request['accruals'])->update([
             'entry' => DB::raw("IF(entry = 'Credit', 'Debit', 'Credit')"),
             'is_reversed' => true,
-            'reversed_at' => Carbon::now()->addMonth(2),
+            'reversed_at' => Carbon::now(),
             'reversed_no' => $reversed_no
         ]);
 
@@ -360,67 +432,67 @@ class AccrualsController extends Controller
         $template = ["tag_no", "po_no", "reference_no", "voucher_number", "supplier", "entry", "amount", "remarks", "account_title", "company", "department", "location", "boa"];
         $required = ["supplier", "entry", "amount", "account_title", "company", "department", "location"];
         $keys = array_keys(current($journals));
-        $this->validateHeader($template, $keys, $headers);
+//        $this->validateHeader($template, $keys, $headers);
+//
+//        $index = 2;
+//        foreach ($journals as $journal) {
+//            $account_title = $journal['account_title'];
+//            $company = $journal['company'];
+//            $department = $journal['department'];
+//            $location = $journal['location'];
+////            $business_unit = $journal['business_unit'];
+////            $sub_unit = $journal['sub_unit'];
+//            $boa = $journal['boa'];
+//
+//            if (!in_array($account_title, $account_title_list) && !empty($account_title)) {
+//                $error[] = (object)[
+//                    "line" => $index,
+//                    "description" => $account_title . " is not registered.",
+//                ];
+//            }
+//
+//            if (!in_array($department, $department_list) && !empty($department)) {
+//                $error[] = (object)[
+//                    "line" => $index,
+//                    "description" => $department . " is not registered.",
+//                ];
+//            }
+//
+//            if (!in_array($location, $location_list) && !empty($location)) {
+//                $error[] = (object)[
+//                    "line" => $index,
+//                    "description" => $location . " is not registered.",
+//                ];
+//            }
+//
+//            if (!in_array($company, $company_list) && !empty($company)) {
+//                $error[] = (object)[
+//                    "line" => $index,
+//                    "description" => $company . " is not registered.",
+//                ];
+//            }
+//
+//            if ($boa != 'Accruals' || null) {
+//                $error[] = (object)[
+//                    "line" => $index,
+//                    "description" => "BOA must be Accruals.",
+//                ];
+//            }
+//
+//            foreach ($journal as $key => $value) {
+//                if (in_array($key, $required) && empty($value)) {
+//                    $error[] = (object)[
+//                        "error_type" => "empty",
+//                        "line" => $index,
+//                        "description" => $key . " is empty.",
+//                    ];
+//                }
+//            }
+//
+//            $index++;
+//        }
 
-        $index = 2;
-        foreach ($journals as $journal) {
-            $account_title = $journal['account_title'];
-            $company = $journal['company'];
-            $department = $journal['department'];
-            $location = $journal['location'];
-//            $business_unit = $journal['business_unit'];
-//            $sub_unit = $journal['sub_unit'];
-            $boa = $journal['boa'];
-
-            if (!in_array($account_title, $account_title_list) && !empty($account_title)) {
-                $error[] = (object)[
-                    "line" => $index,
-                    "description" => $account_title . " is not registered.",
-                ];
-            }
-
-            if (!in_array($department, $department_list) && !empty($department)) {
-                $error[] = (object)[
-                    "line" => $index,
-                    "description" => $department . " is not registered.",
-                ];
-            }
-
-            if (!in_array($location, $location_list) && !empty($location)) {
-                $error[] = (object)[
-                    "line" => $index,
-                    "description" => $location . " is not registered.",
-                ];
-            }
-
-            if (!in_array($company, $company_list) && !empty($company)) {
-                $error[] = (object)[
-                    "line" => $index,
-                    "description" => $company . " is not registered.",
-                ];
-            }
-
-            if ($boa != 'Accruals' || null) {
-                $error[] = (object)[
-                    "line" => $index,
-                    "description" => "BOA must be Accruals.",
-                ];
-            }
-
-            foreach ($journal as $key => $value) {
-                if (in_array($key, $required) && empty($value)) {
-                    $error[] = (object)[
-                        "error_type" => "empty",
-                        "line" => $index,
-                        "description" => $key . " is empty.",
-                    ];
-                }
-            }
-
-            $index++;
-        }
-
-        if (empty($error)) {
+        if (isset($journals)) {
             foreach ($journals as $journal) {
                 $supplier = Supplier::where('name', $journal['supplier'])->first();
                 $account_title = AccountTitle::where('title', $journal['account_title'])->first();

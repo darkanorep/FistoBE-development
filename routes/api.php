@@ -3,6 +3,7 @@
 use App\Http\Controllers\BusinessUnitController;
 use App\Http\Controllers\SubUnitController;
 use App\Http\Controllers\TransactionTypeController;
+use App\Http\Controllers\TreasuryChequeController;
 use App\Http\Controllers\VoucherCodeController;
 use App\Methods\TransactionFlow;
 use App\Models\BusinessUnit;
@@ -82,6 +83,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         Route::get("reason/", [ReasonController::class, "index"]);
         Route::get("associate", [MasterlistController::class, "associateDropdown"]);
         Route::get("approver", [MasterlistController::class, "approverDropdown"]);
+        Route::get("specialist", [MasterlistController::class, "specialistDropdown"]);
         Route::get("account-title", [MasterlistController::class, "transactionAccountTitleDropdown"]);
         Route::get("credit-card", [CreditCardController::class, "index"]);
 //    Route::get("account-title/{id}", [MasterlistController::class, "accountTitleDocumentDropdown"]);
@@ -96,6 +98,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         Route::get("sub-unit", [SubUnitController::class, "index"]);
         Route::get("voucher-number", [TransactionController::class, "voucherNumberDropdown"]);
         Route::get('general-journals-numbers', [TransactionController::class, 'generalNumbersDropdown']);
+        Route::get('cheque-types', [MasterlistController::class, 'chequeTypesDropdown']);
     });
 
     Route::group(["prefix" => "admin", "middleware" => ["auth" => "is_admin"]], function () {
@@ -111,6 +114,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
             Route::get("organization", [MasterlistController::class, "organizationDropdown"]);
             Route::get("department", [MasterlistController::class, "departmentDropdown"]);
             Route::get("associate", [MasterlistController::class, "associateDropdown"]);
+            Route::get("treasuries", [MasterlistController::class, "treasuriesDropdown"]);
             Route::get("voucher-code", [MasterlistController::class, "voucherCodeDropdown"]);
             Route::get("account-title-great-grand-parent", [MasterlistController::class, "accountTitleGreatGrandParentsDropdown"]);
             Route::get("account-title-grand-parent", [MasterlistController::class, "accountTitleGrandParentsDropdown"]);
@@ -256,6 +260,10 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         //BANK SERIES
         Route::patch('bank-series/{id}', [\App\Http\Controllers\BankSeriesController::class, "change_status"]);
         Route::resource('bank-series', \App\Http\Controllers\BankSeriesController::class);
+
+        //TREASURY CHEQUE
+        Route::patch('treasury-cheques/{id}', [\App\Http\Controllers\TreasuryChequeController::class, "change_status"]);
+        Route::resource('treasury-cheques', \App\Http\Controllers\TreasuryChequeController::class);
     });
 
     // USER
@@ -302,6 +310,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
     Route::get("cheques-history", [TransactionController::class, "historyChequeIndex"]);
     Route::get("voucher-transaction/{id}", [TransactionController::class, 'voucherTransaction']);
     Route::get("cheque-transaction/{id}", [TransactionController::class, 'chequeTransaction']);
+    Route::get('cheque-number', [\App\Http\Controllers\BankSeriesController::class, 'chequeNumber']);
 
     //GENERAL JOURNAL
     Route::resource("general-journals", \App\Http\Controllers\GeneralJournalController::class);
@@ -310,7 +319,6 @@ Route::group(["middleware" => "auth:sanctum"], function () {
 
     //ACCRUALS/REVERSALS
     Route::patch('accruals/reverse', [\App\Http\Controllers\AccrualsController::class, 'reverse']);
-    Route::get('test-index', [\App\Http\Controllers\AccrualsController::class, 'testIndex']);
     Route::resource('accruals', \App\Http\Controllers\AccrualsController::class);
 //    Route::patch('accruals/reverse/{id}', [\App\Http\Controllers\AccrualsController::class, 'reverse']);
     Route::post('accruals/import', [\App\Http\Controllers\AccrualsController::class, 'import']);
@@ -355,6 +363,10 @@ Route::group(["middleware" => "auth:sanctum"], function () {
             //REPORT
             Route::get('treasury-report', [TransactionController::class, 'treasuryReport']);
             Route::get('report', [TransactionController::class, 'generateAPReport']);
+
+            //SPECIAL CASE
+            Route::get('search-cheque', [TransactionController::class, 'searchbBankCheque']);
+            Route::post('adjust-date', [TransactionController::class, 'adjustDate']);
 
         });
     });

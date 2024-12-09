@@ -4,6 +4,7 @@ namespace App\Methods;
 
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\TransactionFlowController;
+use App\Methods\GenericMethod;
 use App\Models\Charging;
 use App\Models\Cheque;
 use App\Models\ClearingAccountTitle;
@@ -36,7 +37,6 @@ use App\Models\Specialist;
 use App\Models\Transaction;
 use App\Models\RequestorLogs;
 use App\Models\ReturnVoucher;
-use App\Methods\GenericMethod;
 use App\Models\ChequeClearing;
 use App\Models\ChequeCreation;
 use App\Models\ChequeReleased;
@@ -1521,6 +1521,7 @@ class TransactionFlow
                 $status = "issue-hold";
             } elseif ($subprocess == "return") {
                 $status = "issue-return";
+                (new TransactionController())->chequeRevert1($request["bank_id"], $request["cheque_no"], $process, $request);
             } elseif ($subprocess == "void") {
                 $status = "issue-void";
             } elseif (in_array($subprocess, ["unhold", "unreturn"])) {
@@ -1538,20 +1539,6 @@ class TransactionFlow
 
 
             if ($subprocess == "issue") {
-//          $cheques = $request->validate([
-//                  'cheques.*.type' => 'nullable',
-//                  'cheques.*.bank' => 'nullable',
-//                  'cheques.*.bank.*.id' => 'nullable',
-//                  'cheques.*.no' => 'nullable',
-//                  'cheques.*.bank.*.name' => 'nullable',
-//                  'cheques.*.bank.*.branch' => 'nullable',
-//                  'cheques.*.bank.*.account_title_one.*.id' => 'nullable',
-//                  'cheques.*.bank.*.account_title_one.*.name' => 'nullable',
-//                  'cheques.*.bank.*.account_title_two.*.id' => 'nullable',
-//                  'cheques.*.bank.*.account_title_two.*.name' => 'nullable',
-//                  'cheques.*.date' => 'required',
-//                  'cheques.*.amount' => 'required',
-//          ]);
                 GenericMethod::chequeTransaction(
                     $model,
 //        $transaction_id,
@@ -1872,9 +1859,6 @@ class TransactionFlow
         $bankId = $request->bank_id ?? data_get($request, 'cheques.bank_id');
         $chequeNo = $request->cheque_no ?? data_get($request, 'cheques.cheque_no');
 
-//        $bankId = $request->bank_id ?? data_get($request, 'cheques.bank_id');
-//        $chequeNo = $request->cheque_no ?? data_get($request, 'cheques.cheque_no');
-
         $context = [
             "process" => $request->process,
             "subprocess" => $request->subprocess,
@@ -1923,6 +1907,12 @@ class TransactionFlow
                 case 'unreturn':
                     return $this->unreturnUnhold($transactionIds, $context);
                     break;
+                case 'cancel':
+                    return $this->cancelCheque($request);
+                case 'abort':
+                    return $this->abortCheque($request);
+                case 'decline':
+                    return $this->declineCheque($request);
             }
 
             foreach ($transactionIds as $transactionId) {
@@ -2066,22 +2056,22 @@ class TransactionFlow
 
         $this->chequeIssueChecker($request, $transactionIds);
 
-        foreach($transactionIds as $transaction) {
-            $transaction = Transaction::find($transaction);
-
-            if ($transaction->is_mc == 1) {
-                Cheque::where('transaction_id', $transaction->id)
-                    ->update([
-                        'is_released' => true
-                    ]);
-
-                Transaction::where('id', $transaction->id)
-                    ->update([
-                        'state' => 'release',
-                        'status' => 'release-release'
-                    ]);
-            }
-        }
+//        foreach($transactionIds as $transaction) {
+//            $transaction = Transaction::find($transaction);
+//
+//            if ($transaction->is_mc == 1) {
+//                Cheque::where('transaction_id', $transaction->id)
+//                    ->update([
+//                        'is_released' => true
+//                    ]);
+//
+//                Transaction::where('id', $transaction->id)
+//                    ->update([
+//                        'state' => 'release',
+//                        'status' => 'release-release'
+//                    ]);
+//            }
+//        }
 
         return GenericMethod::resultResponse($request->subprocess, "", "");
     }
@@ -2387,5 +2377,74 @@ class TransactionFlow
 
                 break;
         }
+    }
+
+    function cancelCheque($request)
+    {
+        $bank = $request->bank_id;
+        $cheque = $request->cheque_no;
+        $process = $request->process;
+        $subprocess = $request->subprocess;
+        $reason_id = data_get($request, 'reason.id');
+        $reason = data_get($request, 'reason.reason');
+
+
+        Cheque::where([
+            'bank_id' => $bank,
+            'cheque_no' => $cheque
+        ])
+            ->update([
+                'is_cancelled' => 0,
+                'reason_id' => $reason_id,
+                'reason' => $reason,
+            ]);
+
+        return GenericMethod::resultResponse($subprocess, "", "");
+    }
+
+    function abortCheque($request)
+    {
+        $bank = $request->bank_id;
+        $cheque = $request->cheque_no;
+        $process = $request->process;
+        $subprocess = $request->subprocess;
+
+        $cheques = Cheque::where([
+            'bank_id' => $bank,
+            'cheque_no' => $cheque
+        ])->get();
+
+        Transaction::whereIn('id', $cheques->pluck('transaction_id')->toArray())
+            ->update([
+                'state' => 'void',
+                'status' => 'release' . '-' . 'void',
+            ]);
+
+        $cheques->each(function ($cheque) {
+            $cheque->update([
+                'is_cancelled' => 1,
+            ]);
+        });
+
+        return GenericMethod::resultResponse($subprocess, "", "");
+    }
+    function declineCheque($request) {
+        $bank = $request->bank_id;
+        $cheque = $request->cheque_no;
+        $process = $request->process;
+        $subprocess = $request->subprocess;
+
+
+        Cheque::where([
+            'bank_id' => $bank,
+            'cheque_no' => $cheque
+        ])
+            ->update([
+                'is_cancelled' => null,
+                'reason_id' => null,
+                'reason' => null,
+            ]);
+
+        return GenericMethod::resultResponse($subprocess, "", "");
     }
 }

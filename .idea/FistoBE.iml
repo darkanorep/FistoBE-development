@@ -119,7 +119,6 @@
       <excludeFolder url="file://$MODULE_DIR$/vendor/nette/schema" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/nette/utils" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/psr/clock" />
-      <excludeFolder url="file://$MODULE_DIR$/vendor/laravel/telescope" />
       <excludeFolder url="file://$MODULE_DIR$/storage/app" />
       <excludeFolder url="file://$MODULE_DIR$/storage/clockwork" />
       <excludeFolder url="file://$MODULE_DIR$/storage/framework" />

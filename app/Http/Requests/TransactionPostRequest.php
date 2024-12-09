@@ -29,6 +29,7 @@ class TransactionPostRequest extends FormRequest
     {
         return [
             "type" => "nullable",
+            "assigned_id" => "nullable",
             "requestor.id" => "required",
             "requestor.id_prefix" => "required",
             "requestor.id_no" => "required",
@@ -61,10 +62,26 @@ class TransactionPostRequest extends FormRequest
             "document.category.id" => "required_if:document.id,1,2,4,5",
             "document.category.name" => "required_if:document.id,1,2,4,5",
 
-            "po_group" => "required_if:document.id,1,5,4",
-            "po_group.*.no" => "required_if:document.id,1,5,4",
-            "po_group.*.amount" => "required_if:document.id,1,5,4|numeric",
+//            "po_group" => "required_if:document.id,1,5,4",
+//            "po_group.*.no" => "required_if:document.id,1,5,4",
+//            "po_group.*.amount" => "required_if:document.id,1,5,4|numeric",
+//            "po_group.*.rr_no" => "nullable",
+
+            "po_group" => "nullable",
+            "po_group.*.no" => "nullable",
+            "po_group.*.amount" => "nullable",
             "po_group.*.rr_no" => "nullable",
+
+            "purchase_order.*.po_number" => "nullable",
+            "purchase_order.*.po_description" => "nullable",
+            "purchase_order.*.rr_number" => "nullable",
+            "purchase_order.*.rr_orders" => "nullable",
+            "purchase_order.*.rr_orders.*.item_code" => "nullable",
+            "purchase_order.*.rr_orders.*.item_name" => "nullable",
+            "purchase_order.*.rr_orders.*.price" => "nullable",
+            "purchase_order.*.rr_orders.*.quantity_receive" => "nullable",
+            "purchase_order.*.rr_orders.*.uom_code" => "nullable",
+            "purchase_order.*.rr_orders.*.uom_name" => "nullable",
 
             "document.utility.receipt_no" => [
                 "required_if:document.id,6",
@@ -248,8 +265,7 @@ class TransactionPostRequest extends FormRequest
             "min" => ":attribute amount may not be greater than :min.",
             "max" => ":attribute amount may not be greater than :max.",
             // "document.amount.numeric"=>"Document amount must be numeric"
-            "document.utility.receipt_no.required_if" =>
-                "SOA/Reference Number field is required when document type is " . ($document ? $document : ""),
+            "document.utility.receipt_no.required_if" => "SOA/Reference Number field is required when document type is " . ($document ? $document : ""),
             "document.payroll.control_no.unique" => "Payroll control number has already been taken.",
         ];
     }

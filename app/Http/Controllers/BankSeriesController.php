@@ -75,4 +75,10 @@ class BankSeriesController extends Controller
     public function change_status($id) {
         return $this->changeStatus($id, BankSeries::class, 'Bank Series');
     }
+
+    public function chequeNumber(Request $request) {
+        $bank_id = $request->bank_id;
+
+        return BankSeries::where('bank_id', $bank_id)->whereNull('deleted_at')->get();
+    }
 }

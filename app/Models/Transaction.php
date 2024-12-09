@@ -148,7 +148,9 @@ class Transaction extends Model
 
     public function supplier()
     {
-        return $this->belongsTo(Supplier::class, "supplier_id", "id")->select(["id", "supplier_type_id", "name"]);
+        return $this->belongsTo(Supplier::class, "supplier_id", "id")
+            ->withTrashed()
+            ->select(["id", "supplier_type_id", "name"]);
     }
 
     public function auto_debit()
@@ -669,6 +671,11 @@ class Transaction extends Model
                 "id",
                 "voucher_no"
             ]);
+    }
+
+    public function purchaseOrders()
+    {
+        return $this->hasMany(PurchaseOrders::class, 'transaction_id', 'id');
     }
 
 }

@@ -33,6 +33,7 @@ class Cheque extends Model
         'date_cleared',
         "reason_id",
         "reason",
+        "is_cancelled",
     ];
 
     public function transaction()

@@ -310,6 +310,13 @@ class TransactionFlowController extends Controller
                     'transaction_type' => 'new',
                     'entry_type' => data_get($cheque, 'type')
                 ]);
+
+                if (data_get($cheque, 'type') == 'Managers Cheque') {
+                    Transaction::where('id', $transaction)
+                        ->update([
+                            'is_mc' => 1
+                        ]);
+                }
             }
         }
 
