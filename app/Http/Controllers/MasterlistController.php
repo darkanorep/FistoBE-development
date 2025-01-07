@@ -411,12 +411,20 @@ class MasterlistController extends Controller
 
         $transaction = Http::withHeaders([
             'Token' => 'Bearer 1686|UeZtf76cXc4l4WU0EMMMTO1J7lZmd3EgCtGKfBYZ'
+//            'Token' => 'Bearer 2150|MwO0CdFLtlZs41dLwvXRaYBhIy6VPHeqq3VtO4F3'
         ])
             ->get('https://rdfymir.com/backend/public/api/fisto_api', [
                 'pagination' => 'none'
             ]);
 
+//        ->get('http://10.10.13.6:8080/api/fisto_api', [
+//        'pagination' => 'none'
+//    ]);
+
+
         $data = json_decode($transaction->body(), true);
+
+//        return $data;
         if (isset($data['result'])) {
             $data = $data['result'];
         } else {
@@ -454,11 +462,85 @@ class MasterlistController extends Controller
             return ($value['rr_year_number_id'] == $rr_no && $value['po_transaction']['po_year_number_id'] == $po_no);
         });
 
-
         return response()->json([
             'code' => $filtered->isEmpty() ? 404 : 200,
             'message' => 'Po numbers has been fetched.',
             'result' => $filtered->values(),
         ], $filtered->isEmpty() ? 404 : 200);
     }
+
+//    public function projectYmir(Request $request)
+//    {
+//        $rr_no = $request->rr_no;
+//        $po_no = $request->po_no;
+////        $transaction = Http::withToken('1196|kLQEntbfJxoMkcrVuW36vuWYH00hqwQ9fe2lYBFK')
+////            ->get('http://10.10.13.6:8080/api/fisto_api', [
+////                'pagination' => 'none'
+////            ]);
+//
+//        $transaction = Http::withHeaders([
+////            'Token' => 'Bearer 1686|UeZtf76cXc4l4WU0EMMMTO1J7lZmd3EgCtGKfBYZ'
+//            'Token' => 'Bearer 2150|MwO0CdFLtlZs41dLwvXRaYBhIy6VPHeqq3VtO4F3'
+//        ])
+////            ->get('https://rdfymir.com/backend/public/api/fisto_api', [
+////                'pagination' => 'none'
+////            ]);
+//
+//            ->get('http://10.10.13.6:8080/api/fisto_api', [
+//                'pagination' => 'none'
+//            ]);
+//
+//
+//        $data = json_decode($transaction->body(), true);
+//
+////        return $data;
+//        if (isset($data['result'])) {
+//            $data = $data['result'];
+//        } else {
+//            $data = [];
+//        }
+//
+//        $data = array_map(function ($item) {
+//            $rr = array_values(array_filter($item['rr_orders'], function ($rr) {
+//                return $rr['f_tagged'] == 0;
+//            }));
+//
+//            return [
+//                'is_new_po' => true,
+//                'id' => $item['id'],
+//                'rr_year_number_id' => $item['rr_year_number_id'],
+//                'po_transaction' => [
+//                    'po_year_number_id' => $item['po_transaction']['po_year_number_id'],
+//                    'po_description' => $item['po_transaction']['po_description'],
+//                ],
+//                'rr_orders' => array_map(function ($rr) {
+//                    return [
+//                        'f_tagged' => $rr['f_tagged'],
+//                        'item_code' => $rr['item_code'],
+//                        'item_name' => $rr['item_name'],
+//                        'quantity_receive' => $rr['quantity_receive'],
+//                        'order' => [
+//                            'item_code' => $rr['order']['item_code'],
+//                            'item_name' => $rr['order']['item_name'],
+//                            'price' => $rr['order']['price'],
+//                            'uom' => [
+//                                'code' => $rr['order']['uom']['code'],
+//                                'name' => $rr['order']['uom']['name'],
+//                            ],
+//                        ],
+//                    ];
+//                }, $rr),
+//            ];
+//        }, $data);
+//
+//        $filtered = collect($data)->filter(function ($value, $key) use ($rr_no, $po_no) {
+//            return ($value['rr_year_number_id'] == $rr_no && $value['po_transaction']['po_year_number_id'] == $po_no);
+//        });
+//
+//        return response()->json([
+//            'code' => $filtered->isEmpty() ? 404 : 200,
+//            'message' => 'Po numbers has been fetched.',
+//            'result' => $filtered->values(),
+//        ], $filtered->isEmpty() ? 404 : 200);
+//    }
 }

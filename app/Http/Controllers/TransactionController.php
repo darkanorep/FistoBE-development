@@ -3654,8 +3654,8 @@ class TransactionController extends Controller
                 $errorMessage = GenericMethod::resultLaravelFormat("po_group.no", ["PO number already exist."]);
                 return $this->resultResponse("invalid", "", $errorMessage);
             } else {
-                return $this->resultResponse("success-no-content", "", []);
-//                return (new MasterlistController())->projectYmir($request);
+//                return $this->resultResponse("success-no-content", "", []);
+                return (new MasterlistController())->projectYmir($request);
             }
         } else {
 
@@ -3727,8 +3727,8 @@ class TransactionController extends Controller
                     return $this->resultResponse("invalid", "", $errorMessage);
                 }
             } else {
-                return $this->resultResponse("success-no-content", "", []);
-//                return (new MasterlistController())->projectYmir($request);
+//                return $this->resultResponse("success-no-content", "", []);
+                return (new MasterlistController())->projectYmir($request);
             }
         }
     }
@@ -7263,7 +7263,7 @@ class TransactionController extends Controller
 //                        'name' => 'RDFFLFi',
 //                    ],
                     'companyCode' => '0000',
-                    'companyName' => 'RDFFLFi',
+                    'companyName' => 'RDFFLFI',
 //                    'division' => [
 //                        'code' => $accountTitle->company_code,
 //                        'name' => $accountTitle->company_name,
@@ -7305,12 +7305,12 @@ class TransactionController extends Controller
                     'lineAmount' => $accountTitle->entry == 'Credit' ? -abs($accountTitle->amount) : $accountTitle->amount,
                     'voucherJournal' => $item->voucher_no,
                     'accountType' => $accountTitle->accountType->first()->name ?? null,
-                    'drcp' => $accountTitle->entry,
+                    'drcr' => $accountTitle->entry,
                     'assetCode' => "",
                     'asset' => "",
                     'serviceProviderCode' => $item->payableAssociates->id_prefix . ' - ' . $item->payableAssociates->id_no,
                     'serviceProvider' => $item->distributed_name,
-                    'boa' => 'VP',
+                    'boa' => 'Purchases Book',
                     'allocation' => null,
                     'accountGroup' => $accountTitle->accountGroup->first()->name ?? null,
                     'accountSubGroup' => $accountTitle->accountSubGroup->first()->name ?? null,
@@ -7339,9 +7339,9 @@ class TransactionController extends Controller
                     'bankName' => $item->treasuryCheque->pluck('bank_name')->implode(','),
                     'chequeNumber' => $item->treasuryCheque->pluck('cheque_no')->implode(','),
                     'chequeVoucherNumber' => $item->voucher_no,
-                    'boA2' => '',
+                    'boA2' => 'VP',
                     'system' => 'FISTO',
-                    'books' => 'Purchases',
+                    'books' => 'Purchases Book',
                 ];
             });
         });
@@ -7478,7 +7478,7 @@ class TransactionController extends Controller
                 'lineAmount' => $item->entry == 'Credit' ? -abs($item->amount) : $item->amount,
                 'voucherJournal' => $item->voucher_number ?? $item->gj_number,
                 'accountType' => $item->account_titles->first()->greatGrandParents->name ?? null,
-                'drcp' => $item->entry,
+                'drcr' => $item->entry,
                 'assetCode' => "",
                 'asset' => "",
                 'serviceProviderCode' => $item->payableAssociates->first()->id_prefix . ' - ' . $item->payableAssociates->first()->id_no,
@@ -7512,7 +7512,7 @@ class TransactionController extends Controller
                 'bankName' => '',
                 'chequeNumber' => '',
                 'chequeVoucherNumber' => '',
-                'boA2' => "",
+                'boA2' => "VP",
                 'system' => 'FISTO',
                 'books' => 'GJ',
             ];
@@ -7578,12 +7578,12 @@ class TransactionController extends Controller
                     'lineAmount' => $accountTitle->entry == 'Credit' ? -abs($accountTitle->amount) : $accountTitle->amount,
                     'voucherJournal' => "",
                     'accountType' => "",
-                    'drcp' => $accountTitle->entry,
+                    'drcr' => $accountTitle->entry,
                     'assetCode' => "",
                     'asset' => "",
                     'serviceProviderCode' => "",
                     'serviceProvider' => "",
-                    'boa' => 'VP',
+                    'boa' => 'Purchases Book',
                     'allocation' => "",
                     'accountGroup' => "",
                     'accountSubGroup' => "",
@@ -7684,7 +7684,7 @@ class TransactionController extends Controller
 //                    'lineAmount' => $accountTitle->entry == 'Credit' ? -abs($accountTitle->amount) : $accountTitle->amount,
 //                    'voucherJournal' => "",
 //                    'accountType' => "",
-//                    'drcp' => $accountTitle->entry,
+//                    'drcr' => $accountTitle->entry,
 //                    'assetCode' => "",
 //                    'asset' => "",
 //                    'serviceProviderCode' => "",
