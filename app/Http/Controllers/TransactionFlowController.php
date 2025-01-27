@@ -485,6 +485,63 @@ class TransactionFlowController extends Controller
         return $this->resultResponse("update", "Transaction", null);
     }
 
+    public function multipleChequeClear(Request $request) {
+        $chequeDate = $request->input('cheque_date');
+        $cheques = $request->input('cheques');
+
+        foreach ($cheques as $cheque) {
+            if (!isset($cheque['transactions'])) {
+                continue; // Skip this iteration if 'transactions' key is not set
+            }
+
+            $transactions = Transaction::whereIn('id', $cheque['transactions'])->select('id')->get();
+
+            Cheque::where([
+                'bank_id' => $cheque['bank_id'],
+                'cheque_no' => $cheque['cheque_no'],
+            ])->update([
+                'is_cleared' => true,
+                'date_cleared' => date('Y-m-d', strtotime($chequeDate))
+            ]);
+
+            $transactions->each(function ($transaction) use ($cheque) {
+                $clear = $transaction->clear()->create([
+                    'tag_id' => $transaction->id,
+                    'status' => 'clear-clear',
+                    'date_status' => date('Y-m-d'),
+                ]);
+
+                foreach ($cheque['accounts'] as $account) {
+                    $clear->account_title()->create([
+                        'entry' => $account['entry'],
+                        'account_title_id' => $account['account_title']['id'],
+                        'account_title_code' => $account['account_title']['code'],
+                        'account_title_name' => $account['account_title']['name'],
+                        'company_id' => $account['company']['id'],
+                        'company_code' => $account['company']['code'],
+                        'company_name' => $account['company']['name'],
+                        'department_id' => $account['department']['id'],
+                        'department_code' => $account['department']['code'],
+                        'department_name' => $account['department']['name'],
+                        'location_id' => $account['location']['id'],
+                        'location_code' => $account['location']['code'],
+                        'location_name' => $account['location']['name'],
+                        'business_unit_id' => $account['business_unit']['id'] ?? null,
+                        'business_unit_code' => $account['business_unit']['code'] ?? null,
+                        'business_unit_name' => $account['business_unit']['name'] ?? null,
+                        'sub_unit_id' => $account['sub_business_unit']['id'] ?? null,
+                        'sub_unit_code' => $account['sub_business_unit']['code'] ?? null,
+                        'sub_unit_name' => $account['sub_business_unit']['name'] ?? null,
+                        'amount' => $account['amount'],
+                        'transaction_type' => 'new',
+                    ]);
+                }
+            });
+        }
+
+        return $this->resultResponse("update", "Transaction", null);
+    }
+
     function multipleChequeReceiveProcess($process, $transactions) {
 
         foreach ($transactions as $transaction) {

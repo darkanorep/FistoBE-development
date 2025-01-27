@@ -146,6 +146,11 @@ class Transaction extends Model
         return $this->belongsTo(User::class, "distributed_id", "id");
     }
 
+    public function treasuryAssociates()
+    {
+        return $this->belongsTo(User::class, "assigned_id", "id");
+    }
+
     public function supplier()
     {
         return $this->belongsTo(Supplier::class, "supplier_id", "id")
@@ -673,9 +678,9 @@ class Transaction extends Model
             ]);
     }
 
-    public function purchaseOrders()
+    public function receivedReceipts()
     {
-        return $this->hasMany(PurchaseOrders::class, 'transaction_id', 'id');
+        return $this->hasMany(ReceivedReceipt::class, 'transaction_id', 'id');
     }
 
 }

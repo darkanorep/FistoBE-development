@@ -11,14 +11,21 @@ class ReceivedReceipt extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'purchase_order_id',
+        'transaction_id',
+        'rr_id',
         'rr_number',
         'item_code',
         'item_name',
         'price',
+        'reference_no',
         'quantity',
         'uom_code',
         'uom_name'
     ];
+
+    public function purchaseOrders()
+    {
+        return $this->hasMany(PurchaseOrders::class, 'received_receipt_id', 'id');
+    }
 
 }

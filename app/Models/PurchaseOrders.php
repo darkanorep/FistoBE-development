@@ -11,13 +11,30 @@ class PurchaseOrders extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'transaction_id',
+        'received_receipt_id',
         'po_number',
-        'po_description'
+        'po_description',
+        'type_name',
+        'company_id',
+        'company_code',
+        'company_name',
+        'business_unit_id',
+        'business_unit_code',
+        'business_unit_name',
+        'department_id',
+        'department_code',
+        'department_name',
+        'unit_id',
+        'unit_code',
+        'unit_name',
+        'sub_unit_id',
+        'sub_unit_code',
+        'sub_unit_name',
+        'location_id',
+        'location_code',
+        'location_name',
+        'account_title_id',
+        'account_title_code',
+        'account_title_name',
     ];
-
-    public function receivedReceipts()
-    {
-        return $this->hasMany(ReceivedReceipt::class, 'purchase_order_id', 'id');
-    }
 }

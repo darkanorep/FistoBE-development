@@ -115,6 +115,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
             Route::get("department", [MasterlistController::class, "departmentDropdown"]);
             Route::get("associate", [MasterlistController::class, "associateDropdown"]);
             Route::get("treasuries", [MasterlistController::class, "treasuriesDropdown"]);
+            Route::get("users", [MasterlistController::class, "usersDropdown"]);
             Route::get("voucher-code", [MasterlistController::class, "voucherCodeDropdown"]);
             Route::get("account-title-great-grand-parent", [MasterlistController::class, "accountTitleGreatGrandParentsDropdown"]);
             Route::get("account-title-grand-parent", [MasterlistController::class, "accountTitleGrandParentsDropdown"]);
@@ -264,10 +265,15 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         //TREASURY CHEQUE
         Route::patch('treasury-cheques/{id}', [\App\Http\Controllers\TreasuryChequeController::class, "change_status"]);
         Route::resource('treasury-cheques', \App\Http\Controllers\TreasuryChequeController::class);
+
+        //DEBIT USER
+        Route::patch('debit-users/{id}', [\App\Http\Controllers\DebitUserController::class, "change_status"]);
+        Route::resource('debit-users', \App\Http\Controllers\DebitUserController::class);
     });
 
     // USER
     Route::post("users/department-validation/", [UserController::class, "departmentValidation"]);
+    Route::get('debit-users', [\App\Http\Controllers\DebitUserController::class, 'index']);
 
     // COUNTER RECEIPT
 
@@ -286,6 +292,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
     Route::post("transactions/flow/cheque", [TransactionFlowController::class, "multipleCheque"]);
     Route::post("cheques/flow/issue", [TransactionFlowController::class, "multipleChequeDateIssue"]);
     Route::post("cheques/flow/receive", [TransactionFlowController::class, "multipleChequeReceive"]);
+    Route::post("cheques/flow/clear", [TransactionFlowController::class, "multipleChequeClear"]);
 
     // CHEQUES
     Route::get("cheques", [TransactionController::class, "chequeIndex"]);

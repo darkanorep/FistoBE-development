@@ -67,9 +67,13 @@ class TransactionVoucherResource extends JsonResource
                     : $clear_transaction;
             }
 
-            $account_title = $cheque_account_title->isEmpty()
+//            $account_title = $cheque_account_title->isEmpty()
+//                ? $voucher_account_title
+//                : $cheque_account_title;
+
+            $account_title = $voucher_account_title->isNotEmpty()
                 ? $voucher_account_title
-                : $cheque_account_title;
+                : [];
 
             if (!empty($account_title)) {
                 $account_title = $account_title->map(function ($item) {

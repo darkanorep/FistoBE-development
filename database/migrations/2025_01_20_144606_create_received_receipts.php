@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateReceivedReceiptsTable extends Migration
+class CreateReceivedReceipts extends Migration
 {
     /**
      * Run the migrations.
@@ -15,7 +15,7 @@ class CreateReceivedReceiptsTable extends Migration
     {
         Schema::create('received_receipts', function (Blueprint $table) {
             $table->increments('id');
-            $table->foreignId('purchase_order_id');
+            $table->foreignId('transaction_id')->references('id')->on('transactions');
             $table->string('rr_number')->nullable();
             $table->string('item_code')->nullable();
             $table->string('item_name')->nullable();

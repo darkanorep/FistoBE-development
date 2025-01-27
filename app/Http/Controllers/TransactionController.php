@@ -145,7 +145,7 @@ class TransactionController extends Controller
             "treasuryCheque",
             "account_titles",
             "voucher",
-            "purchaseOrders"
+//            "purchaseOrders"
 //            "purchaseOrders.receivedReceipts"
         ])
             //Requesting of Documents
@@ -612,17 +612,17 @@ class TransactionController extends Controller
                         ];
                     })
                     : [],
-                "purchased_orders" => $transaction->purchaseOrders->map(function ($po) {
-                    return [
-                        "po_number" => $po->po_number,
-                        'po_description' => $po->po_description,
-//                        'received_receipts' => $po->receivedReceipts->map(function ($rr) {
-//                            return [
-//                                'rr_no' => $rr->rr_number,
-//                            ];
-//                        })
-                    ];
-                }) ?? [],
+//                "purchased_orders" => $transaction->purchaseOrders->map(function ($po) {
+//                    return [
+//                        "po_number" => $po->po_number,
+//                        'po_description' => $po->po_description,
+////                        'received_receipts' => $po->receivedReceipts->map(function ($rr) {
+////                            return [
+////                                'rr_no' => $rr->rr_number,
+////                            ];
+////                        })
+//                    ];
+//                }) ?? [],
                 'receipt_type' => $transaction->receipt_type,
                 'input_tax' => $transaction->input_tax,
                 'cheques' => $transaction->treasuryCheque->map(function ($item) {
@@ -643,6 +643,7 @@ class TransactionController extends Controller
                 })->values(),
                 'voucher' => [
                     'no' => $transaction->voucher_no,
+                    'month' => $transaction->voucher_month,
                     'accounts' => $transaction->account_titles->map(function ($item) {
                         return [
                             'id' => $item->id,
@@ -713,7 +714,7 @@ class TransactionController extends Controller
             ->with([
                 "supplier",
                 "supplier.supplier_type:id,type as name,transaction_days",
-                "purchaseOrders"
+                "receivedReceipts.purchaseOrders"
             ])
             ->where('id', $id)
            ->select(
@@ -1158,50 +1159,67 @@ class TransactionController extends Controller
                     'rr_no' => $po->rr_group,
                 ];
             })  ?? [];
-//        $purchase_order = $transaction->purchaseOrders->map(function ($item) {
-//            return [
-//                'po_number' => $item->po_number,
-//                'po_description' => $item->po_description,
-//                'received_receipts' => $item->receivedReceipts->map(function ($rr) {
-//                    return [
-//                        'rr_no' => $rr->rr_number,
-//                        'item_code' => $rr->item_code,
-//                        'item_name' => $rr->item_name,
-//                        'quantity' => $rr->quantity,
-//                        'uom' => $rr->uom_name,
-//                        'price' => $rr->price,
-//                    ];
-//                })
-//            ];
-//        }) ?? [];
-        $purchase_order = $transaction->purchaseOrders->map(function ($item) {
+
+        $purchase_order = $transaction->receivedReceipts->map(function ($item) {
             return [
                 'is_new_po' => true,
-                'rr_year_number_id' => $item->receivedReceipts->first()->rr_number,
-                'po_transaction' => [
-                    'po_year_number_id' => $item->po_number,
-                    'po_description' => $item->po_description,
+                'rr_id' => $item->rr_id,
+                'rr_number' => $item->rr_number,
+                'item_code' => $item->item_code,
+                'item_name' => $item->item_name,
+                'price' => $item->price,
+                'reference_no' => $item->reference_no,
+                'quantity_receive' => $item->quantity,
+                'uom' => [
+                    'code' => $item->uom_code,
+                    'name' => $item->uom_name,
                 ],
-                'rr_orders' => $item->receivedReceipts->map(function ($rr) {
+                'purchase_order' => $item->purchaseOrders->map(function ($po) {
                     return [
-                        'item_code' => $rr->item_code,
-                        'item_name' => $rr->item_name,
-                        'quantity_receive' => $rr->quantity,
-                        'order' => [
-                            'item_code' => $rr->item_code,
-                            'item_name' => $rr->item_name,
-                            'price' => $rr->price,
-                            'uom' => [
-                                'code' => $rr->uom_code,
-                                'name' => $rr->uom_name,
-                            ]
-                        ]
+                        'po_number' => $po->po_number,
+                        'po_description' => $po->po_description,
+                        'type_name' => $po->type_name,
+                        'company' => [
+                            'id' => $po->company_id,
+                            'code' => $po->company_code,
+                            'name' => $po->company_name,
+                        ],
+                        'business_unit' => [
+                            'id' => $po->business_unit_id,
+                            'code' => $po->business_unit_code,
+                            'name' => $po->business_unit_name,
+                        ],
+                        'department' => [
+                            'id' => $po->department_id,
+                            'code' => $po->department_code,
+                            'name' => $po->department_name,
+                        ],
+                        'unit' => [
+                            'id' => $po->unit_id,
+                            'code' => $po->unit_code,
+                            'name' => $po->unit_name,
+                        ],
+                        'sub_unit' => [
+                            'id' => $po->sub_unit_id,
+                            'code' => $po->sub_unit_code,
+                            'name' => $po->sub_unit_name,
+                        ],
+                        'location' => [
+                            'id' => $po->location_id,
+                            'code' => $po->location_code,
+                            'name' => $po->location_name,
+                        ],
+                        'account_title' => [
+                            'id' => $po->account_title_id,
+                            'code' => $po->account_title_code,
+                            'name' => $po->account_title_name,
+                        ],
                     ];
-                })
+                }),
             ];
         }) ?? [];
-        $prm_group = $prm_group ?? [];
 
+        $prm_group = $prm_group ?? [];
 
         $autoDebit_group = $transaction->auto_debit->map(function ($autoDebit) {
             return [
@@ -1659,7 +1677,7 @@ class TransactionController extends Controller
         $isNew = null;
         $po_total_amount = 0;
 
-        if (!empty($fields["po_group"])) {
+        if (!empty($fields["po_group"]) || !empty($fields['purchase_order'])) {
             $check_po = POBatch::whereIn("po_no", collect($fields["po_group"])->pluck("no"))
                 ->select("created_at")
                 ->get()
@@ -1901,17 +1919,67 @@ class TransactionController extends Controller
                                 }
                             }
 
-                            $lastRequestId = POBatch::where("po_no", last($fields["po_group"])["no"])
-                                ->pluck("request_id")
-                                ->last();
+                            if (!empty($fields["po_group"])) {
+                                $lastRequestId = POBatch::where("po_no", last($fields["po_group"])["no"])
+                                    ->pluck("request_id")
+                                    ->last();
 
-                            if ($lastRequestId) {
-                                Transaction::where("company_id", $fields["document"]["company"]["id"])
-                                    ->where("request_id", $lastRequestId)
-                                    ->update([
-                                        "is_not_editable" => true,
-                                        "updated_at" => DB::raw("updated_at"),
-                                    ]);
+                                if ($lastRequestId) {
+                                    Transaction::where("company_id", $fields["document"]["company"]["id"])
+                                        ->where("request_id", $lastRequestId)
+                                        ->update([
+                                            "is_not_editable" => true,
+                                            "updated_at" => DB::raw("updated_at"),
+                                        ]);
+                                }
+                            }
+
+                            if (!empty($fields['purchase_order'])) {
+                                foreach ($fields['purchase_order'] as $rr) {
+                                    foreach ($rr['rr_orders'] as $order) {
+                                        $rrTransactions = $newTransaction->receivedReceipts()->create([
+                                            'rr_id' => $rr['rr_id'] ?? null,
+                                            'rr_number' => $rr['rr_number'] ?? null,
+                                            'item_code' => $order['item_code'] ?? null,
+                                            'item_name' => $order['item_name'] ?? null,
+                                            'price' => $order['price'] ?? 0,
+                                            'reference_no' => $order['reference_no'] ?? null,
+                                            'quantity' => $order['quantity_receive'] ?? 0,
+                                            'uom_code' => $order['uom_code'] ?? null,
+                                            'uom_name' => $order['uom_name'] ?? null,
+                                        ]);
+
+
+                                        foreach ($rr['purchase_orders'] as $purchaseOrder) {
+                                            $rrTransactions->purchaseOrders()->create([
+                                                'po_number' => $purchaseOrder['po_number'] ?? null,
+                                                'po_description' => $purchaseOrder['po_description'] ?? null,
+                                                'type_name' => $purchaseOrder['type_name'] ?? null,
+                                                'company_id' => $purchaseOrder['company']['id'] ?? null,
+                                                'company_code' => $purchaseOrder['company']['code'] ?? null,
+                                                'company_name' => $purchaseOrder['company']['name'] ?? null,
+                                                'business_unit_id' => $purchaseOrder['business_unit']['id'] ?? null,
+                                                'business_unit_code' => $purchaseOrder['business_unit']['code'] ?? null,
+                                                'business_unit_name' => $purchaseOrder['business_unit']['name'] ?? null,
+                                                'department_id' => $purchaseOrder['department']['id'] ?? null,
+                                                'department_code' => $purchaseOrder['department']['code'] ?? null,
+                                                'department_name' => $purchaseOrder['department']['name'] ?? null,
+                                                'unit_id' => $purchaseOrder['unit']['id'] ?? null,
+                                                'unit_code' => $purchaseOrder['unit']['code'] ?? null,
+                                                'unit_name' => $purchaseOrder['unit']['name'] ?? null,
+                                                'sub_unit_id' => $purchaseOrder['sub_unit']['id'] ?? null,
+                                                'sub_unit_code' => $purchaseOrder['sub_unit']['code'] ?? null,
+                                                'sub_unit_name' => $purchaseOrder['sub_unit']['name'] ?? null,
+                                                'location_id' => $purchaseOrder['location']['id'] ?? null,
+                                                'location_code' => $purchaseOrder['location']['code'] ?? null,
+                                                'location_name' => $purchaseOrder['location']['name'] ?? null,
+                                                'account_title_id' => $purchaseOrder['account_title']['id'] ?? null,
+                                                'account_title_code' => $purchaseOrder['account_title']['code'] ?? null,
+                                                'account_title_name' => $purchaseOrder['account_title']['name'] ?? null,
+                                            ]);
+                                        }
+                                    }
+                                }
                             }
 
                             return $this->resultResponse("save", "Transaction", []);
@@ -1967,6 +2035,54 @@ class TransactionController extends Controller
                             );
                         }
 
+                        if (!empty($fields['purchase_order'])) {
+                            foreach ($fields['purchase_order'] as $rr) {
+                                foreach ($rr['rr_orders'] as $order) {
+                                    $rrTransactions = $transaction->receivedReceipts()->create([
+                                        'rr_id' => $rr['rr_id'] ?? null,
+                                        'rr_number' => $rr['rr_number'] ?? null,
+                                        'item_code' => $order['item_code'] ?? null,
+                                        'item_name' => $order['item_name'] ?? null,
+                                        'price' => $order['price'] ?? 0,
+                                        'reference_no' => $order['reference_no'] ?? null,
+                                        'quantity' => $order['quantity_receive'] ?? 0,
+                                        'uom_code' => $order['uom_code'] ?? null,
+                                        'uom_name' => $order['uom_name'] ?? null,
+                                    ]);
+
+
+                                    foreach ($rr['purchase_orders'] as $purchaseOrder) {
+                                        $rrTransactions->purchaseOrders()->create([
+                                            'po_number' => $purchaseOrder['po_number'] ?? null,
+                                            'po_description' => $purchaseOrder['po_description'] ?? null,
+                                            'type_name' => $purchaseOrder['type_name'] ?? null,
+                                            'company_id' => $purchaseOrder['company']['id'] ?? null,
+                                            'company_code' => $purchaseOrder['company']['code'] ?? null,
+                                            'company_name' => $purchaseOrder['company']['name'] ?? null,
+                                            'business_unit_id' => $purchaseOrder['business_unit']['id'] ?? null,
+                                            'business_unit_code' => $purchaseOrder['business_unit']['code'] ?? null,
+                                            'business_unit_name' => $purchaseOrder['business_unit']['name'] ?? null,
+                                            'department_id' => $purchaseOrder['department']['id'] ?? null,
+                                            'department_code' => $purchaseOrder['department']['code'] ?? null,
+                                            'department_name' => $purchaseOrder['department']['name'] ?? null,
+                                            'unit_id' => $purchaseOrder['unit']['id'] ?? null,
+                                            'unit_code' => $purchaseOrder['unit']['code'] ?? null,
+                                            'unit_name' => $purchaseOrder['unit']['name'] ?? null,
+                                            'sub_unit_id' => $purchaseOrder['sub_unit']['id'] ?? null,
+                                            'sub_unit_code' => $purchaseOrder['sub_unit']['code'] ?? null,
+                                            'sub_unit_name' => $purchaseOrder['sub_unit']['name'] ?? null,
+                                            'location_id' => $purchaseOrder['location']['id'] ?? null,
+                                            'location_code' => $purchaseOrder['location']['code'] ?? null,
+                                            'location_name' => $purchaseOrder['location']['name'] ?? null,
+                                            'account_title_id' => $purchaseOrder['account_title']['id'] ?? null,
+                                            'account_title_code' => $purchaseOrder['account_title']['code'] ?? null,
+                                            'account_title_name' => $purchaseOrder['account_title']['name'] ?? null,
+                                        ]);
+                                    }
+                                }
+                            }
+                        }
+
                         if (isset($transaction->transaction_id)) {
                             return $this->resultResponse("save", "Transaction", []);
                         }
@@ -1977,11 +2093,11 @@ class TransactionController extends Controller
                 break;
 
             case 5: //Contractor's Billing
-                if (empty($fields["po_group"])) {
-                    $errorMessage = GenericMethod::resultLaravelFormat("po_group", ["PO group required"]);
-
-                    return $this->resultResponse("invalid", "", $errorMessage);
-                }
+//                if (empty($fields["po_group"])) {
+//                    $errorMessage = GenericMethod::resultLaravelFormat("po_group", ["PO group required"]);
+//
+//                    return $this->resultResponse("invalid", "", $errorMessage);
+//                }
 
                 $transaction_id = isset($transaction_id) ? $transaction_id : null;
 
@@ -2003,16 +2119,16 @@ class TransactionController extends Controller
 
                 $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
 
-                $errorMessage = GenericMethod::validateWith1PesoDifference(
-                    "po_group.amount",
-                    "Document",
-                    $fields["document"]["amount"],
-                    $po_total_amount
-                );
-
-                if (!empty($errorMessage)) {
-                    return GenericMethod::resultResponse("invalid", "", $errorMessage);
-                }
+//                $errorMessage = GenericMethod::validateWith1PesoDifference(
+//                    "po_group.amount",
+//                    "Document",
+//                    $fields["document"]["amount"],
+//                    $po_total_amount
+//                );
+//
+//                if (!empty($errorMessage)) {
+//                    return GenericMethod::resultResponse("invalid", "", $errorMessage);
+//                }
 
                 $transaction = GenericMethod::insertTransaction(
                     $transaction_id,
@@ -2034,6 +2150,54 @@ class TransactionController extends Controller
                     $po_total_amount,
                     strtoupper($fields["document"]["payment_type"])
                 );
+
+                if (!empty($fields['purchase_order'])) {
+                    foreach ($fields['purchase_order'] as $rr) {
+                        foreach ($rr['rr_orders'] as $order) {
+                            $rrTransactions = $transaction->receivedReceipts()->create([
+                                'rr_id' => $rr['rr_id'] ?? null,
+                                'rr_number' => $rr['rr_number'] ?? null,
+                                'item_code' => $order['item_code'] ?? null,
+                                'item_name' => $order['item_name'] ?? null,
+                                'price' => $order['price'] ?? 0,
+                                'reference_no' => $order['reference_no'] ?? null,
+                                'quantity' => $order['quantity_receive'] ?? 0,
+                                'uom_code' => $order['uom_code'] ?? null,
+                                'uom_name' => $order['uom_name'] ?? null,
+                            ]);
+
+
+                            foreach ($rr['purchase_orders'] as $purchaseOrder) {
+                                $rrTransactions->purchaseOrders()->create([
+                                    'po_number' => $purchaseOrder['po_number'] ?? null,
+                                    'po_description' => $purchaseOrder['po_description'] ?? null,
+                                    'type_name' => $purchaseOrder['type_name'] ?? null,
+                                    'company_id' => $purchaseOrder['company']['id'] ?? null,
+                                    'company_code' => $purchaseOrder['company']['code'] ?? null,
+                                    'company_name' => $purchaseOrder['company']['name'] ?? null,
+                                    'business_unit_id' => $purchaseOrder['business_unit']['id'] ?? null,
+                                    'business_unit_code' => $purchaseOrder['business_unit']['code'] ?? null,
+                                    'business_unit_name' => $purchaseOrder['business_unit']['name'] ?? null,
+                                    'department_id' => $purchaseOrder['department']['id'] ?? null,
+                                    'department_code' => $purchaseOrder['department']['code'] ?? null,
+                                    'department_name' => $purchaseOrder['department']['name'] ?? null,
+                                    'unit_id' => $purchaseOrder['unit']['id'] ?? null,
+                                    'unit_code' => $purchaseOrder['unit']['code'] ?? null,
+                                    'unit_name' => $purchaseOrder['unit']['name'] ?? null,
+                                    'sub_unit_id' => $purchaseOrder['sub_unit']['id'] ?? null,
+                                    'sub_unit_code' => $purchaseOrder['sub_unit']['code'] ?? null,
+                                    'sub_unit_name' => $purchaseOrder['sub_unit']['name'] ?? null,
+                                    'location_id' => $purchaseOrder['location']['id'] ?? null,
+                                    'location_code' => $purchaseOrder['location']['code'] ?? null,
+                                    'location_name' => $purchaseOrder['location']['name'] ?? null,
+                                    'account_title_id' => $purchaseOrder['account_title']['id'] ?? null,
+                                    'account_title_code' => $purchaseOrder['account_title']['code'] ?? null,
+                                    'account_title_name' => $purchaseOrder['account_title']['name'] ?? null,
+                                ]);
+                            }
+                        }
+                    }
+                }
 
                 if (isset($transaction->transaction_id)) {
                     return $this->resultResponse("save", "Transaction", []);
@@ -2195,19 +2359,67 @@ class TransactionController extends Controller
                                         "rr_group" => $po["rr_no"],
                                     ]);
                                 }
+
+                                $lastRequestId = POBatch::where("po_no", last($fields["po_group"])["no"])
+                                    ->pluck("request_id")
+                                    ->last();
+
+                                if ($lastRequestId) {
+                                    Transaction::where("company_id", $fields["document"]["company"]["id"])
+                                        ->where("request_id", $lastRequestId)
+                                        ->update([
+                                            "is_not_editable" => true,
+                                            "updated_at" => DB::raw("updated_at"),
+                                        ]);
+                                }
                             }
 
-                            $lastRequestId = POBatch::where("po_no", last($fields["po_group"])["no"])
-                                ->pluck("request_id")
-                                ->last();
+                            if (!empty($fields['purchase_order'])) {
+                                foreach ($fields['purchase_order'] as $rr) {
+                                    foreach ($rr['rr_orders'] as $order) {
+                                        $rrTransactions = $transaction->receivedReceipts()->create([
+                                            'rr_id' => $rr['rr_id'] ?? null,
+                                            'rr_number' => $rr['rr_number'] ?? null,
+                                            'item_code' => $order['item_code'] ?? null,
+                                            'item_name' => $order['item_name'] ?? null,
+                                            'price' => $order['price'] ?? 0,
+                                            'reference_no' => $order['reference_no'] ?? null,
+                                            'quantity' => $order['quantity_receive'] ?? 0,
+                                            'uom_code' => $order['uom_code'] ?? null,
+                                            'uom_name' => $order['uom_name'] ?? null,
+                                        ]);
 
-                            if ($lastRequestId) {
-                                Transaction::where("company_id", $fields["document"]["company"]["id"])
-                                    ->where("request_id", $lastRequestId)
-                                    ->update([
-                                        "is_not_editable" => true,
-                                        "updated_at" => DB::raw("updated_at"),
-                                    ]);
+
+                                        foreach ($rr['purchase_orders'] as $purchaseOrder) {
+                                            $rrTransactions->purchaseOrders()->create([
+                                                'po_number' => $purchaseOrder['po_number'] ?? null,
+                                                'po_description' => $purchaseOrder['po_description'] ?? null,
+                                                'type_name' => $purchaseOrder['type_name'] ?? null,
+                                                'company_id' => $purchaseOrder['company']['id'] ?? null,
+                                                'company_code' => $purchaseOrder['company']['code'] ?? null,
+                                                'company_name' => $purchaseOrder['company']['name'] ?? null,
+                                                'business_unit_id' => $purchaseOrder['business_unit']['id'] ?? null,
+                                                'business_unit_code' => $purchaseOrder['business_unit']['code'] ?? null,
+                                                'business_unit_name' => $purchaseOrder['business_unit']['name'] ?? null,
+                                                'department_id' => $purchaseOrder['department']['id'] ?? null,
+                                                'department_code' => $purchaseOrder['department']['code'] ?? null,
+                                                'department_name' => $purchaseOrder['department']['name'] ?? null,
+                                                'unit_id' => $purchaseOrder['unit']['id'] ?? null,
+                                                'unit_code' => $purchaseOrder['unit']['code'] ?? null,
+                                                'unit_name' => $purchaseOrder['unit']['name'] ?? null,
+                                                'sub_unit_id' => $purchaseOrder['sub_unit']['id'] ?? null,
+                                                'sub_unit_code' => $purchaseOrder['sub_unit']['code'] ?? null,
+                                                'sub_unit_name' => $purchaseOrder['sub_unit']['name'] ?? null,
+                                                'location_id' => $purchaseOrder['location']['id'] ?? null,
+                                                'location_code' => $purchaseOrder['location']['code'] ?? null,
+                                                'location_name' => $purchaseOrder['location']['name'] ?? null,
+                                                'account_title_id' => $purchaseOrder['account_title']['id'] ?? null,
+                                                'account_title_code' => $purchaseOrder['account_title']['code'] ?? null,
+                                                'account_title_name' => $purchaseOrder['account_title']['name'] ?? null,
+                                            ]);
+                                        }
+                                    }
+                                }
                             }
 
                             if (isset($transaction->transaction_id)) {
@@ -2385,6 +2597,53 @@ class TransactionController extends Controller
                         );
                     }
 
+                    if (!empty($fields['purchase_order'])) {
+                        foreach ($fields['purchase_order'] as $rr) {
+                            foreach ($rr['rr_orders'] as $order) {
+                                $rrTransactions = $transaction->receivedReceipts()->create([
+                                    'rr_id' => $rr['rr_id'] ?? null,
+                                    'rr_number' => $rr['rr_number'] ?? null,
+                                    'item_code' => $order['item_code'] ?? null,
+                                    'item_name' => $order['item_name'] ?? null,
+                                    'price' => $order['price'] ?? 0,
+                                    'reference_no' => $order['reference_no'] ?? null,
+                                    'quantity' => $order['quantity_receive'] ?? 0,
+                                    'uom_code' => $order['uom_code'] ?? null,
+                                    'uom_name' => $order['uom_name'] ?? null,
+                                ]);
+
+
+                                foreach ($rr['purchase_orders'] as $purchaseOrder) {
+                                    $rrTransactions->purchaseOrders()->create([
+                                        'po_number' => $purchaseOrder['po_number'] ?? null,
+                                        'po_description' => $purchaseOrder['po_description'] ?? null,
+                                        'type_name' => $purchaseOrder['type_name'] ?? null,
+                                        'company_id' => $purchaseOrder['company']['id'] ?? null,
+                                        'company_code' => $purchaseOrder['company']['code'] ?? null,
+                                        'company_name' => $purchaseOrder['company']['name'] ?? null,
+                                        'business_unit_id' => $purchaseOrder['business_unit']['id'] ?? null,
+                                        'business_unit_code' => $purchaseOrder['business_unit']['code'] ?? null,
+                                        'business_unit_name' => $purchaseOrder['business_unit']['name'] ?? null,
+                                        'department_id' => $purchaseOrder['department']['id'] ?? null,
+                                        'department_code' => $purchaseOrder['department']['code'] ?? null,
+                                        'department_name' => $purchaseOrder['department']['name'] ?? null,
+                                        'unit_id' => $purchaseOrder['unit']['id'] ?? null,
+                                        'unit_code' => $purchaseOrder['unit']['code'] ?? null,
+                                        'unit_name' => $purchaseOrder['unit']['name'] ?? null,
+                                        'sub_unit_id' => $purchaseOrder['sub_unit']['id'] ?? null,
+                                        'sub_unit_code' => $purchaseOrder['sub_unit']['code'] ?? null,
+                                        'sub_unit_name' => $purchaseOrder['sub_unit']['name'] ?? null,
+                                        'location_id' => $purchaseOrder['location']['id'] ?? null,
+                                        'location_code' => $purchaseOrder['location']['code'] ?? null,
+                                        'location_name' => $purchaseOrder['location']['name'] ?? null,
+                                        'account_title_id' => $purchaseOrder['account_title']['id'] ?? null,
+                                        'account_title_code' => $purchaseOrder['account_title']['code'] ?? null,
+                                        'account_title_name' => $purchaseOrder['account_title']['name'] ?? null,
+                                    ]);
+                                }
+                            }
+                        }
+                    }
 
                     if (isset($transaction->transaction_id)) {
                         return $this->resultResponse("save", "Transaction", []);
@@ -2621,6 +2880,54 @@ class TransactionController extends Controller
                                 ]);
                         }
 
+                        if (!empty($fields['purchase_order'])) {
+                            foreach ($fields['purchase_order'] as $rr) {
+                                foreach ($rr['rr_orders'] as $order) {
+                                    $rrTransactions = $transaction->receivedReceipts()->create([
+                                        'rr_id' => $rr['rr_id'] ?? null,
+                                        'rr_number' => $rr['rr_number'] ?? null,
+                                        'item_code' => $order['item_code'] ?? null,
+                                        'item_name' => $order['item_name'] ?? null,
+                                        'price' => $order['price'] ?? 0,
+                                        'reference_no' => $order['reference_no'] ?? null,
+                                        'quantity' => $order['quantity_receive'] ?? 0,
+                                        'uom_code' => $order['uom_code'] ?? null,
+                                        'uom_name' => $order['uom_name'] ?? null,
+                                    ]);
+
+
+                                    foreach ($rr['purchase_orders'] as $purchaseOrder) {
+                                        $rrTransactions->purchaseOrders()->create([
+                                            'po_number' => $purchaseOrder['po_number'] ?? null,
+                                            'po_description' => $purchaseOrder['po_description'] ?? null,
+                                            'type_name' => $purchaseOrder['type_name'] ?? null,
+                                            'company_id' => $purchaseOrder['company']['id'] ?? null,
+                                            'company_code' => $purchaseOrder['company']['code'] ?? null,
+                                            'company_name' => $purchaseOrder['company']['name'] ?? null,
+                                            'business_unit_id' => $purchaseOrder['business_unit']['id'] ?? null,
+                                            'business_unit_code' => $purchaseOrder['business_unit']['code'] ?? null,
+                                            'business_unit_name' => $purchaseOrder['business_unit']['name'] ?? null,
+                                            'department_id' => $purchaseOrder['department']['id'] ?? null,
+                                            'department_code' => $purchaseOrder['department']['code'] ?? null,
+                                            'department_name' => $purchaseOrder['department']['name'] ?? null,
+                                            'unit_id' => $purchaseOrder['unit']['id'] ?? null,
+                                            'unit_code' => $purchaseOrder['unit']['code'] ?? null,
+                                            'unit_name' => $purchaseOrder['unit']['name'] ?? null,
+                                            'sub_unit_id' => $purchaseOrder['sub_unit']['id'] ?? null,
+                                            'sub_unit_code' => $purchaseOrder['sub_unit']['code'] ?? null,
+                                            'sub_unit_name' => $purchaseOrder['sub_unit']['name'] ?? null,
+                                            'location_id' => $purchaseOrder['location']['id'] ?? null,
+                                            'location_code' => $purchaseOrder['location']['code'] ?? null,
+                                            'location_name' => $purchaseOrder['location']['name'] ?? null,
+                                            'account_title_id' => $purchaseOrder['account_title']['id'] ?? null,
+                                            'account_title_code' => $purchaseOrder['account_title']['code'] ?? null,
+                                            'account_title_name' => $purchaseOrder['account_title']['name'] ?? null,
+                                        ]);
+                                    }
+                                }
+                            }
+                        }
+
                         return $this->resultResponse("save", "Transaction", []);
                     }
                 }
@@ -2655,27 +2962,6 @@ class TransactionController extends Controller
                     return $this->resultResponse("save", "Transaction", []);
                 }
                 break;
-        }
-
-        if (!empty($fields['purchase_order'])) {
-            foreach ($fields['purchase_order'] as $po) {
-                $purchaseOrder = $transaction->purchaseOrders()->create([
-                    'po_number' => $po['po_number'],
-                    'po_description' => $po['po_description'],
-                ]);
-
-                foreach($po['rr_orders'] as $rr_order) {
-                    $purchaseOrder->receivedReceipts()->create([
-                        'rr_number' => $po['rr_number'],
-                        'item_code' => $rr_order['item_code'],
-                        'item_name' => $rr_order['item_name'],
-                        'price' => $rr_order['price'],
-                        'quantity' => $rr_order['quantity_receive'],
-                        'uom_code' => $rr_order['uom_code'],
-                        'uom_name' => $rr_order['uom_name'],
-                    ]);
-                }
-            }
         }
 
 //        return $this->resultResponse("save", "Transaction", []);
@@ -2855,10 +3141,10 @@ class TransactionController extends Controller
                         GenericMethod::documentNoValidationUpdate($request["document"]["no"], $id);
 
                         if (!empty($fields["po_group"])) {
-                            if (empty($fields["po_group"])) {
-                                $errorMessage = GenericMethod::resultLaravelFormat("po_group", ["PO group required"]);
-                                return $this->resultResponse("invalid", "", $errorMessage);
-                            }
+//                            if (empty($fields["po_group"])) {
+//                                $errorMessage = GenericMethod::resultLaravelFormat("po_group", ["PO group required"]);
+//                                return $this->resultResponse("invalid", "", $errorMessage);
+//                            }
 
                             $duplicatePO = GenericMethod::validatePOFullUpdate(
                                 $fields["document"]["company"]["id"],
@@ -2915,10 +3201,10 @@ class TransactionController extends Controller
                 break;
 
             case 5: //Contractor's Billing
-                if (empty($fields["po_group"])) {
-                    $errorMessage = GenericMethod::resultLaravelFormat("po_group", ["PO group required"]);
-                    return $this->resultResponse("invalid", "", $errorMessage);
-                }
+//                if (empty($fields["po_group"])) {
+//                    $errorMessage = GenericMethod::resultLaravelFormat("po_group", ["PO group required"]);
+//                    return $this->resultResponse("invalid", "", $errorMessage);
+//                }
 
                 $transaction_id = isset($transaction_id) ? $transaction_id : null;
                 $capex_no = isset($fields["document"]["capex_no"]) ? $fields["document"]["capex_no"] : null;
@@ -3602,31 +3888,58 @@ class TransactionController extends Controller
                 break;
         }
 
-        if (!empty($fields['purchase_order'])) {
-            $currentTransaction->purchaseOrders()->each(function ($purchaseOrder) {
-                $purchaseOrder->receivedReceipts()->forceDelete();
-            });
-            $currentTransaction->purchaseOrders()->forceDelete();
-
-            foreach ($fields['purchase_order'] as $po) {
-                $purchaseOrder = $currentTransaction->purchaseOrders()->create([
-                    'po_number' => $po['po_number'],
-                    'po_description' => $po['po_description'],
-                ]);
-
-                foreach($po['rr_orders'] as $rr_order) {
-                    $purchaseOrder->receivedReceipts()->create([
-                        'rr_number' => $po['rr_number'],
-                        'item_code' => $rr_order['item_code'],
-                        'item_name' => $rr_order['item_name'],
-                        'price' => $rr_order['price'],
-                        'quantity' => $rr_order['quantity_receive'],
-                        'uom_code' => $rr_order['uom_code'],
-                        'uom_name' => $rr_order['uom_name'],
-                    ]);
-                }
-            }
-        }
+//        if (!empty($fields['purchase_order'])) {
+//            $currentTransaction->receivedReceipts()->each(function ($purchaseOrder) {
+//                $purchaseOrder->purchaseOrders()->forceDelete();
+//            });
+//            $currentTransaction->receivedReceipts()->forceDelete();
+//
+//            foreach ($fields['purchase_order'] as $rr) {
+//                foreach ($rr['rr_orders'] as $order) {
+//                    $rrTransactions = $currentTransaction->receivedReceipts()->create([
+//                        'rr_id' => $rr['rr_id'] ?? null,
+//                        'rr_number' => $rr['rr_number'] ?? null,
+//                        'item_code' => $order['item_code'] ?? null,
+//                        'item_name' => $order['item_name'] ?? null,
+//                        'price' => $order['price'] ?? 0,
+//                        'reference_no' => $order['reference_no'] ?? null,
+//                        'quantity' => $order['quantity_receive'] ?? 0,
+//                        'uom_code' => $order['uom_code'] ?? null,
+//                        'uom_name' => $order['uom_name'] ?? null,
+//                    ]);
+//
+//
+//                    foreach ($rr['purchase_orders'] as $purchaseOrder) {
+//                        $rrTransactions->purchaseOrders()->create([
+//                            'po_number' => $purchaseOrder['po_number'] ?? null,
+//                            'po_description' => $purchaseOrder['po_description'] ?? null,
+//                            'type_name' => $purchaseOrder['type_name'] ?? null,
+//                            'company_id' => $purchaseOrder['company']['id'] ?? null,
+//                            'company_code' => $purchaseOrder['company']['code'] ?? null,
+//                            'company_name' => $purchaseOrder['company']['name'] ?? null,
+//                            'business_unit_id' => $purchaseOrder['business_unit']['id'] ?? null,
+//                            'business_unit_code' => $purchaseOrder['business_unit']['code'] ?? null,
+//                            'business_unit_name' => $purchaseOrder['business_unit']['name'] ?? null,
+//                            'department_id' => $purchaseOrder['department']['id'] ?? null,
+//                            'department_code' => $purchaseOrder['department']['code'] ?? null,
+//                            'department_name' => $purchaseOrder['department']['name'] ?? null,
+//                            'unit_id' => $purchaseOrder['unit']['id'] ?? null,
+//                            'unit_code' => $purchaseOrder['unit']['code'] ?? null,
+//                            'unit_name' => $purchaseOrder['unit']['name'] ?? null,
+//                            'sub_unit_id' => $purchaseOrder['sub_unit']['id'] ?? null,
+//                            'sub_unit_code' => $purchaseOrder['sub_unit']['code'] ?? null,
+//                            'sub_unit_name' => $purchaseOrder['sub_unit']['name'] ?? null,
+//                            'location_id' => $purchaseOrder['location']['id'] ?? null,
+//                            'location_code' => $purchaseOrder['location']['code'] ?? null,
+//                            'location_name' => $purchaseOrder['location']['name'] ?? null,
+//                            'account_title_id' => $purchaseOrder['account_title']['id'] ?? null,
+//                            'account_title_code' => $purchaseOrder['account_title']['code'] ?? null,
+//                            'account_title_name' => $purchaseOrder['account_title']['name'] ?? null,
+//                        ]);
+//                    }
+//                }
+//            }
+//        }
 
         return $this->resultResponse("update", "Transaction", []);
         // return $this->resultResponse("not-exist", "Document number", []);
@@ -4679,6 +4992,7 @@ class TransactionController extends Controller
         $status = $request->input("state", "request");
         $rows = $request->input("rows", 10);
         $search = $request->input("search");
+        $search = str_replace(',', '', $search);
         $tag_search = str_replace("tag#", "", $search);
         $suppliers = json_decode($request->input("suppliers")) ?? [];
         $companies = $this->getRequestData($request, "companies");
@@ -4691,7 +5005,22 @@ class TransactionController extends Controller
             : null;
         $is_confidential = $request->input("is_confidential", 0);
 
-        $cheques  = Cheque::query();
+        $cheques  = Cheque::query()->where(function ($query) use ($search) {
+            $query->whereHas("transaction", function ($query) use ($search) {
+                $query->whereLike([
+                    "remarks",
+                    "voucher_no",
+                    "tag_no",
+                ], $search);
+            })
+                ->orWhere(function ($query) use ($search){
+                    $query->whereLike([
+                        "bank_name",
+                        "cheque_no",
+                        "cheque_amount",
+                    ], $search);
+                });
+        });
         $cheques = $cheques->with([
             'bank' => function ($query) {
                 $query->with([
@@ -4867,12 +5196,13 @@ class TransactionController extends Controller
                                     "discharge-discharge",
                                 ]);
                             });
-                    })->orWhere(function ($query) {
-                        $query->whereHas('transaction', function ($query) {
-                            return $query->where('is_mc', true)
-                                ->whereIn('status', ['issue-issue']);
-                        });
                     });
+//                    ->orWhere(function ($query) {
+//                        $query->whereHas('transaction', function ($query) {
+//                            return $query->where('is_mc', true)
+//                                ->whereIn('status', ['issue-issue']);
+//                        });
+//                    });
             })
             ->when($status == "clear-receive", function ($query) {
                 $query->whereHas("transaction", function ($query) {
@@ -4960,65 +5290,64 @@ class TransactionController extends Controller
             ->groupBy("bank_name", "cheque_no", "bank_id")
 
             // Search
-            ->where(function ($query) use ($search) {
-                $query->whereHas("transaction", function ($query) use ($search) {
-                    $query->whereLike([
-                        "remarks",
-                        "voucher_no",
-                        "tag_no",
-                    ], $search);
-                })
-                    ->orWhere(function ($query) use ($search){
-                        $query->whereLike([
-                            "bank_name",
-                            "cheque_no"
-                        ], $search);
-
-                    });
-            })
+//            ->where(function ($query) use ($search) {
+//                $query->whereHas("transaction", function ($query) use ($search) {
+//                    $query->whereLike([
+//                        "remarks",
+//                        "voucher_no",
+//                        "tag_no",
+//                    ], $search);
+//                })
+//                    ->orWhere(function ($query) use ($search){
+//                        $query->whereLike([
+//                            "bank_name",
+//                            "cheque_no"
+//                        ], $search);
+//                    });
+//            })
             ->when(count($suppliers), function ($query) use ($suppliers) {
                 $query->whereHas("transaction", function ($query) use ($suppliers) {
                     return $query->whereIn("supplier_id", $suppliers);
                 });
             })
 
-                //Document Types Filter
-                ->when(count($document_ids), function ($query) use ($document_ids) {
-                    $query->whereHas("transaction", function ($query) use ($document_ids) {
-                        return $query->whereIn("document_id", $document_ids);
-                    });
-                })
+            //Document Types Filter
+            ->when(count($document_ids), function ($query) use ($document_ids) {
+                $query->whereHas("transaction", function ($query) use ($document_ids) {
+                    return $query->whereIn("document_id", $document_ids);
+                });
+            })
 
-                //Organization Filter
-                ->when(!empty($companies), function ($query) use ($companies) {
-                    return $query->whereHas("transaction", function ($query) use ($companies) {
-                        return $query->whereIn("company_id", $companies);
-                    });
-                })
+            //Organization Filter
+            ->when(!empty($companies), function ($query) use ($companies) {
+                return $query->whereHas("transaction", function ($query) use ($companies) {
+                    return $query->whereIn("company_id", $companies);
+                });
+            })
 
-                //Confidential
-                ->when($status != in_array($status, [
-                        'pending-audit',
-                        'audit-receive',
-                        'audit-audit',
-                        'pending-executive',
-                        'executive-receive',
-                        'executive-executive',
-                        'pending-issue',
-                        'issue-receive',
-                        'issue-issue',
-                        'pending-clear'
-                    ]), function ($query) use ($is_confidential) {
-                    $query->when($is_confidential == 1, function ($query) {
-                        $query->whereHas('transaction', function ($query) {
-                            $query->where('is_confidential', 1);
-                        });
-                    }, function ($query) {
-                        $query->whereHas('transaction', function ($query) {
-                            $query->where('is_confidential', 0);
-                        });
+            //Confidential
+            ->when($status != in_array($status, [
+                    'pending-audit',
+                    'audit-receive',
+                    'audit-audit',
+                    'pending-executive',
+                    'executive-receive',
+                    'executive-executive',
+                    'pending-issue',
+                    'issue-receive',
+                    'issue-issue',
+                    'pending-clear'
+                ]), function ($query) use ($is_confidential) {
+                $query->when($is_confidential == 1, function ($query) {
+                    $query->whereHas('transaction', function ($query) {
+                        $query->where('is_confidential', 1);
                     });
-                })
+                }, function ($query) {
+                    $query->whereHas('transaction', function ($query) {
+                        $query->where('is_confidential', 0);
+                    });
+                });
+            })
             ->orderBy("latest_updated_at", "desc")
             ->paginate((int)$rows);
 
@@ -6607,6 +6936,7 @@ class TransactionController extends Controller
             ->withTrashed(function ($query) {
                 $query->where('deleted_at', '=', '2024-08-28 00:00:00');
             })
+            ->where('status', '!=', 'void')
             ->select(
                 'id',
                 'tag_no',
@@ -6645,7 +6975,7 @@ class TransactionController extends Controller
                     ],
                     'company' => [
                         'code' => '0000',
-                        'name' => 'RDFFLFi',
+                        'name' => 'RDF FLFI',
                     ],
                     'division' => [
                         'code' => $accountTitle->company_code,
@@ -7201,7 +7531,10 @@ class TransactionController extends Controller
         $month = date('m', strtotime($adjustment_month));
 
         $vouchersPrepared = Transaction::
-        with([
+        whereHas('approve', function ($query) {
+                $query->where('status', 'approve-approve');
+            })
+        ->with([
             'po_details',
             'account_titles',
             'account_titles.accountType',
@@ -7211,7 +7544,8 @@ class TransactionController extends Controller
             'account_titles.financialStatement',
             'account_titles.unit',
             'payableAssociates',
-            'treasuryCheque'
+            'treasuryCheque',
+            'receivedReceipts.purchaseOrders'
         ])
             ->when($adjustment_month, function ($query) use ($month, $year) {
                 $query->whereMonth('voucher_month', $month)
@@ -7244,6 +7578,17 @@ class TransactionController extends Controller
             })
             ->flatMap(function ($item) {
             return $item->account_titles->map(function ($accountTitle) use ($item) {
+
+                $newPo = $item->receivedReceipts->map(function ($item) {
+                    return $item->purchaseOrders->map(function ($item) {
+                        return $item->po_number;
+                    });
+                })->flatten()->unique()->implode(',');
+                $oldPo = $item->po_details->pluck('po_no')->implode(',');
+
+                $newRr = $item->receivedReceipts->pluck('rr_number')->unique()->implode(',');
+                $oldRr = $item->po_details->first()->rr_group ?? '';
+
                 return [
                     'syncId' => $accountTitle->id,
                     'mark1' => "",
@@ -7252,50 +7597,30 @@ class TransactionController extends Controller
                     'accountingTag' => $item->tag_no,
                     'transactionDate' => Carbon::parse($item->date_requested)->format('m/d/Y'),
                     'clientSupplier' => $item->supplier,
-//                    'account_title' => [
-//                        'code' => $accountTitle->account_title_code,
-//                        'name' => $accountTitle->account_title_name,
-//                    ],
                     'accountTitleCode' => $accountTitle->account_title_code,
                     'accountTitle' => $accountTitle->account_title_name,
-//                    'company' => [
-//                        'code' => '0000',
-//                        'name' => 'RDFFLFi',
-//                    ],
                     'companyCode' => '0000',
-                    'companyName' => 'RDFFLFI',
-//                    'division' => [
-//                        'code' => $accountTitle->company_code,
-//                        'name' => $accountTitle->company_name,
-//                    ],
+                    'company' => 'RDFFLFI',
                     'divisionCode' => $accountTitle->company_code,
-                    'divisionName' => $accountTitle->company_name,
-//                    'department' => [
-//                        'code' => $accountTitle->department_code,
-//                        'name' => $accountTitle->department_name,
-//                    ],
+                    'division' => $accountTitle->company_name,
                     'departmentCode' => $accountTitle->department_code,
-                    'departmentName' => $accountTitle->department_name,
-//                    'location' => [
-//                        'code' => $accountTitle->location_code,
-//                        'name' => $accountTitle->location_name,
-//                    ],
+                    'department' => $accountTitle->department_name,
                     'locationCode' => $accountTitle->location_code,
-                    'locationName' => $accountTitle->location_name,
-//                    'business_unit' => [
-//                        'code' => $accountTitle->business_unit_code,
-//                        'name' => $accountTitle->business_unit_name,
-//                    ],
+                    'location' => $accountTitle->location_name,
                     'unitCode' => $accountTitle->business_unit_code,
                     'unit' => $accountTitle->business_unit_name,
-//                    'sub_unit' => [
-//                        'code' => $accountTitle->sub_unit_code,
-//                        'name' => $accountTitle->sub_unit_name,
-//                    ],
                     'subUnitCode' => $accountTitle->sub_unit_code,
                     'subUnit' => $accountTitle->sub_unit_name,
-                    'poNumber' => $item->po_details->pluck('po_no')->implode(','),
-                    'rrNumber' => $item->po_details->first()->rr_group ?? "",
+//                    'poNumber' => $item->po_details->pluck('po_no')->implode(','),
+//                    'poNumber' => $item->receivedReceipts->map(function ($item) {
+//                        return $item->purchaseOrders->map(function ($item) {
+//                            return $item->po_number;
+//                        });
+//                    })->flatten()->unique()->implode(','),
+                    'poNumber' => $newPo ?? $oldPo,
+//                    'rrNumber' => $item->po_details->first()->rr_group ?? "",
+//                    'rrNumber' => $item->receivedReceipts->pluck('rr_number')->unique()->implode(','),
+                    'rrNumber' => $newRr ?? $oldRr,
                     'referenceNo' => $item->document_no ?? $item->referrence_no ?? $item->utilities_receipt_no ?? 'x',
                     'itemCode' => "",
                     'itemDescription' => "",
@@ -7327,7 +7652,7 @@ class TransactionController extends Controller
                     'usefulLife' => '',
                     'month' => date('M', strtotime($item->voucher_month)),
                     'year' => date('Y', strtotime($item->voucher_month)),
-                    'division1' => $item->company,
+//                    'division1' => $item->company,
                     'particulars' => '',
                     'month2' => '',
                     'farmType' => '',
@@ -7342,6 +7667,138 @@ class TransactionController extends Controller
                     'boA2' => 'VP',
                     'system' => 'FISTO',
                     'books' => 'Purchases Book',
+                ];
+            });
+        });
+
+
+        $cashDisbursement =  Transaction::whereHas('issue', function ($query) use ($month, $year) {
+            $query
+                ->where('status', 'issue-issue')
+                ->whereMonth('created_at', $month)
+                ->whereYear('created_at', $year);
+        })
+            ->with([
+                'po_details',
+                'accountTitleIssue' => function ($query) {
+                    $query->where(function ($query) {
+                        $query->where('account_title_name', 'like', '%Accounts Payable%')
+                            ->orWhere('account_title_name', 'like', '%Clearing%')
+                            ->orWhere('account_title_name', 'like', '%Outstanding%')
+                            ->orWhere('entry', 'credit');
+                    });
+                },
+                'accountTitleIssue.accountType',
+                'accountTitleIssue.accountType',
+                'accountTitleIssue.normalBalance',
+                'accountTitleIssue.accountGroup',
+                'accountTitleIssue.accountSubGroup',
+                'accountTitleIssue.financialStatement',
+                'accountTitleIssue.unit',
+                'treasuryAssociates',
+                'treasuryCheque' => function ($query) {
+                    $query->select('cheques.bank_name', 'cheques.cheque_no', 'cheques.cheque_amount');
+                },
+                'receivedReceipts.purchaseOrders'
+            ])
+            ->select(
+                'id',
+                'tag_no',
+                'date_requested',
+                'assigned_id',
+                'supplier',
+                'referrence_no',
+                'voucher_no',
+                'voucher_month',
+                'capex_no',
+                'document_no',
+                'utilities_receipt_no',
+                'company',
+            )
+            ->get();
+
+        $cashDisbursement = $cashDisbursement->flatMap(function ($item) {
+
+            return $item->accountTitleIssue->map(function ($accountTitle) use ($item) {
+//                $newPo = $item->receivedReceipts->map(function ($item) {
+//                    return $item->purchaseOrders->map(function ($item) {
+//                        return $item->po_number;
+//                    });
+//                })->flatten()->unique()->implode(',');
+//                $oldPo = $item->po_details->pluck('po_no')->implode(',');
+//
+//                $newRr = $item->receivedReceipts->pluck('rr_number')->unique()->implode(',');
+//                $oldRr = $item->po_details->first()->rr_group ?? '';
+                return [
+                    "syncId" => $accountTitle->id,
+                    "mark1" => "",
+                    "mark2" => "",
+                    "assetCIP" => "",
+                    "accountingTag" => $item->tag_no,
+                    "transactionDate" => Carbon::parse($item->date_requested)->format("m/d/Y"),
+                    "clientSupplier" => $item->supplier,
+                    "accountTitleCode" => $accountTitle->account_title_code,
+                    "accountTitle" => $accountTitle->account_title_name,
+                    "companyCode" => "0000",
+                    "company" => "RDFFLFI",
+                    "divisionCode" => $accountTitle->company_code,
+                    "division" => $accountTitle->company_name,
+                    "departmentCode" => $accountTitle->department_code,
+                    "department" => $accountTitle->department_name,
+                    "locationCode" => $accountTitle->location_code,
+                    "location" => $accountTitle->location_name,
+                    "unitCode" => $accountTitle->business_unit_code,
+                    "unit" => $accountTitle->business_unit_name,
+                    "subUnitCode" => $accountTitle->sub_unit_code,
+                    "subUnit" => $accountTitle->sub_unit_name,
+                    "poNumber" => $item->po_details->pluck("po_no")->implode(","),
+                    "rrNumber" => $item->po_details->first()->rr_group ?? "",
+                    "referenceNo" => $item->document_no ?? ($item->referrence_no ?? ($item->utilities_receipt_no ?? "x")),
+                    "itemCode" => "",
+                    "itemDescription" => "",
+                    "quantity" => "",
+                    "uom" => "",
+                    "unitPrice" => "",
+                    "lineAmount" => $accountTitle->entry == "Credit" ? -abs($accountTitle->amount) : $accountTitle->amount,
+                    "voucherJournal" => $item->voucher_no,
+                    "accountType" => $accountTitle->accountType->first()->name ?? null,
+                    "drcr" => $accountTitle->entry,
+                    "assetCode" => "",
+                    "asset" => "",
+                    'serviceProviderCode' =>  $item->treasurtyAssociates ? ($item->treasurtyAssociates->id_prefix . ' - ' . $item->treasurtyAssociates->id_no) : null,
+                    'serviceProvider' => $item->treasurtyAssociates ? ($item->treasurtyAssociates->first_name . ' ' . $item->treasurtyAssociates->last_name) : null,
+                    "boa" => "Cash Disbursement Book",
+                    "allocation" => null,
+                    "accountGroup" => $accountTitle->accountGroup->first()->name ?? null,
+                    "accountSubGroup" => $accountTitle->accountSubGroup->first()->name ?? null,
+                    "financialStatement" => $accountTitle->financialStatement->first()->name ?? null,
+                    "unitResponsible" => $accountTitle->unit->first()->name ?? null,
+                    "batch" => $item->pcf_letter . $item->pcf_date ?? "",
+                    "remarks" => $accountTitle->remarks,
+                    "payrollPeriod" => "",
+                    "position" => "",
+                    "payrollType" => "",
+                    "payrollType2" => "",
+                    "depreciationDescription" => "",
+                    "remainingDepreciationValue" => "",
+                    "usefulLife" => "",
+                    "month" => date("M", strtotime($item->issue->first()->created_at)),
+                    "year" => date("Y", strtotime($item->issue->first()->created_at)),
+                    // "division1" => $item->company,
+                    "particulars" => "",
+                    "month2" => "",
+                    "farmType" => "",
+                    "jeanRemarks" => "",
+                    "from" => "",
+                    "changeTo" => "",
+                    "reason" => "",
+                    "checkingRemarks" => "",
+                    "bankName" => $item->treasuryCheque->pluck("bank_name")->implode(","),
+                    "chequeNumber" => $item->treasuryCheque->pluck("cheque_no")->implode(","),
+                    "chequeVoucherNumber" => $item->voucher_no,
+                    "boA2" => "VP",
+                    "system" => "FISTO",
+                    "books" => "Cash Disbursement Book",
                 ];
             });
         });
@@ -7361,8 +7818,7 @@ class TransactionController extends Controller
                         ->whereYear('posted_at', $year)
                         ->where('is_posted', true);
                 });
-            })
-            ->select([
+            })->select([
                 'id',
                 'adjustment_month',
                 'division_id',
@@ -7417,315 +7873,176 @@ class TransactionController extends Controller
 
         $generalJournal = $generalJournal->transform(function ($item) {
             return [
-                'syncId' => $item->id,
-                'mark1' => "",
-                'mark2' => "",
-                'assetCIP' => "",
-                'accountingTag' => $item->tag_no,
-                'transactionDate' => $item->transaction_date,
-                'clientSupplier' => $item->supplier_name,
-//                'account_title' => [
-//                    'code' => $item->account_title_code,
-//                    'name' => $item->account_title_name,
-//                ],
-                'accountTitleCode' => $item->account_title_code,
-                'accountTitle' => $item->account_title_name,
-//                'company' => [
-//                    'code' => '0000',
-//                    'name' => 'RDFFLFi',
-//                ],
-                'companyCode' => '0000',
-                'companyName' => 'RDFFLFi',
-//                'division' => [
-//                    'code' => $item->company_code,
-//                    'name' => $item->company_name,
-//                ],
-                'divisionCode' => $item->company_code,
-                'divisionName' => $item->company_name,
-//                'department' => [
-//                    'code' => $item->department_code,
-//                    'name' => $item->department_name,
-//                ],
-                'departmentCode' => $item->department_code,
-                'departmentName' => $item->department_name,
-//                'location' => [
-//                    'code' => $item->location_code,
-//                    'name' => $item->location_name,
-//                ],
-                'locationCode' => $item->location_code,
-                'locationName' => $item->location_name,
-//                'business_unit' => [
-//                    'code' => $item->business_unit_code,
-//                    'name' => $item->business_unit_name,
-//                ],
-                'unitCode' => $item->business_unit_code,
-                'unit' => $item->business_unit_name,
-//                'sub_unit' => [
-//                    'code' => $item->sub_unit_code,
-//                    'name' => $item->sub_unit_name,
-//                ],
-                'subUnitCode' => $item->sub_unit_code,
-                'subUnit' => $item->sub_unit_name,
-                'poNumber' => $item->po_no,
-                'rrNumber' => "",
-                'referenceNo' => $item->reference_no,
-                'itemCode' => "",
-                'itemDescription' => "",
-                'quantity' => "",
-                'uom' => "",
-                'unitPrice' => "",
-//                'lineAmount' => $item->amount,
-                'lineAmount' => $item->entry == 'Credit' ? -abs($item->amount) : $item->amount,
-                'voucherJournal' => $item->voucher_number ?? $item->gj_number,
-                'accountType' => $item->account_titles->first()->greatGrandParents->name ?? null,
-                'drcr' => $item->entry,
-                'assetCode' => "",
-                'asset' => "",
-                'serviceProviderCode' => $item->payableAssociates->first()->id_prefix . ' - ' . $item->payableAssociates->first()->id_no,
-                'serviceProvider' => $item->payableAssociates->first()->first_name . ' ' . $item->payableAssociates->first()->last_name,
-                'boa' => 'GJ',
-                'allocation' => "",
-                'accountGroup' => "",
-                'accountSubGroup' => "",
-                'financialStatement' => "",
-                'unitResponsible' => "",
-                'batch' => "",
-                'remarks' => $item->remarks,
-                'payrollPeriod' => "",
-                'position' => "",
-                'payrollType' => "",
-                'payrollType2' => "",
-                'depreciationDescription' => "",
-                'remainingDepreciationValue' => "",
-                'usefulLife' => "",
-                'month' => $item->is_posted ? date('M', strtotime($item->posted_at)) : date('M', strtotime($item->adjustment_month)),
-                'year' => $item->is_posted ? date('Y', strtotime($item->posted_at)) : date('Y', strtotime($item->adjustment_month)),
-                'division_name' => $item->division_name,
-                'particulars' => "",
-                'month2' => "",
-                'farmType' => "",
-                'jeanRemarks' => "",
-                'from' => "",
-                'changeTo' => "",
-                'reason' => "",
-                'checkingRemarks' => "",
-                'bankName' => '',
-                'chequeNumber' => '',
-                'chequeVoucherNumber' => '',
-                'boA2' => "VP",
-                'system' => 'FISTO',
-                'books' => 'GJ',
+                "syncId" => $item->id,
+                "mark1" => "",
+                "mark2" => "",
+                "assetCIP" => "",
+                "accountingTag" => $item->tag_no,
+                "transactionDate" => Carbon::parse($item->transaction_date)->format("m/d/Y"),
+                "clientSupplier" => $item->supplier_name,
+                "accountTitleCode" => $item->account_title_code,
+                "accountTitle" => $item->account_title_name,
+                "companyCode" => "0000",
+                "company" => "RDFFLFI",
+                "divisionCode" => $item->company_code,
+                "division" => $item->company_name,
+                "departmentCode" => $item->department_code,
+                "department" => $item->department_name,
+                "locationCode" => $item->location_code,
+                "location" => $item->location_name,
+                "unitCode" => $item->business_unit_code,
+                "unit" => $item->business_unit_name,
+                "subUnitCode" => $item->sub_unit_code,
+                "subUnit" => $item->sub_unit_name,
+                "poNumber" => $item->po_no ? array($item->po_no) : [],
+                "rrNumber" => $item->rr_no ? array($item->rr_no) : [],
+                "referenceNo" => $item->reference_no,
+                "itemCode" => "",
+                "itemDescription" => "",
+                "quantity" => "",
+                "uom" => "",
+                "unitPrice" => "",
+                "lineAmount" => $item->entry == "Credit" ? -abs($item->amount) : $item->amount,
+                "voucherJournal" => $item->voucher_number ?? $item->gj_number,
+                "accountType" => $item->account_titles->first()->greatGrandParents->name ?? null,
+                "drcr" => $item->entry,
+                "assetCode" => "",
+                "asset" => "",
+                "serviceProviderCode" => $item->payableAssociates->first()->id_prefix . ' - ' . $item->payableAssociates->first()->id_no,
+                "serviceProvider" => $item->payableAssociates->first()->first_name . ' ' . $item->payableAssociates->first()->last_name,
+                "boa" => "Journal Book",
+                "allocation" => null,
+                "accountGroup" => null,
+                "accountSubGroup" => null,
+                "financialStatement" => null,
+                "unitResponsible" => null,
+                "batch" => "",
+                "remarks" => $item->remarks,
+                "payrollPeriod" => "",
+                "position" => "",
+                "payrollType" => "",
+                "payrollType2" => "",
+                "depreciationDescription" => "",
+                "remainingDepreciationValue" => "",
+                "usefulLife" => "",
+                "month" => $item->is_posted ? date("M", strtotime($item->posted_at)) : date("M", strtotime($item->adjustment_month)),
+                "year" => $item->is_posted ? date("Y", strtotime($item->posted_at)) : date("Y", strtotime($item->adjustment_month)),
+//                "division1" => $item->division_name,
+                "particulars" => "",
+                "month2" => "",
+                "farmType" => "",
+                "jeanRemarks" => "",
+                "from" => "",
+                "changeTo" => "",
+                "reason" => "",
+                "checkingRemarks" => "",
+                "bankName" => [],
+                "chequeNumber" => [],
+                "chequeVoucherNumber" => "",
+                "boA2" => "VP",
+                "system" => "FISTO",
+                "books" => "Journal Book",
             ];
         });
 
-        $cashDisbursement = Transaction::leftJoin('cheques', 'transactions.id', '=', 'cheques.transaction_id')
-                ->when($adjustment_month, function ($query) use ($month, $year) {
-                    $query->where(function ($query) use ($month, $year){
-                        $query->whereMonth('cheques.cheque_date', $month)
-                            ->whereYear('cheques.cheque_date', $year);
-                    });
-                })
-            ->with([
-                'treasuryCheque',
-                'accountTitleIssue',
-            ])
-            ->select([
-                'transactions.id',
-                'transactions.tag_no',
-                'transactions.supplier',
-                'transactions.voucher_no',
-                'transactions.voucher_month',
-                'transactions.remarks'
-            ])
+
+        $accruals = Accruals::
+        with([
+            'account_titles.greatGrandParents',
+            'account_titles.grandParents',
+            'account_titles.parents',
+            'account_titles.children',
+            'account_titles.units',
+            'payableAssociates'
+        ])
+            ->when($adjustment_month, function ($query) use ($month, $year) {
+                $query->where(function ($query) use ($month, $year) {
+                    $query->whereMonth('adjustment_month', $month)
+                        ->whereYear('adjustment_month', $year);
+                })->orWhere(function ($query) use ($month, $year) {
+                    $query->whereMonth('reversed_at', $month)
+                        ->whereYear('reversed_at', $year)
+                        ->where('is_reversed', true);
+                });
+            })
             ->get();
 
-        $cashDisbursement = $cashDisbursement->flatMap(function ($item) {
-            return $item->accountTitleIssue
-                ->filter(function ($item) {
-                    return $item->account_title_name != 'Withholding Tax Payable - Expanded';
-                })
-                ->map(function ($accountTitle) use ($item){
-                return [
-                    'syncId' => $accountTitle->id,
-                    'mark1' => "",
-                    'mark2' => "",
-                    'assetCIP' => "",
-                    'accountingTag' => $item->tag_no,
-                    'transactionDate' => $item->treasuryCheque->first()->cheque_date ?? $item->transaction_date,
-                    'clientSupplier' => $item->supplier,
-                    'accountTitleCode' => $accountTitle->account_title_code,
-                    'accountTitle' => $accountTitle->account_title_name,
-                    'companyCode' => '',
-                    'companyName' => '',
-                    'divisionCode' => $accountTitle->company_code,
-                    'divisionName' => $accountTitle->company_name,
-                    'departmentCode' => $accountTitle->department_code,
-                    'departmentName' => $accountTitle->department_name,
-                    'locationCode' => $accountTitle->location_code,
-                    'locationName' => $accountTitle->location_name,
-                    'unitCode' => "",
-                    'unit' => "",
-                    'subUnitCode' => "",
-                    'subUnit' => "",
-                    'poNumber' => "",
-                    'rrNumber' =>"",
-                    'referenceNo' => "",
-                    'itemCode' => "",
-                    'itemDescription' => "",
-                    'quantity' => "",
-                    'uom' => "",
-                    'unitPrice' => "",
-                    'lineAmount' => $accountTitle->entry == 'Credit' ? -abs($accountTitle->amount) : $accountTitle->amount,
-                    'voucherJournal' => "",
-                    'accountType' => "",
-                    'drcr' => $accountTitle->entry,
-                    'assetCode' => "",
-                    'asset' => "",
-                    'serviceProviderCode' => "",
-                    'serviceProvider' => "",
-                    'boa' => 'Purchases Book',
-                    'allocation' => "",
-                    'accountGroup' => "",
-                    'accountSubGroup' => "",
-                    'financialStatement' => "",
-                    'unitResponsible' => "",
-                    'batch' => "",
-                    'remarks' => $item->remarks,
-                    'payrollPeriod' => '',
-                    'position' => '',
-                    'payrollType' => '',
-                    'payrollType2' => '',
-                    'depreciationDescription' => '',
-                    'remainingDepreciationValue' => '',
-                    'usefulLife' => '',
-                    'month' => $item->treasuryCheque->isNotEmpty() ? date('M', strtotime($item->treasuryCheque->first()->cheque_date)) : null,
-                    'year' => $item->treasuryCheque->isNotEmpty() ? date('Y', strtotime($item->treasuryCheque->first()->cheque_date)) : null,
-                    'division1' => "",
-                    'particulars' => '',
-                    'month2' => '',
-                    'farmType' => '',
-                    'jeanRemarks' => '',
-                    'from' => '',
-                    'changeTo' => '',
-                    'reason' => '',
-                    'checkingRemarks' => '',
-//                    'bankName' => $item->treasuryCheque->map(function ($item) {
-//                        return $item->bank_name ;
-//                    }),
-                    'bankName' => $item->treasuryCheque->pluck('bank_name')->implode(','),
-//                    'chequeNumber' => $item->treasuryCheque->map(function ($item) {
-//                        return $item->cheque_no;
-//                    }),
-                    'chequeNumber' => $item->treasuryCheque->pluck('cheque_no')->implode(','),
-                    'chequeVoucherNumber' => $item->voucher_no,
-                    'boA2' => '',
-                    'system' => 'FISTO',
-                    'books' => 'Cash Disbursement',
-                ];
-            });
+        $accruals = $accruals->transform(function ($item) {
+
+            return [
+                "syncId" => $item->id,
+                "mark1" => "",
+                "mark2" => "",
+                "assetCIP" => "",
+                "accountingTag" => $item->tag_no,
+                "transactionDate" => Carbon::parse($item->transaction_date)->format("m/d/Y"),
+                "clientSupplier" => $item->supplier_name,
+                "accountTitleCode" => $item->account_title_code,
+                "accountTitle" => $item->account_title_name,
+                "companyCode" => "0000",
+                "company" => "RDFFLFI",
+                "divisionCode" => $item->company_code,
+                "division" => $item->company_name,
+                "departmentCode" => $item->department_code,
+                "department" => $item->department_name,
+                "locationCode" => $item->location_code,
+                "location" => $item->location_name,
+                "unitCode" => $item->business_unit_code,
+                "unit" => $item->business_unit_name,
+                "subUnitCode" => $item->sub_unit_code,
+                "subUnit" => $item->sub_unit_name,
+                "poNumber" => $item->po_no ? array($item->po_no) : [],
+                "rrNumber" => $item->rr_no ? array($item->rr_no) : [],
+                "referenceNo" => $item->reference_no,
+                "itemCode" => "",
+                "itemDescription" => "",
+                "quantity" => "",
+                "uom" => "",
+                "unitPrice" => "",
+                "lineAmount" => $item->entry == "Credit" ? -abs($item->amount) : $item->amount,
+                "voucherJournal" => $item->voucher_number ?? $item->gj_number,
+                "accountType" => $item->account_titles->first()->greatGrandParents->name ?? null,
+                "drcr" => $item->entry,
+                "assetCode" => "",
+                "asset" => "",
+                "serviceProviderCode" => $item->payableAssociates->first()->id_prefix . ' - ' . $item->payableAssociates->first()->id_no,
+                "serviceProvider" => $item->payableAssociates->first()->first_name . ' ' . $item->payableAssociates->first()->last_name,
+                "boa" => "Journal Book",
+                "allocation" => null,
+                "accountGroup" => null,
+                "accountSubGroup" => null,
+                "financialStatement" => null,
+                "unitResponsible" => null,
+                "batch" => "",
+                "remarks" => $item->remarks,
+                "payrollPeriod" => "",
+                "position" => "",
+                "payrollType" => "",
+                "payrollType2" => "",
+                "depreciationDescription" => "",
+                "remainingDepreciationValue" => "",
+                "usefulLife" => "",
+                'month' => $item->is_reversed ? date('M', strtotime($item->reversed_at)) : date('M', strtotime($item->adjustment_month)),
+                'year' => $item->is_reversed ? date('Y', strtotime($item->reversed_at)) : date('Y', strtotime($item->adjustment_month)),
+//                "division1" => $item->division_name,
+                "particulars" => "",
+                "month2" => "",
+                "farmType" => "",
+                "jeanRemarks" => "",
+                "from" => "",
+                "changeTo" => "",
+                "reason" => "",
+                "checkingRemarks" => "",
+                "bankName" => [],
+                "chequeNumber" => [],
+                "chequeVoucherNumber" => "",
+                "boA2" => "VP",
+                "system" => "FISTO",
+                "books" => "Journal Book",
+            ];
         });
 
-//        $cashDisbursementCreate = Transaction::leftJoin('cheques', 'transactions.id', '=', 'cheques.transaction_id')
-//            ->when($adjustment_month, function ($query) use ($month, $year) {
-//                $query->where(function ($query) use ($month, $year){
-//                    $query->whereMonth('cheques.created_at', $month)
-//                        ->whereYear('cheques.created_at', $year);
-//                });
-//            })
-//            ->with([
-//                'treasuryCheque',
-//                'treasuryAccountTitle',
-//            ])
-//            ->select([
-//                'transactions.id',
-//                'transactions.tag_no',
-//                'transactions.supplier',
-//                'transactions.voucher_no',
-//                'transactions.voucher_month',
-//                'transactions.remarks',
-//                'transactions.document_date'
-//            ])
-//            ->get();
-//
-//        $cashDisbursementCreate = $cashDisbursementCreate->flatMap(function ($item) {
-//            return $item->treasuryAccountTitle->filter(function ($item) {
-//                return $item->account_title_name != 'Withholding Tax Payable - Expanded';
-//            })->map(function ($accountTitle) use ($item) {
-//                return [
-//                    'syncId' => $accountTitle->id,
-//                    'mark1' => "",
-//                    'mark2' => "",
-//                    'assetCIP' => "",
-//                    'accountingTag' => $item->tag_no,
-//                    'transactionDate' => $item->document_date,
-//                    'clientSupplier' => $item->supplier,
-//                    'accountTitleCode' => $accountTitle->account_title_code,
-//                    'accountTitle' => $accountTitle->account_title_name,
-//                    'companyCode' => '',
-//                    'companyName' => '',
-//                    'divisionCode' => $accountTitle->company_code,
-//                    'divisionName' => $accountTitle->company_name,
-//                    'departmentCode' => $accountTitle->department_code,
-//                    'departmentName' => $accountTitle->department_name,
-//                    'locationCode' => $accountTitle->location_code,
-//                    'locationName' => $accountTitle->location_name,
-//                    'unitCode' => "",
-//                    'unit' => "",
-//                    'subUnitCode' => "",
-//                    'subUnit' => "",
-//                    'poNumber' => "",
-//                    'rrNumber' =>"",
-//                    'referenceNo' => "",
-//                    'itemCode' => "",
-//                    'itemDescription' => "",
-//                    'quantity' => "",
-//                    'uom' => "",
-//                    'unitPrice' => "",
-//                    'lineAmount' => $accountTitle->entry == 'Credit' ? -abs($accountTitle->amount) : $accountTitle->amount,
-//                    'voucherJournal' => "",
-//                    'accountType' => "",
-//                    'drcr' => $accountTitle->entry,
-//                    'assetCode' => "",
-//                    'asset' => "",
-//                    'serviceProviderCode' => "",
-//                    'serviceProvider' => "",
-//                    'boa' => 'VP',
-//                    'allocation' => "",
-//                    'accountGroup' => "",
-//                    'accountSubGroup' => "",
-//                    'financialStatement' => "",
-//                    'unitResponsible' => "",
-//                    'batch' => "",
-//                    'remarks' => $item->remarks,
-//                    'payrollPeriod' => '',
-//                    'position' => '',
-//                    'payrollType' => '',
-//                    'payrollType2' => '',
-//                    'depreciationDescription' => '',
-//                    'remainingDepreciationValue' => '',
-//                    'usefulLife' => '',
-//                    'month' => $item->treasuryCheque->isNotEmpty() ? date('M', strtotime($item->treasuryCheque->first()->created_at)) : null,
-//                    'year' => $item->treasuryCheque->isNotEmpty() ? date('Y', strtotime($item->treasuryCheque->first()->created_at)) : null,
-//                    'division1' => "",
-//                    'particulars' => '',
-//                    'month2' => '',
-//                    'farmType' => '',
-//                    'jeanRemarks' => '',
-//                    'from' => '',
-//                    'changeTo' => '',
-//                    'reason' => '',
-//                    'checkingRemarks' => '',
-//                    'bankName' => $item->treasuryCheque->pluck('bank_name')->implode(','),
-//                    'chequeNumber' => $item->treasuryCheque->pluck('cheque_no')->implode(','),
-//                    'chequeVoucherNumber' => $item->voucher_no,
-//                    'boA2' => '',
-//                    'system' => 'FISTO',
-//                    'books' => 'Cash Disbursement',
-//                ];
-//            });
-//        });
-
-        $mergedReports = collect($vouchersPrepared->merge($generalJournal)->merge($cashDisbursement));
+        $mergedReports = collect($vouchersPrepared->merge($cashDisbursement)->merge($generalJournal)->merge($accruals));
 
         if (!empty($mergedReports)) {
             return $mergedReports->values();
