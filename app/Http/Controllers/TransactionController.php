@@ -17,6 +17,7 @@ use App\Models\ClearingAccountTitle;
 use App\Models\GeneralJournal;
 use App\Models\Permission;
 use App\Models\POBalance;
+use App\Models\PurchaseOrders;
 use App\Models\Release;
 use App\Models\Supplier;
 use App\Models\Treasury;
@@ -48,6 +49,12 @@ use Illuminate\Validation\Rule;
 
 class TransactionController extends Controller
 {
+    public $purchaseOrders;
+    public function __construct()
+    {
+        $this->purchaseOrders = PurchaseOrders::select('id', 'received_receipt_id', 'po_number')->get();
+    }
+
     public function showUserDepartment()
     {
         $departments = Auth::user()->department;
@@ -1163,6 +1170,7 @@ class TransactionController extends Controller
         $purchase_order = $transaction->receivedReceipts->map(function ($item) {
             return [
                 'is_new_po' => true,
+                'id' => $item->id,
                 'rr_id' => $item->rr_id,
                 'rr_number' => $item->rr_number,
                 'item_code' => $item->item_code,
@@ -1174,8 +1182,9 @@ class TransactionController extends Controller
                     'code' => $item->uom_code,
                     'name' => $item->uom_name,
                 ],
-                'purchase_order' => $item->purchaseOrders->map(function ($po) {
+                'purchase_order' => $item->purchaseOrders->map(function ($po) use ($item) {
                     return [
+                        'purchase_order_id' => $this->purchaseOrders->where('received_receipt_id', $item->id)->where('po_number', $po->po_number)->first()->id,
                         'po_number' => $po->po_number,
                         'po_description' => $po->po_description,
                         'type_name' => $po->type_name,
@@ -2854,36 +2863,38 @@ class TransactionController extends Controller
                             $fields["document"]["company"]["id"]
                         );
 
-
-                        foreach ($fields["po_group"] as $po) {
-                            $newTransaction->po_details()->create([
-                                "request_id" => $newTransaction->id,
-                                "po_no" => $po["no"],
-                                "po_amount" => $po["amount"],
-                                "is_add" => $po["is_add"],
-                                "is_editable" => $po["is_editable"],
-                                "po_total_amount" => $po_total_amount,
-                                "previous_balance" => $request->po_balance,
-                                "rr_group" => $po["rr_no"],
-                            ]);
-                        }
-
-                        $lastRequestId = POBatch::where("po_no", last($fields["po_group"])["no"])
-                            ->pluck("request_id")
-                            ->last();
-
-                        if ($lastRequestId) {
-                            Transaction::where("request_id", $lastRequestId)
-                                ->update([
-                                    "is_not_editable" => true,
-                                    "updated_at" => DB::raw("updated_at"),
+                        if (!empty($fields["po_group"])) {
+                            foreach ($fields["po_group"] as $po) {
+                                $newTransaction->po_details()->create([
+                                    "request_id" => $newTransaction->id,
+                                    "po_no" => $po["no"],
+                                    "po_amount" => $po["amount"],
+                                    "is_add" => $po["is_add"],
+                                    "is_editable" => $po["is_editable"],
+                                    "po_total_amount" => $po_total_amount,
+                                    "previous_balance" => $request->po_balance,
+                                    "rr_group" => $po["rr_no"],
                                 ]);
+                            }
+
+                            $lastRequestId = POBatch::where("po_no", last($fields["po_group"])["no"])
+                                ->pluck("request_id")
+                                ->last();
+
+                            if ($lastRequestId) {
+                                Transaction::where("request_id", $lastRequestId)
+                                    ->update([
+                                        "is_not_editable" => true,
+                                        "updated_at" => DB::raw("updated_at"),
+                                    ]);
+                            }
                         }
+
 
                         if (!empty($fields['purchase_order'])) {
                             foreach ($fields['purchase_order'] as $rr) {
                                 foreach ($rr['rr_orders'] as $order) {
-                                    $rrTransactions = $transaction->receivedReceipts()->create([
+                                    $rrTransactions = $newTransaction->receivedReceipts()->create([
                                         'rr_id' => $rr['rr_id'] ?? null,
                                         'rr_number' => $rr['rr_number'] ?? null,
                                         'item_code' => $order['item_code'] ?? null,
@@ -6911,6 +6922,223 @@ class TransactionController extends Controller
             ];
         });
 
+        $cashDisbursement =  Transaction::whereHas('issue', function ($query) use ($month, $year) {
+            $query
+                ->where('status', 'issue-issue')
+                ->whereMonth('created_at', $month)
+                ->whereYear('created_at', $year);
+        })
+            ->with([
+                'po_details',
+                'accountTitleIssue' => function ($query) {
+                    $query->where(function ($query) {
+                        $query->where('account_title_name', 'like', '%Accounts Payable%')
+                            ->orWhere('account_title_name', 'like', '%Clearing%')
+                            ->orWhere('account_title_name', 'like', '%Outstanding%')
+                            ->orWhere('entry', 'credit');
+                    });
+                },
+                'accountTitleIssue.accountType',
+                'accountTitleIssue.accountType',
+                'accountTitleIssue.normalBalance',
+                'accountTitleIssue.accountGroup',
+                'accountTitleIssue.accountSubGroup',
+                'accountTitleIssue.financialStatement',
+                'accountTitleIssue.unit',
+                'treasuryAssociates',
+                'treasuryCheque' => function ($query) {
+                    $query->select('cheques.bank_name', 'cheques.cheque_no', 'cheques.cheque_amount');
+                },
+                'receivedReceipts.purchaseOrders'
+            ])
+            ->select(
+                'id',
+                'tag_no',
+                'date_requested',
+                'assigned_id',
+                'supplier',
+                'referrence_no',
+                'voucher_no',
+                'voucher_month',
+                'capex_no',
+                'document_no',
+                'utilities_receipt_no',
+                'company',
+            )
+            ->get();
+
+        $cashDisbursement = $cashDisbursement->flatMap(function ($item) {
+
+            return $item->accountTitleIssue->map(function ($accountTitle) use ($item) {
+                return [
+//                    "syncId" => $accountTitle->id,
+//                    "mark1" => "",
+//                    "mark2" => "",
+//                    "assetCIP" => "",
+//                    "accountingTag" => $item->tag_no,
+//                    "transactionDate" => Carbon::parse($item->date_requested)->format("m/d/Y"),
+//                    "clientSupplier" => $item->supplier,
+//                    "accountTitleCode" => $accountTitle->account_title_code,
+//                    "accountTitle" => $accountTitle->account_title_name,
+//                    "companyCode" => "0000",
+//                    "company" => "RDFFLFI",
+//                    "divisionCode" => $accountTitle->company_code,
+//                    "division" => $accountTitle->company_name,
+//                    "departmentCode" => $accountTitle->department_code,
+//                    "department" => $accountTitle->department_name,
+//                    "locationCode" => $accountTitle->location_code,
+//                    "location" => $accountTitle->location_name,
+//                    "unitCode" => $accountTitle->business_unit_code,
+//                    "unit" => $accountTitle->business_unit_name,
+//                    "subUnitCode" => $accountTitle->sub_unit_code,
+//                    "subUnit" => $accountTitle->sub_unit_name,
+//                    "poNumber" => $item->po_details->pluck("po_no")->implode(","),
+//                    "rrNumber" => $item->po_details->first()->rr_group ?? "",
+//                    "referenceNo" => $item->document_no ?? ($item->referrence_no ?? ($item->utilities_receipt_no ?? "x")),
+//                    "itemCode" => "",
+//                    "itemDescription" => "",
+//                    "quantity" => "",
+//                    "uom" => "",
+//                    "unitPrice" => "",
+//                    "lineAmount" => $accountTitle->entry == "Credit" ? -abs($accountTitle->amount) : $accountTitle->amount,
+//                    "voucherJournal" => $item->voucher_no,
+//                    "accountType" => $accountTitle->accountType->first()->name ?? null,
+//                    "drcr" => $accountTitle->entry,
+//                    "assetCode" => "",
+//                    "asset" => "",
+//                    'serviceProviderCode' =>  $item->treasurtyAssociates ? ($item->treasurtyAssociates->id_prefix . ' - ' . $item->treasurtyAssociates->id_no) : null,
+//                    'serviceProvider' => $item->treasurtyAssociates ? ($item->treasurtyAssociates->first_name . ' ' . $item->treasurtyAssociates->last_name) : null,
+//                    "boa" => "Cash Disbursement Book",
+//                    "allocation" => null,
+//                    "accountGroup" => $accountTitle->accountGroup->first()->name ?? null,
+//                    "accountSubGroup" => $accountTitle->accountSubGroup->first()->name ?? null,
+//                    "financialStatement" => $accountTitle->financialStatement->first()->name ?? null,
+//                    "unitResponsible" => $accountTitle->unit->first()->name ?? null,
+//                    "batch" => $item->pcf_letter . $item->pcf_date ?? "",
+//                    "remarks" => $accountTitle->remarks,
+//                    "payrollPeriod" => "",
+//                    "position" => "",
+//                    "payrollType" => "",
+//                    "payrollType2" => "",
+//                    "depreciationDescription" => "",
+//                    "remainingDepreciationValue" => "",
+//                    "usefulLife" => "",
+//                    "month" => date("M", strtotime($item->issue->first()->created_at)),
+//                    "year" => date("Y", strtotime($item->issue->first()->created_at)),
+//                    // "division1" => $item->company,
+//                    "particulars" => "",
+//                    "month2" => "",
+//                    "farmType" => "",
+//                    "jeanRemarks" => "",
+//                    "from" => "",
+//                    "changeTo" => "",
+//                    "reason" => "",
+//                    "checkingRemarks" => "",
+//                    "bankName" => $item->treasuryCheque->pluck("bank_name")->implode(","),
+//                    "chequeNumber" => $item->treasuryCheque->pluck("cheque_no")->implode(","),
+//                    "chequeVoucherNumber" => $item->voucher_no,
+//                    "boA2" => "VP",
+//                    "system" => "FISTO",
+//                    "books" => "Cash Disbursement Book",
+
+                    ////=======//////
+
+                    'id' => $accountTitle->id,
+                    'mark' => "",
+                    'mark_2' => "",
+                    'asset/cip_no' => "",
+                    'account_tag' => $item->tag_no,
+                    'transaction_date' => $item->date_requested,
+                    'supplier' => $item->supplier,
+                    'account_title' => [
+                        'code' => $accountTitle->account_title_code,
+                        'name' => $accountTitle->account_title_name,
+                    ],
+                    'company' => [
+                        'code' => '0000',
+                        'name' => 'RDF FLFI',
+                    ],
+                    'division' => [
+                        'code' => $accountTitle->company_code,
+                        'name' => $accountTitle->company_name,
+                    ],
+                    'department' => [
+                        'code' => $accountTitle->department_code,
+                        'name' => $accountTitle->department_name,
+                    ],
+                    'location' => [
+                        'code' => $accountTitle->location_code,
+                        'name' => $accountTitle->location_name,
+                    ],
+                    'business_unit' => [
+                        'code' => $accountTitle->business_unit_code,
+                        'name' => $accountTitle->business_unit_name,
+                    ],
+                    'sub_unit' => [
+                        'code' => $accountTitle->sub_unit_code,
+                        'name' => $accountTitle->sub_unit_name,
+                    ],
+                    'po_no' => $item->po_details->map(function ($item) {
+                        return [
+                            'po_no' => $item->po_no,
+                        ];
+                    }),
+                    'rr_no' => $item->po_details->first()->rr_group ?? [],
+                    'reference_no' => $item->document_no ?? $item->referrence_no ?? $item->utilities_receipt_no ?? 'x',
+                    'item_code' => "",
+                    'item_description' => "",
+                    'quantity' => "",
+                    'unit' => "",
+                    'unit_price' => "",
+                    'line_amount' => $accountTitle->amount,
+                    'voucher_number' => $item->voucher_no,
+                    'account_type' => $accountTitle->accountType->first()->name ?? null,
+                    'dr/cr' => $accountTitle->entry,
+                    'asset_code' => "",
+                    'asset' => "",
+                    'service_provider_code' => $item->treasurtyAssociates ? ($item->treasurtyAssociates->id_prefix . ' - ' . $item->treasurtyAssociates->id_no) : null,
+                    'service_provider' => $item->treasurtyAssociates ? ($item->treasurtyAssociates->first_name . ' ' . $item->treasurtyAssociates->last_name) : null,
+                    'boa' => 'VP',
+                    'allocation' => null,
+                    'account_group' => $accountTitle->accountGroup->first()->name ?? null,
+                    'account_sub_group' => $accountTitle->accountSubGroup->first()->name ?? null,
+                    'financial_statement' => $accountTitle->financialStatement->first()->name ?? null,
+                    'unit_responsible' => $accountTitle->unit->first()->name ?? null,
+                    'batch' => $item->pcf_letter . $item->pcf_date ?? '',
+                    'remarks' => $accountTitle->remarks,
+                    'payroll_period' => '',
+                    'payroll_position' => '',
+                    'payroll_type_1' => '',
+                    'payroll_type_2' => '',
+                    'additional_description_for_depr' => '',
+                    'remaining_bv_for_depr' => '',
+                    'useful_life' => '',
+                    "month" => date("M", strtotime($item->issue->first()->created_at)),
+                    "year" => date("Y", strtotime($item->issue->first()->created_at)),
+//                    'division1' => $item->company,
+                    'particular' => '',
+                    'month_2' => '',
+                    'farm_type' => '',
+                    'jean_remarks' => '',
+                    'from' => '',
+                    'changed_to' => '',
+                    'reason' => '',
+                    'checking_remarks' => '',
+                    'bank_name' => $item->treasuryCheque->map(function ($item) {
+                        return $item->bank_name;
+                    }),
+                    'cheque_no' => $item->treasuryCheque->map(function ($item) {
+                        return $item->cheque_no;
+                    }),
+                    'cheque_voucher_no' => $item->voucher_no,
+                    'boa_2' => '',
+                    'system' => 'FISTO',
+                    'books' => 'Cash Disbursement Book',
+
+                ];
+            });
+        });
+
         $vouchersPrepared = Transaction::
         with([
             'po_details',
@@ -7057,7 +7285,7 @@ class TransactionController extends Controller
             });
         });
 
-        $mergedReports = collect($vouchersPrepared->merge($generalJournal)->merge($accruals));
+        $mergedReports = collect($vouchersPrepared->merge($generalJournal)->merge($accruals)->merge($cashDisbursement));
 
         if (!empty($boa)) {
             return $mergedReports->filter(function ($item) use ($boa, $companies) {
@@ -7530,13 +7758,14 @@ class TransactionController extends Controller
         $year = date('Y', strtotime($adjustment_month));
         $month = date('m', strtotime($adjustment_month));
 
-        $vouchersPrepared = Transaction::
-        whereHas('approve', function ($query) {
+        $vouchersPreparedPerPO = Transaction::
+            whereHas('approve', function ($query) {
                 $query->where('status', 'approve-approve');
             })
+            ->whereHas('receivedReceipts')
         ->with([
             'po_details',
-            'account_titles',
+            'account_titles.purchaseOrder',
             'account_titles.accountType',
             'account_titles.normalBalance',
             'account_titles.accountGroup',
@@ -7547,6 +7776,133 @@ class TransactionController extends Controller
             'treasuryCheque',
             'receivedReceipts.purchaseOrders'
         ])
+            ->when($adjustment_month, function ($query) use ($month, $year) {
+                $query->whereMonth('voucher_month', $month)
+                    ->whereYear('voucher_month', $year);
+            })
+            ->withTrashed(function ($query) {
+                $query->where('deleted_at', '=', '2024-08-28 00:00:00');
+            })
+            ->select(
+                'id',
+                'tag_no',
+                'date_requested',
+                'supplier',
+                'referrence_no',
+                'voucher_no',
+                'voucher_month',
+                'capex_no',
+                'document_no',
+                'utilities_receipt_no',
+                'company',
+                'distributed_id',
+                'distributed_name',
+            )
+            ->get();
+
+        $vouchersPreparedPerPO = $vouchersPreparedPerPO
+            ->sort(function ($a, $b) {
+                return str_replace(['GA ', 'F ', 'P ', 'S ', 'FR ', 'FB ', 'FP '], '', $a->voucher_no) <=> str_replace(['GA ', 'F ', 'P ', 'S ', 'FR ', 'FB ', 'FP '], '', $b->voucher_no);
+            })
+            ->flatMap(function ($item) {
+                return $item->account_titles->map(function ($accountTitle) use ($item) {
+                    return [
+                        'syncId' => $accountTitle->id,
+                        'mark1' => "",
+                        'mark2' => "",
+                        'assetCIP' => "",
+                        'accountingTag' => $item->tag_no,
+//                        'transactionDate' => Carbon::parse($item->date_requested)->format('m/d/Y'),
+                        'transactionDate' => Carbon::parse($item->date_requested)->format('Y-m-d'),
+                        'clientSupplier' => $item->supplier,
+                        'accountTitleCode' => $accountTitle->account_title_code,
+                        'accountTitle' => $accountTitle->account_title_name,
+                        'companyCode' => '0000',
+                        'company' => 'RDFFLFI',
+                        'divisionCode' => $accountTitle->company_code,
+                        'division' => $accountTitle->company_name,
+                        'departmentCode' => $accountTitle->department_code,
+                        'department' => $accountTitle->department_name,
+                        'locationCode' => $accountTitle->location_code,
+                        'location' => $accountTitle->location_name,
+                        'unitCode' => $accountTitle->business_unit_code,
+                        'unit' => $accountTitle->business_unit_name,
+                        'subUnitCode' => $accountTitle->sub_unit_code,
+                        'subUnit' => $accountTitle->sub_unit_name,
+                        'poNumber' => $accountTitle->purchaseOrder->po_number ?? $item->receivedReceipts->map(function ($item) {
+                                return $item->purchaseOrders->map(function ($item) {
+                                    return $item->po_number;
+                                });
+                            })->flatten()->unique()->implode(', '),
+                        'rrNumber' => $item->receivedReceipts->pluck('rr_number')->unique()->implode(','),
+                        'referenceNo' => $item->document_no ?? $item->referrence_no ?? $item->utilities_receipt_no ?? 'x',
+                        'itemCode' => "",
+                        'itemDescription' => "",
+                        'quantity' => "",
+                        'uom' => "",
+                        'unitPrice' => "",
+                        'lineAmount' => $accountTitle->entry == 'Credit' ? -abs($accountTitle->amount) : $accountTitle->amount,
+                        'voucherJournal' => $item->voucher_no,
+                        'accountType' => $accountTitle->accountType->first()->name ?? null,
+                        'drcr' => $accountTitle->entry,
+                        'assetCode' => "",
+                        'asset' => "",
+                        'serviceProviderCode' => $item->payableAssociates->id_prefix . ' - ' . $item->payableAssociates->id_no,
+                        'serviceProvider' => $item->distributed_name,
+                        'boa' => 'Purchases Book',
+                        'allocation' => null,
+                        'accountGroup' => $accountTitle->accountGroup->first()->name ?? null,
+                        'accountSubGroup' => $accountTitle->accountSubGroup->first()->name ?? null,
+                        'financialStatement' => $accountTitle->financialStatement->first()->name ?? null,
+                        'unitResponsible' => $accountTitle->unit->first()->name ?? null,
+                        'batch' => $item->pcf_letter . $item->pcf_date ?? '',
+                        'remarks' => $accountTitle->remarks,
+                        'payrollPeriod' => '',
+                        'position' => '',
+                        'payrollType' => '',
+                        'payrollType2' => '',
+                        'depreciationDescription' => '',
+                        'remainingDepreciationValue' => '',
+                        'usefulLife' => '',
+                        'month' => date('M', strtotime($item->voucher_month)),
+                        'year' => date('Y', strtotime($item->voucher_month)),
+//                    'division1' => $item->company,
+                        'particulars' => '',
+                        'month2' => '',
+                        'farmType' => '',
+                        'jeanRemarks' => '',
+                        'from' => '',
+                        'changeTo' => '',
+                        'reason' => '',
+                        'checkingRemarks' => '',
+                        'bankName' => $item->treasuryCheque->pluck('bank_name')->implode(','),
+                        'chequeNumber' => $item->treasuryCheque->pluck('cheque_no')->implode(','),
+                        'chequeVoucherNumber' => $item->voucher_no,
+                        'boA2' => 'VP',
+                        'system' => 'FISTO',
+                        'books' => 'Purchases Book',
+                    ];
+                });
+            });
+
+
+        $vouchersPrepared = Transaction::whereHas('approve', function ($query) {
+            $query->where('status', 'approve-approve');
+        })
+            ->whereDoesntHave('receivedReceipts')
+            ->with([
+                'po_details',
+                'account_titles',
+                'account_titles.accountType',
+                'account_titles.normalBalance',
+                'account_titles.accountGroup',
+                'account_titles.accountSubGroup',
+                'account_titles.financialStatement',
+                'account_titles.unit',
+                'payableAssociates',
+                'treasuryCheque',
+                'receivedReceipts.purchaseOrders'
+            ])
             ->when($adjustment_month, function ($query) use ($month, $year) {
                 $query->whereMonth('voucher_month', $month)
                     ->whereYear('voucher_month', $year);
@@ -7595,7 +7951,8 @@ class TransactionController extends Controller
                     'mark2' => "",
                     'assetCIP' => "",
                     'accountingTag' => $item->tag_no,
-                    'transactionDate' => Carbon::parse($item->date_requested)->format('m/d/Y'),
+//                    'transactionDate' => Carbon::parse($item->date_requested)->format('m/d/Y'),
+                    'transactionDate' => Carbon::parse($item->date_requested)->format('Y-m-d'),
                     'clientSupplier' => $item->supplier,
                     'accountTitleCode' => $accountTitle->account_title_code,
                     'accountTitle' => $accountTitle->account_title_name,
@@ -7611,16 +7968,8 @@ class TransactionController extends Controller
                     'unit' => $accountTitle->business_unit_name,
                     'subUnitCode' => $accountTitle->sub_unit_code,
                     'subUnit' => $accountTitle->sub_unit_name,
-//                    'poNumber' => $item->po_details->pluck('po_no')->implode(','),
-//                    'poNumber' => $item->receivedReceipts->map(function ($item) {
-//                        return $item->purchaseOrders->map(function ($item) {
-//                            return $item->po_number;
-//                        });
-//                    })->flatten()->unique()->implode(','),
-                    'poNumber' => $newPo ?? $oldPo,
-//                    'rrNumber' => $item->po_details->first()->rr_group ?? "",
-//                    'rrNumber' => $item->receivedReceipts->pluck('rr_number')->unique()->implode(','),
-                    'rrNumber' => $newRr ?? $oldRr,
+                    'poNumber' => $item->po_details->pluck('po_no')->implode(','),
+                    'rrNumber' => $item->po_details->first()->rr_group ?? "",
                     'referenceNo' => $item->document_no ?? $item->referrence_no ?? $item->utilities_receipt_no ?? 'x',
                     'itemCode' => "",
                     'itemDescription' => "",
@@ -7671,16 +8020,26 @@ class TransactionController extends Controller
             });
         });
 
-
-        $cashDisbursement =  Transaction::whereHas('issue', function ($query) use ($month, $year) {
-            $query
-                ->where('status', 'issue-issue')
-                ->whereMonth('created_at', $month)
-                ->whereYear('created_at', $year);
-        })
+        $cashDisbursement = Transaction::
+//        whereHas('issue', function ($query) use ($month, $year) {
+        whereHas('cheques')
+            ->whereHas('issue', function ($query) use ($month, $year) {
+                $query
+                    ->where('status', 'issue-issue')
+                    ->whereMonth('created_at', $month)
+                    ->whereYear('created_at', $year);
+            })
             ->with([
                 'po_details',
-                'accountTitleIssue' => function ($query) {
+//                'accountTitleIssue' => function ($query) {
+//                    $query->where(function ($query) {
+//                        $query->where('account_title_name', 'like', '%Accounts Payable%')
+//                            ->orWhere('account_title_name', 'like', '%Clearing%')
+//                            ->orWhere('account_title_name', 'like', '%Outstanding%')
+//                            ->orWhere('entry', 'credit');
+//                    });
+//                },
+                'treasuryAccountTitle' => function ($query) {
                     $query->where(function ($query) {
                         $query->where('account_title_name', 'like', '%Accounts Payable%')
                             ->orWhere('account_title_name', 'like', '%Clearing%')
@@ -7697,7 +8056,7 @@ class TransactionController extends Controller
                 'accountTitleIssue.unit',
                 'treasuryAssociates',
                 'treasuryCheque' => function ($query) {
-                    $query->select('cheques.bank_name', 'cheques.cheque_no', 'cheques.cheque_amount');
+                    $query->select('cheques.bank_name', 'cheques.cheque_no', 'cheques.cheque_amount', 'cheques.bank_id');
                 },
                 'receivedReceipts.purchaseOrders'
             ])
@@ -7719,23 +8078,15 @@ class TransactionController extends Controller
 
         $cashDisbursement = $cashDisbursement->flatMap(function ($item) {
 
-            return $item->accountTitleIssue->map(function ($accountTitle) use ($item) {
-//                $newPo = $item->receivedReceipts->map(function ($item) {
-//                    return $item->purchaseOrders->map(function ($item) {
-//                        return $item->po_number;
-//                    });
-//                })->flatten()->unique()->implode(',');
-//                $oldPo = $item->po_details->pluck('po_no')->implode(',');
-//
-//                $newRr = $item->receivedReceipts->pluck('rr_number')->unique()->implode(',');
-//                $oldRr = $item->po_details->first()->rr_group ?? '';
+            return $item->treasuryAccountTitle->map(function ($accountTitle) use ($item) {
                 return [
                     "syncId" => $accountTitle->id,
                     "mark1" => "",
                     "mark2" => "",
                     "assetCIP" => "",
                     "accountingTag" => $item->tag_no,
-                    "transactionDate" => Carbon::parse($item->date_requested)->format("m/d/Y"),
+//                    "transactionDate" => Carbon::parse($item->date_requested)->format("m/d/Y"),
+                    'transactionDate' => Carbon::parse($item->date_requested)->format('Y-m-d'),
                     "clientSupplier" => $item->supplier,
                     "accountTitleCode" => $accountTitle->account_title_code,
                     "accountTitle" => $accountTitle->account_title_name,
@@ -7784,6 +8135,126 @@ class TransactionController extends Controller
                     "usefulLife" => "",
                     "month" => date("M", strtotime($item->issue->first()->created_at)),
                     "year" => date("Y", strtotime($item->issue->first()->created_at)),
+                    // "division1" => $item->company,
+                    "particulars" => "",
+                    "month2" => "",
+                    "farmType" => "",
+                    "jeanRemarks" => "",
+                    "from" => "",
+                    "changeTo" => "",
+                    "reason" => "",
+                    "checkingRemarks" => "",
+//                    "bankName" => $item->treasuryCheque->pluck("bank_name")->implode(","),
+                    "bankName" => $item->treasuryCheque->filter(function ($query) use ($accountTitle) {
+                        return $query->bank_id == $accountTitle->bank_id;
+                    })->flatten()->first()->bank_name ?? $item->treasuryCheque->pluck("bank_name")->implode(","),
+                    "chequeNumber" => $item->treasuryCheque->pluck("cheque_no")->implode(","),
+                    "chequeVoucherNumber" => $item->voucher_no,
+                    "boA2" => "VP",
+                    "system" => "FISTO",
+                    "books" => "Cash Disbursement Book",
+                ];
+            });
+        });
+
+        $cashDisbursementClear =  Transaction::
+//        whereHas('clear', function ($query) {
+//            $query
+//                ->where('status', 'clear-clear');
+            whereHas('treasuryCheque', function ($query) use ($month, $year) {
+                $query
+                    ->whereMonth('date_cleared', $month)
+                    ->whereYear('date_cleared', $year);
+        })
+            ->with([
+                'po_details',
+                'accountTitleClear',
+                'accountTitleClear.accountType',
+                'accountTitleClear.accountType',
+                'accountTitleClear.normalBalance',
+                'accountTitleClear.accountGroup',
+                'accountTitleClear.accountSubGroup',
+                'accountTitleClear.financialStatement',
+                'accountTitleClear.unit',
+                'treasuryAssociates',
+                'treasuryCheque',
+                'receivedReceipts.purchaseOrders'
+            ])
+            ->select(
+                'id',
+                'tag_no',
+                'date_requested',
+                'assigned_id',
+                'supplier',
+                'referrence_no',
+                'voucher_no',
+                'voucher_month',
+                'capex_no',
+                'document_no',
+                'utilities_receipt_no',
+                'company',
+            )
+            ->get();
+
+        $cashDisbursementClear = $cashDisbursementClear->flatMap(function ($item) {
+
+            return $item->accountTitleClear->map(function ($accountTitle) use ($item) {
+                return [
+                    "syncId" => $accountTitle->id,
+                    "mark1" => "",
+                    "mark2" => "",
+                    "assetCIP" => "",
+                    "accountingTag" => $item->tag_no,
+//                    "transactionDate" => Carbon::parse($item->date_requested)->format("m/d/Y"),
+                    'transactionDate' => Carbon::parse($item->date_requested)->format('Y-m-d'),
+                    "clientSupplier" => $item->supplier,
+                    "accountTitleCode" => $accountTitle->accountTitles->code,
+                    "accountTitle" => $accountTitle->account_title_name,
+                    "companyCode" => "0000",
+                    "company" => "RDFFLFI",
+                    "divisionCode" => $accountTitle->company_code,
+                    "division" => $accountTitle->company_name,
+                    "departmentCode" => $accountTitle->department_code,
+                    "department" => $accountTitle->department_name,
+                    "locationCode" => $accountTitle->location_code,
+                    "location" => $accountTitle->location_name,
+                    "unitCode" => $accountTitle->business_unit_code,
+                    "unit" => $accountTitle->business_unit_name,
+                    "subUnitCode" => $accountTitle->sub_unit_code,
+                    "subUnit" => $accountTitle->sub_unit_name,
+                    "poNumber" => $item->po_details->pluck("po_no")->implode(","),
+                    "rrNumber" => $item->po_details->first()->rr_group ?? "",
+                    "referenceNo" => $item->document_no ?? ($item->referrence_no ?? ($item->utilities_receipt_no ?? "x")),
+                    "itemCode" => "",
+                    "itemDescription" => "",
+                    "quantity" => "",
+                    "uom" => "",
+                    "unitPrice" => "",
+                    "lineAmount" => $accountTitle->entry == "Credit" ? -abs($accountTitle->amount) : $accountTitle->amount,
+                    "voucherJournal" => $item->voucher_no,
+                    "accountType" => $accountTitle->accountType->first()->name ?? null,
+                    "drcr" => $accountTitle->entry,
+                    "assetCode" => "",
+                    "asset" => "",
+                    'serviceProviderCode' =>  $item->treasurtyAssociates ? ($item->treasurtyAssociates->id_prefix . ' - ' . $item->treasurtyAssociates->id_no) : null,
+                    'serviceProvider' => $item->treasurtyAssociates ? ($item->treasurtyAssociates->first_name . ' ' . $item->treasurtyAssociates->last_name) : null,
+                    "boa" => "Cash Disbursement Book",
+                    "allocation" => null,
+                    "accountGroup" => $accountTitle->accountGroup->first()->name ?? null,
+                    "accountSubGroup" => $accountTitle->accountSubGroup->first()->name ?? null,
+                    "financialStatement" => $accountTitle->financialStatement->first()->name ?? null,
+                    "unitResponsible" => $accountTitle->unit->first()->name ?? null,
+                    "batch" => $item->pcf_letter . $item->pcf_date ?? "",
+                    "remarks" => $accountTitle->remarks,
+                    "payrollPeriod" => "",
+                    "position" => "",
+                    "payrollType" => "",
+                    "payrollType2" => "",
+                    "depreciationDescription" => "",
+                    "remainingDepreciationValue" => "",
+                    "usefulLife" => "",
+                    "month" => date("M", strtotime($item->treasuryCheque->first()->date_cleared)),
+                    "year" => date("Y", strtotime($item->treasuryCheque->first()->date_cleared)),
                     // "division1" => $item->company,
                     "particulars" => "",
                     "month2" => "",
@@ -7878,7 +8349,8 @@ class TransactionController extends Controller
                 "mark2" => "",
                 "assetCIP" => "",
                 "accountingTag" => $item->tag_no,
-                "transactionDate" => Carbon::parse($item->transaction_date)->format("m/d/Y"),
+//                "transactionDate" => Carbon::parse($item->transaction_date)->format("m/d/Y"),
+                "transactionDate" => Carbon::parse($item->transaction_date)->format("Y-m-d"),
                 "clientSupplier" => $item->supplier_name,
                 "accountTitleCode" => $item->account_title_code,
                 "accountTitle" => $item->account_title_name,
@@ -7975,7 +8447,8 @@ class TransactionController extends Controller
                 "mark2" => "",
                 "assetCIP" => "",
                 "accountingTag" => $item->tag_no,
-                "transactionDate" => Carbon::parse($item->transaction_date)->format("m/d/Y"),
+//                "transactionDate" => Carbon::parse($item->transaction_date)->format("m/d/Y"),
+                "transactionDate" => Carbon::parse($item->transaction_date)->format("Y-m-d"),
                 "clientSupplier" => $item->supplier_name,
                 "accountTitleCode" => $item->account_title_code,
                 "accountTitle" => $item->account_title_name,
@@ -8042,7 +8515,14 @@ class TransactionController extends Controller
             ];
         });
 
-        $mergedReports = collect($vouchersPrepared->merge($cashDisbursement)->merge($generalJournal)->merge($accruals));
+        $mergedReports = collect(array_merge(
+            $vouchersPrepared->toArray(),
+            $vouchersPreparedPerPO->toArray(),
+            $cashDisbursement->toArray(),
+            $generalJournal->toArray(),
+            $accruals->toArray(),
+            $cashDisbursementClear->toArray()
+        ));
 
         if (!empty($mergedReports)) {
             return $mergedReports->values();

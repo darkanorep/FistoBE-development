@@ -16,6 +16,8 @@ class VoucherAccountTitle extends Model
         "associate_id",
         "treasury_id",
         "issue_id",
+        "purchase_order_id",
+        "bank_id",
         "entry",
         "account_title_id",
         "account_title_code",
@@ -70,5 +72,10 @@ class VoucherAccountTitle extends Model
 
     public function unit() {
         return $this->hasManyThrough(AccountTitleUnit::class, AccountTitle::class, "id", "id", "account_title_id", "account_title_unit_id");
+    }
+
+    public function purchaseOrder(): BelongsTo
+    {
+        return $this->belongsTo(PurchaseOrders::class, 'purchase_order_id');
     }
 }

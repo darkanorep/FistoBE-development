@@ -919,6 +919,7 @@ class GenericMethod
             $treasury_id = $id;
         }
         foreach ($account_titles as $specific_account_title) {
+            $purchase_order_id = $specific_account_title["purchase_order_id"] ?? null;
             $entry = $specific_account_title["entry"];
             $account_title_id = isset($specific_account_title["account_title"]["id"])
                 ? $specific_account_title["account_title"]["id"]
@@ -935,6 +936,7 @@ class GenericMethod
             VoucherAccountTitle::Create([
                 "associate_id" => $associate_id,
                 "treasury_id" => $treasury_id,
+                "purchase_order_id" => $purchase_order_id ?? null,
                 "entry" => $entry,
                 "account_title_id" => $account_title_id,
                 "account_title_name" => $account_title_name,

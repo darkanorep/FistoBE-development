@@ -598,9 +598,8 @@ class MasterlistController extends Controller
 //            ]);
 
         $transaction = Http::withHeaders([
-//            'Token' => 'Bearer 2454|TQBaSSmKglntQnnZVBIgKhNz4TUgbZkww7zk02TW'
-//            'Token' => 'Bearer 2150|MwO0CdFLtlZs41dLwvXRaYBhIy6VPHeqq3VtO4F3'
             'Token' => 'Bearer 2668|BOmpbid4zZyaAoT8caDgMjmv1LVyFxjAFxnEaWF4' //PRETEST
+//            'Token' => 'Bearer 3485|tvxj4OUzCp87LXoHmjzYCIDUwdx6Mq7XfuU7DRmn' //LOCAL
         ])
 //            ->get('https://rdfymir.com/backend/public/api/fisto_api', [
 //                'pagination' => 'none'
@@ -609,10 +608,10 @@ class MasterlistController extends Controller
             ->get('https://pretestomega.rdfymir.com/backend/public/api/fisto_api', [
                 'pagination' => 'none'
             ]); //PRETEST
-
+//
 //            ->get('10.10.13.6:8080/api/fisto_api', [
 //                'pagination' => 'none'
-//            ]);
+//            ]); //LOCAL
 
         $data = json_decode($transaction->body(), true);
 
@@ -623,12 +622,14 @@ class MasterlistController extends Controller
         }
 
 //        return $data;
-        $data = array_map(function ($item) {
+        $credit  = ['Inventoriables','Asset'];
+
+        $data = array_map(function ($item) use ($credit) {
             return [
                 'is_new_po' => true,
                 'id' => $item['id'],
                 'rr_year_number_id' => $item['rr_year_number_id'],
-                'rr_orders' => array_map(function ($rr) {
+                'rr_orders' => array_map(function ($rr) use ($credit) {
                     return [
                         'item_code' => $rr['item_code'],
                         'item_name' => $rr['item_name'],
@@ -678,13 +679,56 @@ class MasterlistController extends Controller
                                     'code' => $rr['po_transaction']['location']['code'],
                                     'name' => $rr['po_transaction']['location']['name'],
                                 ],
-                                'account_title' => [
-                                    'id' => $this->account_title->where('title', $rr['po_transaction']['account_title']['name'])->first()->id ?? null,
-                                    'code' => $rr['po_transaction']['account_title']['code'],
-                                    'name' => $rr['po_transaction']['account_title']['credit_name'],
-                                    'entry' => 'debit',
-                                ]
+                                'account_title' => $rr['po_transaction']['type_name'] == in_array($rr['po_transaction']['type_name'], $credit)
+                                    ? [
+                                        'id' => $this->account_title->where('title', $rr['po_transaction']['account_title']['credit']['name'] ?? null)->first()->id ?? null,
+                                        'code' => $rr['po_transaction']['account_title']['credit']['code'] ?? null,
+                                        'name' => $rr['po_transaction']['account_title']['credit']['name'] ?? null,
+                                    ]
+                                    : [
+                                        'id' => $this->account_title->where('title', $rr['po_transaction']['account_title']['name'] ?? null)->first()->id,
+                                        'code' => $rr['po_transaction']['account_title']['code'],
+                                        'name' => $rr['po_transaction']['account_title']['name'],
+                                    ],
                             ],
+//                            'account_titles' => [
+//                                'company' => [
+//                                    'id' => $this->company->where('company', $rr['po_transaction']['company']['name'])->first()->id ?? null,
+//                                    'code' => $rr['po_transaction']['company']['code'],
+//                                    'name' => $rr['po_transaction']['company']['name'],
+//                                ],
+//                                'business_unit' => [
+//                                    'id' => $this->company->where('company', $rr['po_transaction']['business_unit']['name'])->first()->id ?? null,
+//                                    'code' => $rr['po_transaction']['business_unit']['code'],
+//                                    'name' => $rr['po_transaction']['business_unit']['name'],
+//                                ],
+//                                'department' => [
+//                                    'id' => $this->department->where('department', $rr['po_transaction']['department']['name'])->first()->id ?? null,
+//                                    'code' => $rr['po_transaction']['department']['code'],
+//                                    'name' => $rr['po_transaction']['department']['name'],
+//                                ],
+//                                'unit' => [
+//                                    'id' => $this->department->where('department', $rr['po_transaction']['department_unit']['name'])->first()->id ?? null,
+//                                    'code' => $rr['po_transaction']['department_unit']['code'],
+//                                    'name' => $rr['po_transaction']['department_unit']['name'],
+//                                ],
+//                                'sub_unit' => [
+//                                    'id' => $this->department->where('department', $rr['po_transaction']['sub_unit']['name'])->first()->id ?? null,
+//                                    'code' => $rr['po_transaction']['department_unit']['code'],
+//                                    'name' => $rr['po_transaction']['department_unit']['name'],
+//                                ],
+//                                'location' => [
+//                                    'id' => $this->location->where('location', $rr['po_transaction']['location']['name'])->first()->id ?? null,
+//                                    'code' => $rr['po_transaction']['location']['code'],
+//                                    'name' => $rr['po_transaction']['location']['name'],
+//                                ],
+//                                'account_title' => [
+//                                    'id' => $this->account_title->where('title', $rr['po_transaction']['account_title']['name'])->first()->id ?? null,
+//                                    'code' => $rr['po_transaction']['account_title']['code'],
+//                                    'name' => $rr['po_transaction']['account_title']['credit_name'],
+//                                    'entry' => 'debit',
+//                                ]
+//                            ],
                         ],
                     ];
                 }, $item['rr_orders']),

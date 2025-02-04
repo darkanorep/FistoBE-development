@@ -2013,6 +2013,7 @@ class TransactionFlow
 
                 $issue->accountTitles()->create([
                     'entry' => data_get($account, 'entry'),
+                    'bank_id' => data_get($account, 'bank_id'),
                     'account_title_id' => data_get($account, 'account_title.id'),
                     'account_title_code' => data_get($account, 'account_title.code'),
                     'account_title_name' => data_get($account, 'account_title.name'),

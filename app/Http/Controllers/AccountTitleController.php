@@ -358,10 +358,21 @@ class AccountTitleController extends Controller
 //                      'updated_at' => $chunk['updated_at'],
 //                      'deleted_at' => $chunk['deleted_at'],
 //                  ]);
-                  $flattenedChunks = AccountTitle::updateOrCreate([
-                      'code' => $chunk['code'],
-                      'title' => $chunk['title'],
-                  ], $chunk);
+//                  $flattenedChunks = AccountTitle::updateOrCreate([
+//                      'code' => $chunk['code'],
+//                      'title' => $chunk['title'],
+//                  ], $chunk);
+
+                  $accountTitle = AccountTitle::firstOrNew(['title' => $chunk['title']]);
+                  $accountTitle->title = $chunk['title'];
+                  $accountTitle->code = $chunk['code'];
+                  $accountTitle->account_title_ggparent_id = $chunk['account_title_ggparent_id'];
+                  $accountTitle->account_title_gparent_id = $chunk['account_title_gparent_id'];
+                  $accountTitle->account_title_parent_id = $chunk['account_title_parent_id'];
+                  $accountTitle->account_title_child_id = $chunk['account_title_child_id'];
+                  $accountTitle->account_title_pnl_id = $chunk['account_title_pnl_id'];
+                  $accountTitle->account_title_unit_id = $chunk['account_title_unit_id'];
+                  $accountTitle->save();
               }
           });
 
