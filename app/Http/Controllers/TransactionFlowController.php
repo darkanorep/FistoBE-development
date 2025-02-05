@@ -452,34 +452,35 @@ class TransactionFlowController extends Controller
                 foreach($transactions as $transaction) {
                     $transaction = Transaction::find($transaction);
 
-                    if ($transaction->is_mc == 1 || $transaction->is_mcl == 1) {
-                        Cheque::where('transaction_id', $transaction->id)
-                            ->update([
-                                'is_released' => true
-                            ]);
+//                    if ($transaction->is_mc == 1 || $transaction->is_mcl == 1) {
+//                        Cheque::where('transaction_id', $transaction->id)
+//                            ->update([
+//                                'is_released' => true
+//                            ]);
+//
+//                        Transaction::where('id', $transaction->id)
+//                            ->update([
+//                                'state' => 'release',
+//                                'status' => 'release-release'
+//                            ]);
+//                    } else {
+//                        Transaction::where('id', $transaction->id)
+//                            ->update([
+//                                'is_for_releasing' => true,
+//                                'state' => 'transmit',
+//                                'status' => $process . '-' . $process,
+//                         ]);
+//                    }
 
-                        Transaction::where('id', $transaction->id)
-                            ->update([
-                                'state' => 'release',
-                                'status' => 'release-release'
-                            ]);
-                    } else {
-                        Transaction::where('id', $transaction->id)
-                            ->update([
-                                'is_for_releasing' => true,
-                                'state' => 'transmit',
-                                'status' => $process . '-' . $process,
-                         ]);
-                    }
+                    Transaction::where('id', $transaction->id)
+                        ->update([
+                            'is_for_releasing' => true,
+                            'state' => 'transmit',
+                            'status' => $process . '-' . $process,
+                        ]);
                 }
 
             }
-
-//            Transaction::whereIn('id', $transactionIds)->update([
-//                'is_for_releasing' => true,
-//                'state' => 'transmit',
-//                'status' => $process . '-' . $process,
-//            ]);
         }
 
         return $this->resultResponse("update", "Transaction", null);
