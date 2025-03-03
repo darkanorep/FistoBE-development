@@ -436,7 +436,7 @@ class TransactionFlow
                 static::voidTransaction($request, $id);
             } elseif ($subprocess == "voucher") {
                 $status = "voucher-voucher";
-                $transaction->account_titles()->forceDelete();
+                $transaction->account_titles()->delete();
                 $transaction->treasuryCheque()->forceDelete();
                 $transaction->treasuryAccountTitle()->delete();
 
@@ -1809,25 +1809,25 @@ class TransactionFlow
 //      })
 //      ->exists();
 
-        $cheque_transaction_id = Cheque::withTrashed()
-            ->where("cheque_no", $cheque_no)
-            ->where("bank_id", $bank_id)
-            ->pluck("transaction_id")
-            ->toArray();
-
-        $transaction = Cheque::withTrashed()
-            ->where('cheque_no', $cheque_no)
-            ->where('bank_id', $bank_id)
-//          ->where('transaction_id', '<>', $id)
-            ->when(in_array($id, $cheque_transaction_id), function ($query) use ($id) {
-                $query->whereNotNull('reason_id');
-            })
-            ->exists();
-
-        if ($transaction) {
-            $errorMessage = GenericMethod::resultLaravelFormat("cheque.no", ["Cheque number already exist."]);
-            return GenericMethod::resultResponse("invalid", "", $errorMessage);
-        }
+//        $cheque_transaction_id = Cheque::withTrashed()
+//            ->where("cheque_no", $cheque_no)
+//            ->where("bank_id", $bank_id)
+//            ->pluck("transaction_id")
+//            ->toArray();
+//
+//        $transaction = Cheque::withTrashed()
+//            ->where('cheque_no', $cheque_no)
+//            ->where('bank_id', $bank_id)
+////          ->where('transaction_id', '<>', $id)
+//            ->when(in_array($id, $cheque_transaction_id), function ($query) use ($id) {
+//                $query->whereNotNull('reason_id');
+//            })
+//            ->exists();
+//
+//        if ($transaction) {
+//            $errorMessage = GenericMethod::resultLaravelFormat("cheque.no", ["Cheque number already exist."]);
+//            return GenericMethod::resultResponse("invalid", "", $errorMessage);
+//        }
         return GenericMethod::resultResponse("success-no-content", "", []);
     }
 
@@ -2134,6 +2134,7 @@ class TransactionFlow
 
             $clear = $transaction->clear()->create([
                 'status' => 'clear-clear',
+                'user_id' => auth()->user()->id,
                 'tag_id' => $transaction->id,
                 'date_status' => Carbon::now('Asia/Manila')->format('Y-m-d H:i:s'),
             ]);

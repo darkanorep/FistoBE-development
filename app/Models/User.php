@@ -9,12 +9,11 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\Traits\LogsActivity;
+use Staudenmeir\EloquentJsonRelations\HasJsonRelationships;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, HasApiTokens;
-    use SoftDeletes;
-    use LogsActivity;
+    use HasFactory, Notifiable, HasApiTokens, SoftDeletes, LogsActivity, HasJsonRelationships;
 
     protected $fillable = [
         "id_prefix",
@@ -98,5 +97,9 @@ class User extends Authenticatable
             "business_units.id",
             "business_units.business_unit as name"
         );
+    }
+
+    public function journalUser() {
+        return $this->hasManyJson(JournalUser::class, 'user_id')->select('approver_id');
     }
 }

@@ -25,12 +25,14 @@ class AccrualsController extends Controller
         $companies = $this->getRequestData($request, 'companies');
         $suppliers = $this->getRequestData($request, 'suppliers');
         $search = $request->search;
+        $status = $request->input('status', 'pending');
 //        $adjustment_month = $request->input('adjustment_month', Carbon::now()->format('Y-m'));
 //        $year = date('Y', strtotime($adjustment_month));
 //        $month = date('m', strtotime($adjustment_month));
         $is_reversed = $request->input('is_reversed', 0);
         $year = $request->input('year');
         $month = $request->input('month');
+        $is_year_end = $request->input('is_year_end', 0);
 
         if ($year == 'all') {
             $accruals = Accruals::when($is_reversed, function ($query) {
@@ -47,6 +49,8 @@ class AccrualsController extends Controller
                 ->select([
                 'id',
                 'adjustment_month',
+                'is_year_end',
+                'transaction_date',
                 'supplier_id',
                 'supplier_code',
                 'supplier_name',
@@ -106,7 +110,9 @@ class AccrualsController extends Controller
                     'po_no' => $item->po_no,
                     'reference_no' => $item->reference_no,
                     'voucher_number' => $item->voucher_number,
-                    'is_reversed' => $item->is_reversed
+                    'transaction_date' => $item->transaction_date,
+                    'is_reversed' => $item->is_reversed,
+                    'is_year_end' => $item->is_year_end
                 ];
             });
         } elseif(!empty($month) && !empty($year)) {
@@ -116,6 +122,10 @@ class AccrualsController extends Controller
                 'adjustment_month',
                 'batch_no',
                 'reversed_no',
+                'is_year_end',
+                'is_approved',
+                'reason_id',
+                'reason',
                 DB::raw("MAX(updated_at) as latest_updated_at"))
                 ->when(!empty($companies), function ($query) use ($companies) {
                     $query->whereIn('division_id', $companies);
@@ -135,7 +145,11 @@ class AccrualsController extends Controller
                     'journal_description',
                     'adjustment_month',
                     'batch_no',
-                    'reversed_no'
+                    'reversed_no',
+                    'is_year_end',
+                    'is_approved',
+                    'reason_id',
+                    'reason'
                 )
                 ->orderBy('latest_updated_at', 'desc')
                 ->whereLike(['journal_name', 'journal_description'], $search)
@@ -162,7 +176,7 @@ class AccrualsController extends Controller
                 }
 
                 return (object) [
-                    'id' => $account_titles->first()->id,
+                    'id' => $account_titles->last()->id,
                     'division' => [
                         'name' => $account_titles->first()->division_name
                     ],
@@ -178,6 +192,7 @@ class AccrualsController extends Controller
                             'po_no' => $item->po_no,
                             'reference_no' => $item->reference_no,
                             'voucher_number' => $item->voucher_number,
+                            'transaction_date' => $item->transaction_date,
                             'supplier' => [
                                 'name' => $item->supplier_name
                             ],
@@ -219,12 +234,18 @@ class AccrualsController extends Controller
                         ];
                     }),
                     'reversed_no' => $item->reversed_no,
-                    'reversed_at' => $account_titles->first()->reversed_at
+                    'reversed_at' => $account_titles->first()->reversed_at,
+                    'is_year_end' => $item->is_year_end
                 ];
             })->filter();
         } else {
             $accruals = Accruals::select(
-                'journal_name', 'journal_description', 'adjustment_month', 'batch_no', DB::raw("MAX(updated_at) as latest_updated_at"))
+                'journal_name',
+                'journal_description',
+                'adjustment_month',
+                'batch_no',
+                'is_year_end',
+                DB::raw("MAX(updated_at) as latest_updated_at"))
                 ->when($is_reversed, function ($query) {
                     $query->where('is_reversed', 1);
                 }, function ($query) {
@@ -239,7 +260,7 @@ class AccrualsController extends Controller
                             }
                         });
                 })
-                ->groupBy('journal_name', 'journal_description', 'adjustment_month', 'batch_no', 'is_reversed', 'reversed_at', 'reversed_no')
+                ->groupBy('journal_name', 'journal_description', 'adjustment_month', 'batch_no', 'is_reversed', 'reversed_at', 'reversed_no', 'is_year_end')
                 ->orderBy('latest_updated_at', 'desc')
                 ->get();
         }
@@ -273,27 +294,67 @@ class AccrualsController extends Controller
                 : Carbon::parse($item->adjustment_month)->format('Y');
             })->unique()->values();
         } elseif (!empty($year) && empty($month)) {
+
             $groupedAccruals = $accruals->filter(function ($item) use ($year, $is_reversed) {
-                return $is_reversed ? Carbon::parse($item->reversed_at)->format('Y') == $year
-                    : Carbon::parse($item->adjustment_month)->format('Y') == $year;
+                return $is_reversed
+                    ? Carbon::parse($item->reversed_at)->format('Y') == $year && $item->is_year_end == 0
+                    : Carbon::parse($item->adjustment_month)->format('Y') == $year && $item->is_year_end == 0;
             })->groupBy(function ($item) use ($is_reversed) {
-                return $is_reversed ? Carbon::parse($item->reversed_at)->format('F')
-                : Carbon::parse($item->adjustment_month)->format('F');
-            });
+                return $is_reversed
+                    ? Carbon::parse($item->reversed_at)->format('F')
+                    : Carbon::parse($item->adjustment_month)->format('F');
+            })->toArray();
+
+            $groupedYearEndAccruals = $accruals->filter(function ($item) use ($year, $is_reversed) {
+                return $is_reversed
+                    ? Carbon::parse($item->reversed_at)->format('Y') == $year && $item->is_year_end == 1
+                    : Carbon::parse($item->adjustment_month)->format('Y') == $year && $item->is_year_end == 1;
+            })->groupBy(function ($item) use ($is_reversed) {
+                return 'Year End ' . ($is_reversed
+                        ? Carbon::parse($item->reversed_at)->format('F')
+                        : Carbon::parse($item->adjustment_month)->format('F'));
+            })->toArray();
+
+            $groupedAccruals = collect(array_merge($groupedAccruals, $groupedYearEndAccruals));
+
         } elseif (!empty($year) && !empty($month)) {
             $groupedAccruals = $accruals->filter(function ($item) use ($year, $month, $is_reversed) {
 //                return $item !== null &&
 //                    Carbon::parse($item->adjustment_month)->format('Y') == $year &&
 //                    Carbon::parse($item->adjustment_month)->format('m') == str_pad($month, 2, '0', STR_PAD_LEFT);
 
-                return $is_reversed ?
-                    $item !== null &&
+                return $is_reversed
+                    ? $item !== null &&
                     Carbon::parse($item->reversed_at)->format('Y') == $year &&
                     Carbon::parse($item->reversed_at)->format('m') == str_pad($month, 2, '0', STR_PAD_LEFT)
                     : $item !== null &&
                     Carbon::parse($item->adjustment_month)->format('Y') == $year &&
                     Carbon::parse($item->adjustment_month)->format('m') == str_pad($month, 2, '0', STR_PAD_LEFT);
             })->values();
+
+            $groupedAccruals = $accruals->filter(function ($item) use ($year, $month, $is_reversed, $is_year_end) {
+                if ($is_year_end) {
+                    return $is_reversed
+                        ? $item !== null &&
+                        Carbon::parse($item->reversed_at)->format('Y') == $year &&
+                        Carbon::parse($item->reversed_at)->format('m') == str_pad($month, 2, '0', STR_PAD_LEFT) &&
+                        $item->is_year_end == 1
+                        : $item !== null &&
+                        Carbon::parse($item->adjustment_month)->format('Y') == $year &&
+                        Carbon::parse($item->adjustment_month)->format('m') == str_pad($month, 2, '0', STR_PAD_LEFT) &&
+                        $item->is_year_end == 1;
+                } else {
+                    return $is_reversed
+                        ? $item !== null &&
+                        Carbon::parse($item->reversed_at)->format('Y') == $year &&
+                        Carbon::parse($item->reversed_at)->format('m') == str_pad($month, 2, '0', STR_PAD_LEFT) &&
+                        $item->is_year_end == 0
+                        : $item !== null &&
+                        Carbon::parse($item->adjustment_month)->format('Y') == $year &&
+                        Carbon::parse($item->adjustment_month)->format('m') == str_pad($month, 2, '0', STR_PAD_LEFT) &&
+                        $item->is_year_end == 0;
+                }
+            });
 
             $currentPage = LengthAwarePaginator::resolveCurrentPage();
             $currentItems = $groupedAccruals->slice(($currentPage - 1) * $rows, $rows)->values();
@@ -302,11 +363,13 @@ class AccrualsController extends Controller
             return new LengthAwarePaginator($currentItems, $totalItems, $rows);
         } else {
             $groupedAccruals = $accruals->groupBy(function ($item) use ($is_reversed){
-                return $is_reversed ? Carbon::parse($item->reversed_at)->format('Y')
+                return $is_reversed
+                    ? Carbon::parse($item->reversed_at)->format('Y')
                     : Carbon::parse($item->adjustment_month)->format('Y');
             })->map(function ($yearGroup) use ($is_reversed) {
                 return $yearGroup->groupBy(function ($item) use ($is_reversed) {
-                    return $is_reversed ? Carbon::parse($item->reversed_at)->format('F')
+                    return $is_reversed
+                        ? Carbon::parse($item->reversed_at)->format('F')
                         : Carbon::parse($item->adjustment_month)->format('F');
                 });
             });
@@ -318,6 +381,169 @@ class AccrualsController extends Controller
         return $groupedAccruals;
     }
 
+    public function indexForApproval(Request $request) {
+        $search = $request->search;
+        $rows = $request->input('rows', 10);
+        $status = $request->input('status', 'pending');
+
+        $accruals = Accruals::where('approver_id', auth()->id())
+            ->where('is_reversed', false)
+            ->when($status == 'pending', function ($query) {
+                $query->whereNull('is_approved');
+            })
+            ->when($status == 'approved', function ($query) {
+                $query->where('is_approved', 1);
+            })
+            ->when($status == 'rejected', function ($query) {
+                $query->where('is_approved', 0);
+            })
+            ->select(
+                'journal_name',
+                'journal_description',
+                'adjustment_month',
+                'batch_no',
+                'is_year_end',
+                'is_approved',
+                'reason_id',
+                'reason',
+                DB::raw("MAX(updated_at) as latest_updated_at"))
+            ->groupBy(
+                'journal_name',
+                'journal_description',
+                'adjustment_month',
+                'batch_no',
+                'is_reversed',
+                'reversed_at',
+                'reversed_no',
+                'is_year_end',
+                'is_approved',
+                'reason_id',
+                'reason'
+            )
+            ->orderBy('latest_updated_at', 'desc')
+            ->whereLike(['journal_name', 'journal_description'], $search)
+            ->get();
+
+        $allAccountTitles = Accruals::
+        whereIn('batch_no', $accruals->pluck('batch_no'))
+            ->get()
+            ->groupBy('batch_no');
+
+        $accruals->transform(function ($item) use ($allAccountTitles) {
+            $account_titles = $allAccountTitles->get($item->batch_no);
+
+            return (object)[
+                'id' => $account_titles->last()->id,
+                'division' => [
+                    'name' => $account_titles->first()->division_name
+                ],
+                'boa' => $account_titles->first()->boa,
+                'gj_number' => $item->gj_number,
+                'journal_name' => $item->journal_name,
+                'journal_description' => $item->journal_description,
+                'created_at' => $item->latest_updated_at,
+                'adjustment_month' => $account_titles->first()->adjustment_month,
+                'account_titles' => $account_titles->transform(function ($item) {
+                    return (object)[
+                        'id' => $item->id,
+                        'po_no' => $item->po_no,
+                        'reference_no' => $item->reference_no,
+                        'voucher_number' => $item->voucher_number,
+                        'transaction_date' => $item->transaction_date,
+                        'supplier' => [
+                            'name' => $item->supplier_name
+                        ],
+                        'entry' => $item->entry,
+                        'amount' => $item->amount,
+                        'account_title' => [
+                            'id' => $item->account_title_id,
+                            'code' => $item->account_title_code,
+                            'name' => $item->account_title_name
+                        ],
+                        'company' => [
+                            'id' => $item->company_id,
+                            'code' => $item->company_code,
+                            'name' => $item->company_name
+                        ],
+                        'department' => [
+                            'id' => $item->department_id,
+                            'code' => $item->department_code,
+                            'name' => $item->department_name
+                        ],
+                        'location' => [
+                            'id' => $item->location_id,
+                            'code' => $item->location_code,
+                            'name' => $item->location_name
+                        ],
+                        'business_unit' => [
+                            'id' => $item->business_unit_id,
+                            'code' => $item->business_unit_code,
+                            'name' => $item->business_unit_name
+                        ],
+                        'sub_unit' => [
+                            'id' => $item->sub_unit_id,
+                            'code' => $item->sub_unit_code,
+                            'name' => $item->sub_unit_name
+                        ],
+                        'remarks' => $item->description,
+                        'is_reversed' => $item->is_reversed,
+                        'reversed_at' => $item->reversed_at,
+                    ];
+                }),
+                'reversed_no' => $item->reversed_no,
+                'reversed_at' => $account_titles->first()->reversed_at,
+                'is_year_end' => $item->is_year_end,
+                'is_approved' => $item->is_approved,
+                'reason_id' => $item->reason_id,
+                'reason' => $item->reason
+            ];
+        })->filter();
+
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
+        $currentItems = $accruals->slice(($currentPage - 1) * $rows, $rows)->values();
+        $totalItems = $accruals->count();
+
+        return new LengthAwarePaginator($currentItems, $totalItems, $rows);
+
+    }
+
+    public function action($id) {
+
+        $process = request()->input('process');
+        $reason_id = request()->input('reason_id', null);
+        $reason = request()->input('reason', null);
+        $accruals = Accruals::find($id);
+
+        if ($accruals) {
+            switch($process) {
+                case 'approve':
+                    Accruals::where('batch_no', $accruals->batch_no)
+                        ->update([
+                            'is_approved' => true
+                        ]);
+                    break;
+                case 'reject':
+                    Accruals::where('batch_no', $accruals->batch_no)
+                        ->update([
+                            'is_approved' => false,
+                            'reason_id' => $reason_id,
+                            'reason' => $reason
+                        ]);
+                    break;
+            }
+
+            $accruals->journals()->create([
+                'status' => $process,
+                'user_id' => auth()->id(),
+                'reason_id' => $reason_id,
+                'reason' => $reason
+            ]);
+
+            return response()->json(
+                ['message' => $accruals->batch_no . ' successfully ' . $process . 'd.']
+                , 200);
+        }
+    }
 
     public function store(Request $request)
     {
@@ -327,18 +553,28 @@ class AccrualsController extends Controller
         $division_id = data_get($request, "division.id");
         $division_name = data_get($request, "division.name");
         $adjust_month = data_get($request, "adjustment_month");
+        $approver_id =  auth()->user()->journalUser()->first()->approver_id ?? null;
+        $isYearEnd = data_get($request, "is_year_end", 0);
         $account_titles = $request->account_titles;
+
+        if ($approver_id == null) {
+            return response()->json([
+                'message' => 'You are not allowed to create a Accruals. Please contact your administrator.'
+            ], 403);
+        }
 
         $batch_no = $this->generateGJBatchNo(Accruals::class);
 
         foreach ($account_titles as $account_title) {
-            Accruals::create([
+            $accruals = Accruals::create([
                 'adjustment_month' => $adjust_month,
+                'is_year_end' => $isYearEnd,
                 'division_id' => $division_id,
                 'division_name' => $division_name,
-                'transaction_date' => Carbon::now(),
+                'approver_id' => $approver_id,
+                'transaction_date' => data_get($account_title, "transaction_date"),
                 'tag_no' => data_get($account_title, "tag_no"),
-                'po_no' => data_get($account_title, "po_no"),
+                'po_no' => implode(', ', data_get($account_title, "po_no", [])),
                 'reference_no' => data_get($account_title, "reference_no"),
                 'voucher_number' => data_get($account_title, "voucher_number"),
                 'supplier_id' => data_get($account_title, "supplier.id"),
@@ -374,17 +610,24 @@ class AccrualsController extends Controller
             ]);
         }
 
+        if ($request->hasFile('attachments')) {
+            $accruals->addMultipleMediaFromRequest(['attachments'])
+                ->each(function ($fileAdder) use ($batch_no) {
+                    $fileAdder->toMediaCollection('attachments')
+                        ->update(['gj_number' => $batch_no]);
+                });
+        }
+
         return response()->json(['message' => 'Accrual Journal successfully created.'], 201);
     }
 
 
-
-    public function update(Request $request, $id)
-    {
+    public function updateAccruals(Request $request, $id) {
         $accruals = Accruals::find($id);
 
         if ($accruals) {
             Accruals::where('batch_no', $accruals->batch_no)->forceDelete();
+            $accruals->media()->delete();
         }
 
         return $this->store($request);
@@ -396,7 +639,6 @@ class AccrualsController extends Controller
 
         return response()->json(['message' => 'General Journal successfully deleted.'], 200);
     }
-
 
     public function reverse(Request $request)
     {
@@ -412,6 +654,18 @@ class AccrualsController extends Controller
             'reversed_at' => Carbon::now(),
             'reversed_no' => $reversed_no
         ]);
+
+        collect($request['accruals'])->each(function ($id) {
+            $accrual = Accruals::find($id);
+            if ($accrual) {
+                $accrual->journals()->create([
+                    'status' => 'reversed',
+                    'user_id' => auth()->id(),
+                    'reason_id' => null,
+                    'reason' => null
+                ]);
+            }
+        });
 
         return response()->json(['message' => 'Accrual successfully reversed.'], 200);
     }

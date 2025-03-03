@@ -17,6 +17,7 @@ class VoucherAccountTitle extends Model
         "treasury_id",
         "issue_id",
         "purchase_order_id",
+        "job_order_id",
         "bank_id",
         "entry",
         "account_title_id",

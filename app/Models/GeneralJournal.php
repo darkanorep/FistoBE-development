@@ -5,13 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\MediaLibrary\HasMedia\HasMedia;
+use Spatie\MediaLibrary\HasMedia\HasMediaTrait;
 
-class GeneralJournal extends Model
+class GeneralJournal extends Model implements HasMedia
 {
-    use HasFactory, softDeletes;
+    use HasFactory, softDeletes, HasMediaTrait;
 
     protected $fillable = [
         'adjustment_month',
+        'is_year_end',
         'division_id',
         'division_name',
         'tag_no',
@@ -54,6 +57,10 @@ class GeneralJournal extends Model
         'remarks',
         'boa',
         'user_id',
+        'approver_id',
+        'is_approved',
+        'reason_id',
+        'reason',
         'journal_name',
         'journal_description',
         'gj_number',
@@ -70,4 +77,8 @@ class GeneralJournal extends Model
         return $this->hasMany(User::class, 'id', 'user_id');
     }
 
+    public function journals()
+    {
+        return $this->morphMany(Journal::class, 'journable');
+    }
 }

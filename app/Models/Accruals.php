@@ -5,13 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\MediaLibrary\HasMedia\HasMedia;
+use Spatie\MediaLibrary\HasMedia\HasMediaTrait;
 
-class Accruals extends Model
+class Accruals extends Model implements HasMedia
 {
-    use HasFactory, softDeletes;
+    use HasFactory, softDeletes, HasMediaTrait;
 
     protected $fillable = [
         'adjustment_month',
+        'is_year_end',
         'division_id',
         'division_name',
         'tag_no',
@@ -51,6 +54,10 @@ class Accruals extends Model
         'service_provider_name',
         'boa',
         'user_id',
+        'approver_id',
+        'is_approved',
+        'reason_id',
+        'reason',
         'journal_name',
         'journal_description',
         'gj_number',
@@ -67,5 +74,10 @@ class Accruals extends Model
 
     public function payableAssociates() {
         return $this->hasMany(User::class, 'id', 'user_id');
+    }
+
+    public function journals()
+    {
+        return $this->morphMany(Journal::class, 'journable');
     }
 }

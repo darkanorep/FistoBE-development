@@ -99,6 +99,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         Route::get("voucher-number", [TransactionController::class, "voucherNumberDropdown"]);
         Route::get('general-journals-numbers', [TransactionController::class, 'generalNumbersDropdown']);
         Route::get('cheque-types', [MasterlistController::class, 'chequeTypesDropdown']);
+
     });
 
     Route::group(["prefix" => "admin", "middleware" => ["auth" => "is_admin"]], function () {
@@ -269,6 +270,11 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         //DEBIT USER
         Route::patch('debit-users/{id}', [\App\Http\Controllers\DebitUserController::class, "change_status"]);
         Route::resource('debit-users', \App\Http\Controllers\DebitUserController::class);
+
+        //JOURNAL USER
+        Route::patch('journal-users/{id}', [\App\Http\Controllers\JournalUserController::class, "change_status"]);
+        Route::resource('journal-users', \App\Http\Controllers\JournalUserController::class);
+
     });
 
     // USER
@@ -319,16 +325,20 @@ Route::group(["middleware" => "auth:sanctum"], function () {
     Route::get("cheque-transaction/{id}", [TransactionController::class, 'chequeTransaction']);
     Route::get('cheque-number', [\App\Http\Controllers\BankSeriesController::class, 'chequeNumber']);
 
-    //GENERAL JOURNAL
-    Route::resource("general-journals", \App\Http\Controllers\GeneralJournalController::class);
-    Route::patch('general-journals/post/{id}', [\App\Http\Controllers\GeneralJournalController::class, 'posted']);
-    Route::post("general-journals/import", [\App\Http\Controllers\GeneralJournalController::class, 'import']);
+    Route::middleware('journal_user')->group(function () {
+        //GENERAL JOURNAL
+        Route::patch('general-journals/post/{id}', [\App\Http\Controllers\GeneralJournalController::class, 'posted']);
+        Route::post("general-journals/import", [\App\Http\Controllers\GeneralJournalController::class, 'import']);
+        Route::resource("general-journals", \App\Http\Controllers\GeneralJournalController::class);
+        Route::post('update/general-journals/{id}', [\App\Http\Controllers\GeneralJournalController::class, 'updateGeneralJournal']);
 
-    //ACCRUALS/REVERSALS
-    Route::patch('accruals/reverse', [\App\Http\Controllers\AccrualsController::class, 'reverse']);
-    Route::resource('accruals', \App\Http\Controllers\AccrualsController::class);
+        //ACCRUALS/REVERSALS
+        Route::patch('accruals/reverse', [\App\Http\Controllers\AccrualsController::class, 'reverse']);
+        Route::post('accruals/import', [\App\Http\Controllers\AccrualsController::class, 'import']);
+        Route::resource('accruals', \App\Http\Controllers\AccrualsController::class);
+        Route::post('update/accruals/{id}', [\App\Http\Controllers\AccrualsController::class, 'updateAccruals']);
 //    Route::patch('accruals/reverse/{id}', [\App\Http\Controllers\AccrualsController::class, 'reverse']);
-    Route::post('accruals/import', [\App\Http\Controllers\AccrualsController::class, 'import']);
+    });
 
     Route::resource("transactions", TransactionController::class);
     Route::post('transactions-test', [TransactionController::class, "store1"]);
@@ -388,4 +398,20 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         Route::post("validate", [CounterReceiptController::class, "check"]);
         Route::post("flow/{id}", [CounterReceiptController::class, "flow"]);
     });
+
+    //JOURNALS FOR APPROVAL
+    Route::group(['prefix' => 'journal-books'], function () {
+
+        //GENERAL JOURNAL
+        Route::get('general-journals', [\App\Http\Controllers\GeneralJournalController::class, 'indexForApproval']);
+        Route::patch('general-journals/{id}', [\App\Http\Controllers\GeneralJournalController::class, 'action']);
+
+        //ACCRUALS
+        Route::get('accruals', [\App\Http\Controllers\AccrualsController::class, 'indexForApproval']);
+        Route::patch('accruals/{id}', [\App\Http\Controllers\AccrualsController::class, 'action']);
+    });
+
+    //SETTINGS
+    Route::post('toggle-entry', [\App\Http\Controllers\SettingController::class, 'toggleEntry']);
+    Route::get('settings', [\App\Http\Controllers\SettingController::class, 'index']);
 });

@@ -80,6 +80,7 @@ class LocationController extends Controller
 //      }
 
       $locations = Location::withTrashed()
+          ->with('departments')
           ->when($paginate === 1, function ($query) {
               return $query->with("departments");
           })

@@ -11,6 +11,7 @@ class Clear extends Model
 
     protected $fillable = [
         "tag_id",
+        "user_id",
         "date_received",
         "status",
         "date_status",
@@ -20,5 +21,10 @@ class Clear extends Model
 
     public function account_title(){
         return $this->hasMany(ClearingAccountTitle::class,'clear_id','id');
+    }
+
+    public function clearUser() {
+        return $this->hasOne(User::class, 'id', 'user_id')
+            ->select('id', 'first_name', 'last_name', 'id_prefix', 'id_no');
     }
 }

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -235,7 +236,7 @@ class Transaction extends Model
 //    return $this->hasMany(Clear::class, "tag_id", "tag_no")
         return $this->hasMany(Clear::class, "transaction_id", "id")
 //      ->select("tag_id", "id", "date_status as date", "status", "date_cleared")
-            ->select("transaction_id", "id", "date_status as date", "status", "date_cleared")
+            ->select("transaction_id", "id", "date_status as date", "status", "date_cleared", "user_id")
             ->latest();
     }
 

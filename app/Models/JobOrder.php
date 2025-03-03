@@ -6,17 +6,17 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class PurchaseOrders extends Model
+class JobOrder extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, softDeletes;
 
     protected $fillable = [
         'received_receipt_id',
-        'po_number',
-        'po_amount',
+        'jo_number',
+        'jo_amount',
         'consumed_amount',
         'remaining_amount',
-        'po_description',
+        'jo_description',
         'type_name',
         'company_id',
         'company_code',
@@ -38,6 +38,6 @@ class PurchaseOrders extends Model
         'location_name',
         'account_title_id',
         'account_title_code',
-        'account_title_name',
+        'account_title_name'
     ];
 }
