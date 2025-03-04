@@ -19,10 +19,16 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class GeneralJournalController extends Controller
 {
+    private $supplier;
+    private $accountTitle;
+
+    public function __construct() {
+        $this->accountTitle = AccountTitle::select('id', 'code', 'title')->get();
+        $this->supplier = Supplier::select('id', 'code', 'name')->get();
+    }
 
     public function index(Request $request)
     {
@@ -461,12 +467,6 @@ class GeneralJournalController extends Controller
         $account_titles = $request->account_titles;
         $department_id = null;
 
-        if ($approver_id == null) {
-            return response()->json([
-                'message' => 'You are not allowed to create a General Journal. Please contact your administrator.'
-            ], 403);
-        }
-
         foreach($account_titles as $account_title) {
             if(data_get($account_title, "department.id")) {
                 $department_id = $account_title['department']['id'];
@@ -535,9 +535,9 @@ class GeneralJournalController extends Controller
 //        }
         if ($id) {
 
-            Media::where('model_type', GeneralJournal::class)
-                ->where('model_id', $id)
-                ->update(['model_id' => $adjustments->id]);
+            DB::table('media')->where('model_type', GeneralJournal::class)
+                ->where('model_id', $adjustments->id)
+                ->update(['model_id' => $id]);
 
             if ($request->hasFile('attachments')) {
                 $adjustments->addMultipleMediaFromRequest(['attachments'])
@@ -583,7 +583,6 @@ class GeneralJournalController extends Controller
 
         $journals = $request->all();
         $error = [];
-        $test = [];
         $account_title_list = AccountTitle::withTrashed()->pluck('title')->toArray();
         $company_list = Company::withTrashed()->pluck('company')->toArray();
         $department_list = Department::withTrashed()->pluck('department')->toArray();
@@ -591,74 +590,75 @@ class GeneralJournalController extends Controller
         $business_unit_list = BusinessUnit::withTrashed()->pluck('business_unit')->toArray();
         $sub_unit_list = SubUnit::withTrashed()->pluck('subunit')->toArray();
 
-        $headers = "Account Tag, PO#, Reference No, Voucher Number, Supplier, DR/CR, Amount, Description, Account Title, Company, Department, Location, BOA";
-        $template = ["tag_no", "po_no", "reference_no", "voucher_number", "supplier", "entry", "amount", "remarks", "account_title", "company", "department", "location", "boa"];
+        $headers = "Account Tag, PO#, RR#, Reference No, Voucher Number, Supplier, DR/CR, Amount, Description, Account Title, Company, Department, Location, BOA";
+        $template = ["tag_no", "po_no", "rr_no", "reference_no", "voucher_number", "supplier", "entry", "amount", "remarks", "account_title", "company", "department", "location", "boa"];
         $required = ["supplier", "entry", "amount", "account_title", "company", "department", "location"];
         $keys = array_keys(current($journals));
         $this->validateHeader($template, $keys, $headers);
 
-//        $index = 2;
-//        foreach ($journals as $journal) {
-//            $account_title = $journal['account_title'];
-//            $company = $journal['company'];
-//            $department = $journal['department'];
-//            $location = $journal['location'];
-////            $business_unit = $journal['business_unit'];
-////            $sub_unit = $journal['sub_unit'];
-//            $boa = $journal['boa'];
-//
-//            if (!in_array($account_title, $account_title_list) && !empty($account_title)) {
-//                $error[] = (object)[
-//                    "line" => $index,
-//                    "description" => $account_title . " is not registered.",
-//                ];
-//            }
-//
-//            if (!in_array($department, $department_list) && !empty($department)) {
-//                $error[] = (object)[
-//                    "line" => $index,
-//                    "description" => $department . " is not registered.",
-//                ];
-//            }
-//
-//            if (!in_array($location, $location_list) && !empty($location)){
-//                $error[] = (object)[
-//                    "line" => $index,
-//                    "description" => $location . " is not registered.",
-//                ];
-//            }
-//
-//            if (!in_array($company, $company_list) && !empty($company)) {
-//                $error[] = (object)[
-//                    "line" => $index,
-//                    "description" => $company . " is not registered.",
-//                ];
-//            }
-//
-//            if ($boa != 'Adjustment') {
-//                $error[] = (object)[
-//                    "line" => $index,
-//                    "description" => "BOA must be Adjustment.",
-//                ];
-//            }
-//
-//            foreach ($journal as $key => $value) {
-//                if (in_array($key, $required) && empty($value)) {
-//                    $error[] = (object)[
-//                        "error_type" => "empty",
-//                        "line" => $index,
-//                        "description" => $key . " is empty.",
-//                    ];
-//                }
-//            }
-//
-//            $index++;
-//        }
+        $index = 2;
+        foreach ($journals as $journal) {
+            $account_title = $journal['account_title'];
+            $company = $journal['company'];
+            $department = $journal['department'];
+            $location = $journal['location'];
+//            $business_unit = $journal['business_unit'];
+//            $sub_unit = $journal['sub_unit'];
+            $boa = $journal['boa'];
+
+            if (!in_array($account_title, $account_title_list) && !empty($account_title)) {
+                $error[] = (object)[
+                    "line" => $index,
+                    "description" => $account_title . " is not registered.",
+                ];
+            }
+
+            if (!in_array($department, $department_list) && !empty($department)) {
+                $error[] = (object)[
+                    "line" => $index,
+                    "description" => $department . " is not registered.",
+                ];
+            }
+
+            if (!in_array($location, $location_list) && !empty($location)){
+                $error[] = (object)[
+                    "line" => $index,
+                    "description" => $location . " is not registered.",
+                ];
+            }
+
+            if (!in_array($company, $company_list) && !empty($company)) {
+                $error[] = (object)[
+                    "line" => $index,
+                    "description" => $company . " is not registered.",
+                ];
+            }
+
+            if ($boa != 'Adjustment') {
+                $error[] = (object)[
+                    "line" => $index,
+                    "description" => "BOA must be Adjustment.",
+                ];
+            }
+
+            foreach ($journal as $key => $value) {
+                if (in_array($key, $required) && empty($value)) {
+                    $error[] = (object)[
+                        "error_type" => "empty",
+                        "line" => $index,
+                        "description" => $key . " is empty.",
+                    ];
+                }
+            }
+
+            $index++;
+        }
 
         if (isset($journals)) {
             foreach ($journals as $journal) {
-                $supplier = Supplier::where('name', $journal['supplier'])->first();
-                $account_title = AccountTitle::where('title', $journal['account_title'])->first();
+                $supplier = $this->supplier->where('name', $journal['supplier'])->first();
+//                $account_title = AccountTitle::where('title', $journal['account_title'])->first();
+                $accountTitle = $this->accountTitle->where('title', $journal['account_title'])->first();
                 $company = Company::where('company', $journal['company'])->first();
                 $department = Department::where('department', $journal['department'])->first();
                 $location = Location::where('location', $journal['location'])->first();
@@ -680,9 +680,9 @@ class GeneralJournalController extends Controller
                     'amount' => $journal['entry'] == 'Credit' ? abs($journal['amount']) : $journal['amount'],
                     'remarks' => $journal['remarks'],
                     'account_title' => [
-                        'id' => $account_title->id,
-                        'code' => $account_title->code,
-                        'name' => $account_title->title
+                        'id' => $accountTitle->id,
+                        'code' => $accountTitle->code,
+                        'name' => $accountTitle->title
                     ],
                     'company' => [
                         'id' => $company->id,
