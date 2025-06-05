@@ -7,6 +7,7 @@ use App\Models\Department;
 use App\Models\Unit;
 use App\Services\GenericServices;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 class UnitController extends Controller
 {
@@ -21,11 +22,18 @@ class UnitController extends Controller
         $rows = (int)$request->input("rows", 10);
         $search = $request["search"];
         $paginate = $request->input("paginate", 1);
+        $department_id = $request->input("department_id", null);
 
         $units = Unit::withTrashed()
-            ->with('department:id,department as name')
+            ->with([
+                'department:sync_id,business_unit_sync_id,department as name',
+                'subUnit'
+            ])
             ->when(isset($status), function ($query) use ($status) {
                 return $status ? $query->whereNull("deleted_at") : $query->whereNotNull("deleted_at");
+            })
+            ->when($department_id, function ($query) use ($department_id) {
+                return $query->where("department_sync_id", $department_id);
             })
             ->where(function ($query) use ($search) {
                 $query->where("code", "like", "%" . $search . "%")
@@ -41,6 +49,10 @@ class UnitController extends Controller
 
         } elseif ($paginate == 0) {
             $units = $units->get();
+        }
+
+        if (count($units)) {
+            $units = ["units" => $units];
         }
 
 
@@ -214,5 +226,58 @@ class UnitController extends Controller
             return $this->resultResponse("import-error", "sub unit", $errorBag);
         }
     }
+
+//    public function store(Request $request)
+//    {
+////        return Unit::create([
+////            'sync_id' => 1,
+////            'code' => 'x',
+////            'name' => 'x',
+////            'department_sync_id' => 1,
+////
+////        ]);
+//        $units = $request->input('result');
+//        $errors = [];
+//
+//        collect($units)->each(function ($unit) use (&$errors) {
+//            $sync_id = $unit['id'];
+//            $code = $unit['code'];
+//            $name = $unit['name'];
+//            $department_sync_id = $unit['department']['id'];
+//            $deleted_at = $unit['deleted_at'];
+//
+//            $departmentExist = Department::where('sync_id', $department_sync_id)->exists();
+//
+//            if (!$departmentExist) {
+//                $errors[] = "Department with ID {$department_sync_id} does not exist.";
+//                return; // Skip this iteration
+//            }
+//
+//            Unit::updateOrCreate(
+//                [
+//                    'sync_id' => $sync_id,
+//                    'code' => $code,
+//                    'name' => $name,
+//                ],
+//                [
+//                    'sync_id' => $sync_id,
+//                    'code' => $code,
+//                    'name' => $name,
+//                    'department_sync_id' => $department_sync_id,
+//                    'deleted_at' => $deleted_at ? now() : null,
+//                ]
+//            );
+//        });
+//
+//        if (!empty($errors)) {
+//            return response()->json([
+//                'message' => 'Sync Department first before syncing Units.',
+//            ], Response::HTTP_BAD_REQUEST);
+//        }
+//
+//        return response()->json([
+//            'message' => 'Units successfully synced.',
+//        ], Response::HTTP_OK);
+//    }
 
 }

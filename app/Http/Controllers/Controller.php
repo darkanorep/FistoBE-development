@@ -663,12 +663,12 @@ class Controller extends BaseController
 //
 //        return $gj_number;
 //    }
-    function generateGeneralNumber($department_id) {
+    function generateGeneralNumber($department_id, $model) {
         $code = 'GJ';
-        $voucher_code = Department::where('id', $department_id)->first()->voucherCode->code;
+        $voucher_code = Department::where('id', $department_id)->first()->voucherCode->code ?? '';
         $date = (new DateTime())->format('y-m');
 
-        $maxGJNumber = GeneralJournal::where('gj_number', 'like', $code . $voucher_code . $date . '-%')
+        $maxGJNumber = $model::where('gj_number', 'like', $code . $voucher_code . $date . '-%')
             ->max('gj_number');
 
         if ($maxGJNumber) {

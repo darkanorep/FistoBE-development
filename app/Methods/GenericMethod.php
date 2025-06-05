@@ -31,6 +31,7 @@ use App\Models\Transaction;
 use App\Models\TransactionClient;
 use App\Models\Transfer;
 use App\Models\Treasury;
+use App\Models\Unit;
 use App\Models\User;
 use App\Models\UserDocumentCategory;
 use App\Models\VoucherAccountTitle;
@@ -712,16 +713,8 @@ class GenericMethod
         $account_titles
     )
     {
-        $approver_id = isset($approver["id"])
-            ? $approver["id"]
-            : (isset($approver["approver"]["id"])
-                ? $approver["approver"]["id"]
-                : null);
-        $approver_name = isset($approver["name"])
-            ? $approver["name"]
-            : (isset($approver["approver"]["name"])
-                ? $approver["approver"]["name"]
-                : null);
+        $approver_id = $approver["id"] ?? ($approver["approver"]["id"] ?? null);
+        $approver_name = $approver["name"] ?? ($approver["approver"]["name"] ?? null);
 
         $voucher_transaction = $model::Create([
             "transaction_id" => $transaction_id,
@@ -877,7 +870,7 @@ class GenericMethod
 
     public static function addCheque($transaction_id, $id, $cheques)
     {
-        Cheque::where("transaction_id", $transaction_id)->whereNull('reason_id')->forceDelete();
+        Cheque::where("transaction_id", $transaction_id)->whereNull('reason_id')->delete();
         foreach ($cheques as $specific_cheques) {
 //            $entry_type = $specific_cheques["transaction_type"] ?? $specific_cheques["type"];
 //            $bank_id = $specific_cheques["bank"]["id"];
@@ -921,6 +914,8 @@ class GenericMethod
         foreach ($account_titles as $specific_account_title) {
             $purchase_order_id = $specific_account_title["purchase_order_id"] ?? null;
             $job_order_id = $specific_account_title["job_order_id"] ?? null;
+            $bank_id = $specific_account_title['account_title']['bank_id'] ?? null;
+
             $entry = $specific_account_title["entry"];
             $account_title_id = isset($specific_account_title["account_title"]["id"])
                 ? $specific_account_title["account_title"]["id"]
@@ -939,6 +934,7 @@ class GenericMethod
                 "treasury_id" => $treasury_id,
                 "purchase_order_id" => $purchase_order_id ?? null,
                 "job_order_id" => $job_order_id ?? null,
+                "bank_id" => $bank_id,
                 "entry" => $entry,
                 "account_title_id" => $account_title_id,
                 "account_title_name" => $account_title_name,
@@ -958,9 +954,12 @@ class GenericMethod
                 "business_unit_id" => $specific_account_title["business_unit"]["id"] ?? null,
                 "business_unit_name" => $specific_account_title["business_unit"]["name"] ?? null,
                 "business_unit_code" => isset($specific_account_title["business_unit"]["name"]) ? BusinessUnit::where("business_unit", $specific_account_title["business_unit"]["name"])->first()->code : null,
+                "unit_id" => isset($specific_account_title["unit"]["id"]) ?? null,
+                "unit_name" => $specific_account_title["unit"]["name"] ?? null,
+                "unit_code" => isset($specific_account_title["unit"]["name"]) ? Unit::where("name", $specific_account_title["unit"]["name"])->first()->code : null,
                 "sub_unit_id" => $specific_account_title["sub_unit"]["id"] ?? null,
                 "sub_unit_name" => $specific_account_title["sub_unit"]["name"] ?? null,
-                "sub_unit_code" => isset($specific_account_title["sub_unit"]["name"]) ? SubUnit::where("subunit", $specific_account_title["sub_unit"]["name"])->first()->code : null,
+                "sub_unit_code" => isset($specific_account_title["sub_unit"]["name"]) ? SubUnit::where("name", $specific_account_title["sub_unit"]["name"])->first()->code : null,
                 "is_default" => $specific_account_title["is_default"] ?? null,
             ]);
         }
@@ -1303,6 +1302,8 @@ class GenericMethod
                     "status" => "Pending",
                     "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
                     "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+                    "unit_id" => $fields["document"]["unit"]["id"] ?? null,
+                    "unit" => $fields["document"]["unit"]["name"] ?? null,
                     "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                     "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                     "is_confidential" => $is_confidential,
@@ -1362,6 +1363,8 @@ class GenericMethod
                     "date_requested" => $date_requested,
                     "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
                     "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+                    "unit_id" => $fields["document"]["unit"]["id"] ?? null,
+                    "unit" => $fields["document"]["unit"]["name"] ?? null,
                     "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                     "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                     "is_confidential" => $is_confidential,
@@ -1410,6 +1413,8 @@ class GenericMethod
                     "date_requested" => $date_requested,
                     "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
                     "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+                    "unit_id" => $fields["document"]["unit"]["id"] ?? null,
+                    "unit" => $fields["document"]["unit"]["name"] ?? null,
                     "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                     "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                     "is_confidential" => $is_confidential,
@@ -1465,6 +1470,8 @@ class GenericMethod
                     "is_not_editable" => false,
                     "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
                     "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+                    "unit_id" => $fields["document"]["unit"]["id"] ?? null,
+                    "unit" => $fields["document"]["unit"]["name"] ?? null,
                     "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                     "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                     "is_confidential" => $is_confidential,
@@ -1515,6 +1522,8 @@ class GenericMethod
                     "status" => "Pending",
                     "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
                     "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+                    "unit_id" => $fields["document"]["unit"]["id"] ?? null,
+                    "unit" => $fields["document"]["unit"]["name"] ?? null,
                     "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                     "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                     "is_confidential" => $is_confidential,
@@ -1948,6 +1957,8 @@ class GenericMethod
                     "status" => "Pending",
                     "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
                     "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+                    "unit_id" => $fields["document"]["unit"]["id"] ?? null,
+                    "unit" => $fields["document"]["unit"]["name"] ?? null,
                     "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                     "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                     "is_confidential" => $is_confidential,
@@ -2105,6 +2116,8 @@ class GenericMethod
                     "is_not_editable" => false,
                     "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
                     "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+                    "unit_id" => $fields["document"]["unit"]["id"] ?? null,
+                    "unit" => $fields["document"]["unit"]["name"] ?? null,
                     "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                     "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                     "is_confidential" => $is_confidential,
@@ -2157,6 +2170,8 @@ class GenericMethod
                     "status" => "Pending",
                     "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
                     "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+                    "unit_id" => $fields["document"]["unit"]["id"] ?? null,
+                    "unit" => $fields["document"]["unit"]["name"] ?? null,
                     "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                     "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                     "is_confidential" => $is_confidential,
@@ -2555,7 +2570,7 @@ class GenericMethod
         );
     }
 
-    public static function updateTransactionStatus($id, $transaction_id, $request_id, $receipt_type, $tag_no, $status, $state, $reason_id, $reason, $reason_remarks, $voucher_no, $voucher_month, $distributed_id, $distributed_name, $approver_id, $approver_name, $input_tax, $transaction_type = "cheque", $box_no = null)
+    public static function updateTransactionStatus($id, $transaction_id, $request_id, $receipt_type, $tag_no, $status, $state, $reason_id, $reason, $reason_remarks, $voucher_no, $voucher_month, $distributed_id, $distributed_name, $approver_id, $approver_name, $input_tax, $transaction_type, $assigned_id, $box_no = null)
     {
         // $voucher_no = isset($voucher_no) ? $voucher_no : null;
         // $voucher_month = isset($voucher_month) ? $voucher_month : null;
@@ -2606,7 +2621,8 @@ class GenericMethod
                     $distributed_id,
                     $distributed_name,
                     $approver_id,
-                    $approver_name
+                    $approver_name,
+                    $assigned_id
                 ) {
                     $query->update([
                         "status" => $status,
@@ -2622,6 +2638,7 @@ class GenericMethod
                         "reverse_distributed_name" => $distributed_name,
                         "approver_id" => $approver_id,
                         "approver_name" => $approver_name,
+                        "assigned_id" => $assigned_id
                     ]);
                 },
                 function ($query) use (
@@ -2638,9 +2655,10 @@ class GenericMethod
                     $distributed_name,
                     $approver_id,
                     $approver_name,
-//          $transaction_type,
+                    $transaction_type,
                     $box_no,
-                    $input_tax
+                    $input_tax,
+                    $assigned_id
                 ) {
                     $query->update([
                         "status" => $status,
@@ -2656,9 +2674,10 @@ class GenericMethod
                         "distributed_name" => $distributed_name,
                         "approver_id" => $approver_id,
                         "approver_name" => $approver_name,
-//            "transaction_type" => $transaction_type,
+                        "transaction_type" => $transaction_type,
                         'box_no' => $box_no,
-                        'input_tax' => $input_tax
+                        'input_tax' => $input_tax,
+                        "assigned_id" => $assigned_id
                     ]);
                 }
             );

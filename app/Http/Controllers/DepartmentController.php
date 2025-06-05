@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\DepartmentRequest;
+use App\Models\BusinessUnit;
 use App\Models\VoucherCode;
 use Illuminate\Http\Request;
 use App\Models\Department;
 use App\Models\Company;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
@@ -18,7 +20,8 @@ class DepartmentController extends Controller
         $rows = (int)$request->input('rows', 10);
         $search = $request->search;
         $paginate = $request->input('paginate', 1);
-        $company_id = $request->input('company_id', 1);
+        $company_id = $request->input('company_id', null);
+        $business_unit_id = $request->input('business_unit_id', null);
 
         // System Name
         $api_for = $request->input("api_for", "default");
@@ -73,6 +76,7 @@ class DepartmentController extends Controller
             ->when($paginate == 1, function ($query) {
                 return $query->with([
                     'Company',
+                    'businessUnit',
                     'voucherCode:id,code'
                 ]);
             })
@@ -106,6 +110,8 @@ class DepartmentController extends Controller
             $departments = $departments
                 ->when(!empty($company_id), function ($query) use ($company_id) {
                     return $query->where("company", $company_id);
+                }, function ($query) use ($business_unit_id){
+                    return $query->where("business_unit_sync_id", $business_unit_id);
                 })
                 ->when($api_for == "vladimir", function ($query) {
                     return $query
@@ -125,7 +131,7 @@ class DepartmentController extends Controller
                         ->get(["id", "code", "department as name", "company", "updated_at", "deleted_at"]);
                 })
                 ->when($api_for == "default", function ($query) {
-                    return $query->get(["id", "code", "department as name"]);
+                    return $query->get(["id", "code", "department as name", "sync_id"]);
                 });
 
             if (count($departments)) {
@@ -587,4 +593,44 @@ class DepartmentController extends Controller
 //      return $this->resultResponse("import-error", "department", $errorBag);
 //    }
 //  }
+
+//    public function store(Request $request) {
+//
+//        $departments = $request->input('result');
+//
+//        collect($departments)->each(function ($department) use (&$errors) {
+//            $sync_id = $department['id'];
+//            $name = $department['name'];
+//            $code = $department['code'];
+//            $deleted_at = $department['deleted_at'];
+//            $business_unit_sync_id = $department['business_unit']['id'];
+//
+//            $businessUnitExist = BusinessUnit::withTrashed()->where('sync_id', $business_unit_sync_id)->exists();
+//
+//            if (!$businessUnitExist) {
+//                $errors[] = "Business Unit with ID {$businessUnitExist} does not exist.";
+//                return; // Skip this iteration
+//            }
+//
+//            Department::updateOrCreate([
+//                'sync_id' => $sync_id,
+//                'business_unit_sync_id' => $business_unit_sync_id,
+//            ], [
+//                'department' => $name,
+//                'code' => $code,
+//                'deleted_at' => $deleted_at ? now() : null,
+//                'business_unit_sync_id' => $business_unit_sync_id,
+//            ]);
+//        });
+//
+//        if (!empty($errors)) {
+//            return response()->json([
+//                'message' => 'Sync Business Unit first before syncing Business Units.',
+//            ], Response::HTTP_BAD_REQUEST);
+//        }
+//
+//        return response()->json([
+//            'message' => 'Departments successfully synced.',
+//        ], Response::HTTP_OK);
+//    }
 }

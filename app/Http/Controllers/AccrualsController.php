@@ -10,6 +10,7 @@ use App\Models\Department;
 use App\Models\Location;
 use App\Models\SubUnit;
 use App\Models\Supplier;
+use App\Models\Unit;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -18,6 +19,17 @@ use Illuminate\Support\Facades\DB;
 
 class AccrualsController extends Controller
 {
+    public function __construct()
+    {
+        $this->accountTitle = AccountTitle::select('id', 'code', 'title')->withTrashed()->get();
+        $this->supplier = Supplier::select('id', 'code', 'name')->withTrashed()->get();
+        $this->company = Company::select('id', 'code', 'company')->withTrashed()->get();
+        $this->businessUnit = BusinessUnit::select('id', 'code', 'business_unit')->withTrashed()->get();
+        $this->unit = Unit::select('id', 'code', 'name')->withTrashed()->get();
+        $this->subUnit = SubUnit::select('id', 'code', 'name')->withTrashed()->get();
+        $this->department = Department::select('id', 'code', 'department')->withTrashed()->get();
+        $this->location = Location::select('id', 'code', 'location')->withTrashed()->get();
+    }
 
     public function index(Request $request)
     {
@@ -35,11 +47,13 @@ class AccrualsController extends Controller
         $is_year_end = $request->input('is_year_end', 0);
 
         if ($year == 'all') {
-            $accruals = Accruals::when($is_reversed, function ($query) {
-                $query->where('is_reversed', 1);
-            }, function ($query) {
-                $query->whereIn('is_reversed', [0]);
-            })
+            $accruals = Accruals::
+//            when($is_reversed, function ($query) {
+//                $query->where('is_reversed', 1);
+//            }, function ($query) {
+//                $query->whereIn('is_reversed', [0]);
+//            })
+                where('is_approved', true)
                 ->when(!empty($suppliers), function ($query) use ($suppliers) {
                     $query->whereIn('supplier_id', $suppliers);
                 })
@@ -235,7 +249,8 @@ class AccrualsController extends Controller
                     }),
                     'reversed_no' => $item->reversed_no,
                     'reversed_at' => $account_titles->first()->reversed_at,
-                    'is_year_end' => $item->is_year_end
+                    'is_year_end' => $item->is_year_end,
+                    'is_approved' => $item->is_approved,
                 ];
             })->filter();
         } else {
@@ -557,11 +572,11 @@ class AccrualsController extends Controller
         $isYearEnd = data_get($request, "is_year_end", 0);
         $account_titles = $request->account_titles;
 
-        if ($approver_id == null) {
-            return response()->json([
-                'message' => 'You are not allowed to create a Accruals. Please contact your administrator.'
-            ], 403);
-        }
+//        if ($approver_id == null) {
+//            return response()->json([
+//                'message' => 'You are not allowed to create a Accruals. Please contact your administrator.'
+//            ], 403);
+//        }
 
         $batch_no = $this->generateGJBatchNo(Accruals::class);
 
@@ -673,88 +688,102 @@ class AccrualsController extends Controller
     public function import(Request $request) {
 
         $journals = $request->all();
+        $suppliers = $this->supplier->keyBy('name');
+        $accountTitles = $this->accountTitle->keyBy('title');
+        $companies = $this->company->keyBy('company');
+        $departments = $this->department->keyBy('department');
+        $locations = $this->location->keyBy('location');
+        $businessUnits = $this->businessUnit->keyBy('business_unit');
+        $subUnits = $this->subUnit->keyBy('subunit'); // make sure it's correct key
+
         $error = [];
-        $test = [];
-        $account_title_list = AccountTitle::withTrashed()->pluck('title')->toArray();
-        $company_list = Company::withTrashed()->pluck('company')->toArray();
-        $department_list = Department::withTrashed()->pluck('department')->toArray();
-        $location_list = Location::withTrashed()->pluck('location')->toArray();
-        $business_unit_list = BusinessUnit::withTrashed()->pluck('business_unit')->toArray();
-        $sub_unit_list = SubUnit::withTrashed()->pluck('subunit')->toArray();
+
+        $account_title_list = $this->accountTitle->pluck('title')->toArray();
+        $company_list = $this->company->pluck('company')->toArray();
+        $department_list = $this->department->pluck('department')->toArray();
+        $location_list = $this->location->pluck('location')->toArray();
+        $business_unit_list = $this->businessUnit->pluck('business_unit')->toArray();
+        $sub_unit_list = $this->subUnit->pluck('subunit')->toArray();
+//        $account_title_list = AccountTitle::withTrashed()->pluck('title')->toArray();
+//        $company_list = Company::withTrashed()->pluck('company')->toArray();
+//        $department_list = Department::withTrashed()->pluck('department')->toArray();
+//        $location_list = Location::withTrashed()->pluck('location')->toArray();
+//        $business_unit_list = BusinessUnit::withTrashed()->pluck('business_unit')->toArray();
+//        $sub_unit_list = SubUnit::withTrashed()->pluck('name')->toArray();
 
         $headers = "Account Tag, PO#, Reference No, Voucher Number, Supplier, DR/CR, Amount, Description, Account Title, Company, Department, Location, BOA";
         $template = ["tag_no", "po_no", "reference_no", "voucher_number", "supplier", "entry", "amount", "remarks", "account_title", "company", "department", "location", "boa"];
         $required = ["supplier", "entry", "amount", "account_title", "company", "department", "location"];
         $keys = array_keys(current($journals));
-//        $this->validateHeader($template, $keys, $headers);
-//
-//        $index = 2;
-//        foreach ($journals as $journal) {
-//            $account_title = $journal['account_title'];
-//            $company = $journal['company'];
-//            $department = $journal['department'];
-//            $location = $journal['location'];
-////            $business_unit = $journal['business_unit'];
-////            $sub_unit = $journal['sub_unit'];
-//            $boa = $journal['boa'];
-//
-//            if (!in_array($account_title, $account_title_list) && !empty($account_title)) {
-//                $error[] = (object)[
-//                    "line" => $index,
-//                    "description" => $account_title . " is not registered.",
-//                ];
-//            }
-//
-//            if (!in_array($department, $department_list) && !empty($department)) {
-//                $error[] = (object)[
-//                    "line" => $index,
-//                    "description" => $department . " is not registered.",
-//                ];
-//            }
-//
-//            if (!in_array($location, $location_list) && !empty($location)) {
-//                $error[] = (object)[
-//                    "line" => $index,
-//                    "description" => $location . " is not registered.",
-//                ];
-//            }
-//
-//            if (!in_array($company, $company_list) && !empty($company)) {
-//                $error[] = (object)[
-//                    "line" => $index,
-//                    "description" => $company . " is not registered.",
-//                ];
-//            }
-//
+        $this->validateHeader($template, $keys, $headers);
+
+        $index = 2;
+        foreach ($journals as $journal) {
+            $account_title = $journal['account_title'];
+            $company = $journal['company'];
+            $department = $journal['department'];
+            $location = $journal['location'];
+//            $business_unit = $journal['business_unit'];
+//            $sub_unit = $journal['sub_unit'];
+            $boa = $journal['boa'];
+
+            if (!in_array($account_title, $account_title_list) && !empty($account_title)) {
+                $error[] = (object)[
+                    "line" => $index,
+                    "description" => $account_title . " is not registered.",
+                ];
+            }
+
+            if (!in_array($department, $department_list) && !empty($department)) {
+                $error[] = (object)[
+                    "line" => $index,
+                    "description" => $department . " is not registered.",
+                ];
+            }
+
+            if (!in_array($location, $location_list) && !empty($location)) {
+                $error[] = (object)[
+                    "line" => $index,
+                    "description" => $location . " is not registered.",
+                ];
+            }
+
+            if (!in_array($company, $company_list) && !empty($company)) {
+                $error[] = (object)[
+                    "line" => $index,
+                    "description" => $company . " is not registered.",
+                ];
+            }
+
 //            if ($boa != 'Accruals' || null) {
 //                $error[] = (object)[
 //                    "line" => $index,
 //                    "description" => "BOA must be Accruals.",
 //                ];
 //            }
-//
-//            foreach ($journal as $key => $value) {
-//                if (in_array($key, $required) && empty($value)) {
-//                    $error[] = (object)[
-//                        "error_type" => "empty",
-//                        "line" => $index,
-//                        "description" => $key . " is empty.",
-//                    ];
-//                }
-//            }
-//
-//            $index++;
-//        }
+
+            foreach ($journal as $key => $value) {
+                if (in_array($key, $required) && empty($value)) {
+                    $error[] = (object)[
+                        "error_type" => "empty",
+                        "line" => $index,
+                        "description" => $key . " is empty.",
+                    ];
+                }
+            }
+
+            $index++;
+        }
 
         if (isset($journals)) {
             foreach ($journals as $journal) {
-                $supplier = Supplier::where('name', $journal['supplier'])->first();
-                $account_title = AccountTitle::where('title', $journal['account_title'])->first();
-                $company = Company::where('company', $journal['company'])->first();
-                $department = Department::where('department', $journal['department'])->first();
-                $location = Location::where('location', $journal['location'])->first();
-                $business_unit = BusinessUnit::where('business_unit', $journal['business_unit'])->first() ?? null;
-                $sub_unit = SubUnit::where('subunit', $journal['sub_unit'])->first() ?? null;
+                $supplier = $suppliers[$journal['supplier']] ?? null;
+                $account_title = $accountTitles[$journal['account_title']] ?? null;
+                $company = $companies[$journal['company']] ?? null;
+                $department = $departments[$journal['department']] ?? null;
+                $location = $locations[$journal['location']] ?? null;;
+                $business_unit = $businessUnits[$journal['business_unit']] ?? null;
+                $sub_unit = $subUnits[$journal['sub_unit']] ?? null;
 
                 $formattedJournal[] = [
                     'account_tag' => $journal['tag_no'],
@@ -797,7 +826,7 @@ class AccrualsController extends Controller
                     'sub_unit' => [
                         'id' => $sub_unit->id ?? null,
                         'code' => $sub_unit->code ?? null,
-                        'name' => $sub_unit->subunit ?? null
+                        'name' => $sub_unit->name ?? null
                     ],
                     'boa' => $journal['boa']
                 ];

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -35,6 +36,18 @@ class Cheque extends Model
         "reason",
         "is_cancelled",
     ];
+
+//    public function setChequeDateAttribute($value)
+//    {
+//        $year = Carbon::parse($value)->year;
+//        if ($year < 100) {
+//            $this->attributes['cheque_date'] = Carbon::parse($value)
+//                ->addYears(2000) // Fix the incorrect year
+//                ->format('Y-m-d H:i:s');
+//        } else {
+//            $this->attributes['cheque_date'] = Carbon::parse($value)->format('Y-m-d H:i:s');
+//        }
+//    }
 
     public function transaction()
     {

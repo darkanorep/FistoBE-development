@@ -52,14 +52,11 @@ Route::get("/coa", [MasterlistController::class, "coa"]);
 Route::get("/sedar", [MasterlistController::class, "sedar_employees"]);
 Route::get("/genus", [MasterlistController::class, "genus_orders"]);
 Route::get('/ymir', [MasterlistController::class, 'projectYmir']);
+//Route::get('fix-year', [TransactionController::class, 'fixYearFormat']);
 // Protected Routes
 // Route::middleware('auth:sanctum')->get('/authenticated', function (Request $request) {
 //     return $request->user();
 // });
-
-Route::middleware('api.key')->group(function () {
-    Route::get('gl-report', [TransactionController::class, 'glReport']);
-});
 
 Route::group(["middleware" => "auth:sanctum"], function () {
 //    Route::get('sync-sedar', [UserController::class, 'syncSedar']);
@@ -95,6 +92,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         Route::get("bank-account-title", [BankController::class, "index"]);
         Route::get("transaction-types", [MasterlistController::class, "transactionTypeDropdown"]);
         Route::get("business-unit", [BusinessUnitController::class, "index"]);
+        Route::get("unit", [\App\Http\Controllers\UnitController::class, "index"]);
         Route::get("sub-unit", [SubUnitController::class, "index"]);
         Route::get("voucher-number", [TransactionController::class, "voucherNumberDropdown"]);
         Route::get('general-journals-numbers', [TransactionController::class, 'generalNumbersDropdown']);
@@ -104,7 +102,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
 
     Route::group(["prefix" => "admin", "middleware" => ["auth" => "is_admin"]], function () {
         Route::group(["prefix" => "dropdown"], function () {
-            //MASTERLIST GENERIC METHOD
+            //MASTER LIST GENERIC METHOD
             Route::get("document", [MasterlistController::class, "documentDropdown"]);
             Route::get("category", [MasterlistController::class, "categoryDropdown"]);
             Route::get("supplier-reference", [MasterlistController::class, "supplierRefDropdown"]);
@@ -112,6 +110,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
             Route::get("location-category", [MasterlistController::class, "loccatDropdown"]);
             Route::get("account-title", [MasterlistController::class, "accountTitleDropdown"]);
             Route::get("company", [MasterlistController::class, "companyDropdown"]);
+            Route::get("business_unit", [MasterlistController::class, "businessUnitDropdown"]);
             Route::get("organization", [MasterlistController::class, "organizationDropdown"]);
             Route::get("department", [MasterlistController::class, "departmentDropdown"]);
             Route::get("associate", [MasterlistController::class, "associateDropdown"]);
@@ -127,7 +126,6 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         });
 
         // CATEGORY
-//    Route::get("categories/", [CategoryController::class, "index"]);
         Route::patch("categories/{id}", [CategoryController::class, "change_status"]);
         Route::resource("categories", CategoryController::class);
 
@@ -194,6 +192,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
 
         // COMPANY
         Route::patch("companies/{id}", [CompanyController::class, "change_status"]);
+        Route::post("companies/sync", [CompanyController::class, "sync"]);
         Route::resource("companies", CompanyController::class);
 
         // DEPARTMENT
@@ -212,6 +211,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
 
         //BUSINESS UNIT
         Route::patch('business-units/{id}', [BusinessUnitController::class, 'change_status']);
+        Route::post("business-units/sync", [BusinessUnitController::class, "sync"]);
         Route::resource("business-units", BusinessUnitController::class);
 
         //UNIT
@@ -275,22 +275,15 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         Route::patch('journal-users/{id}', [\App\Http\Controllers\JournalUserController::class, "change_status"]);
         Route::resource('journal-users', \App\Http\Controllers\JournalUserController::class);
 
+        //TRANSACTION REPORT
+        Route::patch('transaction-reports/{id}', [\App\Http\Controllers\TransactionReportController::class, "change_status"]);
+        Route::resource('transaction-reports', \App\Http\Controllers\TransactionReportController::class);
+
     });
 
     // USER
     Route::post("users/department-validation/", [UserController::class, "departmentValidation"]);
     Route::get('debit-users', [\App\Http\Controllers\DebitUserController::class, 'index']);
-
-    // COUNTER RECEIPT
-
-//  Route::get("counter-receipts/", [CounterReceiptController::class, "index"]);
-//  Route::get("counter-receipts/counter/{counter}", [CounterReceiptController::class, "showCounter"]);
-//  Route::get("counter-receipts/receipt/{receipt}", [CounterReceiptController::class, "showReceipt"]);
-//  Route::post("counter-receipts/", [CounterReceiptController::class, "store"]);
-//  Route::put("counter-receipts/{counter}", [CounterReceiptController::class, "update"]);
-//  Route::post("counter-receipts/download", [CounterReceiptController::class, "download"]);
-//  Route::post("counter-receipts/validate", [CounterReceiptController::class, "check"]);
-//  Route::post("counter-receipts/flow/{id}", [CounterReceiptController::class, "flow"]);
 
     //MULTI
     Route::post("transactions/flow/receive", [TransactionFlowController::class, "multipleReceive"]);
@@ -314,39 +307,133 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         Route::post('flow', [TransactionFlow::class, "chequeFlow"]);
         Route::post('flow/multiple-process', [TransactionFlow::class, "multipleChequeProcess"]);
         Route::get('history/{id}', [TransactionController::class, "chequeHistory"]);
+        Route::post('uncollected', [TransactionFlowController::class, 'uncollectedCheques']);
     });
 
     Route::get('/status-transactions-count', [TransactionController::class, 'statusTransactionCounter']);
     Route::get('/status-cheques-count', [TransactionController::class, 'statusChequeCounter']);
     Route::get("transactions-history", [TransactionController::class, "history"]);
-    Route::get("transactions-history-export", [TransactionController::class, "exportHiistory"]);
+    Route::get("transactions-history-export", [TransactionController::class, "exportHistory"]);
     Route::get("cheques-history", [TransactionController::class, "historyChequeIndex"]);
     Route::get("voucher-transaction/{id}", [TransactionController::class, 'voucherTransaction']);
     Route::get("cheque-transaction/{id}", [TransactionController::class, 'chequeTransaction']);
-    Route::get('cheque-number', [\App\Http\Controllers\BankSeriesController::class, 'chequeNumber']);
+    Route::get('cheque-number', [\App\Http\Controllers\BankSeriesController::class, 'chequeNumberAvailable']);
 
-    Route::middleware('journal_user')->group(function () {
-        //GENERAL JOURNAL
-        Route::patch('general-journals/post/{id}', [\App\Http\Controllers\GeneralJournalController::class, 'posted']);
-        Route::post("general-journals/import", [\App\Http\Controllers\GeneralJournalController::class, 'import']);
-        Route::resource("general-journals", \App\Http\Controllers\GeneralJournalController::class);
-        Route::post('update/general-journals/{id}', [\App\Http\Controllers\GeneralJournalController::class, 'updateGeneralJournal']);
+//    Route::middleware('journal_user')->group(function () {
+//    });
 
-        //ACCRUALS/REVERSALS
-        Route::patch('accruals/reverse', [\App\Http\Controllers\AccrualsController::class, 'reverse']);
-        Route::post('accruals/import', [\App\Http\Controllers\AccrualsController::class, 'import']);
-        Route::resource('accruals', \App\Http\Controllers\AccrualsController::class);
-        Route::post('update/accruals/{id}', [\App\Http\Controllers\AccrualsController::class, 'updateAccruals']);
+    //GENERAL JOURNAL - AP
+    Route::patch('general-journals/post/{id}', [\App\Http\Controllers\GeneralJournalController::class, 'posted']);
+    Route::post("general-journals/import", [\App\Http\Controllers\GeneralJournalController::class, 'import']);
+    Route::resource("general-journals", \App\Http\Controllers\GeneralJournalController::class);
+    Route::post('update/general-journals/{id}', [\App\Http\Controllers\GeneralJournalController::class, 'updateGeneralJournal']);
+
+    //GENERAL JOURNAL - ACCRUAL REVERSAL
+    Route::patch('accruals/reverse', [\App\Http\Controllers\AccrualsController::class, 'reverse']);
+    Route::post('accruals/import', [\App\Http\Controllers\AccrualsController::class, 'import']);
+    Route::resource('accruals', \App\Http\Controllers\AccrualsController::class);
+    Route::post('update/accruals/{id}', [\App\Http\Controllers\AccrualsController::class, 'updateAccruals']);
 //    Route::patch('accruals/reverse/{id}', [\App\Http\Controllers\AccrualsController::class, 'reverse']);
+
+    //GENERAL JOURNAL - TREASURY
+    Route::patch('treasury-journals/post/{id}', [\App\Http\Controllers\TreasuryJournalController::class, 'posted']);
+    Route::post("treasury-journals/import", [\App\Http\Controllers\TreasuryJournalController::class, 'import']);
+    Route::resource("treasury-journals", \App\Http\Controllers\TreasuryJournalController::class);
+    Route::post('update/treasury-journals/{id}', [\App\Http\Controllers\TreasuryJournalController::class, 'updateGeneralJournal']);
+
+    //GENERAL JOURNAL - COST AND BUDGET
+    Route::patch('cost-and-budget-journals/post/{id}', [\App\Http\Controllers\CostAndBudgetJournalController::class, 'posted']);
+    Route::post("cost-and-budget-journals/import", [\App\Http\Controllers\CostAndBudgetJournalController::class, 'import']);
+    Route::resource("cost-and-budget-journals", \App\Http\Controllers\CostAndBudgetJournalController::class);
+    Route::post('update/cost-and-budget-journals/{id}', [\App\Http\Controllers\CostAndBudgetJournalController::class, 'updateGeneralJournal']);
+
+    //GENERAL JOURNAL - FIXED ASSET
+    Route::patch('fixed-asset-journals/post/{id}', [\App\Http\Controllers\FixedAssetJournalController::class, 'posted']);
+    Route::post("fixed-asset-journals/import", [\App\Http\Controllers\FixedAssetJournalController::class, 'import']);
+    Route::resource("fixed-asset-journals", \App\Http\Controllers\FixedAssetJournalController::class);
+    Route::post('update/fixed-asset-journals/{id}', [\App\Http\Controllers\FixedAssetJournalController::class, 'updateGeneralJournal']);
+
+    //GENERAL JOURNAL - CONFIDENTIAL
+    Route::patch('confidential-journals/post/{id}', [\App\Http\Controllers\ConfidentialJournalController::class, 'posted']);
+    Route::post("confidential-journals/import", [\App\Http\Controllers\ConfidentialJournalController::class, 'import']);
+    Route::resource("confidential-journals", \App\Http\Controllers\ConfidentialJournalController::class);
+    Route::post('update/confidential-journals/{id}', [\App\Http\Controllers\ConfidentialJournalController::class, 'updateGeneralJournal']);
+
+    //GENERAL JOURNAL - SALES
+    Route::patch('sales-journals/post/{id}', [\App\Http\Controllers\SalesJournalController::class, 'posted']);
+    Route::post("sales-journals/import", [\App\Http\Controllers\SalesJournalController::class, 'import']);
+    Route::resource("sales-journals", \App\Http\Controllers\SalesJournalController::class);
+    Route::post('update/sales-journals/{id}', [\App\Http\Controllers\SalesJournalController::class, 'updateGeneralJournal']);
+
+    //GENERAL JOURNAL - FO
+    Route::patch('fo-journals/post/{id}', [\App\Http\Controllers\FoJournalController::class, 'posted']);
+    Route::post("fo-journals/import", [\App\Http\Controllers\FoJournalController::class, 'import']);
+    Route::resource("fo-journals", \App\Http\Controllers\FoJournalController::class);
+    Route::post('update/fo-journals/{id}', [\App\Http\Controllers\FoJournalController::class, 'updateGeneralJournal']);
+
+    //GENERAL JOURNAL - LIVE
+    Route::patch('live-journals/post/{id}', [\App\Http\Controllers\LiveJournalController::class, 'posted']);
+    Route::post("live-journals/import", [\App\Http\Controllers\LiveJournalController::class, 'import']);
+    Route::resource("live-journals", \App\Http\Controllers\LiveJournalController::class);
+    Route::post('update/live-journals/{id}', [\App\Http\Controllers\LiveJournalController::class, 'updateGeneralJournal']);
+
+    //GENERAL JOURNAL - ACCOUNT RECEIVABLE
+    Route::patch('account-receivable-journals/post/{id}', [\App\Http\Controllers\AccountReceivableJournalController::class, 'posted']);
+    Route::post("account-receivable-journals/import", [\App\Http\Controllers\AccountReceivableJournalController::class, 'import']);
+    Route::resource("account-receivable-journals", \App\Http\Controllers\AccountReceivableJournalController::class);
+    Route::post('update/account-receivable-journals/{id}', [\App\Http\Controllers\AccountReceivableJournalController::class, 'updateGeneralJournal']);
+
+    //JOURNALS FOR APPROVAL
+    Route::group(['prefix' => 'journal-books'], function () {
+
+        //GENERAL JOURNAL - AP
+        Route::get('general-journals', [\App\Http\Controllers\GeneralJournalController::class, 'indexForApproval']);
+        Route::patch('general-journals/{id}', [\App\Http\Controllers\GeneralJournalController::class, 'action']);
+
+        //GENERAL JOURNAL - ACCRUALS REVERSAL
+        Route::get('accruals', [\App\Http\Controllers\AccrualsController::class, 'indexForApproval']);
+        Route::patch('accruals/{id}', [\App\Http\Controllers\AccrualsController::class, 'action']);
+
+        //GENERAL JOURNAL - TREASURY
+        Route::get('treasury-journals', [\App\Http\Controllers\TreasuryJournalController::class, 'indexForApproval']);
+        Route::patch('treasury-journals/{id}', [\App\Http\Controllers\TreasuryJournalController::class, 'action']);
+
+        //GENERAL JOURNAL - COST AND BUDGET
+        Route::get('cost-and-budget-journals', [\App\Http\Controllers\CostAndBudgetJournalController::class, 'indexForApproval']);
+        Route::patch('cost-and-budget-journals/{id}', [\App\Http\Controllers\CostAndBudgetJournalController::class, 'action']);
+
+        //GENERAL JOURNAL - FIXED ASSET
+        Route::get('fixed-asset-journals', [\App\Http\Controllers\FixedAssetJournalController::class, 'indexForApproval']);
+        Route::patch('fixed-asset-journals/{id}', [\App\Http\Controllers\FixedAssetJournalController::class, 'action']);
+
+        //GENERAL JOURNAL - CONFIDENTIAL
+        Route::get('confidential-journals', [\App\Http\Controllers\ConfidentialJournalController::class, 'indexForApproval']);
+        Route::patch('confidential-journals/{id}', [\App\Http\Controllers\ConfidentialJournalController::class, 'action']);
+
+        //GENERAL JOURNAL - SALES
+        Route::get('sales-journals', [\App\Http\Controllers\SalesJournalController::class, 'indexForApproval']);
+        Route::patch('sales-journals/{id}', [\App\Http\Controllers\SalesJournalController::class, 'action']);
+
+        //GENERAL JOURNAL - FO
+        Route::get('fo-journals', [\App\Http\Controllers\FoJournalController::class, 'indexForApproval']);
+        Route::patch('fo-journals/{id}', [\App\Http\Controllers\FoJournalController::class, 'action']);
+
+        //GENERAL JOURNAL - LIVE
+        Route::get('live-journals', [\App\Http\Controllers\LiveJournalController::class, 'indexForApproval']);
+        Route::patch('live-journals/{id}', [\App\Http\Controllers\LiveJournalController::class, 'action']);
+
+        //GENERAL JOURNAL - ACCOUNT RECEIVABLE
+        Route::get('account-receivable-journals', [\App\Http\Controllers\AccountReceivableJournalController::class, 'indexForApproval']);
+        Route::patch('account-receivable-journals/{id}', [\App\Http\Controllers\AccountReceivableJournalController::class, 'action']);
     });
 
     Route::resource("transactions", TransactionController::class);
-    Route::post('transactions-test', [TransactionController::class, "store1"]);
+//    Route::post('transactions-test', [TransactionController::class, "store1"]);
 
     Route::group(["prefix" => "transactions"], function () {
         //TRANSACTION
-        Route::get("logs/request", [TransactionController::class, "viewRequestorLogs"]);
-        Route::get("status_group/", [TransactionController::class, "status_group"]);
+//        Route::get("logs/request", [TransactionController::class, "viewRequestorLogs"]);
+//        Route::get("status_group/", [TransactionController::class, "status_group"]);
         Route::post("void/{id}", [TransactionController::class, "voidTransaction"]);
         Route::post("validate-po-no", [TransactionController::class, "getPODetails"]);
         Route::post("validate-document-no", [TransactionController::class, "validateDocumentNo"]);
@@ -366,9 +453,10 @@ Route::group(["middleware" => "auth:sanctum"], function () {
             //MULTI
             Route::post("receive", [TransactionFlowController::class, "multipleReceive"]);
             Route::post("tag", [TransactionFlowController::class, "multipleTag"]);
-            ROute::post('multiple-process', [TransactionFlowController::class, "mutlipleProcess"]);
+            ROute::post('multiple-process', [TransactionFlowController::class, "multipleProcess"]);
             Route::post("cheque", [TransactionFlowController::class, "multipleCheque"]);
             Route::post("mcloan", [TransactionFlowController::class, "applicationForLoan"]);
+            Route::get('payment-vouchers', [TransactionFlowController::class, "paymentVouchers"]);
 
             //CHEQUE
             Route::post("clear-cheques/{id}", [TransactionController::class, "chequeClear"]);
@@ -378,13 +466,12 @@ Route::group(["middleware" => "auth:sanctum"], function () {
 //            Route::get('multiple-vouchers', [TransactionController::class, 'multipleVouchers']);
 
             //REPORT
-            Route::get('treasury-report', [TransactionController::class, 'treasuryReport']);
+            Route::get('cash-outflow-report', [TransactionController::class, 'cashOutflowReport']);
             Route::get('report', [TransactionController::class, 'generateAPReport']);
 
             //SPECIAL CASE
-            Route::get('search-cheque', [TransactionController::class, 'searchbBankCheque']);
+            Route::get('search-cheque', [TransactionController::class, 'searchBankCheque']);
             Route::post('adjust-date', [TransactionController::class, 'adjustDate']);
-
         });
     });
 
@@ -397,18 +484,6 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         Route::post("download", [CounterReceiptController::class, "download"]);
         Route::post("validate", [CounterReceiptController::class, "check"]);
         Route::post("flow/{id}", [CounterReceiptController::class, "flow"]);
-    });
-
-    //JOURNALS FOR APPROVAL
-    Route::group(['prefix' => 'journal-books'], function () {
-
-        //GENERAL JOURNAL
-        Route::get('general-journals', [\App\Http\Controllers\GeneralJournalController::class, 'indexForApproval']);
-        Route::patch('general-journals/{id}', [\App\Http\Controllers\GeneralJournalController::class, 'action']);
-
-        //ACCRUALS
-        Route::get('accruals', [\App\Http\Controllers\AccrualsController::class, 'indexForApproval']);
-        Route::patch('accruals/{id}', [\App\Http\Controllers\AccrualsController::class, 'action']);
     });
 
     //SETTINGS

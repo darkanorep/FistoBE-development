@@ -147,18 +147,25 @@ class UserController extends Controller
             $new_user->documents()->attach($document_ids);
             $document_type_object->document_categories()->attach($categories, ['user_id' => $new_user->id]);
         }
+
+        if (isset($fields['report_types'])) {
+            $new_user->transactionReport()->attach($fields['report_types']);
+        }
+
         return $this->resultResponse('save', 'User', $new_user);
     }
 
     public function show($id)
     {
         $user = User::withTrashed()
+            ->with('transactionReport')
             ->where('id', $id)
             ->select([
                 'id', 'id_prefix', 'id_no', 'role',
                 'first_name', 'middle_name', 'role', 'first_name',
                 'middle_name', 'last_name', 'suffix', 'department'
-                , 'position', 'permissions', 'document_types', 'username'
+                , 'position', 'permissions', 'document_types', 'username',
+                'transaction_report_id'
             ])
             ->get();
         if (count($user) != true) {
@@ -203,6 +210,12 @@ class UserController extends Controller
             $user->document_types = $specific_user['document_types'];
             $is_tagged_array_modified = $this->isMultipleTaggedArrayModified($is_tagged_array_modified_document, $is_tagged_array_modified_category);
         }
+
+        if (isset($specific_user['transaction_report_id'])) {
+            $user->transactionReport()->detach();
+            $user->transactionReport()->attach($specific_user['transaction_report_id']);
+        }
+
         return $this->validateIfNothingChangeThenSave($user, 'User', $is_tagged_array_modified);
     }
 
@@ -234,13 +247,13 @@ class UserController extends Controller
     public function login(Request $request)
     {
         if (Auth::attempt($request->only('username', 'password'))) {
-            $user = auth()->user();
+            $user = auth()->user()->load('transactionReport');
             $token = $user->createToken('my-app-token')->plainTextToken;
 
             $user['token'] = $token;
             $response = [
                 "code" => 201,
-                "message" => "Succesfully Login",
+                "message" => "Successfully Login",
                 "result" => $user,
             ];
 

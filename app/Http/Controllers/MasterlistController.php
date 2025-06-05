@@ -15,9 +15,12 @@ use App\Models\AccountTitleGreatGrandParent;
 use App\Models\AccountTitleParent;
 use App\Models\AccountTitlePnL;
 use App\Models\AccountTitleUnit;
+use App\Models\BusinessUnit;
 use App\Models\Location;
+use App\Models\SubUnit;
 use App\Models\TransactionType;
 use App\Models\TreasuryCheque;
+use App\Models\Unit;
 use App\Models\User;
 use App\Models\Company;
 use App\Models\Department;
@@ -35,6 +38,7 @@ use App\Models\OrganizationDepartment;
 use App\Models\VoucherCode;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
@@ -47,13 +51,19 @@ class MasterlistController extends Controller
     private $company;
     private $department;
     private $location;
+    private $business_unit;
+    private $unit;
+    private $sub_unit;
 
     public function __construct()
     {
-        $this->company = Company::select('id', 'company')->get();
-        $this->department = Department::select('id', 'department')->get();
-        $this->location = Location::select('id', 'location')->get();
-        $this->account_title = AccountTitle::select('id', 'title', 'code')->get();
+        $this->company = Company::select('id', 'company', 'sync_id')->withTrashed()->get();
+        $this->business_unit = BusinessUnit::select('id', 'business_unit', 'sync_id')->withTrashed()->get();
+        $this->department = Department::select('id', 'department', 'sync_id')->withTrashed()->get();
+        $this->unit = Unit::select('id', 'name', 'sync_id')->withTrashed()->get();
+        $this->sub_unit = SubUnit::select('id', 'name', 'sync_id')->withTrashed()->get();
+        $this->location = Location::select('id', 'location', 'sync_id')->withTrashed()->get();
+        $this->account_title = AccountTitle::select('id', 'title', 'code')->withTrashed()->get();
     }
     public function documentDropdown()
     {
@@ -169,6 +179,11 @@ class MasterlistController extends Controller
     {
         $data = array("companies" => Company::whereNull('deleted_at')->get(['id', 'code', 'company']));
         return $this->resultResponse('fetch', 'Company', $data);
+    }
+
+    public function businessUnitDropdown() {
+        $data = array("business_units" => BusinessUnit::whereNull('deleted_at')->get(['sync_id as id', 'code', 'business_unit']));
+        return $this->resultResponse('fetch', 'Business Unit', $data);
     }
 
     public function associateDropdown(Request $request)
@@ -445,24 +460,20 @@ class MasterlistController extends Controller
         $rr_no = $request->rr_no;
 
         $transaction = Http::withHeaders([
-//            'Token' => 'Bearer 2668|BOmpbid4zZyaAoT8caDgMjmv1LVyFxjAFxnEaWF4' //PRETEST
-//            'Token' => 'Bearer 3485|tvxj4OUzCp87LXoHmjzYCIDUwdx6Mq7XfuU7DRmn' //LOCAL
-            'Token' => 'Bearer 4488|A6YewQerFIqi5SpgZcG1D1S8LjvSESjCOG9OOUbw' //PROD
-        ])
-//
-//            ->get('https://pretestomega.rdfymir.com/backend/public/api/fisto_api', [
-//                'pagination' => 'none'
-//            ]); //PRETEST
-
-            ->get('https://rdfymir.com/backend/public/api/fisto_api', [
-                'pagination' => 'none'
-            ]); //PROD
-//
-//            ->get('10.10.13.6:8080/api/fisto_api', [
-//                'pagination' => 'none'
-//            ]); //LOCAL
+            'Token' => 'Bearer 4488|A6YewQerFIqi5SpgZcG1D1S8LjvSESjCOG9OOUbw' // PROD
+//           'Token' => 'Bearer 3485|tvxj4OUzCp87LXoHmjzYCIDUwdx6Mq7XfuU7DRmn' //LOCAL
+//          'Token' => 'Bearer 2668|BOmpbid4zZyaAoT8caDgMjmv1LVyFxjAFxnEaWF4' //PRETEST
+        ])->get(
+            'https://rdfymir.com/backend/public/api/fisto_api' //PROD
+//            'https://pretestomega.rdfymir.com/backend/public/api/fisto_api' //PRETEST
+//            '10.10.13.6:8080/api/fisto_api' //LOCAL
+            , [
+                'pagination' => 'none',
+                'search' => $rr_no
+            ]);
 
         $data = json_decode($transaction->body(), true);
+
 
         if (isset($data['result'])) {
             $data = $data['result'];
@@ -470,100 +481,7 @@ class MasterlistController extends Controller
             $data = [];
         }
 
-//        return $data;
-
         $credit  = ['Inventoriables','Asset'];
-
-//        $data = array_map(function ($item) use ($credit) {
-//            return [
-//                "is_new_po" => true,
-//                "id" => $item["id"],
-//                "rr_year_number_id" => $item["rr_year_number_id"],
-//                "rr_orders" => array_map(function ($rr) use ($credit) {
-//                    return [
-//                        "item_code" => $rr["item_code"],
-//                        "item_name" => $rr["item_name"],
-//                        "quantity_receive" => $rr["quantity_receive"],
-//                        "order" => [
-//                            "item_code" => $rr["order"]["item_code"],
-//                            "item_name" => $rr["order"]["item_name"],
-//                            "price" => $rr["order"]["price"],
-//                            "reference_no" => $rr["order"]["reference_no"],
-//                            "uom" => [
-//                                "code" => $rr["order"]["uom"]["code"],
-//                                "name" => $rr["order"]["uom"]["name"],
-//                            ],
-//                        ],
-//                        "po_transaction" => [
-//                            "po_year_number_id" => $rr["po_transaction"]["po_year_number_id"],
-//                            "po_description" => $rr["po_transaction"]["po_description"],
-//                            "type_name" => $rr["po_transaction"]["type_name"],
-//                            "po_amount" => $rr["po_transaction"]["total_item_price"],
-//                            "account_titles" => [
-//                                "company" => [
-//                                    "id" =>
-//                                        $this->company->where("company", $rr["po_transaction"]["company"]["name"])->first()->id ?? null,
-//                                    "code" => $rr["po_transaction"]["company"]["code"],
-//                                    "name" => $rr["po_transaction"]["company"]["name"],
-//                                ],
-//                                "business_unit" => [
-//                                    "id" =>
-//                                        $this->company->where("company", $rr["po_transaction"]["business_unit"]["name"])->first()->id ??
-//                                        null,
-//                                    "code" => $rr["po_transaction"]["business_unit"]["code"],
-//                                    "name" => $rr["po_transaction"]["business_unit"]["name"],
-//                                ],
-//                                "department" => [
-//                                    "id" =>
-//                                        $this->department->where("department", $rr["po_transaction"]["department"]["name"])->first()->id ??
-//                                        null,
-//                                    "code" => $rr["po_transaction"]["department"]["code"],
-//                                    "name" => $rr["po_transaction"]["department"]["name"],
-//                                ],
-//                                "unit" => [
-//                                    "id" =>
-//                                        $this->department->where("department", $rr["po_transaction"]["department_unit"]["name"])->first()
-//                                            ->id ?? null,
-//                                    "code" => $rr["po_transaction"]["department_unit"]["code"],
-//                                    "name" => $rr["po_transaction"]["department_unit"]["name"],
-//                                ],
-//                                "sub_unit" => [
-//                                    "id" =>
-//                                        $this->department->where("department", $rr["po_transaction"]["sub_unit"]["name"])->first()->id ??
-//                                        null,
-//                                    "code" => $rr["po_transaction"]["department_unit"]["code"],
-//                                    "name" => $rr["po_transaction"]["department_unit"]["name"],
-//                                ],
-//                                "location" => [
-//                                    "id" =>
-//                                        $this->location->where("location", $rr["po_transaction"]["location"]["name"])->first()->id ?? null,
-//                                    "code" => $rr["po_transaction"]["location"]["code"],
-//                                    "name" => $rr["po_transaction"]["location"]["name"],
-//                                ],
-//                                "account_title" =>
-//                                    $rr["po_transaction"]["type_name"] == in_array($rr["po_transaction"]["type_name"], $credit)
-//                                        ? [
-//                                        "id" =>
-//                                            $this->account_title
-//                                                ->where("title", $rr["po_transaction"]["account_title"]["credit"]["name"] ?? null)
-//                                                ->first()->id ?? null,
-//                                        "code" => $rr["po_transaction"]["account_title"]["credit"]["code"] ?? null,
-//                                        "name" => $rr["po_transaction"]["account_title"]["credit"]["name"] ?? null,
-//                                    ]
-//                                        : [
-//                                        "id" =>
-//                                            $this->account_title
-//                                                ->where("title", $rr["po_transaction"]["account_title"]["name"] ?? null)
-//                                                ->first()->id ?? null,
-//                                        "code" => $rr["po_transaction"]["account_title"]["code"],
-//                                        "name" => $rr["po_transaction"]["account_title"]["name"],
-//                                    ],
-//                            ]
-//                        ],
-//                    ];
-//                }, $item["rr_orders"]),
-//            ];
-//        }, $data);
 
         $data = array_map(function ($item) use ($credit) {
             if ($item['type'] == 'RR') {
@@ -573,6 +491,12 @@ class MasterlistController extends Controller
                     'id' => $item['id'],
                     'rr_year_number_id' => $item['rr_year_number_id'],
                     'rr_orders' => array_map(function ($rr) use ($credit) {
+                        $company = $this->company->where('company', $rr['po_transaction']['company']['name'])->first();
+                        $business_unit = $this->business_unit->where('business_unit', $rr['po_transaction']['business_unit']['name'])->first();
+                        $department = $this->department->where('department', $rr['po_transaction']['department']['name'])->first();
+                        $unit = $this->unit->where('name', $rr['po_transaction']['department_unit']['name'])->first();
+                        $sub_unit = $this->sub_unit->where('name', $rr['po_transaction']['sub_unit']['name'])->first();
+                        $location = $this->location->where('location', $rr['po_transaction']['location']['name'])->first();
                         return [
                             'item_code' => $rr['item_code'],
                             'item_name' => $rr['item_name'],
@@ -594,32 +518,32 @@ class MasterlistController extends Controller
                                 'po_amount' => $rr['po_transaction']['total_item_price'],
                                 'account_titles' => [
                                     'company' => [
-                                        'id' => $this->company->where('company', $rr['po_transaction']['company']['name'])->first()->id ?? null,
+                                        'id' => $company->sync_id ?? $company->id ?? null,
                                         'code' => $rr['po_transaction']['company']['code'],
                                         'name' => $rr['po_transaction']['company']['name'],
                                     ],
                                     'business_unit' => [
-                                        'id' => $this->company->where('company', $rr['po_transaction']['business_unit']['name'])->first()->id ?? null,
+                                        'id' => $business_unit->sync_id ?? $business_unit->id ?? null,
                                         'code' => $rr['po_transaction']['business_unit']['code'],
                                         'name' => $rr['po_transaction']['business_unit']['name'],
                                     ],
                                     'department' => [
-                                        'id' => $this->department->where('department', $rr['po_transaction']['department']['name'])->first()->id ?? null,
+                                        'id' => $department->sync_id ?? $department->id ?? null,
                                         'code' => $rr['po_transaction']['department']['code'],
                                         'name' => $rr['po_transaction']['department']['name'],
                                     ],
                                     'unit' => [
-                                        'id' => $this->department->where('department', $rr['po_transaction']['department_unit']['name'])->first()->id ?? null,
+                                        'id' => $unit->sync_id ?? $unit->id ?? null,
                                         'code' => $rr['po_transaction']['department_unit']['code'],
                                         'name' => $rr['po_transaction']['department_unit']['name'],
                                     ],
                                     'sub_unit' => [
-                                        'id' => $this->department->where('department', $rr['po_transaction']['sub_unit']['name'])->first()->id ?? null,
+                                        'id' => $sub_unit->sync_id ?? $sub_unit->id ?? null,
                                         'code' => $rr['po_transaction']['department_unit']['code'],
                                         'name' => $rr['po_transaction']['department_unit']['name'],
                                     ],
                                     'location' => [
-                                        'id' => $this->location->where('location', $rr['po_transaction']['location']['name'])->first()->id ?? null,
+                                        'id' => $location->sync_id ?? $location->id ?? null,
                                         'code' => $rr['po_transaction']['location']['code'],
                                         'name' => $rr['po_transaction']['location']['name'],
                                     ],
@@ -646,6 +570,12 @@ class MasterlistController extends Controller
                     'id' => $item['id'],
                     'rr_year_number_id' => $item['jo_rr_year_number_id'],
                     'rr_orders' => array_map(function ($rr) {
+                        $company = $this->company->where('company', $rr['po_transaction']['company']['name'])->first();
+                        $business_unit = $this->business_unit->where('business_unit', $rr['po_transaction']['business_unit']['name'])->first();
+                        $department = $this->department->where('department', $rr['po_transaction']['department']['name'])->first();
+                        $unit = $this->unit->where('name', $rr['po_transaction']['department_unit']['name'])->first();
+                        $sub_unit = $this->sub_unit->where('name', $rr['po_transaction']['sub_unit']['name'])->first();
+                        $location = $this->location->where('location', $rr['po_transaction']['location']['name'])->first();
                         return [
                             'description' => $rr['description'],
                             'quantity_receive' => $rr['quantity_receive'],
@@ -663,32 +593,32 @@ class MasterlistController extends Controller
                                     'po_amount' => $rr['po_transaction']['total_item_price'],
                                     'account_titles' => [
                                         'company' => [
-                                            'id' => $this->company->where('company', $rr['po_transaction']['company']['name'])->first()->id ?? null,
+                                            'id' => $company->sync_id ?? $company->id ?? null,
                                             'code' => $rr['po_transaction']['company']['code'],
                                             'name' => $rr['po_transaction']['company']['name'],
                                         ],
                                         'business_unit' => [
-                                            'id' => $this->company->where('company', $rr['po_transaction']['business_unit']['name'])->first()->id ?? null,
+                                            'id' => $business_unit->sync_id ?? $business_unit->id ?? null,
                                             'code' => $rr['po_transaction']['business_unit']['code'],
                                             'name' => $rr['po_transaction']['business_unit']['name'],
                                         ],
                                         'department' => [
-                                            'id' => $this->department->where('department', $rr['po_transaction']['department']['name'])->first()->id ?? null,
+                                            'id' => $department->sync_id ?? $department->id ?? null,
                                             'code' => $rr['po_transaction']['department']['code'],
                                             'name' => $rr['po_transaction']['department']['name'],
                                         ],
                                         'unit' => [
-                                            'id' => $this->department->where('department', $rr['po_transaction']['department_unit']['name'])->first()->id ?? null,
+                                            'id' => $unit->sync_id ?? $unit->id ?? null,
                                             'code' => $rr['po_transaction']['department_unit']['code'],
                                             'name' => $rr['po_transaction']['department_unit']['name'],
                                         ],
                                         'sub_unit' => [
-                                            'id' => $this->department->where('department', $rr['po_transaction']['sub_unit']['name'])->first()->id ?? null,
+                                            'id' => $sub_unit->sync_id ?? $sub_unit->id ?? null,
                                             'code' => $rr['po_transaction']['department_unit']['code'],
                                             'name' => $rr['po_transaction']['department_unit']['name'],
                                         ],
                                         'location' => [
-                                            'id' => $this->location->where('location', $rr['po_transaction']['location']['name'])->first()->id ?? null,
+                                            'id' => $location->sync_id ?? $location->id ?? null,
                                             'code' => $rr['po_transaction']['location']['code'],
                                             'name' => $rr['po_transaction']['location']['name'],
                                         ],
@@ -707,7 +637,6 @@ class MasterlistController extends Controller
         }, $data);
 
         $filtered = collect($data)->filter(function ($value, $key) use ($rr_no) {
-//            return ($value['rr_year_number_id'] == $rr_no && $value['po_transaction']['po_year_number_id'] == $po_no);
             return data_get($value, 'rr_year_number_id') == $rr_no;
         });
 

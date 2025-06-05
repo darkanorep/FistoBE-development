@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\TransactionResource1;
 use App\Methods\GenericMethod;
 use App\Models\Approver;
 use App\Models\Associate;
@@ -28,28 +29,42 @@ class TransactionFlowController extends Controller
      * @var TransactionController
      */
     private $transactionController;
+    /**
+     * @var \Illuminate\Database\Eloquent\Model|\Illuminate\Database\Query\Builder|object|null
+     */
+//    private $cutoffDate;
 
-    public function __construct(TransactionController $transactionController) {
+    public function __construct(TransactionController $transactionController)
+    {
         $this->transactionController = $transactionController;
-    }
-    public function updateInTransactionFlow(Request $request,$id){
-        return TransactionFlow::updateInTransactionFlow($request,$id);
+//        $this->cutoffDate = DB::table('settings')
+//            ->where('key', 'voucher_cutoff')
+//            ->value('value');
     }
 
-    public function validateVoucherNo(Request $request){
+    public function updateInTransactionFlow(Request $request, $id)
+    {
+        return TransactionFlow::updateInTransactionFlow($request, $id);
+    }
+
+    public function validateVoucherNo(Request $request)
+    {
         return TransactionFlow::validateVoucherNo($request);
     }
 
-    public function validateChequeNo(Request $request){
+    public function validateChequeNo(Request $request)
+    {
         return TransactionFlow::validateChequeNo($request);
     }
 
-    public function transfer(Request $request, $id){
+    public function transfer(Request $request, $id)
+    {
 
-       return TransactionFlow::transfer($request, $id);
+        return TransactionFlow::transfer($request, $id);
     }
 
-    public function multipleReceive(Request $request) {
+    public function multipleReceive(Request $request)
+    {
         $process = $request->input('process');
         $transactions = $request->input('transactions');
 
@@ -59,7 +74,7 @@ class TransactionFlowController extends Controller
                 case 'tag':
                 case 'extract':
                     Tagging::create([
-                        'transaction_id' => $transaction ,
+                        'transaction_id' => $transaction,
                         'status' => $process . '-receive',
                         'date_status' => date('Y-m-d'),
                     ]);
@@ -72,7 +87,7 @@ class TransactionFlowController extends Controller
                     break;
                 case 'voucher':
                     Associate::create([
-                        'transaction_id' => $transaction ,
+                        'transaction_id' => $transaction,
                         'status' => $process . '-receive',
                         'date_status' => date('Y-m-d'),
                         'tag_id' => Transaction::where('id', $transaction)->first()->tag_no,
@@ -152,17 +167,18 @@ class TransactionFlowController extends Controller
             }
 
             Transaction::where('id', $transaction)
-            ->update([
-                'state' => 'receive',
-                'status' => $process . '-receive',
-                'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
-            ]);
+                ->update([
+                    'state' => 'receive',
+                    'status' => $process . '-receive',
+                    'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
+                ]);
         }
 
         return GenericMethod::resultResponse("receive", null, []);
     }
 
-    public static function multipleTag(Request $request) {
+    public function multipleTag(Request $request)
+    {
         $process = $request->input('process');
         $transactions = $request->input('transactions');
         $receipt_type = $request->input('receipt_type');
@@ -172,15 +188,18 @@ class TransactionFlowController extends Controller
 
         $tagData = [
 //            'status' => $process . '-tag',
-            'status' => $process . '-'. $process,
+            'status' => $process . '-' . $process,
             'date_status' => date('Y-m-d'),
             'distributed_id' => data_get($distributed_to, 'id') ?? null,
             'distributed_name' => data_get($distributed_to, 'name') ?? null
         ];
 
+        $trxError = [];
+
+
         $second = 1;
         foreach ($transactions as $transaction) {
-            $trx = Transaction::where('id',$transaction)->first();
+            $trx = Transaction::where('id', $transaction)->first();
             switch ($process) {
 
                 case 'tag':
@@ -191,7 +210,7 @@ class TransactionFlowController extends Controller
                         Transaction::where('id', $transaction)
                             ->update([
                                 'state' => $process,
-                                'status' => $process . '-'. $process,
+                                'status' => $process . '-' . $process,
                                 'receipt_type' => $receipt_type ?? $transaction->receipt_type ?? null,
                                 'distributed_id' => data_get($distributed_to, 'id'),
                                 'distributed_name' => data_get($distributed_to, 'name'),
@@ -202,7 +221,7 @@ class TransactionFlowController extends Controller
                         Transaction::where('id', $transaction)
                             ->update([
                                 'state' => 'transmit',
-                                'status' => $process . '-'. $process,
+                                'status' => $process . '-' . $process,
                                 'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
                             ]);
                     }
@@ -213,12 +232,33 @@ class TransactionFlowController extends Controller
                     (new GenericMethod())->gasTransaction($transaction, $process, null, null);
                     $trx->update([
                         'state' => 'transmit',
-                        'status' => $process . '-'. $process,
+                        'status' => $process . '-' . $process,
                         'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
                     ]);
                     break;
 
                 case 'approve':
+//                    $voucherDate = Carbon::parse($trx->voucher_month);
+//                    $cutoffDate = Carbon::parse($voucherDate)->addMonth()->setDay($this->cutoffDate);
+//                    $currentDate = Carbon::now();
+//
+//                    if ($currentDate->greaterThan($cutoffDate)) {
+//                        $trxError[] = $trx->tag_no;
+//                        break;
+//                    } else {
+//                        $trx->approve()->create([
+//                            'status' => $process . '-' . $process,
+//                            'date_status' => date('Y-m-d'),
+//                            'tag_id' => $trx->tag_no,
+//                            'distributed_id' => $trx->distributed_id,
+//                            'distributed_name' => $trx->distributed_name
+//                        ]);
+//                        $trx->update([
+//                            'state' => $process,
+//                            'status' => $process . '-' . $process,
+//                            'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
+//                        ]);
+//                    }
 
                     $trx->approve()->create([
                         'status' => $process . '-'. $process,
@@ -238,14 +278,14 @@ class TransactionFlowController extends Controller
                 case 'transmit':
                 case 'pass':
                     $trx->transmit()->create([
-                        'status' => $process . '-'. $process,
+                        'status' => $process . '-' . $process,
                         'date_status' => date('Y-m-d'),
                         'tag_id' => $trx->tag_no,
                     ]);
 
                     $trx->update([
                         'state' => $process,
-                        'status' => $process . '-'. $process,
+                        'status' => $process . '-' . $process,
                         'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
                         'is_for_voucher_audit' => ($trx->document_id == 8) ? 1 : null
                     ]);
@@ -253,11 +293,17 @@ class TransactionFlowController extends Controller
             }
         }
 
+        // After the loop, if there are errors
+        if (!empty($trxError)) {
+            return GenericMethod::result(400, "Transaction(s) with tag no. " . implode(', ', $trxError) . " cannot be approved after the cutoff date.", []);
+        }
+
         return GenericMethod::result(200, "Transaction has been saved.", []);
 
     }
 
-    public function multipleCheque(Request $request) {
+    public function multipleCheque(Request $request)
+    {
         $process = $request->process;
 //        $transactions = $request->transactions;
         $transactions = $request->input('transactions', []);
@@ -268,7 +314,7 @@ class TransactionFlowController extends Controller
 
 //        Treasury::whereIn('transaction_id', $transactions)->where('status', $process.'-'.$process)->delete();
 //        Cheque::whereIn('transaction_id', $transactions)->forceDelete();
-        foreach($transactions as $transaction) {
+        foreach ($transactions as $transaction) {
             $treasury = Treasury::create([
                 'transaction_id' => $transaction,
                 'tag_id' => Transaction::where('id', $transaction)->first()->tag_no,
@@ -281,6 +327,7 @@ class TransactionFlowController extends Controller
             foreach ($accounts as $account) {
                 $treasury->account_title()->create([
                     'entry' => $account['entry'],
+                    'bank_id' => data_get($account, 'account_title.bank_id'),
                     'account_title_id' => data_get($account, 'account_title.id'),
                     'account_title_code' => data_get($account, 'account_title.code'),
                     'account_title_name' => data_get($account, 'account_title.name'),
@@ -293,13 +340,22 @@ class TransactionFlowController extends Controller
                     'department_id' => data_get($account, 'department.id'),
                     'department_code' => data_get($account, 'department.code'),
                     'department_name' => data_get($account, 'department.name'),
+                    'business_unit_id' => data_get($account, 'business_unit.id'),
+                    'business_unit_code' => data_get($account, 'business_unit.code'),
+                    'business_unit_name' => data_get($account, 'business_unit.name'),
+                    'unit_id' => data_get($account, 'unit.id'),
+                    'unit_code' => data_get($account, 'unit.code'),
+                    'unit_name' => data_get($account, 'unit.name'),
+                    'sub_unit_id' => data_get($account, 'sub_unit.id'),
+                    'sub_unit_code' => data_get($account, 'sub_unit.code'),
+                    'sub_unit_name' => data_get($account, 'sub_unit.name'),
                     'location_id' => data_get($account, 'location.id'),
                     'location_code' => data_get($account, 'location.code'),
                     'location_name' => data_get($account, 'location.name'),
                 ]);
             }
 
-            foreach($cheques as $cheque) {
+            foreach ($cheques as $cheque) {
                 $treasury->cheques()->create([
                     'transaction_id' => $transaction,
                     'bank_id' => data_get($cheque, 'bank.id'),
@@ -329,7 +385,8 @@ class TransactionFlowController extends Controller
         return GenericMethod::result(200, "Transaction has been saved.", []);
     }
 
-    public function applicationForLoan (Request $request) {
+    public function applicationForLoan(Request $request)
+    {
         $transactions = collect($request->input('transactions'));
 
         $transactions->each(function ($item) {
@@ -351,7 +408,8 @@ class TransactionFlowController extends Controller
         return $this->resultResponse("update", "Transaction", null);
     }
 
-    public function multipleChequeReceive(Request $request) {
+    public function multipleChequeReceive(Request $request)
+    {
         $process = $request->input('process');
         $banks = $request->input('banks');
 
@@ -434,6 +492,9 @@ class TransactionFlowController extends Controller
                         'business_unit_id' => data_get($account, 'business_unit.id'),
                         'business_unit_code' => data_get($account, 'business_unit.code'),
                         'business_unit_name' => data_get($account, 'business_unit.name'),
+                        'unit_id' => data_get($account, 'unit.id'),
+                        'unit_code' => data_get($account, 'unit.code'),
+                        'unit_name' => data_get($account, 'unit.name'),
                         'sub_business_unit_id' => data_get($account, 'sub_business_unit.id'),
                         'sub_business_unit_code' => data_get($account, 'sub_business_unit.code'),
                         'sub_business_unit_name' => data_get($account, 'sub_business_unit.name'),
@@ -449,7 +510,7 @@ class TransactionFlowController extends Controller
             for ($i = 0; $i < count($cheques); $i++) {
                 $transactions = $cheques[$i]['transactions'];
 
-                foreach($transactions as $transaction) {
+                foreach ($transactions as $transaction) {
                     $transaction = Transaction::find($transaction);
 
 //                    if ($transaction->is_mc == 1 || $transaction->is_mcl == 1) {
@@ -486,7 +547,8 @@ class TransactionFlowController extends Controller
         return $this->resultResponse("update", "Transaction", null);
     }
 
-    public function multipleChequeClear(Request $request) {
+    public function  multipleChequeClear(Request $request)
+    {
         $chequeDate = $request->input('cheque_date');
         $cheques = $request->input('cheques');
 
@@ -497,6 +559,11 @@ class TransactionFlowController extends Controller
 
             $transactions = Transaction::whereIn('id', $cheque['transactions'])->select('id')->get();
 
+            $singleCheque = Cheque::where([
+                'bank_id' => $cheque['bank_id'],
+                'cheque_no' => $cheque['cheque_no'],
+            ])->first();
+
             Cheque::where([
                 'bank_id' => $cheque['bank_id'],
                 'cheque_no' => $cheque['cheque_no'],
@@ -505,7 +572,7 @@ class TransactionFlowController extends Controller
                 'date_cleared' => date('Y-m-d', strtotime($chequeDate))
             ]);
 
-            $transactions->each(function ($transaction) use ($cheque) {
+            $transactions->each(function ($transaction) use ($cheque, $singleCheque) {
                 $clear = $transaction->clear()->create([
                     'tag_id' => $transaction->id,
                     'status' => 'clear-clear',
@@ -515,6 +582,7 @@ class TransactionFlowController extends Controller
                 foreach ($cheque['accounts'] as $account) {
                     $clear->account_title()->create([
                         'entry' => $account['entry'],
+                        'cheque_id' => $singleCheque->id,
                         'account_title_id' => $account['account_title']['id'],
                         'account_title_code' => $account['account_title']['code'],
                         'account_title_name' => $account['account_title']['name'],
@@ -530,6 +598,9 @@ class TransactionFlowController extends Controller
                         'business_unit_id' => $account['business_unit']['id'] ?? null,
                         'business_unit_code' => $account['business_unit']['code'] ?? null,
                         'business_unit_name' => $account['business_unit']['name'] ?? null,
+                        'unit_id' => $account['unit']['id'] ?? null,
+                        'unit_code' => $account['unit']['code'] ?? null,
+                        'unit_name' => $account['unit']['name'] ?? null,
                         'sub_unit_id' => $account['sub_business_unit']['id'] ?? null,
                         'sub_unit_code' => $account['sub_business_unit']['code'] ?? null,
                         'sub_unit_name' => $account['sub_business_unit']['name'] ?? null,
@@ -543,7 +614,8 @@ class TransactionFlowController extends Controller
         return $this->resultResponse("update", "Transaction", null);
     }
 
-    function multipleChequeReceiveProcess($process, $transactions) {
+    function multipleChequeReceiveProcess($process, $transactions)
+    {
 
         foreach ($transactions as $transaction) {
             switch ($process) {
@@ -587,7 +659,8 @@ class TransactionFlowController extends Controller
         }
     }
 
-    function chequeIsReceivedChecker($process, $transactionIds) {
+    function chequeIsReceivedChecker($process, $transactionIds)
+    {
 
         $cheques = Cheque::whereIn('transaction_id', $transactionIds)->whereNull('is_received')->get();
 
@@ -601,7 +674,8 @@ class TransactionFlowController extends Controller
     }
 
 
-    public function updateReceiptTypeTransaction(Request $request, $id) {
+    public function updateReceiptTypeTransaction(Request $request, $id)
+    {
 
         $transaction = Transaction::find($id);
 
@@ -625,23 +699,24 @@ class TransactionFlowController extends Controller
         }
     }
 
-    public function updateTransactionRemarks(Request $request, $id) {
+    public function updateTransactionRemarks(Request $request, $id)
+    {
 
-            $transaction = Transaction::find($id);
+        $transaction = Transaction::find($id);
 
-            if ($transaction) {
-                $request->validate([
-                    'remarks' => 'required'
-                ]);
+        if ($transaction) {
+            $request->validate([
+                'remarks' => 'required'
+            ]);
 
-                $transaction->timestamps = false;
-                $transaction->remarks = $request->remarks;
-                $transaction->save();
+            $transaction->timestamps = false;
+            $transaction->remarks = $request->remarks;
+            $transaction->save();
 
-                return $this->resultResponse("update", "Transaction", $transaction);
-            } else {
-                return $this->resultResponse("not-found", "Transaction", []);
-            }
+            return $this->resultResponse("update", "Transaction", $transaction);
+        } else {
+            return $this->resultResponse("not-found", "Transaction", []);
+        }
     }
 
 //    public function adjustEntries(Request $request) {
@@ -761,67 +836,267 @@ class TransactionFlowController extends Controller
 //        return $transactions->first();
 //    }
 
-public function updateTransactionEntries(Request $request, $id)
-{
+    public function updateTransactionEntries(Request $request, $id)
+    {
 
-    $transaction = Transaction::find($id);
+        $transaction = Transaction::find($id);
 
-    if ($transaction) {
-        $request->validate([
-            'account_titles' => 'required|array',
-            'account_titles.*.id' => 'required|integer',
-            'account_titles.*.entry' => 'required',
-            'account_titles.*.account_title.id' => 'required|integer',
-            'account_titles.*.amount' => 'required|numeric',
-            'account_titles.*.remarks' => 'required',
-            'account_titles.*.company.id' => 'required|integer',
-            'account_titles.*.department.id' => 'required|integer',
-            'account_titles.*.location.id' => 'required|integer',
-            'account_titles.*.business_unit.id' => 'required|integer',
-            'account_titles.*.sub_business_unit.id' => 'required|integer',
-        ]);
-
-        $transaction->account_titles()->delete();
-
-        foreach ($request->account_titles as $account) {
-            $transaction->account_titles()->create([
-                'entry' => $account['entry'],
-                'account_title_id' => $account['account_title']['id'],
-                'account_title_code' => $account['account_title']['code'],
-                'account_title_name' => $account['account_title']['name'],
-                'amount' => $account['amount'],
-                'remarks' => $account['remarks'],
-                'transaction_type' => 'new',
-                'company_id' => $account['company']['id'],
-                'company_code' => $account['company']['code'],
-                'company_name' => $account['company']['name'],
-                'department_id' => $account['department']['id'],
-                'department_code' => $account['department']['code'],
-                'department_name' => $account['department']['name'],
-                'location_id' => $account['location']['id'],
-                'location_code' => $account['location']['code'],
-                'location_name' => $account['location']['name'],
-                'business_unit_id' => $account['business_unit']['id'],
-                'business_unit_code' => $account['business_unit']['code'],
-                'business_unit_name' => $account['business_unit']['name'],
-                'sub_business_unit_id' => $account['sub_business_unit']['id'],
-                'sub_business_unit_code' => $account['sub_business_unit']['code'],
-                'sub_business_unit_name' => $account['sub_business_unit']['name'],
+        if ($transaction) {
+            $request->validate([
+                'account_titles' => 'required|array',
+                'account_titles.*.id' => 'required|integer',
+                'account_titles.*.entry' => 'required',
+                'account_titles.*.account_title.id' => 'required|integer',
+                'account_titles.*.amount' => 'required|numeric',
+                'account_titles.*.remarks' => 'required',
+                'account_titles.*.company.id' => 'required|integer',
+                'account_titles.*.department.id' => 'required|integer',
+                'account_titles.*.location.id' => 'required|integer',
+                'account_titles.*.business_unit.id' => 'required|integer',
+                'account_titles.*.sub_business_unit.id' => 'required|integer',
             ]);
+
+            $transaction->account_titles()->delete();
+
+            foreach ($request->account_titles as $account) {
+                $transaction->account_titles()->create([
+                    'entry' => $account['entry'],
+                    'account_title_id' => $account['account_title']['id'],
+                    'account_title_code' => $account['account_title']['code'],
+                    'account_title_name' => $account['account_title']['name'],
+                    'amount' => $account['amount'],
+                    'remarks' => $account['remarks'],
+                    'transaction_type' => 'new',
+                    'company_id' => $account['company']['id'],
+                    'company_code' => $account['company']['code'],
+                    'company_name' => $account['company']['name'],
+                    'department_id' => $account['department']['id'],
+                    'department_code' => $account['department']['code'],
+                    'department_name' => $account['department']['name'],
+                    'location_id' => $account['location']['id'],
+                    'location_code' => $account['location']['code'],
+                    'location_name' => $account['location']['name'],
+                    'business_unit_id' => $account['business_unit']['id'],
+                    'business_unit_code' => $account['business_unit']['code'],
+                    'business_unit_name' => $account['business_unit']['name'],
+                    'sub_business_unit_id' => $account['sub_business_unit']['id'],
+                    'sub_business_unit_code' => $account['sub_business_unit']['code'],
+                    'sub_business_unit_name' => $account['sub_business_unit']['name'],
+                ]);
+            }
         }
     }
-}
 
-public function mutlipleProcess(Request $request) {
-    $transactions = collect($request->input('transactions'));
-    $subprocess = $request->subprocess;
+    public function multipleProcess (Request $request)
+    {
+        $transactions = collect($request->input('transactions'));
+        $subprocess = $request->subprocess;
 
-    $transactions->each(function ($transaction) use ($request) {
-        static::updateInTransactionFlow($request, $transaction);
-    });
+        $transactions->each(function ($transaction) use ($request) {
+            static::updateInTransactionFlow($request, $transaction);
+        });
 
-    return GenericMethod::resultResponse($subprocess, "", "");
-}
+        return GenericMethod::resultResponse($subprocess, "", "");
+    }
+
+    public function paymentVouchers(Request $request) {
+        $batchNo = $request->batch_no;
+
+        $transactions =  Transaction::
+            whereHas('cheques', function ($query) use ($batchNo) {
+                $query->where('batch_no', $batchNo)
+                    ->where('status', 'cheque-cheque');
+            })
+            ->with([
+                "users:id,first_name,middle_name,last_name,department,position",
+                "supplier.supplier_type:id,type as name",
+                "account_titles",
+                "treasuryCheque",
+                "treasuryAccountTitle",
+                "cheques.assignedTreasury"
+            ])
+            ->where(function ($query) {
+                $query
+                    ->where('status', 'cheque-cheque')
+                    ->where('assigned_id', auth()->user()->id)
+                    ->orWhere('assigned_id', null);
+            })
+            ->select([
+                "id",
+                "users_id",
+                "supplier_id",
+                "transaction_id",
+                "category",
+
+                "tag_no",
+                "document_id",
+                "document_type",
+                "payment_type",
+                "receipt_type",
+                "voucher_no",
+                "voucher_month",
+                "remarks",
+
+                "company_id",
+                "company",
+                "department_id",
+                "department",
+                "location_id",
+                "location",
+
+                "document_no",
+                "document_amount",
+                "principal",
+                "interest",
+                "gross_amount",
+                "referrence_no",
+                "referrence_amount",
+                "input_tax",
+
+                "date_requested",
+
+                "status",
+                "state",
+                "is_confidential",
+                "is_mc"
+            ])
+            ->get();
+
+        return $transactions->transform(function ($transaction) {
+            $resource = new TransactionResource1($transaction);
+            $rental = $resource->getRental();
+            $cheques = $transaction->treasuryCheque;
+
+            $account_title = $transaction->treasuryAccountTitle->isEmpty()
+                ? $transaction->account_titles
+                : $transaction->treasuryAccountTitle->filter(function ($query) {
+                    return $query->entry == "Credit" || (strpos($query->account_title_name, "Accounts Payable") !== false && $query->entry == "Debit");
+                })->values();
+
+            return [
+                "id" => $transaction->id,
+                "tag_no" => $transaction->tag_no,
+                "transaction_no" => $transaction->transaction_id,
+                "receipt_type" => $transaction->receipt_type,
+                "payment_type" => $transaction->payment_type,
+                "users" => $transaction->users,
+                "document" => [
+                    "id" => $transaction->document_id,
+                    "name" => $transaction->document_type,
+                ],
+                "document_no" => $transaction->document_no,
+                'document_amount' => ($transaction->document_id == 3)
+                    ? ($transaction->category == in_array($transaction->category, $rental) ? $transaction->gross_amount : floatval((number_format(($transaction->principal + $transaction->interest), 2, '.', ''))))
+                    : $transaction->document_amount ?? $transaction->referrence_amount,
+                "reference_no" => $transaction->referrence_no,
+                "input_tax" => $transaction->input_tax,
+                "date_requested" => $transaction->date_requested,
+                "company" => [
+                    "id" => $transaction->company_id,
+                    "name" => $transaction->company,
+                ],
+                "department" => [
+                    "id" => $transaction->department_id,
+                    "name" => $transaction->department,
+                ],
+                "location" => [
+                    "id" => $transaction->location_id,
+                    "name" => $transaction->location,
+                ],
+                "supplier" => [
+                    "id" => $transaction->supplier->id,
+                    "name" => $transaction->supplier->name,
+                    "type" => $transaction->supplier->supplier_type->name,
+                ],
+                "voucher" => [
+                    "no" => $transaction->voucher_no,
+                    "month" => $transaction->voucher_month,
+                ],
+                "cheques" => $cheques->load('bank')->map(function ($item) {
+                    return [
+                        "type" => $item->entry_type,
+                        "no" => $item->cheque_no,
+                        "bank" => [
+                            "id" => $item->bank_id,
+                            "name" => $item->bank_name,
+                            'account_number' => $item->bank->account_no,
+                        ],
+                        "amount" => $item->cheque_amount,
+                        "date" => $item->cheque_date,
+                    ];
+                }),
+                "accounts" => $account_title->map(function ($item) {
+                    return [
+                        "entry" => $item->entry,
+                        "account_title" => [
+                            "id" => $item->account_title_id,
+                            "code" => $item->account_title_code,
+                            "name" => $item->account_title_name,
+                        ],
+                        "company" => [
+                            "id" => $item->company_id,
+                            "code" => $item->company_code,
+                            "name" => $item->company_name,
+                        ],
+                        "department" => [
+                            "id" => $item->department_id,
+                            "code" => $item->department_code,
+                            "name" => $item->department_name,
+                        ],
+                        "location" => [
+                            "id" => $item->location_id,
+                            "code" => $item->location_code,
+                            "name" => $item->location_name,
+                        ],
+                        "business_unit" => [
+                            "id" => $item->business_unit_id,
+                            "code" => $item->business_unit_code,
+                            "name" => $item->business_unit_name,
+                        ],
+                        "sub_unit" => [
+                            "id" => $item->sub_unit_id,
+                            "code" => $item->sub_unit_code,
+                            "name" => $item->sub_unit_name,
+                        ],
+                        "amount" => $item->amount,
+                        "remarks" => $item->remarks,
+                    ];
+                }),
+                "remarks" => $transaction->remarks,
+                "status" => $transaction->state,
+                "state" => $transaction->status,
+                "is_confidential" => $transaction->is_confidential,
+                "is_mc" => $transaction->is_mc,
+                'dates' => [
+                    'created' => ((new TransactionController())->getDateEveryStatus($transaction->cheques, 'cheque-cheque')),
+                ],
+                "treasury" => $transaction->cheques->first() && $transaction->cheques->first()->user_id
+                    ? $transaction->cheques->first()->assignedTreasury->first_name . ' ' . $transaction->cheques->first()->assignedTreasury->last_name
+                    : null,
+                "batch_no" => $transaction->cheques->first() && $transaction->cheques->first()->batch_no
+                    ? $transaction->cheques->first()->batch_no
+                    : null,
+            ];
+        });
+    }
+
+    public function uncollectedCheques(Request $request) {
+        $cheques = $request->cheques;
+        $uncollectedDate = $request->uncollected_date;
+
+        collect($cheques)->each(function ($cheque) use ($uncollectedDate) {
+
+            Cheque::where([
+                'bank_id' => $cheque['bank_id'],
+                'cheque_no' => $cheque['cheque_no'],
+            ])->update([
+                'is_uncollected' => true,
+                'uncollected_date' => Carbon::parse($uncollectedDate)->format('Y-m-d'),
+            ]);
+        });
+
+        return GenericMethod::resultResponse("update", "Transaction", null);
+    }
 
     // public function pullRequest(Request $request){
     //     $process =  $request['process'];

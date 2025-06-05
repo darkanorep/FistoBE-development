@@ -108,6 +108,8 @@ class Transaction extends Model
         "is_for_voucher_audit",
         "business_unit_id",
         "business_unit",
+        "unit_id",
+        "unit",
         "sub_unit_id",
         "sub_unit",
         "input_tax",
@@ -607,23 +609,27 @@ class Transaction extends Model
 
 
     public function company_info() {
-        return $this->hasOne(Company::class, 'id', 'company_id');
+        return $this->hasOne(Company::class, 'id', 'company_id')->withTrashed();
     }
 
     public function department_info() {
-        return $this->hasOne(Department::class, 'id', 'department_id');
+        return $this->hasOne(Department::class, 'id', 'department_id')->withTrashed();
     }
 
     public function location_info() {
-        return $this->hasOne(Location::class, 'id', 'location_id');
+        return $this->hasOne(Location::class, 'id', 'location_id')->withTrashed();
     }
 
     public function business_unit_info() {
-        return $this->hasOne(BusinessUnit::class, 'id', 'business_unit_id');
+        return $this->hasOne(BusinessUnit::class, 'sync_id', 'business_unit_id')->withTrashed();
+    }
+
+    public function unit_info() {
+        return $this->hasOne(Unit::class, 'sync_id', 'unit_id')->withTrashed();
     }
 
     public function sub_unit_info() {
-        return $this->hasOne(SubUnit::class, 'id', 'sub_unit_id');
+        return $this->hasOne(SubUnit::class, 'sync_id', 'sub_unit_id')->withTrashed();
     }
 
     public function scopeRental($query, $transaction_id) {
@@ -684,4 +690,10 @@ class Transaction extends Model
         return $this->hasMany(ReceivedReceipt::class, 'transaction_id', 'id');
     }
 
+    public function utilityLocation()
+    {
+        return $this->belongsTo(UtilityLocation::class, 'utilities_location_id', 'id')
+            ->withTrashed()
+            ->select('id','location');
+    }
 }

@@ -79,6 +79,7 @@ class TransactionChequeResource extends JsonResource
                 if ($this->treasuryChequeHistory()->count() > 0) {
                     $chequeHistoryMapper = function ($item) {
                         return [
+                            'bank_id' => $item->bank_id,
                             'bank_name' => $item->bank_name,
                             'cheque_no' => $item->cheque_no,
                             'cheque_amount' => $item->cheque_amount,

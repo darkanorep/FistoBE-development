@@ -107,6 +107,11 @@ class TransactionVoucherResource extends JsonResource
                             'code' => $item->business_unit_code,
                             'name' => $item->business_unit_name,
                         ],
+                        'unit' => [
+                            'íd' => $item->unit_id,
+                            'code' => $item->unit_code,
+                            'name' => $item->unit_name,
+                        ],
                         'sub_unit' => [
                             'id' => $item->sub_unit_id,
                             'code' => $item->sub_unit_code,

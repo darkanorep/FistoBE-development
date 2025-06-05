@@ -12,9 +12,11 @@ class BankSeries extends Model
 
     protected $fillable = [
         'bank_id',
+        'document_name',
         'category',
         'from',
         'to',
+        'is_used'
 //        'year'
     ];
 

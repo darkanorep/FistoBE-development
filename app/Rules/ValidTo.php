@@ -72,7 +72,7 @@ class ValidTo implements Rule
                 ->where('from', $from)
                 ->first();
 
-            return !$bank_series ? true : false;
+            return !$bank_series;
         }
 
         if ($to <= $from) {
@@ -84,6 +84,7 @@ class ValidTo implements Rule
             ->where('category', $category)
             ->where('from', '<=', $to)
             ->where('to', '>=', $to)
+//                ->whereBetween('from', [$from, $to])
 //            ->where('year', $year)
             ->when($currentId, function ($query) use ($currentId) {
                 return $query->where('id', '!=', $currentId);

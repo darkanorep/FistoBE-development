@@ -6,22 +6,26 @@ use App\Http\Requests\LocationRequest;
 use App\Models\Location;
 use App\Models\Company;
 use App\Models\Department;
+use App\Models\SubUnit;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class LocationController extends Controller
 {
-  public function index(Request $request)
-  {
+    public function index(Request $request)
+    {
 
-      $status = $request->status;
-      $rows = $request->input('rows', 10);
-      $search = $request->search;
-      $department_id = $request->department_id;
-      $paginate = $request->input('paginate', 1);
+        $status = $request->status;
+        $rows = $request->input('rows', 10);
+        $search = $request->search;
+        $department_id = $request->department_id;
+        $paginate = $request->input('paginate', 1);
+        $sub_unit_id = $request->input('sub_unit_id', null);
 
-      // System Name
-      $api_for = $request->input("api_for", "default");
+        // System Name
+        $api_for = $request->input("api_for", "default");
 
 //      $locations = Location::withTrashed()
 //          ->when(isset($status), function ($query) use ($status) {
@@ -79,73 +83,81 @@ class LocationController extends Controller
 //          $locations = array("locations" => $locations);
 //      }
 
-      $locations = Location::withTrashed()
-          ->with('departments')
-          ->when($paginate === 1, function ($query) {
-              return $query->with("departments");
-          })
-          ->where(function ($query) use ($status) {
-              if ($status == "all") {
-                  return $query;
-              }
+        $locations = Location::
+        with([
+            'departments',
+            'subUnits'
+        ])
+            ->when($paginate === 1, function ($query) {
+                return $query->with("departments");
+            })
+            ->when($sub_unit_id, function ($query) use ($sub_unit_id) {
+                return $query->whereHas('subUnits', function ($query) use ($sub_unit_id) {
+                    return $query->where('sub_unit_id', $sub_unit_id);
+                });
+            })
+            ->where(function ($query) use ($status) {
+                if ($status == "all") {
+                    return $query;
+                }
 
-              if ($status == 1) {
-                  return $query->whereNull("deleted_at");
-              }
+                if ($status == 1) {
+                    return $query->whereNull("deleted_at");
+                }
 
-              if ($status == 0) {
-                  return $query->whereNotNull("deleted_at");
-              }
-          })
-          ->where(function ($query) use ($search) {
-              $query
-                  ->where("code", "like", "%" . $search . "%")
-                  ->orWhere("location", "like", "%" . $search . "%")
-                  ->orWhereHas("departments", function ($query) use ($search) {
-                      return $query->where("department", "like", "%" . $search . "%");
-                  });
-          })
-          ->latest("updated_at");
+                if ($status == 0) {
+                    return $query->whereNotNull("deleted_at");
+                }
+            })
+            ->where(function ($query) use ($search) {
+                $query
+                    ->where("code", "like", "%" . $search . "%")
+                    ->orWhere("location", "like", "%" . $search . "%")
+                    ->orWhereHas("departments", function ($query) use ($search) {
+                        return $query->where("department", "like", "%" . $search . "%");
+                    });
+            })
+            ->latest("updated_at");
 
-      if ($paginate == 1) {
-          $locations = $locations->paginate($rows);
-      } else {
-          $locations = $locations
-              ->when(!empty($department_id), function ($query) use ($department_id) {
-                  return $query->whereHas("departments", function ($query) use ($department_id) {
-                      return $query->where("departments.id", $department_id);
-                  });
-              })
-              ->when($api_for == "vladimir", function ($query) {
-                  return $query->with("departments")->get(["id", "code", "location as name",
-                      DB::RAW("(CASE WHEN (ISNULL(deleted_at)) THEN 1 ELSE 0 END) as status"),
-                      "deleted_at"]);
+        if ($paginate == 1) {
+            $locations = $locations->paginate($rows);
+        } else {
+            $locations = $locations
+                ->when(!empty($department_id), function ($query) use ($department_id) {
+                    return $query->whereHas("departments", function ($query) use ($department_id) {
+                        return $query->where("departments.id", $department_id);
+                    });
+                })
+                ->when($api_for == "vladimir", function ($query) {
+                    return $query->with("departments")->get(["id", "code", "location as name",
+                        DB::RAW("(CASE WHEN (ISNULL(deleted_at)) THEN 1 ELSE 0 END) as status"),
+                        "deleted_at"]);
 
-                  // return $query->get([
-                  //   "id",
-                  //   "code",
-                  //   "location as name",
-                  //   DB::RAW("(CASE WHEN (ISNULL(deleted_at)) THEN 1 ELSE 0 END) as status"),
-                  // ]);
-              })
-              ->when($api_for == "genus_etd", function ($query) {
-                  return $query->with("departments")->get(["id", "code", "location as name", "updated_at", "deleted_at"]);
-              })
-              ->when($api_for == "default", function ($query) {
-                  return $query->get(["id", "code", "location as name"]);
-              });
+                    // return $query->get([
+                    //   "id",
+                    //   "code",
+                    //   "location as name",
+                    //   DB::RAW("(CASE WHEN (ISNULL(deleted_at)) THEN 1 ELSE 0 END) as status"),
+                    // ]);
+                })
+                ->when($api_for == "genus_etd", function ($query) {
+                    return $query->with("departments")->get(["id", "code", "location as name", "updated_at", "deleted_at"]);
+                })
+                ->when($api_for == "default", function ($query) {
+                    return $query->get(["id", "code", "location as name"]);
+                });
 
-          if (count($locations)) {
-              $locations = ["locations" => $locations];
-          }
-      }
+            if (count($locations)) {
+                $locations = ["locations" => $locations];
+            }
+        }
 
-      if (count($locations)) {
-          return $this->resultResponse("fetch", "Location", $locations);
-      } else {
+        if (count($locations)) {
+            return $this->resultResponse("fetch", "Location", $locations);
+        } else {
             return $this->resultResponse("not-found", "Location", []);
-      }
-  }
+        }
+    }
 
   public function store(LocationRequest $request)
   {
@@ -190,27 +202,27 @@ class LocationController extends Controller
 //    return $this->resultResponse("save", "Location", $new_location);
   }
 
-  public function update(LocationRequest $request, $id)
-  {
+    public function update(LocationRequest $request, $id)
+    {
 
-      $location = Location::find($id);
+        $location = Location::find($id);
 
-      if ($location) {
+        if ($location) {
 
-          $location->departments()->detach();
-          $location->update([
-              'code' => $request->code,
-              'location' => $request->location
-          ]);
+            $location->departments()->detach();
+            $location->update([
+                'code' => $request->code,
+                'location' => $request->location
+            ]);
 
-          $location->departments()->attach($request->departments);
-          $location->touch();
+            $location->departments()->attach($request->departments);
+            $location->touch();
 
-          return $this->resultResponse("update", "Location", $location);
+            return $this->resultResponse("update", "Location", $location);
 
-      } else {
+        } else {
             return $this->resultResponse("not-found", "Location", []);
-      }
+        }
 
 //    $company = new Company();
 //    $specific_location = Location::find($id);
@@ -255,16 +267,16 @@ class LocationController extends Controller
 //    $specific_location->location = $fields["location"];
 //    $specific_location->departments()->sync(array_unique($fields["departments"]));
 //    return $this->validateIfNothingChangeThenSave($specific_location, "Location", $is_associates_modified);
-  }
+    }
 
-  public function change_status($id)
-  {
+    public function change_status($id)
+    {
 
-      return $this->changeStatus($id, Location::class, 'Location');
+        return $this->changeStatus($id, Location::class, 'Location');
 //    $status = $request["status"];
 //    $model = new Location();
 //    return $this->change_masterlist_status($status, $model, $id, "Location");
-  }
+    }
 
 //  public function group_and_merge($raw_location_data)
 //  {
@@ -416,7 +428,8 @@ class LocationController extends Controller
 //    }
 //  }
 
-    public function import(Request $request) {
+    public function import(Request $request)
+    {
 
         $locations = $request->all();
         $errorBag = [];
@@ -454,16 +467,16 @@ class LocationController extends Controller
 //                ];
 //            }
 
-            if(!in_array($department, $department_list)) {
-                $errorBag[] = (object) [
+            if (!in_array($department, $department_list)) {
+                $errorBag[] = (object)[
                     "error_type" => "existing",
                     "line" => $index,
                     "description" => $department . " is not registered.",
                 ];
             }
 
-            if(!in_array($status, ['Active', 'Inactive'])) {
-                $errorBag[] = (object) [
+            if (!in_array($status, ['Active', 'Inactive'])) {
+                $errorBag[] = (object)[
                     "error_type" => "wrong-format",
                     "line" => $index,
                     "description" => "Status must be Active or Inactive.",
@@ -472,7 +485,7 @@ class LocationController extends Controller
 
             foreach ($loc as $key => $value) {
                 if (empty($value)) {
-                    $errorBag[] = (object) [
+                    $errorBag[] = (object)[
                         "error_type" => "empty",
                         "line" => $index,
                         "description" => $key . " is empty.",
@@ -562,7 +575,7 @@ class LocationController extends Controller
 
             return response()->json([
                 'status' => 'imported',
-                'message' => 'Locations successfully imported, '. $active . ' active rows and, ' . $inactive . ' inactive rows were added.',
+                'message' => 'Locations successfully imported, ' . $active . ' active rows and, ' . $inactive . ' inactive rows were added.',
             ], 201);
 
         } else {
@@ -570,4 +583,51 @@ class LocationController extends Controller
         }
 
     }
+
+//    public function store(Request $request)
+//    {
+//        $locations = $request->input('result');
+//        $error = [];
+//
+//        collect($locations)->each(function ($location) use (&$error) {
+//            $sync_id = $location['id'];
+//            $code = $location['code'];
+//            $locationName = $location['name']; // Use a different variable name
+//            $deleted_at = $location['deleted_at'];
+//            $subUnits = collect($location['sub_units'])->pluck('id')->toArray();
+//
+//            $subUnitExists = SubUnit::whereIn('id', $subUnits)->exists();
+//            if (!$subUnitExists) {
+//                $error[] = 'Sub unit not found.';
+//                return;
+//            }
+//
+//            $locationModel = Location::updateOrCreate(
+//                [
+//                    'sync_id' => $sync_id,
+//                    'code' => $code,
+//                    'location' => $locationName, // Use the new variable here
+//                ],
+//                [
+//                    'sync_id' => $sync_id,
+//                    'code' => $code,
+//                    'location' => $locationName, // Use the new variable here
+//                    'deleted_at' => $deleted_at ? now() : null,
+//                ]
+//            );
+//
+//            $locationModel->subUnits()->syncWithoutDetaching($subUnits);
+//        });
+//
+//        if (!empty($errors)) {
+//            return response()->json([
+//                'message' => 'Sync Sub Unit first before syncing Location.',
+//            ], Response::HTTP_BAD_REQUEST);
+//        }
+//
+//        return response()->json([
+//            'message' => 'Locations successfully synced.',
+//        ], Response::HTTP_OK);
+//
+//    }
 }

@@ -32,6 +32,8 @@ class Bank extends Model
         'business_unit_id_2',
         'department_id_1',
         'department_id_2',
+        'unit_id_1',
+        'unit_id_2',
         'sub_unit_id_1',
         'sub_unit_id_2',
         'location_id_1',
@@ -46,6 +48,8 @@ class Bank extends Model
         'business_unit_id_2',
         'department_id_1',
         'department_id_2',
+        'unit_id_1',
+        'unit_id_2',
         'sub_unit_id_1',
         'sub_unit_id_2',
         'location_id_1',
@@ -105,14 +109,24 @@ class Bank extends Model
         return $this->hasOne(Department::class, 'id', 'department_id_2')->select('id', 'department as name', 'code')->withTrashed();
     }
 
+    public function UnitOne()
+    {
+        return $this->hasOne(Unit::class, 'id', 'unit_id_1')->select('id', 'name', 'code')->withTrashed();
+    }
+
+    public function UnitTwo()
+    {
+        return $this->hasOne(Unit::class, 'id', 'unit_id_2')->select('id', 'name', 'code')->withTrashed();
+    }
+
     public function SubUnitOne()
     {
-        return $this->hasOne(SubUnit::class, 'id', 'sub_unit_id_1')->select('id', 'subunit as name', 'code')->withTrashed();
+        return $this->hasOne(SubUnit::class, 'id', 'sub_unit_id_1')->select('id', 'name', 'code')->withTrashed();
     }
 
     public function SubUnitTwo()
     {
-        return $this->hasOne(SubUnit::class, 'id', 'sub_unit_id_2')->select('id', 'subunit as name', 'code')->withTrashed();
+        return $this->hasOne(SubUnit::class, 'id', 'sub_unit_id_2')->select('id', 'name', 'code')->withTrashed();
     }
 
     public function LocationOne()

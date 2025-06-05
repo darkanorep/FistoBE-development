@@ -13,7 +13,12 @@ class Location extends Model
   use SoftDeletes;
 
   protected $table = "locations";
-  protected $fillable = ["code", "location", "departments", "created_at", "updated_at", "deleted_at"];
+  protected $fillable = [
+      "sync_id",
+      "code",
+      "location",
+      "departments",
+  ];
   protected $hidden = ["pivot", "created_at"];
   protected $cast = [
     "department" => "array",
@@ -45,4 +50,15 @@ class Location extends Model
 //      "departments.department as name")
         ->withTrashed();
   }
+
+    public function subUnits() {
+        return $this->belongsToMany(
+            SubUnit::class, // Related model
+            "location_sub_units", // Pivot table
+            "location_id", // Foreign key in the pivot table referencing `sync_id` in `locations`
+            "sub_unit_id", // Foreign key in the pivot table referencing `id` in `sub_units`
+            "sync_id", // Local key in the `locations` table
+            "sync_id" // Local key in the `sub_units` table
+        )->withTrashed();
+    }
 }

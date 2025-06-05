@@ -50,9 +50,20 @@ class TransactionPostRequest extends FormRequest
             "document.amount" => "required_if:document.id,1,5,2,6,8,7|numeric",
             "document.remarks" => "nullable",
             "document.company.id" => "required",
+//            "document.company.code" => "required",
             "document.company.name" => "required",
+            "document.business_unit.id" => "nullable",
+//            "document.business_unit.code" => "required",
+            "document.business_unit.name" => "nullable",
             "document.department.id" => "required",
+//            "document.department.code" => "required",
             "document.department.name" => "required",
+            "document.unit.id" => "nullable",
+//            "document.unit.code" => "required",
+            "document.unit.name" => "nullable",
+            "document.sub_unit.id" => "nullable",
+//            "document.sub_unit.code" => "required",
+            "document.sub_unit.name" => "nullable",
             "document.location.id" => "required",
             "document.location.name" => "required",
             "document.supplier.id" => "required",
@@ -227,19 +238,6 @@ class TransactionPostRequest extends FormRequest
             "service_group.*.sub_unit" => 'nullable',
             "service_group.*.location" => 'nullable',
             "service_group.*.amount" => 'nullable',
-
-            "document.business_unit.id" => [
-                "nullable"
-            ],
-            "document.business_unit.name" => [
-                "nullable"
-            ],
-            "document.sub_unit.id" => [
-                "nullable"
-            ],
-            "document.sub_unit.name" => [
-                "nullable"
-            ],
             "po_balance" => 'nullable'
         ];
     }

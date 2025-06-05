@@ -11,6 +11,7 @@ class ClearingAccountTitle extends Model
 
     protected $fillable = [
         "clear_id",
+        "cheque_id",
         "entry",
         "account_title_id",
         "account_title_name",
@@ -29,6 +30,9 @@ class ClearingAccountTitle extends Model
         "business_unit_id",
         "business_unit_code",
         "business_unit_name",
+        "unit_id",
+        "unit_code",
+        "unit_name",
         "sub_unit_id",
         "sub_unit_code",
         "sub_unit_name",

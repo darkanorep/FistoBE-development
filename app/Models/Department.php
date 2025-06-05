@@ -13,7 +13,13 @@ class Department extends Model
     use SoftDeletes;
 
     protected $table = "departments";
-    protected $fillable = ["code", "department", "company", "voucher_code_id"];
+    protected $fillable = ["code",
+        "department",
+        "company",
+        "voucher_code_id",
+        "sync_id",
+        "business_unit_sync_id"
+        ];
     protected $hidden = ["created_at", "pivot", "voucher_code_id", "company"];
 
     public function Company()
@@ -33,12 +39,6 @@ class Department extends Model
         return $date->format("Y-m-d H:i");
     }
 
-    //   public function getDeletedAtAttribute($value)
-    //   {
-    //     $date = Carbon::parse($value);
-    //     return $date->format("Y-m-d H:i");
-    //   }
-
     public function companyCharging()
     {
         return $this->belongsTo(Company::class);
@@ -56,6 +56,8 @@ class Department extends Model
 
     public function businessUnit()
     {
-        return $this->hasOne(Company::class, "id", "company")->select("id", "company as name")->withTrashed();
+        return $this->hasOne(BusinessUnit::class, "sync_id", "business_unit_sync_id")
+            ->select("sync_id", "business_unit as name")
+            ->withTrashed();
     }
 }

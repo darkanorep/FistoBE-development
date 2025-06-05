@@ -34,6 +34,15 @@ class BankSeriesRequest extends FormRequest
                 Rule::exists('banks', 'id')->whereNull('deleted_at')
             ],
             'category' => 'required|in:blank stock,prenumbered stock',
+            'document_name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('bank_series', 'document_name')->where(function ($query) {
+                    return $query->where('bank_id', $this->bank_id)
+                        ->where('category', $this->category);
+                })->ignore($currentId)
+            ],
 //            'year' => [
 //                'required',
 //                'digits:4',
@@ -43,15 +52,32 @@ class BankSeriesRequest extends FormRequest
 //                        ->where('to', $this->to);
 //                })->ignore($currentId)
 //            ],
-            'from' => [
+            'from' => array_filter([
                 'required',
-                new ValidFrom('bank_series', $this->to, $this->bank_id, $currentId, $this->category)
-            ],
-            'to' => [
+                new ValidFrom('bank_series', $this->to, $this->bank_id, $currentId, $this->category),
+                $this->category === 'blank stock' ? function ($attribute, $value, $fail) use ($currentId) {
+                    $notUsed = \App\Models\BankSeries::where('bank_id', $this->bank_id)
+                        ->where('category', 'blank stock')
+                        ->where('from', $value)
+                        ->where('is_used', 0) // Only block if there's an unused one
+//                        ->when($currentId, fn($query) => $query->where('id', '!=', $currentId))
+                            ->when($currentId, function ($query) use ($currentId) {
+                                return $query->where('id', '!=', $currentId);
+                            })
+                        ->exists();
+
+                    if ($notUsed) {
+                        $fail('This blank stock cheque number is already registered but not yet used. You can only reuse it once it has been marked as used.');
+                    }
+                } : null,
+            ]),
+
+            'to' => array_filter([
                 'required_if:category,prenumbered stock',
-                'sometimes',
-                new ValidTo('bank_series', $this->from, $this->to, $this->bank_id, $currentId, $this->category),
-            ],
+                $this->category === 'prenumbered stock'
+                    ? new ValidTo('bank_series', $this->from, $this->to, $this->bank_id, $currentId, $this->category)
+                    : null,
+            ]),
         ];
     }
 

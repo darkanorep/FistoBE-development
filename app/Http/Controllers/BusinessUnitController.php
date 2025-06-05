@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\BusinessUnitRequest;
+use App\Http\Requests\Sync\BusinessUnitRequestSync;
 use App\Models\BusinessUnit;
+use App\Models\Company;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 
 class BusinessUnitController extends Controller
@@ -18,6 +21,7 @@ class BusinessUnitController extends Controller
         $api_for = $request->input("api_for", "default");
 
         $business_unit = BusinessUnit::withTrashed()
+            ->with("company")
             ->when(isset($status), function ($query) use ($status) {
                 return $status ? $query->whereNull("deleted_at") : $query->whereNotNull("deleted_at");
             })
@@ -31,6 +35,7 @@ class BusinessUnitController extends Controller
             $business_unit->transform(function ($value) {
                 return [
                     "id" => $value->id,
+                    "sync_id" => $value->sync_id,
                     "code" => $value->code,
                     "company" => [
                         "id" => $value->company->id,
@@ -55,16 +60,17 @@ class BusinessUnitController extends Controller
                         ->with(["company:id,code,company"])
                         ->get([
                             "id",
+                            "sync_id",
                             "code",
                             "business_unit as name",
-                            "company_id",
                             DB::RAW("(CASE WHEN (ISNULL(deleted_at)) THEN 1 ELSE 0 END) as status"),
                         ]);
                 })
                 ->when($api_for == "default", function ($query) {
-                    return $query->get(["id", "code", "business_unit as name"]);
+                    return $query
+                        ->with("company")
+                        ->get(["id", "sync_id", "code", "business_unit as name"]);
                 });
-
             $business_unit = array("business_units" => $business_unit);
         }
 
@@ -128,4 +134,47 @@ class BusinessUnitController extends Controller
     {
         return $this->changeStatus($id, BusinessUnit::class, "Business Unit");
     }
+
+//    public function store(Request $request) {
+//        $businessUnits = $request->input('result');
+//        $errors = [];
+//
+//        collect($businessUnits)->each(function ($businessUnit) use (&$errors) {
+//            $sync_id = $businessUnit['id'];
+//            $sync_company_id = $businessUnit['company_id'];
+//            $name = $businessUnit['name'];
+//            $code = $businessUnit['code'];
+//            $deleted_at = $businessUnit['deleted_at'];
+//
+//            // Validate if the company_id exists in the database
+//            $companyExists = Company::where('sync_id', $sync_company_id)->exists();
+//
+//            if (!$companyExists) {
+//                $errors[] = "Company with ID {$sync_company_id} does not exist.";
+//                return; // Skip this iteration
+//            }
+//
+//            // Update or create the BusinessUnit
+//            BusinessUnit::updateOrCreate([
+//                'sync_id' => $sync_id,
+//                'company_sync_id' => $sync_company_id,
+//                'business_unit' => $name,
+//                'code' => $code,
+//            ], [
+//                'business_unit' => $name,
+//                'code' => $code,
+//                'deleted_at' => $deleted_at ? now() : null,
+//            ]);
+//        });
+//
+//        if (!empty($errors)) {
+//            return response()->json([
+//                'message' => 'Sync Company first before syncing Business Units.',
+//            ], Response::HTTP_BAD_REQUEST);
+//        }
+//
+//        return response()->json([
+//            'message' => 'Business Units successfully synced.',
+//        ], Response::HTTP_OK);
+//    }
 }

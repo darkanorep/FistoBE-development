@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\CompanyRequest;
+use App\Http\Requests\Sync\BusinessUnitRequest;
 use App\Models\Company;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -14,60 +15,11 @@ class CompanyController extends Controller
 {
     public function index(Request $request)
     {
-//    $status = $request["status"];
-//    $rows = empty($request["rows"]) ? 10 : (int) $request["rows"];
-//    $search = $request["search"];
-//    $paginate = isset($request["paginate"]) ? $request["paginate"] : ($paginate = 1);
-
         $status = $request->status;
         $rows = (int)$request->input('rows', 10);
         $search = $request->search;
         $paginate = $request->input('paginate', 1);
-
-        // System Name
         $api_for = $request->input("api_for", "default");
-
-//      $companies = Company::withTrashed()
-//          ->when(isset($status), function ($query) use ($status) {
-//              return $status ? $query->whereNull("deleted_at") : $query->whereNotNull("deleted_at");
-//          })
-//          ->where(function ($query) use ($search) {
-//              $query->where("code", "like", "%" . $search . "%")
-//                  ->orWhere("company", "like", "%" . $search . "%");
-//          })
-//          ->latest("updated_at");
-//
-//      if ($paginate == 1) {
-//          $companies = $companies->with("associates")->paginate($rows);
-//      } else if ($paginate == 0) {
-//          $companies = $companies
-//              ->when($api_for == 'vladimir', function ($query) {
-//                  return $query->get([
-//                      "id",
-//                      "code",
-//                      "company as name",
-//                      DB::RAW("(CASE WHEN (ISNULL(deleted_at)) THEN 1 ELSE 0 END) as status")
-//                  ]);
-//              })
-//              ->when($api_for == 'genus_etd', function ($query) {
-//                  return $query->get([
-//                      "id",
-//                      "code",
-//                      "company as name",
-//                      "updated_at",
-//                      "deleted_at"
-//                  ]);
-//              })
-//              ->when($api_for == 'default', function ($query) {
-//                  return $query->get([
-//                      "id",
-//                      "code",
-//                      "company as name"
-//                  ]);
-//              });
-//
-//          $companies = array('companies' => $companies);
-//      }
 
         $companies = Company::withTrashed()
             ->with("associates")
@@ -99,6 +51,7 @@ class CompanyController extends Controller
                 ->when($api_for == "vladimir", function ($query) {
                     return $query->get([
                         "id",
+                        "sync_id",
                         "code",
                         "company as name",
                         DB::RAW("(CASE WHEN (ISNULL(deleted_at)) THEN 1 ELSE 0 END) as status"),
@@ -108,7 +61,10 @@ class CompanyController extends Controller
                     return $query->get(["id", "code", "company as name", "updated_at", "deleted_at"]);
                 })
                 ->when($api_for == "default", function ($query) {
-                    return $query->get(["id", "code", "company as name"]);
+                    return $query->get(["id",
+//                        "sync_id",
+                        "code",
+                        "company as name"]);
                 });
 
             if (count($companies)) {
@@ -252,4 +208,53 @@ class CompanyController extends Controller
 //    $model = new Company();
 //    return $this->change_masterlist_status($status, $model, $id, "Company");
     }
+
+//    public function store(Request $request)
+//    {
+//        $companies = $request->input('result');
+//
+//        collect($companies)->each(function ($company) {
+//            $sync_id = $company['id'];
+//            $name = $company['name'];
+//            $code = $company['code'];
+//            $deleted_at = $company['deleted_at'];
+//
+//            Company::updateOrCreate(
+//                [
+//                    'sync_id' => $sync_id,
+//                    'code' => $code,
+//                    'company' => $name,
+//                ],
+//                [
+//                    'code' => $code,
+//                    'company' => $name,
+//                    'deleted_at' => $deleted_at ? now() : null,
+//                    'created_at' => now(),
+//                    'updated_at' => now(),
+//                ]
+//            );
+//        });
+//
+//        return response()->json([
+//            'message' => 'Companies successfully synced.',
+//        ], Response::HTTP_OK);
+//
+//
+//
+////        collect($companies)->each(function ($company) {
+////            DB::table('rdf_companies')->updateOrInsert(
+////                ['code' => $company['code']],
+////                [
+////                    'code' => $company['code'],
+////                    'company' => data_get($company, 'name'),
+////                    'created_at' => now(),
+////                    'updated_at' => now(),
+////                ]
+////            );
+////        });
+////
+////        return response()->json([
+////            'message' => 'Companies successfully synced.',
+////        ], Response::HTTP_OK);
+//    }
 }

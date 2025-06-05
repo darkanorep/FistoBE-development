@@ -28,16 +28,18 @@ class User extends Authenticatable
         "position",
         "permissions",
         "document_types",
+        'transaction_report_id',
         "username",
         "password",
     ];
 
-    protected $hidden = ["password", "remember_token", "pivot", "created_at"];
+    protected $hidden = ["password", "remember_token", "pivot", 'transaction_report_id', "created_at"];
 
     protected $casts = [
         "email_verified_at" => "datetime",
         "permissions" => "array",
         "document_types" => "array",
+        'transaction_report_id' => 'array',
         "department" => "array",
     ];
 
@@ -101,5 +103,9 @@ class User extends Authenticatable
 
     public function journalUser() {
         return $this->hasManyJson(JournalUser::class, 'user_id')->select('approver_id');
+    }
+
+    public function transactionReport() {
+        return $this->belongsToJson(TransactionReport::class, 'transaction_report_id')->select('id', 'name');
     }
 }

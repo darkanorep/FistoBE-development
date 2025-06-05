@@ -13,13 +13,21 @@ class Unit extends Model
 
     protected $table = 'units';
 
-    protected $fillable = ['code', 'name', 'department_id'];
+    protected $fillable = [
+        'sync_id',
+        'code',
+        'name',
+        'department_sync_id'];
 
     protected $hidden = ['created_at', 'department_id'];
 
     public function department(): BelongsTo
     {
-        return $this->belongsTo(Department::class)->withTrashed();
+        return $this->belongsTo(Department::class, 'department_sync_id', 'sync_id')->withTrashed();
+    }
+
+    public function subUnit() {
+        return $this->hasOne(SubUnit::class, 'unit_sync_id', 'sync_id');
     }
 
 }

@@ -61,6 +61,7 @@ class ValidFrom implements Rule
         $category = $this->category;
 
         $bank_series = DB::table($this->table)
+            ->where('category', $category)
             ->where('bank_id', $bank_id)
             ->where('from', '<=', $from)
             ->where('to', '>=', $from)

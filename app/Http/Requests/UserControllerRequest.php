@@ -36,6 +36,7 @@ class UserControllerRequest extends FormRequest
             'permissions' => 'required',
             'document_types' => 'nullable',
             'username' => 'required|string',
+            'transaction_report_id' => 'nullable'
         ];
     }
 

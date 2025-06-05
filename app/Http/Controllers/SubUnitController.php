@@ -7,6 +7,7 @@ use App\Http\Resources\SubUnitResource;
 use App\Models\Department;
 use App\Models\SubUnit;
 use App\Models\Unit;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\Request;
@@ -20,19 +21,26 @@ class SubUnitController extends Controller
         $search =  $request['search'];
         $paginate = $request->input('paginate', 1);
         $api_for = $request->input('api_for', 'default');
+        $unit_id = $request->input('unit_id', null);
 
         $subunits = SubUnit::withTrashed()
+            ->with([
+                'unit',
+                'locations'
+            ])
 //            ->where(function ($query) use ($status) {
 //            return $status ? $query->whereNull('deleted_at') : $query->whereNotNull('deleted_at');
 //        })
+            ->when($unit_id, function ($query) use ($unit_id) {
+                return $query->where('unit_sync_id', $unit_id);
+            })
                 ->when(isset($status), function ($query) use ($status) {
                     return $status ? $query->whereNull('deleted_at') : $query->whereNotNull('deleted_at');
                 })
         ->where(function ($query) use ($search) {
-            $query->where('subunit', 'like', '%' . $search . '%')
+            $query->where('name', 'like', '%' . $search . '%')
                 ->orWhere('code', 'like', '%' . $search . '%');
         })
-//            ->select(['id','code', 'subunit','updated_at', 'deleted_at', 'department_id'])
             ->latest('updated_at');
 
         if ($paginate == 1) {
@@ -41,12 +49,13 @@ class SubUnitController extends Controller
                 return [
                     'id' => $value->id,
                     'code' => $value->code,
-                    'sub_unit' => $value->subunit,
+                    'name' => $value->name,
                     'unit' => [
                         'id' => $value->unit->id,
                         'code' => $value->unit->code,
                         'name' => $value->unit->name,
                     ],
+                    'location' => $value->locations,
                     'updated_at' => $value->updated_at,
                     'deleted_at' => $value->deleted_at,
                 ];
@@ -56,12 +65,11 @@ class SubUnitController extends Controller
             $subunits = $subunits
                 ->when($api_for == 'vladimir', function ($query) {
                     return $query
-                        ->with('department:id,code,department as department')
+                        ->with('unit:id,code,name')
                         ->get([
                             "id",
                             "code",
-                            "subunit as name",
-                            "unit_id",
+                            "name",
                             DB::RAW("(CASE WHEN (ISNULL(deleted_at)) THEN 1 ELSE 0 END) as status")
                         ]);
                 })
@@ -303,4 +311,51 @@ class SubUnitController extends Controller
             return $this->resultResponse("import-error", "sub unit", $errorBag);
         }
     }
+
+//    public function store(Request $request) {
+//
+//        $subUnits = $request->input('result');
+//        $errors = [];
+//
+//
+//        collect($subUnits)->each(function ($subUnit) use (&$errors) {
+//
+//            $sync_id = $subUnit['id'];
+//            $unit_sync_id = $subUnit['department_unit']['id'];
+//            $code = $subUnit['code'];
+//            $name = $subUnit['name'];
+//            $deleted_at = $subUnit['deleted_at'];
+//
+//            $existUnit = Unit::where('sync_id', $unit_sync_id)->exists();
+//
+//            if (!$existUnit) {
+//                $errors[] = "Unit with ID {$unit_sync_id} does not exist.";
+//                return;
+//            }
+//
+//            SubUnit::updateOrCreate([
+//                'sync_id' => $sync_id,
+//                'unit_sync_id' => $unit_sync_id,
+//                'code' => $code,
+//                'name' => $name,
+//            ], [
+//                'sync_id' => $sync_id,
+//                'unit_sync_id' => $unit_sync_id,
+//                'code' => $code,
+//                'name' => $name,
+//                'deleted_at' => $deleted_at ? now() : null,
+//            ]);
+//        });
+//
+//        if (!empty($errors)) {
+//            return response()->json([
+//                'message' => 'Sync Unit first before syncing Sub Units.',
+//            ], Response::HTTP_BAD_REQUEST);
+//        }
+//
+//        return response()->json([
+//            'message' => 'Sub Units successfully synced.',
+//        ], Response::HTTP_OK);
+//
+//    }
 }

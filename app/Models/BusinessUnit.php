@@ -12,20 +12,20 @@ class BusinessUnit extends Model
     use HasFactory, softDeletes;
 
     protected $fillable = [
-        'company_id',
+        'sync_id',
+        'company_sync_id',
         'code',
         'business_unit',
     ];
 
     protected $hidden = [
-        'company_id',
         'updated_at',
         'deleted_at',
     ];
 
-    protected $messages = [
-        'company_id.exists' => 'Company is not exists.',
-    ];
+//    protected $messages = [
+//        'company_id.exists' => 'Company is not exists.',
+//    ];
 
     public function users(): BelongsToMany
     {
@@ -34,8 +34,7 @@ class BusinessUnit extends Model
 
     public function company()
     {
-        return $this->belongsTo(Company::class)->withTrashed();
+        return $this->belongsTo(Company::class, 'company_sync_id', 'sync_id')->withTrashed();
     }
-
 }
 

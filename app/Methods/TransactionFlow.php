@@ -71,6 +71,8 @@ class TransactionFlow
 //      $transaction_id = $transaction->id;
         $remarks = $transaction->remarks;
         $users_id = $transaction->users_id;
+        $transaction_type = $transaction->transaction_type;
+        $assigned_id = $transaction->assigned_id;
 
         $typeOfTransactionId = data_get($request, 'transaction_type.id') ? data_get($request, 'transaction_type.id') : $transaction->voucher->first()->transaction_type_id ?? null;
         $typeOfTransactionName = data_get($request, 'transaction_type.name') ? data_get($request, 'transaction_type.name') : $transaction->voucher->first()->transaction_type_name ?? null;
@@ -291,7 +293,9 @@ class TransactionFlow
                 $distributed_name,
                 $approver_id,
                 $approver_name,
-                $inputTax
+                $inputTax,
+                $transaction_type,
+                $assigned_id
             );
         } elseif ($process == "tag") {
             $model = new Tagging();
@@ -369,7 +373,9 @@ class TransactionFlow
                 $distributed_name,
                 $approver_id,
                 $approver_name,
-                $inputTax
+                $inputTax,
+                $transaction_type,
+                $assigned_id,
             );
         } elseif ($process == "extract") {
             $status = null;
@@ -419,7 +425,9 @@ class TransactionFlow
                 $distributed_name,
                 $approver_id,
                 $approver_name,
-                $inputTax
+                $inputTax,
+                $transaction_type,
+                $assigned_id,
             );
 
         } elseif ($process == "voucher") {
@@ -591,6 +599,8 @@ class TransactionFlow
                 $approver_id,
                 $approver_name,
                 $inputTax,
+                $transaction_type,
+                $assigned_id,
             );
         } elseif ($process == "approve") {
             $model = new Approver();
@@ -604,6 +614,16 @@ class TransactionFlow
                 $status = "approve-void";
             } elseif ($subprocess == "approve") {
                 $status = "approve-approve";
+//                $voucherDate = Carbon::parse($transaction->voucher_month);
+//                $cutoffDate = Carbon::parse($voucherDate)->addMonth()->setDay(1);
+//                $currentDate = Carbon::now();
+//
+//                if ($currentDate->greaterThan($cutoffDate)) {
+//                    return response()->json([
+//                        "message" => "Cannot approve transaction. The voucher month has already passed the cutoff date.",
+//                    ], 422);
+//                }
+
             } elseif (in_array($subprocess, ["unhold", "unreturn"])) {
                 $status = GenericMethod::getStatus($process, $transaction);
             }
@@ -645,10 +665,11 @@ class TransactionFlow
 //          $transaction->approver_id,
                 $approver_name,
 //          $transaction->approver_name
-                $inputTax
+                $inputTax,
+                $transaction_type,
+                $assigned_id,
             );
         } elseif ($process == "transmit") {
-            $transaction_type = $request["transaction_type"];
             $model = new Transmit();
 
             if ($subprocess == "receive") {
@@ -727,7 +748,9 @@ class TransactionFlow
                 $approver_name,
 //        $transaction->approver_name,
 //        $transaction_type
-                $inputTax
+                $inputTax,
+                $transaction_type,
+                $assigned_id,
             );
         } elseif ($process == "cheque") {
             $account_titles = $cheque_account_titles;
@@ -956,7 +979,9 @@ class TransactionFlow
                 $distributed_name,
                 $approver_id,
                 $approver_name,
-                $inputTax
+                $inputTax,
+                $transaction_type,
+                $assigned_id,
             );
         } elseif ($process == "audit") {
             $date_now = Carbon::now("Asia/Manila")->format("Y-m-d H:i:s");
@@ -1093,7 +1118,9 @@ class TransactionFlow
                 $distributed_name,
                 $approver_id,
                 $approver_name,
-                $inputTax
+                $inputTax,
+                $transaction_type,
+                $assigned_id,
             );
         } elseif ($process == "inspect") {
             $date_now = Carbon::now("Asia/Manila")->format("Y-m-d H:i:s");
@@ -1166,7 +1193,9 @@ class TransactionFlow
                 $distributed_name,
                 $approver_id,
                 $approver_name,
-                $inputTax
+                $inputTax,
+                $transaction_type,
+                $assigned_id,
             );
         } elseif ($process == "executive") {
             $date_now = Carbon::now("Asia/Manila")->format("Y-m-d H:i:s");
@@ -1233,7 +1262,9 @@ class TransactionFlow
                 $distributed_name,
                 $approver_id,
                 $approver_name,
-                $inputTax
+                $inputTax,
+                $transaction_type,
+                $assigned_id,
             );
         } elseif ($process == "release") {
             $model = new Release();
@@ -1281,7 +1312,9 @@ class TransactionFlow
                 $distributed_name,
                 $approver_id,
                 $approver_name,
-                $inputTax
+                $inputTax,
+                $transaction_type,
+                $assigned_id,
             );
         } elseif ($process == "file") {
             $model = new File();
@@ -1289,6 +1322,8 @@ class TransactionFlow
                 $status = "file-receive";
             } elseif ($subprocess == "return") {
                 $status = "file-return";
+
+                (new TransactionController())->chequeRevert($transaction->id, $request);
             } elseif ($subprocess == "file") {
                 $status = "file-file";
             } elseif (in_array($subprocess, ["unreturn"])) {
@@ -1336,7 +1371,8 @@ class TransactionFlow
                 $approver_id,
                 $approver_name,
                 $inputTax,
-                'cheque',
+                $transaction_type,
+                $assigned_id,
                 $request->box_no ?? $transaction->box_no
             );
         } elseif ($process == "reverse") {
@@ -1395,7 +1431,9 @@ class TransactionFlow
                 $distributed_name,
                 $approver_id,
                 $approver_name,
-                $inputTax
+                $inputTax,
+                $transaction_type,
+                $assigned_id,
             );
             return GenericMethod::resultResponse($state, "", "");
 
@@ -1434,7 +1472,8 @@ class TransactionFlow
                 $approver_id,
                 $approver_name,
                 $inputTax,
-                'cheque',
+                $transaction_type,
+                $assigned_id,
                 $request->box_no ?? $transaction->box_no
             );
         } elseif ($process == "issue") {
@@ -1570,7 +1609,9 @@ class TransactionFlow
                 $distributed_name,
                 $approver_id,
                 $approver_name,
-                $inputTax
+                $inputTax,
+                $transaction_type,
+                $assigned_id,
             );
         } elseif ($process == "debit") {
             $account_titles = $accounts;
@@ -1665,7 +1706,9 @@ class TransactionFlow
                 $distributed_name,
                 $approver_id,
                 $approver_name,
-                $inputTax
+                $inputTax,
+                $transaction_type,
+                $assigned_id,
             );
         } elseif ($process == 'gas') {
             if ($subprocess == 'receive') {
@@ -1705,7 +1748,9 @@ class TransactionFlow
                 $distributed_name,
                 $approver_id,
                 $approver_name,
-                $inputTax
+                $inputTax,
+                $transaction_type,
+                $assigned_id,
             );
         } elseif ($process == 'discharge') {
             if ($subprocess == 'receive') {
@@ -1744,7 +1789,9 @@ class TransactionFlow
                 $distributed_name,
                 $approver_id,
                 $approver_name,
-                $inputTax
+                $inputTax,
+                $transaction_type,
+                $assigned_id,
             );
         } elseif ($process == 'pass') {
             if ($subprocess == 'receive') {
@@ -1773,7 +1820,9 @@ class TransactionFlow
                 $distributed_name,
                 $approver_id,
                 $approver_name,
-                $inputTax
+                $inputTax,
+                $transaction_type,
+                $assigned_id,
             );
         }
         $transaction->touch();
@@ -1803,11 +1852,11 @@ class TransactionFlow
         $bank_id = $request->bank_id;
         $id = $request["id"];
 
-        $transaction = Transaction::whereHas("cheques.cheques", function ($query) use ($cheque_no, $bank_id, $id) {
-            $query->where("cheque_no", $cheque_no)
-                ->where("bank_id", $bank_id);
-        })
-            ->exists();
+//        $transaction = Transaction::whereHas("cheques.cheques", function ($query) use ($cheque_no, $bank_id, $id) {
+//            $query->where("cheque_no", $cheque_no)
+//                ->where("bank_id", $bank_id);
+//        })
+//            ->exists();
 
         $cheque_transaction_id = Cheque::withTrashed()
             ->where("cheque_no", $cheque_no)
@@ -1822,6 +1871,7 @@ class TransactionFlow
             ->when(in_array($id, $cheque_transaction_id), function ($query) use ($id) {
                 $query->whereNotNull('reason_id');
             })
+//            ->whereNotNull('is_cancelled')
             ->exists();
 
         if ($transaction) {
@@ -2033,6 +2083,9 @@ class TransactionFlow
                     'business_unit_id' => data_get($account, 'business_unit.id'),
                     'business_unit_code' => data_get($account, 'business_unit.code'),
                     'business_unit_name' => data_get($account, 'business_unit.name'),
+                    'unit_id' => data_get($account, 'unit.id'),
+                    'unit_code' => data_get($account, 'unit.code'),
+                    'unit_name' => data_get($account, 'unit.name'),
                     'sub_unit_id' => data_get($account, 'sub_unit.id'),
                     'sub_unit_code' => data_get($account, 'sub_unit.code'),
                     'sub_unit_name' => data_get($account, 'sub_unit.name'),
@@ -2124,6 +2177,10 @@ class TransactionFlow
     {
         for ($i = 0; $i < count($transactionIds); $i++) {
 
+            $cheque = Cheque::where('bank_id', data_get($request, 'bank_id'))
+                ->where('cheque_no', data_get($request, 'cheque_no'))
+                ->first();
+
             Cheque::where('bank_id', data_get($request, 'bank_id'))
                 ->where('cheque_no', data_get($request, 'cheque_no'))
                 ->update([
@@ -2145,6 +2202,7 @@ class TransactionFlow
 
                 $clear->account_title()->create([
                     'entry' => data_get($account, 'entry'),
+                    'cheque_id' => $cheque->id,
                     'account_title_id' => data_get($account, 'account_title.id'),
                     'account_title_code' => data_get($account, 'account_title.code'),
                     'account_title_name' => data_get($account, 'account_title.name'),
@@ -2163,6 +2221,9 @@ class TransactionFlow
                     'business_unit_id' => data_get($account, 'business_unit.id'),
                     'business_unit_code' => data_get($account, 'business_unit.code'),
                     'business_unit_name' => data_get($account, 'business_unit.name'),
+                    'unit_id' => data_get($account, 'unit.id'),
+                    'unit_code' => data_get($account, 'unit.code'),
+                    'unit_name' => data_get($account, 'unit.name'),
                     'sub_unit_id' => data_get($account, 'sub_unit.id'),
                     'sub_unit_code' => data_get($account, 'sub_unit.code'),
                     'sub_unit_name' => data_get($account, 'sub_unit.name'),
