@@ -23,8 +23,8 @@ class UserMethod{
 
     public static function validateIfExist($model,$id){
         if (!$model) {
-            throw new FistoException("No records found.", 404, NULL, []);     
-        }       
+            throw new FistoException("No records found.", 404, NULL, []);
+        }
     }
 
     public static function redefinedUserForSaving($user,$specific_user){
@@ -37,11 +37,11 @@ class UserMethod{
         $user->position = $specific_user['position'];
         $user->permissions = $specific_user['permissions'];
         $user->document_types = [];
-        return $user;     
+        return $user;
     }
-    
+
     public static function synchWithSedarValidation($specific_user,$id){
-        
+
         $user = User::withTrashed()->find($id);
         $user->role = $specific_user->role;
         $user->first_name = $specific_user->first_name;
@@ -52,21 +52,21 @@ class UserMethod{
         $user->position = $specific_user->position;
         $changed_keys = array_keys($user->getDirty());
 
-         $transaction_exist =  Transaction::where('users_id',$id)
-        ->where(function($query){
-            $query->where('status','!=','Filed')
-            ->where('state','!=','void');
-        })
-        ->exists();
-        
-       if((in_array('position',$changed_keys) || in_array('role',$changed_keys) || in_array('department',$changed_keys)) && $transaction_exist){
-        throw new FistoException("Cannot modify user with on-going transactions.", 409, NULL, []);
-       }
+//         $transaction_exist =  Transaction::where('users_id',$id)
+//        ->where(function($query){
+//            $query->where('status','!=','Filed')
+//            ->where('state','!=','void');
+//        })
+//        ->exists();
+//
+//       if((in_array('position',$changed_keys) || in_array('role',$changed_keys) || in_array('department',$changed_keys)) && $transaction_exist){
+//        throw new FistoException("Cannot modify user with on-going transactions.", 409, NULL, []);
+//       }
 
     }
-    
+
     public static function userDeleteValidation($specific_user,$id){
-        
+
         $user = User::withTrashed()->find($id);
         $user->role = $specific_user->role;
         $user->first_name = $specific_user->first_name;
