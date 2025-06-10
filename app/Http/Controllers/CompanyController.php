@@ -210,7 +210,7 @@ class CompanyController extends Controller
 
     public function store(Request $request)
     {
-        $companies = $request->input('result');
+        $companies = $request->all();
 
         collect($companies)->each(function ($company) {
             $sync_id = $company['id'];

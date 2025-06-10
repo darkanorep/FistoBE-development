@@ -136,7 +136,7 @@ class BusinessUnitController extends Controller
     }
 
     public function store(Request $request) {
-        $businessUnits = $request->input('result');
+        $businessUnits = $request->all();
         $errors = [];
 
         collect($businessUnits)->each(function ($businessUnit) use (&$errors) {
