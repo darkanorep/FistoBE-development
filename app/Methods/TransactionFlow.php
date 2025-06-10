@@ -1902,7 +1902,7 @@ class TransactionFlow
             ->when(in_array($id, $cheque_transaction_id), function ($query) use ($id) {
                 $query->whereNotNull('reason_id');
             })
-//            ->whereNotNull('is_cancelled')
+            ->whereNotNull('is_cancelled')
             ->exists();
 
         if ($transaction) {
