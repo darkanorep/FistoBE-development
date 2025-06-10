@@ -108,4 +108,10 @@ class User extends Authenticatable
     public function transactionReport() {
         return $this->belongsToJson(TransactionReport::class, 'transaction_report_id')->select('id', 'name');
     }
+
+    public function permissionsJson()
+    {
+        return $this->belongsToJson(Permission::class, 'permissions')->select('id', 'name');
+    }
+
 }

@@ -250,6 +250,14 @@ class UserController extends Controller
             $user = auth()->user()->load('transactionReport');
             $token = $user->createToken('my-app-token')->plainTextToken;
 
+            $permissions = collect($user->permissionsJson)
+                ->mapWithKeys(function ($item, $key) use (&$transformed) {
+                    $transformed[$item['name']] = $item['value'];
+                    return [($item['id']) => $item['name']];
+                });
+
+            $user['permissions1'] = $permissions;
+
             $user['token'] = $token;
             $response = [
                 "code" => 201,
@@ -260,7 +268,6 @@ class UserController extends Controller
             $cookie = cookie('sanctum', $token, 3600);
 
             return response($response, 200)->withCookie($cookie);
-
         }
         return response([
             "code" => 401,
