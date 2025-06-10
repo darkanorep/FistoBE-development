@@ -159,48 +159,47 @@ class LocationController extends Controller
         }
     }
 
-  public function store(LocationRequest $request)
-  {
-      $location = Location::create([
-          'code' => $request->code,
-          'location' => $request->location
-      ]);
-
-      $location->departments()->attach($request->departments);
-
-      return $this->resultResponse("save", "Location", $location);
-
-//    $fields = $request->validate([
-//      "code" => "required",
-//      "location" => "required",
-//      "departments" => "required",
-//    ]);
+//  public function store(LocationRequest $request) {
+//      $location = Location::create([
+//          'code' => $request->code,
+//          'location' => $request->location
+//      ]);
 //
-//    $location_validateCodeDuplicate = Location::withTrashed()
-//      ->where("code", $fields["code"])
-//      ->first();
-//    if (!empty($location_validateCodeDuplicate)) {
-//      return $this->resultResponse("registered", "Code", ["error_field" => "code"]);
-//    }
-//    $location_validateDescriptionDuplicate = Location::withTrashed()
-//      ->where("location", $fields["location"])
-//      ->first();
-//    if (!empty($location_validateDescriptionDuplicate)) {
-//      return $this->resultResponse("registered", "Location", ["error_field" => "location"]);
-//    }
-//    $departmentExist = $this->validateIfObjectsExistByLocationStore(
-//      new Department(),
-//      $fields["departments"],
-//      "Department"
-//    );
+//      $location->departments()->attach($request->departments);
 //
-//    $new_location = Location::create([
-//      "code" => $fields["code"],
-//      "location" => $fields["location"],
-//    ]);
-//    $new_location->departments()->attach($fields["departments"]);
-//    return $this->resultResponse("save", "Location", $new_location);
-  }
+//      return $this->resultResponse("save", "Location", $location);
+//
+////    $fields = $request->validate([
+////      "code" => "required",
+////      "location" => "required",
+////      "departments" => "required",
+////    ]);
+////
+////    $location_validateCodeDuplicate = Location::withTrashed()
+////      ->where("code", $fields["code"])
+////      ->first();
+////    if (!empty($location_validateCodeDuplicate)) {
+////      return $this->resultResponse("registered", "Code", ["error_field" => "code"]);
+////    }
+////    $location_validateDescriptionDuplicate = Location::withTrashed()
+////      ->where("location", $fields["location"])
+////      ->first();
+////    if (!empty($location_validateDescriptionDuplicate)) {
+////      return $this->resultResponse("registered", "Location", ["error_field" => "location"]);
+////    }
+////    $departmentExist = $this->validateIfObjectsExistByLocationStore(
+////      new Department(),
+////      $fields["departments"],
+////      "Department"
+////    );
+////
+////    $new_location = Location::create([
+////      "code" => $fields["code"],
+////      "location" => $fields["location"],
+////    ]);
+////    $new_location->departments()->attach($fields["departments"]);
+////    return $this->resultResponse("save", "Location", $new_location);
+//  }
 
     public function update(LocationRequest $request, $id)
     {
@@ -584,50 +583,50 @@ class LocationController extends Controller
 
     }
 
-//    public function store(Request $request)
-//    {
-//        $locations = $request->input('result');
-//        $error = [];
-//
-//        collect($locations)->each(function ($location) use (&$error) {
-//            $sync_id = $location['id'];
-//            $code = $location['code'];
-//            $locationName = $location['name']; // Use a different variable name
-//            $deleted_at = $location['deleted_at'];
-//            $subUnits = collect($location['sub_units'])->pluck('id')->toArray();
-//
-//            $subUnitExists = SubUnit::whereIn('id', $subUnits)->exists();
-//            if (!$subUnitExists) {
-//                $error[] = 'Sub unit not found.';
-//                return;
-//            }
-//
-//            $locationModel = Location::updateOrCreate(
-//                [
-//                    'sync_id' => $sync_id,
-//                    'code' => $code,
-//                    'location' => $locationName, // Use the new variable here
-//                ],
-//                [
-//                    'sync_id' => $sync_id,
-//                    'code' => $code,
-//                    'location' => $locationName, // Use the new variable here
-//                    'deleted_at' => $deleted_at ? now() : null,
-//                ]
-//            );
-//
-//            $locationModel->subUnits()->syncWithoutDetaching($subUnits);
-//        });
-//
-//        if (!empty($errors)) {
-//            return response()->json([
-//                'message' => 'Sync Sub Unit first before syncing Location.',
-//            ], Response::HTTP_BAD_REQUEST);
-//        }
-//
-//        return response()->json([
-//            'message' => 'Locations successfully synced.',
-//        ], Response::HTTP_OK);
-//
-//    }
+    public function store(Request $request)
+    {
+        $locations = $request->input('result');
+        $error = [];
+
+        collect($locations)->each(function ($location) use (&$error) {
+            $sync_id = $location['id'];
+            $code = $location['code'];
+            $locationName = $location['name']; // Use a different variable name
+            $deleted_at = $location['deleted_at'];
+            $subUnits = collect($location['sub_units'])->pluck('id')->toArray();
+
+            $subUnitExists = SubUnit::whereIn('id', $subUnits)->exists();
+            if (!$subUnitExists) {
+                $error[] = 'Sub unit not found.';
+                return;
+            }
+
+            $locationModel = Location::updateOrCreate(
+                [
+                    'sync_id' => $sync_id,
+                    'code' => $code,
+                    'location' => $locationName, // Use the new variable here
+                ],
+                [
+                    'sync_id' => $sync_id,
+                    'code' => $code,
+                    'location' => $locationName, // Use the new variable here
+                    'deleted_at' => $deleted_at ? now() : null,
+                ]
+            );
+
+            $locationModel->subUnits()->syncWithoutDetaching($subUnits);
+        });
+
+        if (!empty($errors)) {
+            return response()->json([
+                'message' => 'Sync Sub Unit first before syncing Location.',
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        return response()->json([
+            'message' => 'Locations successfully synced.',
+        ], Response::HTTP_OK);
+
+    }
 }

@@ -15,20 +15,31 @@ class SettingController extends Controller
 
     public function index()
     {
-        $settings = $this->db->select('key', 'value')->get();
+        $settings = $this->db->select('id', 'key', 'value', 'value1')->get();
         return response()->json($settings);
     }
 
-    public function toggleEntry(Request $request)
+    public function update(Request $request, $id)
     {
-        $entryEnabled = $this->db->where('key', 'entry_enabled')->first();
+        $data = $request->only(['value1']);
+        $this->db->where('id', $id)->update($data);
+        return response()->json(['message' => 'Settings updated successfully']);
+    }
+
+    public function toggleEntry($id)
+    {
+        $entryEnabled = $this->db
+            ->where('id', $id)
+            ->first();
 
         if ($entryEnabled->value == 1) {
-            DB::table('settings')->where('key', 'entry_enabled')->update(['value' => 0]);
+            DB::table('settings')->where('id', $id)
+                ->update(['value' => 0]);
         } else {
-            DB::table('settings')->where('key', 'entry_enabled')->update(['value' => 1]);
+            DB::table('settings')->where('id', $id)
+                ->update(['value' => 1]);
         }
 
-        return response()->json(['message' => 'Entry status updated']);
+        return response()->json(['message' => 'Status updated']);
     }
 }

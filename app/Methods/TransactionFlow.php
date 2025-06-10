@@ -52,8 +52,48 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 class TransactionFlow
 {
+    /**
+     * @var \Illuminate\Support\HigherOrderCollectionProxy|mixed
+     */
+    private $isCutOffEnabledApproval;
+    /**
+     * @var mixed|null
+     */
+    private $cutOffApprovalDate;
+    /**
+     * @var bool
+     */
+    private $isCutOffEnabledVoucherEntry;
+    /**
+     * @var mixed|null
+     */
+    private $cutOffVoucherEntryDate;
+
+    public function __construct()
+    {
+        $cutOffSettingApproval = DB::table('settings')
+            ->where('key', 'voucher_approval_cutoff')
+            ->first();
+
+        $cutOffSettingVoucherEntry = DB::table('settings')
+            ->where('key', 'voucher_entry_cutoff')
+            ->first();
+
+        // Check if the cut-off setting for voucher entry is enabled
+        $this->isCutOffEnabledApproval = $cutOffSettingApproval ? $cutOffSettingApproval->value : false;
+        // Set the cut-off date for approval if the setting is enabled
+        $this->cutOffApprovalDate = $cutOffSettingApproval ? $cutOffSettingApproval->value1 : null;
+        // Set the cut-off date for voucher entry if the setting is enabled
+        $this->isCutOffEnabledVoucherEntry = $cutOffSettingVoucherEntry ? $cutOffSettingVoucherEntry->value : false;
+        // Set the cut-off date for voucher entry if the setting is enabled
+        $this->cutOffVoucherEntryDate = $cutOffSettingVoucherEntry ? $cutOffSettingVoucherEntry->value1 : null;
+    }
+
     public static function updateInTransactionFlow($request, $id)
     {
+        $instance = new self();
+        $isCutOffEnabledApproval = $instance->isCutOffEnabledApproval;
+
         // return GenericMethod::floatvalue('46,072.50');
         $transaction = Transaction::find($id);
         if (!isset($transaction)) {
@@ -77,7 +117,7 @@ class TransactionFlow
         $typeOfTransactionId = data_get($request, 'transaction_type.id') ? data_get($request, 'transaction_type.id') : $transaction->voucher->first()->transaction_type_id ?? null;
         $typeOfTransactionName = data_get($request, 'transaction_type.name') ? data_get($request, 'transaction_type.name') : $transaction->voucher->first()->transaction_type_name ?? null;
         $inputTax = data_get($request, 'input_tax') ? data_get($request, 'input_tax') : $transaction->input_tax ?? null;
-        $receipt_type = isset($request->receipt_type) ? $request->receipt_type : $transaction->receipt_type;
+        $receipt_type = $request->receipt_type ?? $transaction->receipt_type;
 
         $tag_no = $transaction->tag_no;
         if ($subprocess == "tag") {
@@ -161,12 +201,8 @@ class TransactionFlow
         $previous_cheque_transaction_account_title = GenericMethod::format_account_title($cheque_account_title);
         $previous_cheque_transaction_cheque = GenericMethod::format_cheque($cheque_cheques);
 
-        $previous_cheque_transaction_account_title = isset($previous_cheque_transaction_account_title["accounts"])
-            ? $previous_cheque_transaction_account_title["accounts"]
-            : null;
-        $previous_cheque_transaction_cheque = isset($previous_cheque_transaction_cheque["cheques"])
-            ? $previous_cheque_transaction_cheque["cheques"]
-            : null;
+        $previous_cheque_transaction_account_title = $previous_cheque_transaction_account_title["accounts"] ?? null;
+        $previous_cheque_transaction_cheque = $previous_cheque_transaction_cheque["cheques"] ?? null;
 
         $reason_description = $request["reason"]["description"] ?? null;
         $reason_remarks = $request["reason"]["remarks"] ?? null;
@@ -613,16 +649,11 @@ class TransactionFlow
             } elseif ($subprocess == "void") {
                 $status = "approve-void";
             } elseif ($subprocess == "approve") {
+                $cutoffValidation = $instance->validateCutoffDate($transaction->voucher_month, $subprocess);
+                if ($cutoffValidation) {
+                    return $cutoffValidation;
+                }
                 $status = "approve-approve";
-//                $voucherDate = Carbon::parse($transaction->voucher_month);
-//                $cutoffDate = Carbon::parse($voucherDate)->addMonth()->setDay(1);
-//                $currentDate = Carbon::now();
-//
-//                if ($currentDate->greaterThan($cutoffDate)) {
-//                    return response()->json([
-//                        "message" => "Cannot approve transaction. The voucher month has already passed the cutoff date.",
-//                    ], 422);
-//                }
 
             } elseif (in_array($subprocess, ["unhold", "unreturn"])) {
                 $status = GenericMethod::getStatus($process, $transaction);
@@ -2512,5 +2543,22 @@ class TransactionFlow
             ]);
 
         return GenericMethod::resultResponse($subprocess, "", "");
+    }
+
+    private function validateCutoffDate($voucherMonth, $subprocess)
+    {
+        if ($this->isCutOffEnabledApproval) {
+            $voucherDate = Carbon::parse($voucherMonth);
+            $cutoffDate = Carbon::parse($voucherDate)->addMonth()->setDay($this->cutOffApprovalDate);
+            $currentDate = Carbon::now();
+
+            if ($currentDate->greaterThanOrEqualTo($cutoffDate)) {
+                return response()->json([
+                    "message" => "Cannot {$subprocess} this transaction. This transaction has already passed the cutoff date.",
+                ], 422);
+            }
+        }
+
+        return null;
     }
 }

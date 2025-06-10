@@ -87,16 +87,16 @@ class SubUnitController extends Controller
         }
     }
 
-    public function store(SubUnitRequest $request)
-    {
-        $new_subunit = SubUnit::create([
-            'unit_id' => $request->unit_id,
-            'code' => $request->code,
-            'subunit' => $request->sub_unit,
-        ]);
-
-        return $this->resultResponse('save','Sub Unit', $new_subunit);
-    }
+//    public function store(SubUnitRequest $request)
+//    {
+//        $new_subunit = SubUnit::create([
+//            'unit_id' => $request->unit_id,
+//            'code' => $request->code,
+//            'subunit' => $request->sub_unit,
+//        ]);
+//
+//        return $this->resultResponse('save','Sub Unit', $new_subunit);
+//    }
 
     public function show($id)
     {
@@ -312,50 +312,50 @@ class SubUnitController extends Controller
         }
     }
 
-//    public function store(Request $request) {
-//
-//        $subUnits = $request->input('result');
-//        $errors = [];
-//
-//
-//        collect($subUnits)->each(function ($subUnit) use (&$errors) {
-//
-//            $sync_id = $subUnit['id'];
-//            $unit_sync_id = $subUnit['department_unit']['id'];
-//            $code = $subUnit['code'];
-//            $name = $subUnit['name'];
-//            $deleted_at = $subUnit['deleted_at'];
-//
-//            $existUnit = Unit::where('sync_id', $unit_sync_id)->exists();
-//
-//            if (!$existUnit) {
-//                $errors[] = "Unit with ID {$unit_sync_id} does not exist.";
-//                return;
-//            }
-//
-//            SubUnit::updateOrCreate([
-//                'sync_id' => $sync_id,
-//                'unit_sync_id' => $unit_sync_id,
-//                'code' => $code,
-//                'name' => $name,
-//            ], [
-//                'sync_id' => $sync_id,
-//                'unit_sync_id' => $unit_sync_id,
-//                'code' => $code,
-//                'name' => $name,
-//                'deleted_at' => $deleted_at ? now() : null,
-//            ]);
-//        });
-//
-//        if (!empty($errors)) {
-//            return response()->json([
-//                'message' => 'Sync Unit first before syncing Sub Units.',
-//            ], Response::HTTP_BAD_REQUEST);
-//        }
-//
-//        return response()->json([
-//            'message' => 'Sub Units successfully synced.',
-//        ], Response::HTTP_OK);
-//
-//    }
+    public function store(Request $request) {
+
+        $subUnits = $request->input('result');
+        $errors = [];
+
+
+        collect($subUnits)->each(function ($subUnit) use (&$errors) {
+
+            $sync_id = $subUnit['id'];
+            $unit_sync_id = $subUnit['department_unit']['id'];
+            $code = $subUnit['code'];
+            $name = $subUnit['name'];
+            $deleted_at = $subUnit['deleted_at'];
+
+            $existUnit = Unit::where('sync_id', $unit_sync_id)->exists();
+
+            if (!$existUnit) {
+                $errors[] = "Unit with ID {$unit_sync_id} does not exist.";
+                return;
+            }
+
+            SubUnit::updateOrCreate([
+                'sync_id' => $sync_id,
+                'unit_sync_id' => $unit_sync_id,
+                'code' => $code,
+                'name' => $name,
+            ], [
+                'sync_id' => $sync_id,
+                'unit_sync_id' => $unit_sync_id,
+                'code' => $code,
+                'name' => $name,
+                'deleted_at' => $deleted_at ? now() : null,
+            ]);
+        });
+
+        if (!empty($errors)) {
+            return response()->json([
+                'message' => 'Sync Unit first before syncing Sub Units.',
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        return response()->json([
+            'message' => 'Sub Units successfully synced.',
+        ], Response::HTTP_OK);
+
+    }
 }

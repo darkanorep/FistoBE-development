@@ -487,6 +487,6 @@ Route::group(["middleware" => "auth:sanctum"], function () {
     });
 
     //SETTINGS
-    Route::post('toggle-entry', [\App\Http\Controllers\SettingController::class, 'toggleEntry']);
-    Route::get('settings', [\App\Http\Controllers\SettingController::class, 'index']);
+    Route::patch('toggle/{id}', [\App\Http\Controllers\SettingController::class, 'toggleEntry']);
+    Route::resource('settings', \App\Http\Controllers\SettingController::class)->only(['index', 'update']);
 });

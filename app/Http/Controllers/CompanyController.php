@@ -79,55 +79,54 @@ class CompanyController extends Controller
         }
     }
 
-    public function store(CompanyRequest $request)
-    {
-
-        $company = Company::create([
-            'code' => $request->code,
-            'company' => $request->company,
-        ]);
-
-        $company->attach($request->associates);
-
-        return $this->resultResponse("save", "Company", $company);
-
-        // $user_list = User::get();
-//    $fields = $request->validate([
-//      "code" => "required",
-//      "company" => "required",
-//      "associates" => "required",
-//    ]);
+//    public function store(CompanyRequest $request) {
 //
-//    $company_validateCodeDuplicate = Company::withTrashed()
-//      ->where("code", $fields["code"])
-//      ->first();
-//    if (!empty($company_validateCodeDuplicate)) {
-//      return $this->resultResponse("registered", "Code", [
-//        "error_field" => "code",
-//      ]);
+//        $company = Company::create([
+//            'code' => $request->code,
+//            'company' => $request->company,
+//        ]);
+//
+//        $company->attach($request->associates);
+//
+//        return $this->resultResponse("save", "Company", $company);
+//
+//        // $user_list = User::get();
+////    $fields = $request->validate([
+////      "code" => "required",
+////      "company" => "required",
+////      "associates" => "required",
+////    ]);
+////
+////    $company_validateCodeDuplicate = Company::withTrashed()
+////      ->where("code", $fields["code"])
+////      ->first();
+////    if (!empty($company_validateCodeDuplicate)) {
+////      return $this->resultResponse("registered", "Code", [
+////        "error_field" => "code",
+////      ]);
+////    }
+////
+////    $company_validateDescriptionDuplicate = Company::withTrashed()
+////      ->where("company", $fields["company"])
+////      ->first();
+////    if (!empty($company_validateDescriptionDuplicate)) {
+////      return $this->resultResponse("registered", "Company", [
+////        "error_field" => "company",
+////      ]);
+////    }
+////
+////    $apExist = $this->validateIfObjectsExist(new User(), $fields["associates"], "AP Associate");
+////    if ($apExist) {
+////      return $this->resultResponse("not-registered", "AP Associate", []);
+////    }
+////    $new_company = Company::create([
+////      "code" => $fields["code"],
+////      "company" => $fields["company"],
+////    ]);
+////    $new_company->associates()->attach($fields["associates"]);
+////
+////    return $this->resultResponse("save", "Company", $new_company);
 //    }
-//
-//    $company_validateDescriptionDuplicate = Company::withTrashed()
-//      ->where("company", $fields["company"])
-//      ->first();
-//    if (!empty($company_validateDescriptionDuplicate)) {
-//      return $this->resultResponse("registered", "Company", [
-//        "error_field" => "company",
-//      ]);
-//    }
-//
-//    $apExist = $this->validateIfObjectsExist(new User(), $fields["associates"], "AP Associate");
-//    if ($apExist) {
-//      return $this->resultResponse("not-registered", "AP Associate", []);
-//    }
-//    $new_company = Company::create([
-//      "code" => $fields["code"],
-//      "company" => $fields["company"],
-//    ]);
-//    $new_company->associates()->attach($fields["associates"]);
-//
-//    return $this->resultResponse("save", "Company", $new_company);
-    }
 
     public function update(CompanyRequest $request, $id)
     {
@@ -209,26 +208,44 @@ class CompanyController extends Controller
 //    return $this->change_masterlist_status($status, $model, $id, "Company");
     }
 
-//    public function store(Request $request)
-//    {
-//        $companies = $request->input('result');
-//
+    public function store(Request $request)
+    {
+        $companies = $request->input('result');
+
+        collect($companies)->each(function ($company) {
+            $sync_id = $company['id'];
+            $name = $company['name'];
+            $code = $company['code'];
+            $deleted_at = $company['deleted_at'];
+
+            Company::updateOrCreate(
+                [
+                    'sync_id' => $sync_id,
+                    'code' => $code,
+                    'company' => $name,
+                ],
+                [
+                    'code' => $code,
+                    'company' => $name,
+                    'deleted_at' => $deleted_at ? now() : null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
+        });
+
+        return response()->json([
+            'message' => 'Companies successfully synced.',
+        ], Response::HTTP_OK);
+
+
+
 //        collect($companies)->each(function ($company) {
-//            $sync_id = $company['id'];
-//            $name = $company['name'];
-//            $code = $company['code'];
-//            $deleted_at = $company['deleted_at'];
-//
-//            Company::updateOrCreate(
+//            DB::table('rdf_companies')->updateOrInsert(
+//                ['code' => $company['code']],
 //                [
-//                    'sync_id' => $sync_id,
-//                    'code' => $code,
-//                    'company' => $name,
-//                ],
-//                [
-//                    'code' => $code,
-//                    'company' => $name,
-//                    'deleted_at' => $deleted_at ? now() : null,
+//                    'code' => $company['code'],
+//                    'company' => data_get($company, 'name'),
 //                    'created_at' => now(),
 //                    'updated_at' => now(),
 //                ]
@@ -238,23 +255,5 @@ class CompanyController extends Controller
 //        return response()->json([
 //            'message' => 'Companies successfully synced.',
 //        ], Response::HTTP_OK);
-//
-//
-//
-////        collect($companies)->each(function ($company) {
-////            DB::table('rdf_companies')->updateOrInsert(
-////                ['code' => $company['code']],
-////                [
-////                    'code' => $company['code'],
-////                    'company' => data_get($company, 'name'),
-////                    'created_at' => now(),
-////                    'updated_at' => now(),
-////                ]
-////            );
-////        });
-////
-////        return response()->json([
-////            'message' => 'Companies successfully synced.',
-////        ], Response::HTTP_OK);
-//    }
+    }
 }

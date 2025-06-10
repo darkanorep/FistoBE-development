@@ -81,24 +81,24 @@ class BusinessUnitController extends Controller
         }
     }
 
-    public function store(BusinessUnitRequest $request)
-    {
-        $new_business_unit = BusinessUnit::create([
-            "company_id" => $request->company_id,
-            "code" => $request->code,
-            "business_unit" => $request->business_unit,
-        ]);
-
-        $associates = $request->associates;
-
-        if (isset($associates)) {
-            foreach ($associates as $associate) {
-                $new_business_unit->users()->attach($associate);
-            }
-        }
-
-        return $this->resultResponse("save", "Business Unit", $new_business_unit);
-    }
+//    public function store(BusinessUnitRequest $request)
+//    {
+//        $new_business_unit = BusinessUnit::create([
+//            "company_id" => $request->company_id,
+//            "code" => $request->code,
+//            "business_unit" => $request->business_unit,
+//        ]);
+//
+//        $associates = $request->associates;
+//
+//        if (isset($associates)) {
+//            foreach ($associates as $associate) {
+//                $new_business_unit->users()->attach($associate);
+//            }
+//        }
+//
+//        return $this->resultResponse("save", "Business Unit", $new_business_unit);
+//    }
 
     public function show($id)
     {
@@ -135,46 +135,46 @@ class BusinessUnitController extends Controller
         return $this->changeStatus($id, BusinessUnit::class, "Business Unit");
     }
 
-//    public function store(Request $request) {
-//        $businessUnits = $request->input('result');
-//        $errors = [];
-//
-//        collect($businessUnits)->each(function ($businessUnit) use (&$errors) {
-//            $sync_id = $businessUnit['id'];
-//            $sync_company_id = $businessUnit['company_id'];
-//            $name = $businessUnit['name'];
-//            $code = $businessUnit['code'];
-//            $deleted_at = $businessUnit['deleted_at'];
-//
-//            // Validate if the company_id exists in the database
-//            $companyExists = Company::where('sync_id', $sync_company_id)->exists();
-//
-//            if (!$companyExists) {
-//                $errors[] = "Company with ID {$sync_company_id} does not exist.";
-//                return; // Skip this iteration
-//            }
-//
-//            // Update or create the BusinessUnit
-//            BusinessUnit::updateOrCreate([
-//                'sync_id' => $sync_id,
-//                'company_sync_id' => $sync_company_id,
-//                'business_unit' => $name,
-//                'code' => $code,
-//            ], [
-//                'business_unit' => $name,
-//                'code' => $code,
-//                'deleted_at' => $deleted_at ? now() : null,
-//            ]);
-//        });
-//
-//        if (!empty($errors)) {
-//            return response()->json([
-//                'message' => 'Sync Company first before syncing Business Units.',
-//            ], Response::HTTP_BAD_REQUEST);
-//        }
-//
-//        return response()->json([
-//            'message' => 'Business Units successfully synced.',
-//        ], Response::HTTP_OK);
-//    }
+    public function store(Request $request) {
+        $businessUnits = $request->input('result');
+        $errors = [];
+
+        collect($businessUnits)->each(function ($businessUnit) use (&$errors) {
+            $sync_id = $businessUnit['id'];
+            $sync_company_id = $businessUnit['company_id'];
+            $name = $businessUnit['name'];
+            $code = $businessUnit['code'];
+            $deleted_at = $businessUnit['deleted_at'];
+
+            // Validate if the company_id exists in the database
+            $companyExists = Company::where('sync_id', $sync_company_id)->exists();
+
+            if (!$companyExists) {
+                $errors[] = "Company with ID {$sync_company_id} does not exist.";
+                return; // Skip this iteration
+            }
+
+            // Update or create the BusinessUnit
+            BusinessUnit::updateOrCreate([
+                'sync_id' => $sync_id,
+                'company_sync_id' => $sync_company_id,
+                'business_unit' => $name,
+                'code' => $code,
+            ], [
+                'business_unit' => $name,
+                'code' => $code,
+                'deleted_at' => $deleted_at ? now() : null,
+            ]);
+        });
+
+        if (!empty($errors)) {
+            return response()->json([
+                'message' => 'Sync Company first before syncing Business Units.',
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        return response()->json([
+            'message' => 'Business Units successfully synced.',
+        ], Response::HTTP_OK);
+    }
 }

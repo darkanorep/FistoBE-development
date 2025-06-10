@@ -63,12 +63,12 @@ class UnitController extends Controller
         }
     }
 
-    public function store(Unit $unit, UnitRequest $request)
-    {
-        $unit = $this->genericServices->store($unit, $request->validated());
-
-        return $this->resultResponse('save', 'Unit', $unit);
-    }
+//    public function store(Unit $unit, UnitRequest $request)
+//    {
+//        $unit = $this->genericServices->store($unit, $request->validated());
+//
+//        return $this->resultResponse('save', 'Unit', $unit);
+//    }
 
     public function update($id, UnitRequest $request)
     {
@@ -227,57 +227,57 @@ class UnitController extends Controller
         }
     }
 
-//    public function store(Request $request)
-//    {
-////        return Unit::create([
-////            'sync_id' => 1,
-////            'code' => 'x',
-////            'name' => 'x',
-////            'department_sync_id' => 1,
-////
-////        ]);
-//        $units = $request->input('result');
-//        $errors = [];
+    public function store(Request $request)
+    {
+//        return Unit::create([
+//            'sync_id' => 1,
+//            'code' => 'x',
+//            'name' => 'x',
+//            'department_sync_id' => 1,
 //
-//        collect($units)->each(function ($unit) use (&$errors) {
-//            $sync_id = $unit['id'];
-//            $code = $unit['code'];
-//            $name = $unit['name'];
-//            $department_sync_id = $unit['department']['id'];
-//            $deleted_at = $unit['deleted_at'];
-//
-//            $departmentExist = Department::where('sync_id', $department_sync_id)->exists();
-//
-//            if (!$departmentExist) {
-//                $errors[] = "Department with ID {$department_sync_id} does not exist.";
-//                return; // Skip this iteration
-//            }
-//
-//            Unit::updateOrCreate(
-//                [
-//                    'sync_id' => $sync_id,
-//                    'code' => $code,
-//                    'name' => $name,
-//                ],
-//                [
-//                    'sync_id' => $sync_id,
-//                    'code' => $code,
-//                    'name' => $name,
-//                    'department_sync_id' => $department_sync_id,
-//                    'deleted_at' => $deleted_at ? now() : null,
-//                ]
-//            );
-//        });
-//
-//        if (!empty($errors)) {
-//            return response()->json([
-//                'message' => 'Sync Department first before syncing Units.',
-//            ], Response::HTTP_BAD_REQUEST);
-//        }
-//
-//        return response()->json([
-//            'message' => 'Units successfully synced.',
-//        ], Response::HTTP_OK);
-//    }
+//        ]);
+        $units = $request->input('result');
+        $errors = [];
+
+        collect($units)->each(function ($unit) use (&$errors) {
+            $sync_id = $unit['id'];
+            $code = $unit['code'];
+            $name = $unit['name'];
+            $department_sync_id = $unit['department']['id'];
+            $deleted_at = $unit['deleted_at'];
+
+            $departmentExist = Department::where('sync_id', $department_sync_id)->exists();
+
+            if (!$departmentExist) {
+                $errors[] = "Department with ID {$department_sync_id} does not exist.";
+                return; // Skip this iteration
+            }
+
+            Unit::updateOrCreate(
+                [
+                    'sync_id' => $sync_id,
+                    'code' => $code,
+                    'name' => $name,
+                ],
+                [
+                    'sync_id' => $sync_id,
+                    'code' => $code,
+                    'name' => $name,
+                    'department_sync_id' => $department_sync_id,
+                    'deleted_at' => $deleted_at ? now() : null,
+                ]
+            );
+        });
+
+        if (!empty($errors)) {
+            return response()->json([
+                'message' => 'Sync Department first before syncing Units.',
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        return response()->json([
+            'message' => 'Units successfully synced.',
+        ], Response::HTTP_OK);
+    }
 
 }

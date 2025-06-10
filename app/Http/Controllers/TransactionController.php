@@ -5524,7 +5524,7 @@ class TransactionController extends Controller
 //                : $transaction->cheques;
             $cheques = $transaction->treasuryCheque;
 
-//            $account_title = $transaction->voucher->first()->account_title;
+            $netAmount = $transaction->voucher->first()->account_title;
             $account_title = $transaction->treasuryAccountTitle->isEmpty()
                 ? $transaction->account_titles
                 : $transaction->treasuryAccountTitle->filter(function ($query) {
@@ -5634,6 +5634,9 @@ class TransactionController extends Controller
                 "batch_no" => $transaction->cheques->first() && $transaction->cheques->first()->batch_no
                     ? $transaction->cheques->first()->batch_no
                     : null,
+                "net_amount" => $netAmount->filter(function ($query) {
+                    return strpos($query->account_title_name, "Accounts Payable") !== false && $query->entry == "Credit";
+                })->sum('amount')
             ];
         });
 
