@@ -105,7 +105,7 @@ class BusinessUnitController extends Controller
         $business_unit = BusinessUnit::where("id", $id)->first();
         return $business_unit
             ? $this->resultResponse("fetch", "Business Unit", $business_unit)
-            : $this->resultResponse("not-found", "Sub Unit", []);
+            : $this->resultResponse("not-found", "Business Unit", []);
     }
 
     public function update(BusinessUnitRequest $request, $id)

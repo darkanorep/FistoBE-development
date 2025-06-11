@@ -13,4 +13,8 @@ class Permission extends Model
     public function users() {
         return $this->hasManyJson(User::class, 'permissions');
     }
+
+    public function bookOfAccounts() {
+        return $this->belongsToMany(BookOfAccount::class, 'book_of_account_permissions', 'permission_id', 'book_of_account_id');
+    }
 }

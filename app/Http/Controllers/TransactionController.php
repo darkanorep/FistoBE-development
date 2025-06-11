@@ -5030,6 +5030,7 @@ class TransactionController extends Controller
         $po_details = $po_details->reverse()->values();
         $po_details->first()->balance = $balance;
         $po_object = (object)["is_new_po" => false, "po_group" => $po_details];
+
         return $this->resultResponse("fetch", "PO number", $po_object);
 
         if ($po_details->isEmpty()) {

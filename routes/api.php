@@ -279,6 +279,10 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         Route::patch('transaction-reports/{id}', [\App\Http\Controllers\TransactionReportController::class, "change_status"]);
         Route::resource('transaction-reports', \App\Http\Controllers\TransactionReportController::class);
 
+        //BOOK OF ACCOUNTS
+        Route::patch('book-of-accounts/{id}', [\App\Http\Controllers\BookOfAccountController::class, "change_status"]);
+        Route::resource('book-of-accounts', \App\Http\Controllers\BookOfAccountController::class);
+
     });
 
     // USER
