@@ -17,6 +17,7 @@ use App\Models\AccountTitlePnL;
 use App\Models\AccountTitleUnit;
 use App\Models\BusinessUnit;
 use App\Models\Location;
+use App\Models\Permission;
 use App\Models\SubUnit;
 use App\Models\TransactionType;
 use App\Models\TreasuryCheque;
@@ -415,6 +416,14 @@ class MasterlistController extends Controller
         );
 
         return $this->resultResponse('fetch', 'Account Title Unit', $account_title_unit);
+    }
+
+    public function permissionsDropdown() {
+        $permissions = array(
+            "permissions" => Permission::whereNull('deleted_at')->get(['id', 'name'])
+        );
+
+        return $this->resultResponse('fetch', 'Permission', $permissions);
     }
 
     public static function coa(Request $request)

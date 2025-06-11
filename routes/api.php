@@ -97,7 +97,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         Route::get("voucher-number", [TransactionController::class, "voucherNumberDropdown"]);
         Route::get('general-journals-numbers', [TransactionController::class, 'generalNumbersDropdown']);
         Route::get('cheque-types', [MasterlistController::class, 'chequeTypesDropdown']);
-
+        Route::get('permissions', [\App\Http\Controllers\PermissionController::class, 'index']);
     });
 
     Route::group(["prefix" => "admin", "middleware" => ["auth" => "is_admin"]], function () {
@@ -123,8 +123,12 @@ Route::group(["middleware" => "auth:sanctum"], function () {
             Route::get("account-title-child", [MasterlistController::class, "accountTitleChildrenDropdown"]);
             Route::get("account-title-pnl", [MasterlistController::class, "accountTitlePnlsDropdown"]);
             Route::get("account-title-unit", [MasterlistController::class, "accountTitleUnitsDropdown"]);
+            Route::get('permissions', [MasterlistController::class, "permissionsDropdown"]);
         });
 
+        //PERMISSIONS
+        Route::patch("permissions/{id}", [\App\Http\Controllers\PermissionController::class, "change_status"]);
+        Route::resource('permissions', \App\Http\Controllers\PermissionController::class)->only(['index', 'store']);
         // CATEGORY
         Route::patch("categories/{id}", [CategoryController::class, "change_status"]);
         Route::resource("categories", CategoryController::class);
