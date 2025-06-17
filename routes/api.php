@@ -391,6 +391,18 @@ Route::group(["middleware" => "auth:sanctum"], function () {
     Route::resource("account-receivable-journals", \App\Http\Controllers\AccountReceivableJournalController::class);
     Route::post('update/account-receivable-journals/{id}', [\App\Http\Controllers\AccountReceivableJournalController::class, 'updateGeneralJournal']);
 
+    //GENERAL JOURNAL - AP SPECIALIST
+    Route::patch('ap-specialist-journals/post/{id}', [\App\Http\Controllers\ApSpecialistJournalController::class, 'posted']);
+    Route::post("ap-specialist-journals/import", [\App\Http\Controllers\ApSpecialistJournalController::class, 'import']);
+    Route::resource("ap-specialist-journals", \App\Http\Controllers\ApSpecialistJournalController::class);
+    Route::post('update/ap-specialist-journals/{id}', [\App\Http\Controllers\ApSpecialistJournalController::class, 'updateGeneralJournal']);
+
+    //GENERAL JOURNAL - PCF
+    Route::patch('pcf-journals/post/{id}', [\App\Http\Controllers\PcfJournalController::class, 'posted']);
+    Route::post("pcf-journals/import", [\App\Http\Controllers\PcfJournalController::class, 'import']);
+    Route::resource("pcf-journals", \App\Http\Controllers\PcfJournalController::class);
+    Route::post('update/pcf-journals/{id}', [\App\Http\Controllers\PcfJournalController::class, 'updateGeneralJournal']);
+
     //JOURNALS FOR APPROVAL
     Route::group(['prefix' => 'journal-books'], function () {
 
@@ -433,6 +445,14 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         //GENERAL JOURNAL - ACCOUNT RECEIVABLE
         Route::get('account-receivable-journals', [\App\Http\Controllers\AccountReceivableJournalController::class, 'indexForApproval']);
         Route::patch('account-receivable-journals/{id}', [\App\Http\Controllers\AccountReceivableJournalController::class, 'action']);
+
+        //GENERAL JOURNAL - AP SPECIALIST
+        Route::get('ap-specialist-journals', [\App\Http\Controllers\ApSpecialistJournalController::class, 'indexForApproval']);
+        Route::patch('ap-specialist-journals/{id}', [\App\Http\Controllers\ApSpecialistJournalController::class, 'action']);
+
+        //GENERAL JOURNAL - PCF
+        Route::get('pcf-journals', [\App\Http\Controllers\PcfJournalController::class, 'indexForApproval']);
+        Route::patch('pcf-journals/{id}', [\App\Http\Controllers\PcfJournalController::class, 'action']);
     });
 
     Route::resource("transactions", TransactionController::class);

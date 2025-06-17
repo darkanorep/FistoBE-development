@@ -43,6 +43,7 @@ class JournalServices
         $this->subUnit = SubUnit::select('id', 'code', 'name')->withTrashed()->get();
         $this->department = Department::select('id', 'code', 'department')->withTrashed()->get();
         $this->location = Location::select('id', 'code', 'location')->withTrashed()->get();
+        $this->supplier = Supplier::select('id', 'code', 'name')->withTrashed()->get();
         $this->controller = new Controller();
     }
 
@@ -638,6 +639,7 @@ class JournalServices
         $businessUnits = $this->businessUnit->keyBy('business_unit');
         $units = $this->unit->keyBy('name'); // make sure it's correct key
         $subUnits = $this->subUnit->keyBy('name'); // make sure it's correct key
+        $suppliers = $this->supplier->keyBy('name');
 
         $error = [];
         $account_title_list = $this->accountTitle->pluck('title')->toArray();
@@ -648,6 +650,7 @@ class JournalServices
         $unit_list = $this->unit->pluck('name')->toArray();
         $sub_unit_list = $this->subUnit->pluck('name')->toArray();
         $bookOfAccounts = $this->bookOfAccounts();
+        $supplier_list = $this->supplier->pluck('name')->toArray();
 
         $headers = "Account Tag, PO#, RR#, Reference No, Voucher Number, Supplier, DR/CR, Amount, Description, Account Title, Company, Department, Location, BOA";
         $template = ["tag_no", "po_no", "rr_no", "reference_no", "voucher_number", "supplier", "entry", "amount", "remarks", "account_title", "company", "department", "location", "boa"];
@@ -658,20 +661,29 @@ class JournalServices
 
         $index = 2;
         foreach ($journals as $journal) {
-//            $account_title = $journal['account_title'];
+            $account_title = $journal['account_title'];
+            $supplier = $journal['supplier'];
             $company = $journal['company'];
             $department = $journal['department'];
             $location = $journal['location'];
+//            $unit = $journal['unit'];
             $business_unit = $journal['business_unit'];
-//            $sub_unit = $journal['sub_unit'];
+            $sub_unit = $journal['sub_unit'];
             $boa = $journal['boa'];
 
-//            if (!in_array($account_title, $account_title_list) && !empty($account_title)) {
-//                $error[] = (object)[
-//                    "line" => $index,
-//                    "description" => $account_title . " is not registered.",
-//                ];
-//            }
+            if (!in_array($account_title, $account_title_list) && !empty($account_title)) {
+                $error[] = (object)[
+                    "line" => $index,
+                    "description" => $account_title . " is not registered.",
+                ];
+            }
+
+            if (!in_array($supplier, $supplier_list) && !empty($supplier)) {
+                $error[] = (object)[
+                    "line" => $index,
+                    "description" => $supplier . " is not registered.",
+                ];
+            }
 
             if (!in_array($department, $department_list) && !empty($department)) {
                 $error[] = (object)[
@@ -735,6 +747,7 @@ class JournalServices
                 $department = $departments[$journal['department']] ?? null;
                 $location = $locations[$journal['location']] ?? null;
                 $business_unit = $businessUnits[$journal['business_unit']] ?? null;
+                $unit = $units[$journal['unit']] ?? null;
                 $sub_unit = $subUnits[$journal['sub_unit']] ?? null;
                 $formattedJournal[] = [
                     'account_tag' => $journal['tag_no'],
@@ -743,9 +756,9 @@ class JournalServices
                     'reference_no' => $journal['reference_no'],
                     'voucher_number' => $journal['voucher_number'],
                     'supplier' => [
-                        'id' => $supplier->id,
-                        'code' => $supplier->code,
-                        'name' => $supplier->name
+                        'id' => $supplier->id ?? null,
+                        'code' => $supplier->code ?? null,
+                        'name' => $supplier->name ?? null
                     ],
                     'entry' => $journal['entry'],
                     'amount' => $journal['entry'] == 'Credit' ? abs($journal['amount']) : $journal['amount'],
@@ -771,9 +784,9 @@ class JournalServices
                         'name' => $location->location
                     ],
                     'unit' => [
-                        'id' => $journal['unit']['id'] ?? null,
-                        'code' => $journal['unit']['code'] ?? null,
-                        'name' => $journal['unit']['name'] ?? null
+                        'id' => $unit->id ?? null,
+                        'code' => $unit->code ?? null,
+                        'name' => $unit->name ?? null
                     ],
                     'business_unit' => [
                         'id' => $business_unit->id ?? null,

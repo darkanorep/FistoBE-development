@@ -146,52 +146,52 @@ class DepartmentController extends Controller
         }
     }
 
-//    public function store(DepartmentRequest $request)
-//    {
+    public function store(DepartmentRequest $request)
+    {
+
+        $new_department = Department::create([
+            "code" => $request->code,
+            "department" => $request->department,
+            "company" => $request->company,
+            "voucher_code_id" => $request->voucher_code_id ?? null,
+        ]);
+
+//    $fields = $request->validate([
+//      "code" => "required",
+//      "department" => "required",
+//      "company" => "required",
+//        "voucher_code_id" => [
+//            "nullable",
+//            Rule::exists("voucher_codes", "id")->where(function ($query) {
+//                return $query->whereNull("deleted_at");
+//            })
+//        ]
+//    ]);
 //
-//        $new_department = Department::create([
-//            "code" => $request->code,
-//            "department" => $request->department,
-//            "company" => $request->company,
-//            "voucher_code_id" => $request->voucher_code_id ?? null,
-//        ]);
-//
-////    $fields = $request->validate([
-////      "code" => "required",
-////      "department" => "required",
-////      "company" => "required",
-////        "voucher_code_id" => [
-////            "nullable",
-////            Rule::exists("voucher_codes", "id")->where(function ($query) {
-////                return $query->whereNull("deleted_at");
-////            })
-////        ]
-////    ]);
-////
-////    $department_validateCodeDuplicate = Department::withTrashed()
-////      ->where("code", $fields["code"])
-////      ->first();
-////    if (!empty($department_validateCodeDuplicate)) {
-////      return $this->resultResponse("registered", "Code", ["error_field" => "code"]);
-////    }
-////    $department_validateDescriptionDuplicate = Department::withTrashed()
-////      ->where("department", $fields["department"])
-////      ->first();
-////    if (!empty($department_validateDescriptionDuplicate)) {
-////      return $this->resultResponse("registered", "Department", ["error_field" => "department"]);
-////    }
-////    $companyExist = $this->validateIfObjectExist(new Company(), $fields["company"], "Company");
-////    if (!$companyExist) {
-////      return $this->resultResponse("not-found", "Company", []);
-////    }
-////    $new_department = Department::create([
-////      "code" => $fields["code"],
-////      "department" => $fields["department"],
-////      "company" => $fields["company"],
-////        "voucher_code_id" => $fields["voucher_code_id"] ?? null,
-////    ]);
-//        return $this->resultResponse("save", "Department", $new_department);
+//    $department_validateCodeDuplicate = Department::withTrashed()
+//      ->where("code", $fields["code"])
+//      ->first();
+//    if (!empty($department_validateCodeDuplicate)) {
+//      return $this->resultResponse("registered", "Code", ["error_field" => "code"]);
 //    }
+//    $department_validateDescriptionDuplicate = Department::withTrashed()
+//      ->where("department", $fields["department"])
+//      ->first();
+//    if (!empty($department_validateDescriptionDuplicate)) {
+//      return $this->resultResponse("registered", "Department", ["error_field" => "department"]);
+//    }
+//    $companyExist = $this->validateIfObjectExist(new Company(), $fields["company"], "Company");
+//    if (!$companyExist) {
+//      return $this->resultResponse("not-found", "Company", []);
+//    }
+//    $new_department = Department::create([
+//      "code" => $fields["code"],
+//      "department" => $fields["department"],
+//      "company" => $fields["company"],
+//        "voucher_code_id" => $fields["voucher_code_id"] ?? null,
+//    ]);
+        return $this->resultResponse("save", "Department", $new_department);
+    }
 
     public function update(DepartmentRequest $request, $id)
     {
@@ -594,43 +594,43 @@ class DepartmentController extends Controller
 //    }
 //  }
 
-    public function store(Request $request) {
-
-        $departments = $request->input('result');
-
-        collect($departments)->each(function ($department) use (&$errors) {
-            $sync_id = $department['id'];
-            $name = $department['name'];
-            $code = $department['code'];
-            $deleted_at = $department['deleted_at'];
-            $business_unit_sync_id = $department['business_unit']['id'];
-
-            $businessUnitExist = BusinessUnit::withTrashed()->where('sync_id', $business_unit_sync_id)->exists();
-
-            if (!$businessUnitExist) {
-                $errors[] = "Business Unit with ID {$businessUnitExist} does not exist.";
-                return; // Skip this iteration
-            }
-
-            Department::updateOrCreate([
-                'sync_id' => $sync_id,
-                'business_unit_sync_id' => $business_unit_sync_id,
-            ], [
-                'department' => $name,
-                'code' => $code,
-                'deleted_at' => $deleted_at ? now() : null,
-                'business_unit_sync_id' => $business_unit_sync_id,
-            ]);
-        });
-
-        if (!empty($errors)) {
-            return response()->json([
-                'message' => 'Sync Business Unit first before syncing Business Units.',
-            ], Response::HTTP_BAD_REQUEST);
-        }
-
-        return response()->json([
-            'message' => 'Departments successfully synced.',
-        ], Response::HTTP_OK);
-    }
+//    public function store(Request $request) {
+//
+//        $departments = $request->input('result');
+//
+//        collect($departments)->each(function ($department) use (&$errors) {
+//            $sync_id = $department['id'];
+//            $name = $department['name'];
+//            $code = $department['code'];
+//            $deleted_at = $department['deleted_at'];
+//            $business_unit_sync_id = $department['business_unit']['id'];
+//
+//            $businessUnitExist = BusinessUnit::withTrashed()->where('sync_id', $business_unit_sync_id)->exists();
+//
+//            if (!$businessUnitExist) {
+//                $errors[] = "Business Unit with ID {$businessUnitExist} does not exist.";
+//                return; // Skip this iteration
+//            }
+//
+//            Department::updateOrCreate([
+//                'sync_id' => $sync_id,
+//                'business_unit_sync_id' => $business_unit_sync_id,
+//            ], [
+//                'department' => $name,
+//                'code' => $code,
+//                'deleted_at' => $deleted_at ? now() : null,
+//                'business_unit_sync_id' => $business_unit_sync_id,
+//            ]);
+//        });
+//
+//        if (!empty($errors)) {
+//            return response()->json([
+//                'message' => 'Sync Business Unit first before syncing Business Units.',
+//            ], Response::HTTP_BAD_REQUEST);
+//        }
+//
+//        return response()->json([
+//            'message' => 'Departments successfully synced.',
+//        ], Response::HTTP_OK);
+//    }
 }
