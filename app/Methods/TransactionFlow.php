@@ -2193,6 +2193,8 @@ class TransactionFlow
             ->whereNull('is_released')
             ->update([
                 'is_released' => true,
+                'is_uncollected' => false,
+                'uncollected_date' => null,
             ]);
 
         Transaction::whereIn('id', $transactionIds)->update([
