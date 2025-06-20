@@ -182,7 +182,8 @@ class JournalServices
                                 'code' => $item->sub_unit_code,
                                 'name' => $item->sub_unit_name
                             ],
-                            'remarks' => $item->description,
+                            'remarks' => $item->remarks,
+                            'description' => $item->description,
                             'transaction_date' => $item->transaction_date,
                             'attachments' => $item->media->map(function ($media) {
                                 return [
@@ -478,7 +479,8 @@ class JournalServices
                 'division_name' => $division_name,
                 'approver_id' => $approver_id,
                 'tag_no' => data_get($account_title, "tag_no"),
-                'description' => data_get($account_title, "remarks"),
+                'remarks' => data_get($account_title, "remarks"),
+                'description' => data_get($account_title, "description"),
                 'po_no' => is_array(data_get($account_title, "po_no"))
                     ? implode(', ', data_get($account_title, "po_no", []))
                     : data_get($account_title, "po_no"),
@@ -654,7 +656,7 @@ class JournalServices
 
         $headers = "Account Tag, PO#, RR#, Reference No, Voucher Number, Supplier, DR/CR, Amount, Description, Account Title, Company, Department, Location, BOA";
         $template = ["tag_no", "po_no", "rr_no", "reference_no", "voucher_number", "supplier", "entry", "amount", "remarks", "account_title", "company", "department", "location", "boa"];
-        $required = ["supplier", "entry", "amount", "account_title", "company", "department", "location"];
+        $required = ["supplier", "entry", "amount", "account_title", "company", "department", "location", "boa"];
         $keys = array_keys(current($journals));
 //        $this->validateHeader($template, $keys, $headers);
 //        $this->controller->validateHeader($template, $keys, $headers);
@@ -706,12 +708,12 @@ class JournalServices
                 ];
             }
 
-            if (!$boa || !in_array($boa, $bookOfAccounts)) {
-                $error[] = (object)[
-                    "line" => $index,
-                    "description" => $boa . " is invalid.",
-                ];
-            }
+//            if (!$boa || !in_array($boa, $bookOfAccounts)) {
+//                $error[] = (object)[
+//                    "line" => $index,
+//                    "description" => $boa . " is invalid.",
+//                ];
+//            }
 
 //            if ($boa != 'Adjustment') {
 //                $error[] = (object)[
@@ -763,6 +765,7 @@ class JournalServices
                     'entry' => $journal['entry'],
                     'amount' => $journal['entry'] == 'Credit' ? abs($journal['amount']) : $journal['amount'],
                     'remarks' => $journal['remarks'],
+                    'description' => $journal['description'],
                     'account_title' => [
                         'id' => $account_title->id ?? null,
                         'code' => $account_title->code ?? null,
