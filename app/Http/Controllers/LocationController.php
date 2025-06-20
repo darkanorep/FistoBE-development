@@ -84,6 +84,7 @@ class LocationController extends Controller
 //      }
 
         $locations = Location::
+            withTrashed()->
         with([
             'departments',
             'subUnits'
