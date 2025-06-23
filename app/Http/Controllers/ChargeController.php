@@ -40,10 +40,7 @@ class ChargeController extends Controller
             ->when(isset($status), function ($query) use ($status) {
                 return $status ? $query->whereNull('deleted_at') : $query->whereNotNull('deleted_at');
             })
-            ->where(function ($query) use ($search) {
-                $query->where('name', 'like', '%' . $search . '%')
-                      ->orWhere('code', 'like', '%' . $search . '%');
-            })
+            ->whereLike(['code', 'name'], $search)
             ->latest('updated_at')
             ->paginate($rows);
 
