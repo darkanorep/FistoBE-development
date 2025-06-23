@@ -668,7 +668,7 @@ class JournalServices
             $company = $journal['company'];
             $department = $journal['department'];
             $location = $journal['location'];
-//            $unit = $journal['unit'];
+            $unit = $journal['unit'];
             $business_unit = $journal['business_unit'];
             $sub_unit = $journal['sub_unit'];
             $boa = $journal['boa'];
