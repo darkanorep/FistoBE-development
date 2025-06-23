@@ -50,6 +50,7 @@ class SubUnitController extends Controller
                     'id' => $value->id,
                     'code' => $value->code,
                     'name' => $value->name,
+                    'sync_id' => $value->sync_id,
                     'unit' => [
                         'id' => $value->unit->id,
                         'code' => $value->unit->code,

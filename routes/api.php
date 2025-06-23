@@ -9,7 +9,6 @@ use App\Methods\TransactionFlow;
 use App\Models\BusinessUnit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-
 use App\Http\Controllers\BankController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CompanyController;
@@ -52,6 +51,13 @@ Route::get("/coa", [MasterlistController::class, "coa"]);
 Route::get("/sedar", [MasterlistController::class, "sedar_employees"]);
 Route::get("/genus", [MasterlistController::class, "genus_orders"]);
 Route::get('/ymir', [MasterlistController::class, 'projectYmir']);
+
+
+//Route::middleware('api.key')->group(function () {
+//    Route::patch('one-charging/{id}', [\App\Http\Controllers\ChargeController::class, 'change_status']);
+//    Route::resource('one-charging', \App\Http\Controllers\ChargeController::class)->only(['index', 'store']);
+//});
+
 //Route::get('fix-year', [TransactionController::class, 'fixYearFormat']);
 // Protected Routes
 // Route::middleware('auth:sanctum')->get('/authenticated', function (Request $request) {
@@ -125,6 +131,10 @@ Route::group(["middleware" => "auth:sanctum"], function () {
             Route::get("account-title-unit", [MasterlistController::class, "accountTitleUnitsDropdown"]);
             Route::get('permissions', [MasterlistController::class, "permissionsDropdown"]);
         });
+
+        //ONE CHARGING
+        Route::patch('one-charging/{id}', [\App\Http\Controllers\ChargeController::class, 'change_status']);
+        Route::resource('one-charging', \App\Http\Controllers\ChargeController::class)->only(['index', 'store']);
 
         //PERMISSIONS
         Route::patch("permissions/{id}", [\App\Http\Controllers\PermissionController::class, "change_status"]);
@@ -288,6 +298,9 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         Route::resource('book-of-accounts', \App\Http\Controllers\BookOfAccountController::class);
 
     });
+
+    //ONE CHARGING
+    Route::get('one-charging/search', [\App\Http\Controllers\ChargeController::class, 'searchCharging']);
 
     // USER
     Route::post("users/department-validation/", [UserController::class, "departmentValidation"]);
