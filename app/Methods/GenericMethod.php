@@ -1268,6 +1268,7 @@ class GenericMethod
                     "suffix" => $requestor->suffix,
                     "department_details" => $requestor->department[0]["name"],
 
+                    "charge_id" => $fields["charge_id"],
                     "document_id" => $fields["document"]["id"],
                     "company_id" => $fields["document"]["company"]["id"],
                     "company" => $fields["document"]["company"]["name"],
@@ -1310,7 +1311,8 @@ class GenericMethod
                     "is_mc" => $is_mc,
                     "is_new" => $is_new,
                     "transaction_type" => $fields["type"],
-                    "assigned_id" => $fields["assigned_id"]
+                    "assigned_id" => $fields["assigned_id"],
+                    "charge_id" => $fields["charge_id"]
                 ]);
 
                 if (isset($fields["service_group"])) {
@@ -1340,6 +1342,7 @@ class GenericMethod
                     "suffix" => $requestor->suffix,
                     "department_details" => $requestor->department[0]["name"],
 
+                    "charge_id" => $fields["charge_id"],
                     "document_id" => $fields["document"]["id"],
                     "company_id" => $fields["document"]["company"]["id"],
                     "company" => $fields["document"]["company"]["name"],
@@ -1371,7 +1374,8 @@ class GenericMethod
                     "is_mc" => $is_mc,
                     "is_new" => $is_new,
                     "transaction_type" => $fields["type"],
-                    "assigned_id" => $fields["assigned_id"]
+                    "assigned_id" => $fields["assigned_id"],
+                    "charge_id" => $fields["charge_id"]
                 ]);
                 break;
 
@@ -1387,6 +1391,7 @@ class GenericMethod
                     "suffix" => $requestor->suffix,
                     "department_details" => $requestor->department[0]["name"],
 
+                    "charge_id" => $fields["charge_id"],
                     "document_id" => $fields["document"]["id"],
                     "company_id" => $fields["document"]["company"]["id"],
                     "company" => $fields["document"]["company"]["name"],
@@ -1421,7 +1426,8 @@ class GenericMethod
                     "is_mc" => $is_mc,
                     "is_new" => $is_new,
                     "transaction_type" => $fields["type"],
-                    "assigned_id" => $fields["assigned_id"]
+                    "assigned_id" => $fields["assigned_id"],
+                    "charge_id" => $fields["charge_id"]
                 ]);
                 break;
 
@@ -1438,6 +1444,7 @@ class GenericMethod
                     "suffix" => $requestor->suffix,
                     "department_details" => $requestor->department[0]["name"],
 
+                    "charge_id" => $fields["charge_id"],
                     "document_id" => $fields["document"]["id"],
                     "category_id" => $fields["document"]["category"]["id"],
                     "category" => $fields["document"]["category"]["name"],
@@ -1478,7 +1485,8 @@ class GenericMethod
                     "is_mc" => $is_mc,
                     "is_new" => $is_new,
                     "transaction_type" => $fields["type"],
-                    "assigned_id" => $fields["assigned_id"]
+                    "assigned_id" => $fields["assigned_id"],
+                    "charge_id" => $fields["charge_id"]
                 ]);
 
                 break;
@@ -1496,6 +1504,7 @@ class GenericMethod
                     "suffix" => $requestor->suffix,
                     "department_details" => $requestor->department[0]["name"],
 
+                    "charge_id" => $fields["charge_id"],
                     "document_id" => $fields["document"]["id"],
                     "capex_no" => $fields["document"]["capex_no"],
                     "category_id" => $fields["document"]["category"]["id"],
@@ -1530,7 +1539,8 @@ class GenericMethod
                     "is_mc" => $is_mc,
                     "is_new" => $is_new,
                     "transaction_type" => $fields["type"],
-                    "assigned_id" => $fields["assigned_id"]
+                    "assigned_id" => $fields["assigned_id"],
+                    "charge_id" => $fields["charge_id"]
                 ]);
 
                 break;
@@ -1642,6 +1652,7 @@ class GenericMethod
                                 "suffix" => $requestor->suffix,
                                 "department_details" => $requestor->department[0]["name"],
 
+                                "charge_id" => $fields["charge_id"],
                                 "document_id" => $fields["document"]["id"],
                                 "category_id" => $fields["document"]["category"]["id"],
                                 "category" => $fields["document"]["category"]["name"],
@@ -1683,7 +1694,8 @@ class GenericMethod
                                 "is_mc" => $is_mc,
                                 "is_new" => $is_new,
                                 "transaction_type" => $fields["type"],
-                                "assigned_id" => $fields["assigned_id"]
+                                "assigned_id" => $fields["assigned_id"],
+                                "charge_id" => $fields["charge_id"]
                             ]);
                         }
 
@@ -1756,6 +1768,7 @@ class GenericMethod
                                 "suffix" => $requestor->suffix,
                                 "department_details" => $requestor->department[0]["name"],
 
+                                "charge_id" => $fields["charge_id"],
                                 "document_id" => $fields["document"]["id"],
                                 "category_id" => $fields["document"]["category"]["id"],
                                 "category" => $fields["document"]["category"]["name"],
@@ -1795,7 +1808,8 @@ class GenericMethod
                                 "is_mc" => $is_mc,
                                 "is_new" => $is_new,
                                 "transaction_type" => $fields["type"],
-                                "assigned_id" => $fields["assigned_id"]
+                                "assigned_id" => $fields["assigned_id"],
+                                "charge_id" => $fields["charge_id"]
                             ]);
                         }
                         static::prmMultiplerequestUpdateID($new_transaction);
@@ -1857,15 +1871,6 @@ class GenericMethod
 
                             $new_transaction = Transaction::create([
                                 "transaction_id" => $transaction_id,
-                                // "users_id" => $fields["requestor"]["id"],
-                                // "id_prefix" => $fields["requestor"]["id_prefix"],
-                                // "id_no" => $fields["requestor"]["id_no"],
-                                // "first_name" => $fields["requestor"]["first_name"],
-                                // "middle_name" => $fields["requestor"]["middle_name"],
-                                // "last_name" => $fields["requestor"]["last_name"],
-                                // "suffix" => $fields["requestor"]["suffix"],
-                                // "department_details" => $fields["requestor"]["department"],
-
                                 "users_id" => $requestor->id,
                                 "id_prefix" => $requestor->id_prefix,
                                 "id_no" => $requestor->id_no,
@@ -1875,6 +1880,7 @@ class GenericMethod
                                 "suffix" => $requestor->suffix,
                                 "department_details" => $requestor->department[0]["name"],
 
+                                "charge_id" => $fields["charge_id"],
                                 "document_id" => $fields["document"]["id"],
                                 "category_id" => $fields["document"]["category"]["id"],
                                 "category" => $fields["document"]["category"]["name"],
@@ -1912,7 +1918,8 @@ class GenericMethod
                                 "is_mc" => $is_mc,
                                 "is_new" => $is_new,
                                 "transaction_type" => $fields["type"],
-                                "assigned_id" => $fields["assigned_id"]
+                                "assigned_id" => $fields["assigned_id"],
+                                "charge_id" => $fields["charge_id"]
                             ]);
                         }
 
@@ -1934,6 +1941,7 @@ class GenericMethod
                     "suffix" => $requestor->suffix,
                     "department_details" => $requestor->department[0]["name"],
 
+                    "charge_id" => $fields["charge_id"],
                     "document_id" => $fields["document"]["id"],
                     "category_id" => $fields["document"]["category"]["id"],
                     "category" => $fields["document"]["category"]["name"],
@@ -1965,7 +1973,8 @@ class GenericMethod
                     "is_mc" => $is_mc,
                     "is_new" => $is_new,
                     "transaction_type" => $fields["type"],
-                    "assigned_id" => $fields["assigned_id"]
+                    "assigned_id" => $fields["assigned_id"],
+                    "charge_id" => $fields["charge_id"]
                 ]);
 
                 if (isset($fields["autoDebit_group"])) {
@@ -2091,6 +2100,7 @@ class GenericMethod
                     "middle_name" => $requestor->middle_name,
                     "last_name" => $requestor->last_name,
                     "suffix" => $requestor->suffix,
+                    "charge_id" => $fields["charge_id"],
                     "department_details" => $requestor->department[0]["name"],
                     "document_id" => $fields["document"]["id"],
                     "category_id" => $fields["document"]["category"]["id"],
@@ -2124,7 +2134,8 @@ class GenericMethod
                     "is_mc" => $is_mc,
                     "is_new" => $is_new,
                     "transaction_type" => $fields["type"],
-                    "assigned_id" => $fields["assigned_id"]
+                    "assigned_id" => $fields["assigned_id"],
+                    "charge_id" => $fields["charge_id"]
                 ];
 
                 if ($fields["document"]["payment_type"] == "Partial") {
@@ -2146,6 +2157,7 @@ class GenericMethod
                     "suffix" => $requestor->suffix,
                     "department_details" => $requestor->department[0]["name"],
 
+                    "charge_id" => $fields["charge_id"],
                     "document_id" => $fields["document"]["id"],
                     "category_id" => $fields["document"]["category"]["id"],
                     "category" => $fields["document"]["category"]["name"],
@@ -2178,7 +2190,8 @@ class GenericMethod
                     "is_mc" => $is_mc,
                     "is_new" => $is_new,
                     "transaction_type" => $fields["type"],
-                    "assigned_id" => $fields["assigned_id"]
+                    "assigned_id" => $fields["assigned_id"],
+                    "charge_id" => $fields["charge_id"]
                 ]);
                 break;
         }
@@ -2229,6 +2242,7 @@ class GenericMethod
         $status = "update";
         $transaction_type = $fields["type"];
         $assigned_id = $fields["assigned_id"];
+        $charge_id = $fields["charge_id"];
         $capex_no = $fields["document"]["capex_no"] ?? null;
         $document_no = $fields["document"]["no"] ?? null;
         $document_date = $fields["document"]["date"] ?? null;
@@ -2281,6 +2295,7 @@ class GenericMethod
         $requestor = Auth::user();
         $currentTransaction->transaction_type = $transaction_type;
         $currentTransaction->assigned_id = $assigned_id;
+        $currentTransaction->charge_id = $charge_id;
         $currentTransaction->users_id = $requestor->id;
         $currentTransaction->id_prefix = $requestor->id_prefix;
         $currentTransaction->id_no = $requestor->id_no;
@@ -2570,7 +2585,7 @@ class GenericMethod
         );
     }
 
-    public static function updateTransactionStatus($id, $transaction_id, $request_id, $receipt_type, $tag_no, $status, $state, $reason_id, $reason, $reason_remarks, $voucher_no, $voucher_month, $distributed_id, $distributed_name, $approver_id, $approver_name, $input_tax, $transaction_type, $assigned_id, $box_no = null)
+    public static function updateTransactionStatus($id, $transaction_id, $request_id, $receipt_type, $tag_no, $status, $state, $reason_id, $reason, $reason_remarks, $voucher_no, $voucher_month, $distributed_id, $distributed_name, $approver_id, $approver_name, $input_tax, $transaction_type, $assigned_id, $charge_id, $box_no = null)
     {
         // $voucher_no = isset($voucher_no) ? $voucher_no : null;
         // $voucher_month = isset($voucher_month) ? $voucher_month : null;
@@ -2609,6 +2624,7 @@ class GenericMethod
             ->when(
                 $status == "reverse-request",
                 function ($query) use (
+                    $charge_id,
                     $status,
                     $state,
                     $tag_no,
@@ -2638,10 +2654,12 @@ class GenericMethod
                         "reverse_distributed_name" => $distributed_name,
                         "approver_id" => $approver_id,
                         "approver_name" => $approver_name,
-                        "assigned_id" => $assigned_id
+                        "assigned_id" => $assigned_id,
+                        "charge_id" => $charge_id,
                     ]);
                 },
                 function ($query) use (
+                    $charge_id,
                     $status,
                     $state,
                     $receipt_type,
@@ -2677,7 +2695,8 @@ class GenericMethod
                         "transaction_type" => $transaction_type,
                         'box_no' => $box_no,
                         'input_tax' => $input_tax,
-                        "assigned_id" => $assigned_id
+                        "assigned_id" => $assigned_id,
+                        "charge_id" => $charge_id,
                     ]);
                 }
             );

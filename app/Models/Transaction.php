@@ -117,7 +117,8 @@ class Transaction extends Model
         "is_confidential",
         "is_mc",
         "is_mcl",
-        "assigned_id"
+        "assigned_id",
+        "charge_id"
     ];
 
     public $timestamps = ["created_at"];

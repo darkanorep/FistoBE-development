@@ -113,6 +113,7 @@ class TransactionFlow
         $users_id = $transaction->users_id;
         $transaction_type = $transaction->transaction_type;
         $assigned_id = $transaction->assigned_id;
+        $charge_id = $transaction->charge_id;
 
         $typeOfTransactionId = data_get($request, 'transaction_type.id') ? data_get($request, 'transaction_type.id') : $transaction->voucher->first()->transaction_type_id ?? null;
         $typeOfTransactionName = data_get($request, 'transaction_type.name') ? data_get($request, 'transaction_type.name') : $transaction->voucher->first()->transaction_type_name ?? null;
@@ -331,7 +332,8 @@ class TransactionFlow
                 $approver_name,
                 $inputTax,
                 $transaction_type,
-                $assigned_id
+                $assigned_id,
+                $charge_id
             );
         } elseif ($process == "tag") {
             $model = new Tagging();
@@ -412,6 +414,7 @@ class TransactionFlow
                 $inputTax,
                 $transaction_type,
                 $assigned_id,
+                $charge_id
             );
         } elseif ($process == "extract") {
             $status = null;
@@ -464,6 +467,7 @@ class TransactionFlow
                 $inputTax,
                 $transaction_type,
                 $assigned_id,
+                $charge_id
             );
 
         } elseif ($process == "voucher") {
@@ -637,6 +641,7 @@ class TransactionFlow
                 $inputTax,
                 $transaction_type,
                 $assigned_id,
+                $charge_id
             );
         } elseif ($process == "approve") {
             $model = new Approver();
@@ -699,6 +704,7 @@ class TransactionFlow
                 $inputTax,
                 $transaction_type,
                 $assigned_id,
+                $charge_id
             );
         } elseif ($process == "transmit") {
             $model = new Transmit();
@@ -782,6 +788,7 @@ class TransactionFlow
                 $inputTax,
                 $transaction_type,
                 $assigned_id,
+                $charge_id
             );
         } elseif ($process == "cheque") {
             $account_titles = $cheque_account_titles;
@@ -1013,6 +1020,7 @@ class TransactionFlow
                 $inputTax,
                 $transaction_type,
                 $assigned_id,
+                $charge_id
             );
         } elseif ($process == "audit") {
             $date_now = Carbon::now("Asia/Manila")->format("Y-m-d H:i:s");
@@ -1152,6 +1160,7 @@ class TransactionFlow
                 $inputTax,
                 $transaction_type,
                 $assigned_id,
+                $charge_id
             );
         } elseif ($process == "inspect") {
             $date_now = Carbon::now("Asia/Manila")->format("Y-m-d H:i:s");
@@ -1227,6 +1236,7 @@ class TransactionFlow
                 $inputTax,
                 $transaction_type,
                 $assigned_id,
+                $charge_id
             );
         } elseif ($process == "executive") {
             $date_now = Carbon::now("Asia/Manila")->format("Y-m-d H:i:s");
@@ -1296,6 +1306,7 @@ class TransactionFlow
                 $inputTax,
                 $transaction_type,
                 $assigned_id,
+                $charge_id
             );
         } elseif ($process == "release") {
             $model = new Release();
@@ -1346,6 +1357,7 @@ class TransactionFlow
                 $inputTax,
                 $transaction_type,
                 $assigned_id,
+                $charge_id
             );
         } elseif ($process == "file") {
             $model = new File();
@@ -1404,6 +1416,7 @@ class TransactionFlow
                 $inputTax,
                 $transaction_type,
                 $assigned_id,
+                $charge_id,
                 $request->box_no ?? $transaction->box_no
             );
         } elseif ($process == "reverse") {
@@ -1465,6 +1478,7 @@ class TransactionFlow
                 $inputTax,
                 $transaction_type,
                 $assigned_id,
+                $charge_id
             );
             return GenericMethod::resultResponse($state, "", "");
 
@@ -1505,6 +1519,7 @@ class TransactionFlow
                 $inputTax,
                 $transaction_type,
                 $assigned_id,
+                $charge_id,
                 $request->box_no ?? $transaction->box_no
             );
         } elseif ($process == "issue") {
@@ -1643,6 +1658,7 @@ class TransactionFlow
                 $inputTax,
                 $transaction_type,
                 $assigned_id,
+                $charge_id
             );
         } elseif ($process == "debit") {
             $account_titles = $accounts;
@@ -1740,6 +1756,7 @@ class TransactionFlow
                 $inputTax,
                 $transaction_type,
                 $assigned_id,
+                $charge_id
             );
         } elseif ($process == 'gas') {
             if ($subprocess == 'receive') {
@@ -1782,6 +1799,7 @@ class TransactionFlow
                 $inputTax,
                 $transaction_type,
                 $assigned_id,
+                $charge_id
             );
         } elseif ($process == 'discharge') {
             if ($subprocess == 'receive') {
@@ -1823,6 +1841,7 @@ class TransactionFlow
                 $inputTax,
                 $transaction_type,
                 $assigned_id,
+                $charge_id
             );
         } elseif ($process == 'pass') {
             if ($subprocess == 'receive') {
@@ -1854,6 +1873,7 @@ class TransactionFlow
                 $inputTax,
                 $transaction_type,
                 $assigned_id,
+                $charge_id
             );
         }
         $transaction->touch();

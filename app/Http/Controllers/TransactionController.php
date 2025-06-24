@@ -488,6 +488,7 @@ class TransactionController extends Controller
                 "approver_id",
                 "approver_name",
                 "assigned_id",
+                "charge_id",
                 "status",
                 "state",
                 "principal",
@@ -729,6 +730,7 @@ class TransactionController extends Controller
                 "is_new" => $transaction->is_new ? 1 : 0,
                 'document_date' => $transaction->document_date ?? $transaction->date_requested,
                 'assigned_id' => $transaction->assigned_id,
+                'charge_id' => $transaction->charge_id,
                 'transaction_type' => $transaction->transaction_type,
             ];
 
@@ -845,7 +847,8 @@ class TransactionController extends Controller
                 "input_tax",
                 "box_no",
                 "transaction_type",
-                "assigned_id"
+                "assigned_id",
+                "charge_id"
             )
             ->first();
 
@@ -2180,6 +2183,7 @@ class TransactionController extends Controller
         $transaction = [
             'type' => $type,
             "assigned_id" => $transaction->assigned_id,
+            'charge_id' => $transaction->charge_id,
             'requestor' => $requestor,
             'transaction' => $transact,
             'document' => $document,
@@ -2502,7 +2506,8 @@ class TransactionController extends Controller
                                 "is_mc" => $isMc,
                                 "is_new" => $isNew,
                                 "transaction_type" => $fields["type"],
-                                "assigned_id" => $fields["assigned_id"]
+                                "assigned_id" => $fields["assigned_id"],
+                                "charge_id" => $fields["charge_id"]
                             ]);
 
                             $newTransaction->update([

@@ -29,6 +29,7 @@ class TransactionPostRequest extends FormRequest
     {
         return [
             "type" => "nullable",
+            "charge_id" => "nullable",
             "assigned_id" => "nullable",
             "requestor.id" => "required",
             "requestor.id_prefix" => "required",
