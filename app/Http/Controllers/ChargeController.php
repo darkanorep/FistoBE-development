@@ -35,14 +35,20 @@ class ChargeController extends Controller
         $status = $request->input('status');
         $rows = (int)$request->input('rows', 10);
         $search = $request->input('search', '');
+        $paginate = $request->input('paginate', true);
 
         $charges = Charge::withTrashed()
             ->when(isset($status), function ($query) use ($status) {
                 return $status ? $query->whereNull('deleted_at') : $query->whereNotNull('deleted_at');
             })
             ->whereLike(['code', 'name'], $search)
-            ->latest('updated_at')
-            ->paginate($rows);
+            ->latest('updated_at');
+
+        if ($paginate) {
+            $charges = $charges->paginate($rows);
+        } else {
+            $charges = $charges->get();
+        }
 
         if (count($charges)) {
             return $this->resultResponse("fetch", "Charges", $charges);

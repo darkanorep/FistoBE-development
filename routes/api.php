@@ -104,6 +104,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         Route::get('general-journals-numbers', [TransactionController::class, 'generalNumbersDropdown']);
         Route::get('cheque-types', [MasterlistController::class, 'chequeTypesDropdown']);
         Route::get('permissions', [\App\Http\Controllers\PermissionController::class, 'index']);
+        Route::get('one-charging', [\App\Http\Controllers\ChargeController::class, 'index']);
     });
 
     Route::group(["prefix" => "admin", "middleware" => ["auth" => "is_admin"]], function () {
