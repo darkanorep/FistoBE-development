@@ -492,6 +492,10 @@ Route::group(["middleware" => "auth:sanctum"], function () {
             Route::post("validate-cheque-no", [TransactionFlowController::class, "validateChequeNo"]);
             Route::put("transfer/{id}", [TransactionFlowController::class, "transfer"]);
 
+            //BANK SERIES
+            Route::get('bank-documents', [TransactionFlow::class, 'bankDocuments']);
+            Route::get('available-cheque-number', [TransactionFlow::class, 'availableChequeNo']);
+
             //MULTI
             Route::post("receive", [TransactionFlowController::class, "multipleReceive"]);
             Route::post("tag", [TransactionFlowController::class, "multipleTag"]);

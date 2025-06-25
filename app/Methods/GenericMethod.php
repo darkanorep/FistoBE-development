@@ -944,7 +944,10 @@ class GenericMethod
                 "transaction_type" => $transaction_type,
                 "company_id" => $specific_account_title["company"]["id"] ?? null,
                 "company_name" => $specific_account_title["company"]["name"] ?? null,
-                "company_code" => isset($specific_account_title["company"]["name"]) ? Company::where("company", $specific_account_title["company"]["name"])->first()->code : null,
+//                "company_code" => isset($specific_account_title["company"]["name"]) ? Company::where("company", $specific_account_title["company"]["name"])->first()->code : null,
+                "company_code" => isset($specific_account_title["company"]["name"])
+                    ? optional(Company::where("company", $specific_account_title["company"]["name"])->first())->code
+                    : null,
                 "department_id" => $specific_account_title["department"]["id"] ?? null,
                 "department_name" => $specific_account_title["department"]["name"] ?? null,
                 "department_code" => isset($specific_account_title["department"]["name"]) ? Department::where("department", $specific_account_title["department"]["name"])->first()->code : null,

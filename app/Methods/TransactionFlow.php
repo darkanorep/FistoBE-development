@@ -5,6 +5,7 @@ namespace App\Methods;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\TransactionFlowController;
 use App\Methods\GenericMethod;
+use App\Models\BankSeries;
 use App\Models\Charging;
 use App\Models\Cheque;
 use App\Models\ClearingAccountTitle;
@@ -1930,6 +1931,41 @@ class TransactionFlow
             return GenericMethod::resultResponse("invalid", "", $errorMessage);
         }
         return GenericMethod::resultResponse("success-no-content", "", []);
+    }
+
+    public function bankDocuments(Request $request) {
+        return BankSeries::where('bank_id', $request->bank_id)
+            ->where('is_used', false)
+            ->get(['id', 'document_name']);
+    }
+
+    public function availableChequeNo(Request $request) {
+        $bankSeriesId = $request->bank_series_id;
+
+        $chequeSeries = BankSeries::where('id', $bankSeriesId)
+            ->where('is_used', false)
+            ->select('bank_id', 'from', 'to')
+            ->first();
+
+        if (!$chequeSeries) {
+            return response()->json(['message' => 'No available cheque series found,'], 404);
+        }
+
+        $alreadyUsedChequeNos = Cheque::withTrashed()
+            ->where('bank_id', $chequeSeries->bank_id)
+            ->whereNull('is_cancelled')
+            ->pluck('cheque_no')
+            ->toArray();
+
+        $availableChequeNos = array_diff(range($chequeSeries->from, $chequeSeries->to), $alreadyUsedChequeNos);
+        $availableChequeNos = array_filter($availableChequeNos, function($no) { return $no != 0; });
+        $firstAvailable = reset($availableChequeNos);
+
+        if (!$firstAvailable) {
+            return response()->json(['message' => 'No available cheque number found.'], 404);
+        }
+
+        return response()->json(['first_available_cheque_no' => $firstAvailable], 200);
     }
 
     public static function transfer($request, $id)
