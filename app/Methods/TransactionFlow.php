@@ -822,7 +822,7 @@ class TransactionFlow
 
                 if ($transaction->is_for_releasing) {
                     $transaction->update([
-                        "is_for_releasing" => true,
+                        "is_for_releasing" => false,
                     ]);
                 } else {
                     $transaction->update([
