@@ -1965,7 +1965,7 @@ class TransactionFlow
             return response()->json(['message' => 'No available cheque number found.'], 404);
         }
 
-        return response()->json(['first_available_cheque_no' => $firstAvailable], 200);
+        return response()->json(['available_cheque_no' => $firstAvailable], 200);
     }
 
     public static function transfer($request, $id)
