@@ -6294,9 +6294,21 @@ class TransactionController extends Controller
                         "id" => $item->company_id,
                         "name" => $item->company,
                     ],
+                    "business_unit" => [
+                        "id" => $item->business_unit_id,
+                        "name" => $item->business_unit,
+                    ],
                     "department" => [
                         "id" => $item->department_id,
                         "name" => $item->department,
+                    ],
+                    "unit" => [
+                        "id" => $item->unit_id,
+                        "name" => $item->unit,
+                    ],
+                    "sub_unit" => [
+                        "id" => $item->sub_unit_id,
+                        "name" => $item->sub_unit,
                     ],
                     "location" => [
                         "id" => $item->location_id,
@@ -6322,25 +6334,30 @@ class TransactionController extends Controller
                                     'code' => $item->company_code,
                                     'name' => $item->company_name,
                                 ],
-                                'department' => [
-                                    'id' => $item->department_id,
-                                    'code' => $item->department_code,
-                                    'name' => $item->department_name,
-                                ],
-                                'location' => [
-                                    'id' => $item->location_id,
-                                    'code' => $item->location_code,
-                                    'name' => $item->location_name,
-                                ],
                                 'business_unit' => [
                                     'id' => $item->business_unit_id,
                                     'code' => $item->business_unit_code,
                                     'name' => $item->business_unit_name,
                                 ],
+                                'department' => [
+                                    'id' => $item->department_id,
+                                    'code' => $item->department_code,
+                                    'name' => $item->department_name,
+                                ],
+                                'unit' => [
+                                    'id' => $item->unit_id,
+                                    'code' => $item->unit_code,
+                                    'name' => $item->unit_name,
+                                ],
                                 'sub_unit' => [
                                     'id' => $item->sub_unit_id,
                                     'code' => $item->sub_unit_code,
                                     'name' => $item->sub_unit_name,
+                                ],
+                                'location' => [
+                                    'id' => $item->location_id,
+                                    'code' => $item->location_code,
+                                    'name' => $item->location_name,
                                 ],
                                 'is_default' => $item->is_default,
                             ];
@@ -6401,25 +6418,30 @@ class TransactionController extends Controller
                         "code" => $item->company_code,
                         "name" => $item->company_name,
                     ],
-                    "department" => [
-                        "id" => $item->department_id,
-                        "code" => $item->department_code,
-                        "name" => $item->department_name,
-                    ],
-                    "location" => [
-                        "id" => $item->location_id,
-                        "code" => $item->location_code,
-                        "name" => $item->location_name,
-                    ],
                     "business_unit" => [
                         "id" => $item->business_unit_id,
                         "code" => $item->business_unit_code,
                         "name" => $item->business_unit_name,
                     ],
+                    "department" => [
+                        "id" => $item->department_id,
+                        "code" => $item->department_code,
+                        "name" => $item->department_name,
+                    ],
+                    "unit" => [
+                        "id" => $item->unit_id,
+                        "code" => $item->unit_code,
+                        "name" => $item->unit_name,
+                    ],
                     "sub_unit" => [
                         "id" => $item->sub_unit_id,
                         "code" => $item->sub_unit_code,
                         "name" => $item->sub_unit_name,
+                    ],
+                    "location" => [
+                        "id" => $item->location_id,
+                        "code" => $item->location_code,
+                        "name" => $item->location_name,
                     ],
                     "is_default" => $item->is_default,
                 ];
