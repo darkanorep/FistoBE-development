@@ -1941,6 +1941,7 @@ class TransactionFlow
 
     public function availableChequeNo(Request $request) {
         $bankSeriesId = $request->bank_series_id;
+        $temporaryUsedCheques = $request->temporary_used_cheques ?? [];
 
         $chequeSeries = BankSeries::where('id', $bankSeriesId)
             ->where('is_used', false)
@@ -1951,13 +1952,14 @@ class TransactionFlow
             return response()->json(['message' => 'No available cheque series found,'], 404);
         }
 
-        $alreadyUsedChequeNos = Cheque::withTrashed()
-            ->where('bank_id', $chequeSeries->bank_id)
+        $alreadyUsedChequeNos = Cheque::where('bank_id', $chequeSeries->bank_id)
             ->whereNull('is_cancelled')
             ->pluck('cheque_no')
             ->toArray();
 
-        $availableChequeNos = array_diff(range($chequeSeries->from, $chequeSeries->to), $alreadyUsedChequeNos);
+        // Exclude both already used and temporary used cheques
+        $excludeCheques = array_merge($alreadyUsedChequeNos, $temporaryUsedCheques);
+        $availableChequeNos = array_diff(range($chequeSeries->from, $chequeSeries->to), $excludeCheques);
         $availableChequeNos = array_filter($availableChequeNos, function($no) { return $no != 0; });
         $firstAvailable = reset($availableChequeNos);
 
