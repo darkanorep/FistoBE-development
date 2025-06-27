@@ -52,6 +52,23 @@ class GenericMethod
     #########################################      REUSABLE FUNCTION    ######################################
     ##########################################################################################################
 
+    private $companies;
+    private $businessUnits;
+    private $departments;
+    private $units;
+    private $subUnits;
+    private $locations;
+    private $accountTitles;
+    public function __construct() {
+        $this->companies = Company::select("id", "company", "code")->get();
+        $this->businessUnits = BusinessUnit::select("id", "business_unit", "code")->get();
+        $this->departments = Department::select("id", "department", "code")->get();
+        $this->units = Unit::select("id", "name", "code")->get();
+        $this->subUnits = SubUnit::select("id", "name", "code")->get();
+        $this->locations = Location::select("id", "location", "code")->get();
+        $this->accountTitles = AccountTitle::select("id", "title", "code")->get();
+
+    }
     public static function get_account_title_details($id)
     {
         $account_title_details = Transaction::with("cheques.account_title")
@@ -429,6 +446,7 @@ class GenericMethod
             if (count($account_titles) > 0) {
                 $id = $voucher_transaction->id;
                 $process = "associate";
+//                return GenericMethod::addAccountTitleEntry($process, $id, $account_titles);
                 return GenericMethod::addAccountTitleEntry($process, $id, $account_titles);
             }
         }
@@ -647,7 +665,8 @@ class GenericMethod
             if (count($account_titles) > 0) {
                 $id = $cheque_transaction->id;
                 $process = "treasury";
-                GenericMethod::addAccountTitleEntry($process, $id, $account_titles);
+//                GenericMethod::addAccountTitleEntry($process, $id, $account_titles);
+                static::addAccountTitleEntry($process, $id, $account_titles);
             }
         }
 
@@ -903,6 +922,7 @@ class GenericMethod
 
     public static function addAccountTitleEntry($process, $id, $account_titles)
     {
+        $instance = new self();
         $associate_id = null;
         $treasury_id = null;
 
@@ -938,31 +958,53 @@ class GenericMethod
                 "entry" => $entry,
                 "account_title_id" => $account_title_id,
                 "account_title_name" => $account_title_name,
-                "account_title_code" => AccountTitle::where("title", $specific_account_title["account_title"]["name"])->first()->code ?? null,
+//                "account_title_code" => AccountTitle::where("title", $specific_account_title["account_title"]["name"])->first()->code ?? null,
+                "account_title_code" => $instance->accountTitles->where('title', $specific_account_title["account_title"]["name"])->first()->code ?? null,
                 "amount" => $amount,
                 "remarks" => $remarks,
                 "transaction_type" => $transaction_type,
                 "company_id" => $specific_account_title["company"]["id"] ?? null,
                 "company_name" => $specific_account_title["company"]["name"] ?? null,
 //                "company_code" => isset($specific_account_title["company"]["name"]) ? Company::where("company", $specific_account_title["company"]["name"])->first()->code : null,
+//                "company_code" => isset($specific_account_title["company"]["name"])
+//                    ? optional(Company::where("company", $specific_account_title["company"]["name"])->first())->code
+//                    : null,
                 "company_code" => isset($specific_account_title["company"]["name"])
-                    ? optional(Company::where("company", $specific_account_title["company"]["name"])->first())->code
+                    ? optional($instance->companies->where('company', $specific_account_title["company"]["name"])->first())->code
                     : null,
                 "department_id" => $specific_account_title["department"]["id"] ?? null,
                 "department_name" => $specific_account_title["department"]["name"] ?? null,
-                "department_code" => isset($specific_account_title["department"]["name"]) ? Department::where("department", $specific_account_title["department"]["name"])->first()->code : null,
+//                "department_code" => isset($specific_account_title["department"]["name"]) ? Department::where("department", $specific_account_title["department"]["name"])->first()->code : null,
+                "department_code" => isset($specific_account_title["department"]["name"])
+                    ? $instance->departments->where("department", $specific_account_title["department"]["name"])->first()->code
+                    : null,
                 "location_id" => $specific_account_title["location"]["id"] ?? null,
                 "location_name" => $specific_account_title["location"]["name"] ?? null,
-                "location_code" => isset($specific_account_title["location"]["name"]) ? Location::where("location", $specific_account_title["location"]["name"])->first()->code : null,
+//                "location_code" => isset($specific_account_title["location"]["name"])
+//                    ? Location::where("location", $specific_account_title["location"]["name"])->first()->code
+//                    : null,
+                "location_code" => isset($specific_account_title["location"]["name"])
+                    ? $instance->locations->where('location', $specific_account_title["location"]["name"])->first()->code
+                    : null,
                 "business_unit_id" => $specific_account_title["business_unit"]["id"] ?? null,
                 "business_unit_name" => $specific_account_title["business_unit"]["name"] ?? null,
-                "business_unit_code" => isset($specific_account_title["business_unit"]["name"]) ? BusinessUnit::where("business_unit", $specific_account_title["business_unit"]["name"])->first()->code : null,
+//                "business_unit_code" => isset($specific_account_title["business_unit"]["name"])
+//                    ? BusinessUnit::where("business_unit", $specific_account_title["business_unit"]["name"])->first()->code
+//                    : null,
+                "business_unit_code" => isset($specific_account_title["business_unit"]["name"])
+                    ? $instance->businessUnits->where("business_unit", $specific_account_title["business_unit"]["name"])->first()->code
+                    : null,
                 "unit_id" => isset($specific_account_title["unit"]["id"]) ?? null,
                 "unit_name" => $specific_account_title["unit"]["name"] ?? null,
-                "unit_code" => isset($specific_account_title["unit"]["name"]) ? Unit::where("name", $specific_account_title["unit"]["name"])->first()->code : null,
+                "unit_code" => isset($specific_account_title["unit"]["name"])
+                    ? $instance->units->where("name", $specific_account_title["unit"]["name"])->first()->code
+                    : null,
                 "sub_unit_id" => $specific_account_title["sub_unit"]["id"] ?? null,
                 "sub_unit_name" => $specific_account_title["sub_unit"]["name"] ?? null,
-                "sub_unit_code" => isset($specific_account_title["sub_unit"]["name"]) ? SubUnit::where("name", $specific_account_title["sub_unit"]["name"])->first()->code : null,
+//                "sub_unit_code" => isset($specific_account_title["sub_unit"]["name"]) ? SubUnit::where("name", $specific_account_title["sub_unit"]["name"])->first()->code : null,
+                "sub_unit_code" => isset($specific_account_title["sub_unit"]["name"])
+                    ? optional($instance->subUnits->where("name", $specific_account_title["sub_unit"]["name"])->first())->code
+                    : null,
                 "is_default" => $specific_account_title["is_default"] ?? null,
             ]);
         }
@@ -4322,10 +4364,12 @@ class GenericMethod
         $validateTransactionCount = $transactions->get();
 
         $unique_po = array_unique($validateTransactionCount->pluck("po_no")->toArray());
-        $duplicate_po_nos = GenericMethod::addAnd($unique_po);
+//        $duplicate_po_nos = GenericMethod::addAnd($unique_po);
+        $duplicate_po_nos = static::addAnd($unique_po);
 
         if (count($validateTransactionCount) > 0) {
-            return GenericMethod::resultLaravelFormat("po_group.no", [
+//            return GenericMethod::resultLaravelFormat("po_group.no", [
+            return static::resultLaravelFormat("po_group.no", [
                 "PO " . $duplicate_po_nos . " has already been taken.",
             ]);
         }
@@ -4586,28 +4630,36 @@ class GenericMethod
         $modelName = ucfirst(strtolower($modelName));
         switch ($action) {
             case "not-equal":
-                return GenericMethod::error(422, $modelName . " amount not equal.", []);
+//                return GenericMethod::error(422, $modelName . " amount not equal.", []);
+                return static::error(422, $modelName . " amount not equal.", []);
                 break;
             case "receive":
-                return GenericMethod::result(200, "Transaction has been received.", []);
+//                return GenericMethod::result(200, "Transaction has been received.", []);
+                return static::result(200, "Transaction has been saved.", []);
                 break;
             case "hold":
-                return GenericMethod::result(200, "Transaction has been hold.", []);
+//                return GenericMethod::result(200, "Transaction has been hold.", []);
+                return static::result(200, "Transaction has been saved.", []);
                 break;
             case "unhold":
-                return GenericMethod::result(200, "Transaction has been unhold.", []);
+//                return GenericMethod::result(200, "Transaction has been unhold.", []);
+                return static::result(200, "Transaction has been saved.", []);
                 break;
             case "return":
-                return GenericMethod::result(200, "Transaction has been returned.", []);
+//                return GenericMethod::result(200, "Transaction has been returned.", []);
+                return static::result(200, "Transaction has been saved.", []);
                 break;
             case "unreturn":
-                return GenericMethod::result(200, "Transaction has been unreturned.", []);
+//                return GenericMethod::result(200, "Transaction has been unreturned.", []);
+                return static::result(200, "Transaction has been saved.", []);
                 break;
             case "void":
-                return GenericMethod::result(200, "Transaction has been voided.", []);
+//                return GenericMethod::result(200, "Transaction has been voided.", []);
+                return static::result(200, "Transaction has been saved.", []);
                 break;
             case "gas":
-                return GenericMethod::result(200, "Transaction has been saved.", []);
+//                return GenericMethod::result(200, "Transaction has been saved.", []);
+                return static::result(200, "Transaction has been saved.", []);
                 break;
             case "discharge":
             case "tag":
@@ -4630,37 +4682,46 @@ class GenericMethod
             case "cancel":
             case "abort":
             case "decline":
-                return GenericMethod::result(200, "Transaction has been saved.", []);
+//                return GenericMethod::result(200, "Transaction has been saved.", []);
+                return static::result(200, "Transaction has been saved.", []);
                 break;
             case "transfer":
-                return GenericMethod::result(200, "Transaction has been transferred.", []);
+//                return GenericMethod::result(200, "Transaction has been transferred.", []);
+                return static::result(200, "Transaction has been transferred.", []);
                 break;
             case "fetch":
-                return GenericMethod::result(200, Str::plural($modelName) . " has been fetched.", $data);
+//                return GenericMethod::result(200, Str::plural($modelName) . " has been fetched.", $data);
+                return static::result(200, Str::plural($modelName) . " has been fetched.", $data);
                 break;
 
             case "save":
-                return GenericMethod::result(201, "New " . strtolower($modelName) . " has been saved.", $data);
+//                return GenericMethod::result(201, "New " . strtolower($modelName) . " has been saved.", $data);
+                return static::result(201, "New " . strtolower($modelName) . " has been saved.", $data);
                 break;
 
             case "counter-save":
-                return GenericMethod::result(201, $modelName . " has been saved.", $data);
+//                return GenericMethod::result(201, $modelName . " has been saved.", $data);
+                return static::result(201, $modelName . " has been saved.", $data);
                 break;
 
             case "import":
-                return GenericMethod::result(201, Str::plural($modelName) . " has been imported.", $data);
+//                return GenericMethod::result(201, Str::plural($modelName) . " has been imported.", $data);
+                return static::result(201, Str::plural($modelName) . " has been imported.", $data);
                 break;
 
             case "update":
-                return GenericMethod::result(200, $modelName . " has been updated.", $data);
+//                return GenericMethod::result(200, $modelName . " has been updated.", $data);
+                return static::result(200, $modelName . " has been updated.", $data);
                 break;
 
             case "archive":
-                return GenericMethod::result(200, $modelName . " has been archived.", $data);
+//                return GenericMethod::result(200, $modelName . " has been archived.", $data);
+                return static::result(200, $modelName . " has been archived.", $data);
                 break;
 
             case "restore":
-                return GenericMethod::result(200, $modelName . " has been restored.", $data);
+//                return GenericMethod::result(200, $modelName . " has been restored.", $data);
+                return static::result(200, $modelName . " has been restored.", $data);
                 break;
 
             case "registered":
@@ -4706,11 +4767,13 @@ class GenericMethod
                 break;
 
             case "ongoing":
-                return GenericMethod::result(422, "On-going Transaction encountered.", []);
+//                return GenericMethod::result(422, "On-going Transaction encountered.", []);
+                return static::result(422, "On-going Transaction encountered.", []);
                 break;
 
             case "upload-error":
-                return GenericMethod::result(422, "The given data was invalid..", $data);
+//                return GenericMethod::result(422, "The given data was invalid..", $data);
+                return static::result(422, "The given data was invalid..", $data);
                 break;
 
             case "import-format":
@@ -4718,7 +4781,8 @@ class GenericMethod
                 break;
 
             case "nothing-has-changed":
-                return GenericMethod::result(200, "Nothing has changed.", $data);
+//                return GenericMethod::result(200, "Nothing has changed.", $data);
+                return static::result(200, "Nothing has changed.", $data);
                 break;
 
             case "not-found":
@@ -4726,7 +4790,8 @@ class GenericMethod
                 break;
 
             case "password-changed":
-                return GenericMethod::result(200, "Password has been changed.", $data);
+//                return GenericMethod::result(200, "Password has been changed.", $data);
+                return static::result(200, "Password has been changed.", $data);
                 break;
 
             case "password-incorrect":
@@ -4738,11 +4803,13 @@ class GenericMethod
                 break;
 
             case "login":
-                return GenericMethod::result(200, "Succesfully login.", $data);
+//                return GenericMethod::result(200, "Succesfully login.", $data);
+                return static::result(200, "Succesfully login.", $data);
                 break;
 
             case "logout":
-                return GenericMethod::result(200, "User has been logged out.", $data);
+//                return GenericMethod::result(200, "User has been logged out.", $data);
+                return static::result(200, "User has been logged out.", $data);
                 break;
 
             case "logout-again":
@@ -4754,11 +4821,13 @@ class GenericMethod
                 break;
 
             case "available":
-                return GenericMethod::result(200, $modelName . " is available.", $data);
+//                return GenericMethod::result(200, $modelName . " is available.", $data);
+                return static::result(200, $modelName . " is available.", $data);
                 break;
 
             case "password-reset":
-                return GenericMethod::result(200, "User's default password has been restored.", $data);
+//                return GenericMethod::result(200, "User's default password has been restored.", $data);
+                return static::result(200, "User's default password has been restored.", $data);
                 break;
 
             case "invalid-access":
@@ -4778,7 +4847,8 @@ class GenericMethod
                 break;
 
             case "success-no-content":
-                return GenericMethod::result(204, "Success.", []);
+//                return GenericMethod::result(204, "Success.", []);
+                return static::result(204, "Success.", []);
                 break;
         }
     }
