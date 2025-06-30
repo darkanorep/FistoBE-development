@@ -641,7 +641,6 @@ class JournalServices
         $businessUnits = $this->businessUnit->keyBy('business_unit');
         $units = $this->unit->keyBy('name'); // make sure it's correct key
         $subUnits = $this->subUnit->keyBy('name'); // make sure it's correct key
-        $suppliers = $this->supplier->keyBy('name');
 
         $error = [];
         $account_title_list = $this->accountTitle->pluck('title')->toArray();

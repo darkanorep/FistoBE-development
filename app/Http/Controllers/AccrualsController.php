@@ -84,9 +84,18 @@ class AccrualsController extends Controller
                 'company_id',
                 'company_code',
                 'company_name',
+                'business_unit_id',
+                'business_unit_code',
+                'business_unit_name',
                 'department_id',
                 'department_code',
                 'department_name',
+                'unit_id',
+                'unit_code',
+                'unit_name',
+                'sub_unit_id',
+                'sub_unit_code',
+                'sub_unit_name',
                 'location_id',
                 'location_code',
                 'location_name',
@@ -118,10 +127,25 @@ class AccrualsController extends Controller
                         'code' => $item->company_code,
                         'name' => $item->company_name
                     ],
+                    'business_unit' => [
+                        'id' => $item->business_unit_id,
+                        'code' => $item->business_unit_code,
+                        'name' => $item->business_unit_name
+                    ],
                     'department' => [
                         'id' => $item->department_id,
                         'code' => $item->department_code,
                         'name' => $item->department_name
+                    ],
+                    'unit' => [
+                        'id' => $item->unit_id,
+                        'code' => $item->unit_code,
+                        'name' => $item->unit_name
+                    ],
+                    'sub_unit' => [
+                        'id' => $item->sub_unit_id,
+                        'code' => $item->sub_unit_code,
+                        'name' => $item->sub_unit_name
                     ],
                     'location' => [
                         'id' => $item->location_id,
@@ -231,25 +255,30 @@ class AccrualsController extends Controller
                                 'code' => $item->company_code,
                                 'name' => $item->company_name
                             ],
-                            'department' => [
-                                'id' => $item->department_id,
-                                'code' => $item->department_code,
-                                'name' => $item->department_name
-                            ],
-                            'location' => [
-                                'id' => $item->location_id,
-                                'code' => $item->location_code,
-                                'name' => $item->location_name
-                            ],
                             'business_unit' => [
                                 'id' => $item->business_unit_id,
                                 'code' => $item->business_unit_code,
                                 'name' => $item->business_unit_name
                             ],
+                            'department' => [
+                                'id' => $item->department_id,
+                                'code' => $item->department_code,
+                                'name' => $item->department_name
+                            ],
+                            'unit' => [
+                                'id' => $item->unit_id,
+                                'code' => $item->unit_code,
+                                'name' => $item->unit_name
+                            ],
                             'sub_unit' => [
                                 'id' => $item->sub_unit_id,
                                 'code' => $item->sub_unit_code,
                                 'name' => $item->sub_unit_name
+                            ],
+                            'location' => [
+                                'id' => $item->location_id,
+                                'code' => $item->location_code,
+                                'name' => $item->location_name
                             ],
                             'remarks' => $item->description,
                             'is_reversed' => $item->is_reversed,
@@ -627,7 +656,8 @@ class AccrualsController extends Controller
                 'sub_unit_code' => data_get($account_title, "sub_unit.code"),
                 'sub_unit_name' => data_get($account_title, "sub_unit.name"),
                 'amount' => data_get($account_title, "amount"),
-                'description' => data_get($account_title, "remarks"),
+                'remarks' => data_get($account_title, "remarks"),
+                'description' => data_get($account_title, "description"),
 
                 'boa' => $boa,
                 'user_id' => auth()->id(),
@@ -705,7 +735,8 @@ class AccrualsController extends Controller
         $departments = $this->department->keyBy('department');
         $locations = $this->location->keyBy('location');
         $businessUnits = $this->businessUnit->keyBy('business_unit');
-        $subUnits = $this->subUnit->keyBy('subunit'); // make sure it's correct key
+        $units = $this->unit->keyBy('name'); // make sure it's correct key
+        $subUnits = $this->subUnit->keyBy('name'); // make sure it's correct key
 
         $error = [];
 
@@ -735,7 +766,7 @@ class AccrualsController extends Controller
             $department = $journal['department'];
             $location = $journal['location'];
             $business_unit = $journal['business_unit'];
-            $unit = $journal['unit'] ?? null;
+            $unit = $journal['unit'];
             $sub_unit = $journal['sub_unit'];
             $boa = $journal['boa'];
 
@@ -818,6 +849,7 @@ class AccrualsController extends Controller
                     'entry' => $journal['entry'],
                     'amount' => $journal['entry'] == 'Credit' ? abs($journal['amount']) : $journal['amount'],
                     'remarks' => $journal['remarks'],
+                    'description' => $journal['description'],
                     'account_title' => [
                         'id' => $account_title->id,
                         'code' => $account_title->code,

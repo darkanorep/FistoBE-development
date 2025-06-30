@@ -67,7 +67,8 @@ class Accruals extends Model implements HasMedia
         'is_reversed',
         'reversed_no',
         'reversed_at',
-        'batch_no'
+        'batch_no',
+        'remarks'
     ];
 
     public function account_titles()
