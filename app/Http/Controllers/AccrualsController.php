@@ -19,6 +19,15 @@ use Illuminate\Support\Facades\DB;
 
 class AccrualsController extends Controller
 {
+    private $accountTitle;
+    private $supplier;
+    private $company;
+    private $businessUnit;
+    private $unit;
+    private $subUnit;
+    private $department;
+    private $location;
+
     public function __construct()
     {
         $this->accountTitle = AccountTitle::select('id', 'code', 'title')->withTrashed()->get();
@@ -611,6 +620,9 @@ class AccrualsController extends Controller
                 'business_unit_id' => data_get($account_title, "business_unit.id"),
                 'business_unit_code' => data_get($account_title, "business_unit.code"),
                 'business_unit_name' => data_get($account_title, "business_unit.name"),
+                'unit_id' => data_get($account_title, "unit.id"),
+                'unit_code' => data_get($account_title, "unit.code"),
+                'unit_name' => data_get($account_title, "unit.name"),
                 'sub_unit_id' => data_get($account_title, "sub_unit.id"),
                 'sub_unit_code' => data_get($account_title, "sub_unit.code"),
                 'sub_unit_name' => data_get($account_title, "sub_unit.name"),
@@ -635,7 +647,6 @@ class AccrualsController extends Controller
 
         return response()->json(['message' => 'Accrual Journal successfully created.'], 201);
     }
-
 
     public function updateAccruals(Request $request, $id) {
         $accruals = Accruals::find($id);
@@ -698,39 +709,47 @@ class AccrualsController extends Controller
 
         $error = [];
 
+
         $account_title_list = $this->accountTitle->pluck('title')->toArray();
         $company_list = $this->company->pluck('company')->toArray();
         $department_list = $this->department->pluck('department')->toArray();
         $location_list = $this->location->pluck('location')->toArray();
         $business_unit_list = $this->businessUnit->pluck('business_unit')->toArray();
+        $unit_list = $this->unit->pluck('name')->toArray();
         $sub_unit_list = $this->subUnit->pluck('subunit')->toArray();
-//        $account_title_list = AccountTitle::withTrashed()->pluck('title')->toArray();
-//        $company_list = Company::withTrashed()->pluck('company')->toArray();
-//        $department_list = Department::withTrashed()->pluck('department')->toArray();
-//        $location_list = Location::withTrashed()->pluck('location')->toArray();
-//        $business_unit_list = BusinessUnit::withTrashed()->pluck('business_unit')->toArray();
-//        $sub_unit_list = SubUnit::withTrashed()->pluck('name')->toArray();
+//        $bookOfAccounts = $this->bookOfAccounts();
+        $supplier_list = $this->supplier->pluck('name')->toArray();
+
 
         $headers = "Account Tag, PO#, Reference No, Voucher Number, Supplier, DR/CR, Amount, Description, Account Title, Company, Department, Location, BOA";
         $template = ["tag_no", "po_no", "reference_no", "voucher_number", "supplier", "entry", "amount", "remarks", "account_title", "company", "department", "location", "boa"];
         $required = ["supplier", "entry", "amount", "account_title", "company", "department", "location"];
-        $keys = array_keys(current($journals));
-        $this->validateHeader($template, $keys, $headers);
+//        $keys = array_keys(current($journals));
+//        $this->validateHeader($template, $keys, $headers);
 
         $index = 2;
         foreach ($journals as $journal) {
+            $supplier = $journal['supplier'];
             $account_title = $journal['account_title'];
             $company = $journal['company'];
             $department = $journal['department'];
             $location = $journal['location'];
-//            $business_unit = $journal['business_unit'];
-//            $sub_unit = $journal['sub_unit'];
+            $business_unit = $journal['business_unit'];
+            $unit = $journal['unit'] ?? null;
+            $sub_unit = $journal['sub_unit'];
             $boa = $journal['boa'];
 
             if (!in_array($account_title, $account_title_list) && !empty($account_title)) {
                 $error[] = (object)[
                     "line" => $index,
                     "description" => $account_title . " is not registered.",
+                ];
+            }
+
+            if (!in_array($supplier, $supplier_list) && !empty($supplier)) {
+                $error[] = (object)[
+                    "line" => $index,
+                    "description" => $supplier . " is not registered.",
                 ];
             }
 
@@ -783,6 +802,7 @@ class AccrualsController extends Controller
                 $department = $departments[$journal['department']] ?? null;
                 $location = $locations[$journal['location']] ?? null;;
                 $business_unit = $businessUnits[$journal['business_unit']] ?? null;
+                $unit = $units[$journal['unit']] ?? null;
                 $sub_unit = $subUnits[$journal['sub_unit']] ?? null;
 
                 $formattedJournal[] = [
@@ -808,25 +828,30 @@ class AccrualsController extends Controller
                         'code' => $company->code,
                         'name' => $company->company
                     ],
-                    'department' => [
-                        'id' => $department->id,
-                        'code' => $department->code,
-                        'name' => $department->department
-                    ],
-                    'location' => [
-                        'id' => $location->id,
-                        'code' => $location->code,
-                        'name' => $location->location
-                    ],
                     'business_unit' => [
                         'id' => $business_unit->id ?? null,
                         'code' => $business_unit->code ?? null,
                         'name' => $business_unit->business_unit ?? null
                     ],
+                    'department' => [
+                        'id' => $department->id,
+                        'code' => $department->code,
+                        'name' => $department->department
+                    ],
+                    'unit' => [
+                        'id' => $unit->id ?? null,
+                        'code' => $unit->code ?? null,
+                        'name' => $unit->name ?? null
+                    ],
                     'sub_unit' => [
                         'id' => $sub_unit->id ?? null,
                         'code' => $sub_unit->code ?? null,
                         'name' => $sub_unit->name ?? null
+                    ],
+                    'location' => [
+                        'id' => $location->id,
+                        'code' => $location->code,
+                        'name' => $location->location
                     ],
                     'boa' => $journal['boa']
                 ];

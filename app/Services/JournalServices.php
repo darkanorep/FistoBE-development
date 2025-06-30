@@ -776,30 +776,30 @@ class JournalServices
                         'code' => $company->code,
                         'name' => $company->company
                     ],
+                    'business_unit' => [
+                        'id' => $business_unit->id ?? null,
+                        'code' => $business_unit->code ?? null,
+                        'name' => $business_unit->business_unit ?? null
+                    ],
                     'department' => [
                         'id' => $department->id,
                         'code' => $department->code,
                         'name' => $department->department
-                    ],
-                    'location' => [
-                        'id' => $location->id,
-                        'code' => $location->code,
-                        'name' => $location->location
                     ],
                     'unit' => [
                         'id' => $unit->id ?? null,
                         'code' => $unit->code ?? null,
                         'name' => $unit->name ?? null
                     ],
-                    'business_unit' => [
-                        'id' => $business_unit->id ?? null,
-                        'code' => $business_unit->code ?? null,
-                        'name' => $business_unit->business_unit ?? null
-                    ],
                     'sub_unit' => [
                         'id' => $sub_unit->id ?? null,
                         'code' => $sub_unit->code ?? null,
                         'name' => $sub_unit->name ?? null
+                    ],
+                    'location' => [
+                        'id' => $location->id,
+                        'code' => $location->code,
+                        'name' => $location->location
                     ],
                     'boa' => $journal['boa']
                 ];
