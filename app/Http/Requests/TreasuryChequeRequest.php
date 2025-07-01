@@ -26,7 +26,7 @@ class TreasuryChequeRequest extends FormRequest
         return [
             'type' => 'required',
             'user_id' => 'required|exists:users,id|unique:treasury_cheques,user_id,' . $this->route('treasury_cheque'),
-            'companies' => 'nullable|exists:companies,company',
+//            'companies' => 'nullable|exists:companies,company',
         ];
     }
 }

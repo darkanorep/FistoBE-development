@@ -26,21 +26,21 @@ class DepartmentRequest extends FormRequest
     {
         return [
             'code' => [
-                'required',
+//                'required',
                 Rule::unique('departments', 'code')->ignore($this->route('department'))
             ],
             'department' => [
-                'required',
+//                'required',
                 Rule::unique('departments', 'department')->ignore($this->route('department'))
             ],
             'company' => [
-                'required',
+//                'required',
                 Rule::exists('companies', 'id')->where(function ($query) {
                     $query->whereNull('deleted_at');
                 })
             ],
             'voucher_code_id' => [
-                'required',
+//                'required',
                 Rule::exists('voucher_codes', 'id')->where(function ($query) {
                     $query->whereNull('deleted_at');
                 })
