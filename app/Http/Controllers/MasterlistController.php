@@ -189,20 +189,39 @@ class MasterlistController extends Controller
 
     public function associateDropdown(Request $request)
     {
+        $business_unit_id = $request['business_unit_id'];
         $company_id = $request['company_id'];
-        $data = array("associates" => User::with('companies')
-            ->when(isset($company_id), function ($query) use ($company_id) {
-                $query->whereHas('companies', function ($query) use ($company_id) {
-                    $query->where('companies.id', $company_id);
+
+
+        if(!empty($company_id)) {
+            $data = array("associates" => User::with('companies')
+                ->when(isset($company_id), function ($query) use ($company_id) {
+                    $query->whereHas('companies', function ($query) use ($company_id) {
+                        $query->where('companies.id', $company_id);
+                    })
+                        ->without('companies');
                 })
-                    ->without('companies');
-            })
-            ->where(function ($query) {
-                $query->where('role', 'AP Associate')
-                    ->orWhere('role', 'AP Specialist');
-            })
-            ->whereNull('deleted_at')
-            ->get(['id', DB::raw("CONCAT(users.first_name,' ',users.last_name)  AS name")]));
+                ->where(function ($query) {
+                    $query->where('role', 'AP Associate')
+                        ->orWhere('role', 'AP Specialist');
+                })
+                ->whereNull('deleted_at')
+                ->get(['id', DB::raw("CONCAT(users.first_name,' ',users.last_name)  AS name")]));
+        } else {
+            $data = array("associates" => User::with('business_units')
+                ->when(isset($business_unit_id), function ($query) use ($business_unit_id) {
+                    $query->whereHas('business_units', function ($query) use ($business_unit_id) {
+                        $query->where('business_units.sync_id', $business_unit_id);
+                    })
+                        ->without('business_units');
+                })
+                ->where(function ($query) {
+                    $query->where('role', 'AP Associate')
+                        ->orWhere('role', 'AP Specialist');
+                })
+                ->whereNull('deleted_at')
+                ->get(['id', DB::raw("CONCAT(users.first_name,' ',users.last_name)  AS name")]));
+        }
 
 
         if (count($data['associates']) == 0) {

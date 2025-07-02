@@ -87,7 +87,9 @@ class User extends Authenticatable
 
     public function companies()
     {
-        return $this->belongsToMany(Company::class, "company_users", "user_id", "company_id")->select(
+        return $this->belongsToMany(Company::class, "company_users", "user_id", "company_id")
+            ->withTrashed()
+            ->select(
             "companies.id",
             "companies.company as name"
         );
@@ -96,7 +98,7 @@ class User extends Authenticatable
     public function business_units(): BelongsToMany
     {
         return $this->belongsToMany(BusinessUnit::class, "business_unit_users", "user_id", "business_unit_id")->select(
-            "business_units.id",
+            "business_units.sync_id",
             "business_units.business_unit as name"
         );
     }
