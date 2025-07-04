@@ -62,7 +62,7 @@ class GenericMethod
     public function __construct() {
         $this->companies = Company::select("id", "company", "code")->get();
         $this->businessUnits = BusinessUnit::select("id", "business_unit", "code")->get();
-        $this->departments = Department::select("id", "department", "code")->get();
+        $this->departments = Department::select("id", "department", "code")->withTrashed()->get();
         $this->units = Unit::select("id", "name", "code")->get();
         $this->subUnits = SubUnit::select("id", "name", "code")->get();
         $this->locations = Location::select("id", "location", "code")->get();
@@ -976,7 +976,7 @@ class GenericMethod
                 "department_name" => $specific_account_title["department"]["name"] ?? null,
 //                "department_code" => isset($specific_account_title["department"]["name"]) ? Department::where("department", $specific_account_title["department"]["name"])->first()->code : null,
                 "department_code" => isset($specific_account_title["department"]["name"])
-                    ? $instance->departments->where("department", $specific_account_title["department"]["name"])->first()->code
+                    ? optional($instance->departments->where("department", $specific_account_title["department"]["name"])->first())->code
                     : null,
                 "location_id" => $specific_account_title["location"]["id"] ?? null,
                 "location_name" => $specific_account_title["location"]["name"] ?? null,

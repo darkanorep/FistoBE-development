@@ -417,8 +417,9 @@ class JournalServices
                             'code' => $item->sub_unit_code,
                             'name' => $item->sub_unit_name
                         ],
-                        'remarks' => $item->description,
+                        'remarks' => $item->remarks,
                         'transaction_date' => $item->transaction_date,
+                        'description' => $item->description,
 //                        'attachments' => $item->media->map(function ($media) {
 //                            return [
 //                                'file_name' => $media->file_name,
@@ -655,7 +656,7 @@ class JournalServices
 
         $headers = "Account Tag, PO#, RR#, Reference No, Voucher Number, Supplier, DR/CR, Amount, Description, Account Title, Company, Department, Location, BOA";
         $template = ["tag_no", "po_no", "rr_no", "reference_no", "voucher_number", "supplier", "entry", "amount", "remarks", "account_title", "company", "department", "location", "boa"];
-        $required = ["supplier", "entry", "amount", "account_title", "company", "department", "location", "boa"];
+        $required = ["supplier", "entry", "account_title", "company", "department", "location", "boa"];
         $keys = array_keys(current($journals));
 //        $this->validateHeader($template, $keys, $headers);
 //        $this->controller->validateHeader($template, $keys, $headers);
@@ -750,6 +751,7 @@ class JournalServices
                 $business_unit = $businessUnits[$journal['business_unit']] ?? null;
                 $unit = $units[$journal['unit']] ?? null;
                 $sub_unit = $subUnits[$journal['sub_unit']] ?? null;
+                $transaction_date = $journal['transaction_date'] ?? null;
                 $formattedJournal[] = [
                     'account_tag' => $journal['tag_no'],
                     'po_no' => $journal['po_no'],
@@ -800,10 +802,10 @@ class JournalServices
                         'code' => $location->code,
                         'name' => $location->location
                     ],
+                    'transaction_date' => $transaction_date ? Carbon::parse($transaction_date)->format('Y-m-d') : null,
                     'boa' => $journal['boa']
                 ];
             }
-
 
             return $formattedJournal;
 
