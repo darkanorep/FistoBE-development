@@ -6507,9 +6507,24 @@ class TransactionController extends Controller
             ->pluck("treasuryAccountTitle")
             ->flatten();
 
+//        if (count($ids) <= 1) {
+//            $collection = $collection->unique('account_title_id')->filter(function ($item, $index) use ($cheque_details) {
+//                return $item->account_title_id == $cheque_details->bank->AccountTitleOne->id || $item->entry == 'Debit';
+//            });
+//
+//            if (count($collection) <= 1) {
+//                $collection = $collection->filter(function ($item, $index) use ($cheque_details) {
+//                    return $item->amount == $cheque_details->cheque_amount || $item->entry == 'Debit';
+//                });
+//            }
+//
+//        }
+
         if (count($ids) <= 1) {
-            $collection = $collection->unique('account_title_id')->filter(function ($item, $index) use ($cheque_details) {
-                return $item->account_title_id == $cheque_details->bank->AccountTitleOne->id || $item->entry == 'Debit';
+            $accountTitleOneId = optional(optional($cheque_details->bank)->AccountTitleOne)->id;
+
+            $collection = $collection->unique('account_title_id')->filter(function ($item, $index) use ($accountTitleOneId) {
+                return $item->account_title_id == $accountTitleOneId || $item->entry == 'Debit';
             });
 
             if (count($collection) <= 1) {
@@ -6517,7 +6532,6 @@ class TransactionController extends Controller
                     return $item->amount == $cheque_details->cheque_amount || $item->entry == 'Debit';
                 });
             }
-
         }
 
         return $collection->values();
