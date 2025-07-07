@@ -2348,8 +2348,14 @@ class GenericMethod
         $currentTransaction->document_type = $fields["document"]["name"];
         $currentTransaction->company_id = $fields["document"]["company"]["id"];
         $currentTransaction->company = $fields["document"]["company"]["name"];
+        $currentTransaction->business_unit_id = $fields["document"]["business_unit"]["id"];
+        $currentTransaction->business_unit = $fields["document"]["business_unit"]["name"];
         $currentTransaction->department_id = $fields["document"]["department"]["id"];
         $currentTransaction->department = $fields["document"]["department"]["name"];
+        $currentTransaction->unit_id = $fields["document"]["unit"]["id"];
+        $currentTransaction->unit = $fields["document"]["unit"]["name"];
+        $currentTransaction->sub_unit_id = $fields["document"]["sub_unit"]["id"];
+        $currentTransaction->sub_unit = $fields["document"]["sub_unit"]["name"];
         $currentTransaction->location_id = $fields["document"]["location"]["id"];
         $currentTransaction->location = $fields["document"]["location"]["name"];
         $currentTransaction->supplier_id = $fields["document"]["supplier"]["id"];
