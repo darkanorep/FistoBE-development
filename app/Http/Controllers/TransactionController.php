@@ -5118,7 +5118,10 @@ class TransactionController extends Controller
         $transaction_id = $request->transaction_id;
 
         if (
-            Transaction::where("company_id", $request["company_id"])
+            Transaction::where(function ($query) use ($request) {
+                $query->where("company_id", $request["company_id"])
+                    ->orWhere("business_unit_id", $request["business_unit_id"]);
+            })
                 ->where("referrence_no", $request["reference_no"])
                 ->where("supplier_id", $request["supplier_id"])
                 ->where("state", "!=", "void")
