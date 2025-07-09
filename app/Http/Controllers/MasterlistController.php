@@ -211,7 +211,7 @@ class MasterlistController extends Controller
             $data = array("associates" => User::with('business_units')
                 ->when(isset($business_unit_id), function ($query) use ($business_unit_id) {
                     $query->whereHas('business_units', function ($query) use ($business_unit_id) {
-                        $query->where('business_units.sync_id', $business_unit_id);
+                        $query->where('business_units.id', $business_unit_id);
                     })
                         ->without('business_units');
                 })
