@@ -4172,17 +4172,26 @@ class TransactionController extends Controller
                     return $this->resultResponse("invalid", "", $duplicatePO);
                 }
 
-                $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
+                if (!empty($fields['po_group'])) {
+                            $duplicatePO = GenericMethod::validatePOFull($fields["document"]["company"]["id"], $fields["po_group"]);
 
-                $errorMessage = GenericMethod::validateWith1PesoDifference(
-                    "po_group.amount",
-                    "Document",
-                    $fields["document"]["amount"],
-                    $po_total_amount
-                );
-                if (!empty($errorMessage)) {
-                    return GenericMethod::resultResponse("invalid", "", $errorMessage);
-                }
+                            if (isset($duplicatePO)) {
+                                return $this->resultResponse("invalid", "", $duplicatePO);
+                            }
+
+                            $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
+
+                            $errorMessage = GenericMethod::validateWith1PesoDifference(
+                                "po_group.amount",
+                                "Document",
+                                $fields["document"]["amount"],
+                                $po_total_amount
+                            );
+
+                            if (!empty($errorMessage)) {
+                                return GenericMethod::resultResponse("invalid", "", $errorMessage);
+                            }
+                        }
 
                 $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
 //                GenericMethod::updatePO(
