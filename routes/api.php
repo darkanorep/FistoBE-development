@@ -405,11 +405,17 @@ Route::group(["middleware" => "auth:sanctum"], function () {
     Route::resource("account-receivable-journals", \App\Http\Controllers\AccountReceivableJournalController::class);
     Route::post('update/account-receivable-journals/{id}', [\App\Http\Controllers\AccountReceivableJournalController::class, 'updateGeneralJournal']);
 
-    //GENERAL JOURNAL - AP SPECIALIST
-    Route::patch('ap-specialist-journals/post/{id}', [\App\Http\Controllers\ApSpecialistJournalController::class, 'posted']);
-    Route::post("ap-specialist-journals/import", [\App\Http\Controllers\ApSpecialistJournalController::class, 'import']);
-    Route::resource("ap-specialist-journals", \App\Http\Controllers\ApSpecialistJournalController::class);
-    Route::post('update/ap-specialist-journals/{id}', [\App\Http\Controllers\ApSpecialistJournalController::class, 'updateGeneralJournal']);
+    //GENERAL JOURNAL - AP SPECIALIST - 12
+    Route::patch('ap-specialist-12-journals/post/{id}', [\App\Http\Controllers\ApSpecialistJournalController::class, 'posted']);
+    Route::post("ap-specialist-12-journals/import", [\App\Http\Controllers\ApSpecialistJournalController::class, 'import']);
+    Route::resource("ap-specialist-12-journals", \App\Http\Controllers\ApSpecialistJournalController::class);
+    Route::post('update/ap-specialist-12-journals/{id}', [\App\Http\Controllers\ApSpecialistJournalController::class, 'updateGeneralJournal']);
+
+    //GENERAL JOURNAL - AP SPECIALIST - 22
+    Route::patch('ap-specialist-22-journals/post/{id}', [\App\Http\Controllers\ApSpecialist22JournalController::class, 'posted']);
+    Route::post("ap-specialist-22-journals/import", [\App\Http\Controllers\ApSpecialist22JournalController::class, 'import']);
+    Route::resource("ap-specialist-22-journals", \App\Http\Controllers\ApSpecialist22JournalController::class);
+    Route::post('update/ap-specialist-22-journals/{id}', [\App\Http\Controllers\ApSpecialist22JournalController::class, 'updateGeneralJournal']);
 
     //GENERAL JOURNAL - PCF
     Route::patch('pcf-journals/post/{id}', [\App\Http\Controllers\PcfJournalController::class, 'posted']);
@@ -460,9 +466,13 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         Route::get('account-receivable-journals', [\App\Http\Controllers\AccountReceivableJournalController::class, 'indexForApproval']);
         Route::patch('account-receivable-journals/{id}', [\App\Http\Controllers\AccountReceivableJournalController::class, 'action']);
 
-        //GENERAL JOURNAL - AP SPECIALIST
-        Route::get('ap-specialist-journals', [\App\Http\Controllers\ApSpecialistJournalController::class, 'indexForApproval']);
-        Route::patch('ap-specialist-journals/{id}', [\App\Http\Controllers\ApSpecialistJournalController::class, 'action']);
+        //GENERAL JOURNAL - AP SPECIALIST - 12
+        Route::get('ap-specialist-12-journals', [\App\Http\Controllers\ApSpecialistJournalController::class, 'indexForApproval']);
+        Route::patch('ap-specialist-12-journals/{id}', [\App\Http\Controllers\ApSpecialistJournalController::class, 'action']);
+
+        //GENERAL JOURNAL - AP SPECIALIST - 22
+        Route::get('ap-specialist-22-journals', [\App\Http\Controllers\ApSpecialist22JournalController::class, 'indexForApproval']);
+        Route::patch('ap-specialist-22-journals/{id}', [\App\Http\Controllers\ApSpecialist22JournalController::class, 'action']);
 
         //GENERAL JOURNAL - PCF
         Route::get('pcf-journals', [\App\Http\Controllers\PcfJournalController::class, 'indexForApproval']);
