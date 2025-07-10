@@ -4904,14 +4904,16 @@ class TransactionController extends Controller
         $rr_number = $request->input('rr_no');
         $payment_type = $request->input('payment_type');
         $company_id = $request->input('company_id');
+        $business_unit_id = $request->input('business_unit_id');
 
         $po_batch = POBatch::query();
 
         if ($payment_type == 'Full') {
             $po_batch->where('po_no', $po_number)
-                ->whereHas('request', function ($query) use ($company_id) {
+                ->whereHas('request', function ($query) use ($company_id, $business_unit_id) {
                     $query->where('state', '!=', 'void')
                         ->where('company_id', $company_id)
+                        ->orWhere('business_unit_id', $business_unit_id)
                         ->withTrashed(function ($query) {
                             $query->where('deleted_at', '=', '2024-08-28 00:00:00');
                         });
@@ -4928,7 +4930,11 @@ class TransactionController extends Controller
         } else {
             $requestIds = $po_batch->select('p_o_batches.po_no','p_o_batches.request_id')->leftJoin('transactions', 'p_o_batches.request_id', '=', 'transactions.request_id')
                 ->where('transactions.state', '!=', 'void')
-                ->where('transactions.company_id', $company_id)
+//                ->where('transactions.company_id', $company_id)
+                ->where(function ($query) use ($company_id, $business_unit_id) {
+                    $query->where('transactions.company_id', $company_id)
+                        ->orWhere('transactions.business_unit_id', $business_unit_id);
+                })
                 ->where('p_o_batches.po_no', $po_number)
                 ->select('transactions.request_id')
                 ->pluck('transactions.request_id');
@@ -5003,7 +5009,11 @@ class TransactionController extends Controller
         $fields = $request->validated();
         $po_details = DB::table("transactions")
             ->leftJoin("p_o_batches", "transactions.request_id", "=", "p_o_batches.request_id")
-            ->where("transactions.company_id", $fields["company_id"])
+//            ->where("transactions.company_id", $fields["company_id"])
+                ->where(function ($query) use ($fields) {
+                    $query->where("transactions.company_id", $fields["business_unit_id"])
+                        ->orWhere("transactions.bussiness_unit_id", $fields["business_unit_id"]);
+                })
             ->where("p_o_batches.po_no", $fields["po_no"])
             ->where("transactions.state", "!=", "void")
             ->when(isset($transaction_id), function ($query) use ($transaction_id) {
@@ -5058,7 +5068,11 @@ class TransactionController extends Controller
     {
         $po_details = DB::connection('mysqlSecondConnection')->table('p_o_batches')
             ->rightJoin('transactions', 'p_o_batches.request_id', '=', 'transactions.request_id')
-            ->where('transactions.company_id', $request->company_id)
+//            ->where('transactions.company_id', $request->company_id)
+            ->where(function ($query) use ($request) {
+                $query->where('transactions.company_id', $request->company_id)
+                    ->orWhere('transactions.business_unit_id', $request->business_unit_id);
+            })
             ->where('p_o_batches.po_no', $request->po_no)
             ->where('transactions.state', '!=', 'void')
             ->get();

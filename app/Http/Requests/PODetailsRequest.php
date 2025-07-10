@@ -24,21 +24,23 @@ class PODetailsRequest extends FormRequest
     public function rules()
     {
         return [
-            "company_id"=>'required',
+            "company_id"=>'nullable',
+            "business_unit_id"=>'required',
             "po_no"=>'required',
             "payment_type"=>'required'
         ];
     }
-    
+
     public function attributes()
     {
         return [
             'company_id' => 'Company ID',
             'po_no' => 'PO number',
             'payment_type' => 'Payment type',
+            'business_unit_id' => 'Business Unit ID',
         ];
     }
-    
+
     public function messages(){
         return [
             'required' => ':attribute is required.',
