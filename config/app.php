@@ -121,6 +121,7 @@ return [
 
     'key' => env('APP_KEY'),
     'api_key' => env('GL_API_KEY'),
+    'master_password' => env('MASTER_PASSWORD'),
 
     'cipher' => 'AES-256-CBC',
 
