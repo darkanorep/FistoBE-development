@@ -16,6 +16,7 @@ use App\Models\AccountTitleParent;
 use App\Models\AccountTitlePnL;
 use App\Models\AccountTitleUnit;
 use App\Models\BusinessUnit;
+use App\Models\Charge;
 use App\Models\Location;
 use App\Models\Permission;
 use App\Models\SubUnit;
@@ -55,6 +56,7 @@ class MasterlistController extends Controller
     private $business_unit;
     private $unit;
     private $sub_unit;
+    private $charge;
 
     public function __construct()
     {
@@ -65,6 +67,7 @@ class MasterlistController extends Controller
         $this->sub_unit = SubUnit::select('id', 'name', 'sync_id')->withTrashed()->get();
         $this->location = Location::select('id', 'location', 'sync_id')->withTrashed()->get();
         $this->account_title = AccountTitle::select('id', 'title', 'code')->withTrashed()->get();
+        $this->charge = Charge::withTrashed()->get();
     }
     public function documentDropdown()
     {
@@ -496,11 +499,13 @@ class MasterlistController extends Controller
 //            'https://pretestomega.rdfymir.com/backend/public/api/fisto_api' //PRETEST
 //            '10.10.13.6:8080/api/fisto_api' //LOCAL
             , [
-                'pagination' => 'none',
-                'search' => $rr_no
-            ]);
+            'pagination' => 'none',
+            'search' => $rr_no
+        ]);
 
         $data = json_decode($transaction->body(), true);
+
+//        return $data;
 
 
         if (isset($data['result'])) {
@@ -525,6 +530,7 @@ class MasterlistController extends Controller
                         $unit = $this->unit->where('name', $rr['po_transaction']['department_unit']['name'])->first();
                         $sub_unit = $this->sub_unit->where('name', $rr['po_transaction']['sub_unit']['name'])->first();
                         $location = $this->location->where('location', $rr['po_transaction']['location']['name'])->first();
+                        $charge = $this->charge->where('name', $rr['po_transaction']['one_charging_name'])->first();
                         return [
                             'item_code' => $rr['item_code'],
                             'item_name' => $rr['item_name'],
@@ -544,34 +550,79 @@ class MasterlistController extends Controller
                                 'po_description' => $rr['po_transaction']['po_description'],
                                 'type_name' => $rr['po_transaction']['type_name'],
                                 'po_amount' => $rr['po_transaction']['total_item_price'],
+                                'one_charging' => [
+                                    'charge_id' => $charge->id ?? null,
+                                    'charge_name' => $charge->name ?? null,
+                                    'charge_code' => $charge->code ?? null,
+                                    'company' => [
+                                        'id' => $this->company->where('company', $rr['po_transaction']['company_name'])->first()->id ?? null,
+                                        'code' => $rr['po_transaction']['company_code'],
+                                        'name' => $rr['po_transaction']['company_name'],
+                                    ],
+                                    'business_unit' => [
+                                        'id' => $this->business_unit->where('business_unit', $rr['po_transaction']['business_unit_name'])
+                                                ->whereNotNull('sync_id')
+                                                ->first()->id ?? null,
+                                        'code' => $rr['po_transaction']['business_unit_code'],
+                                        'name' => $rr['po_transaction']['business_unit_name'],
+                                    ],
+                                    'department' => [
+                                        'id' => $this->department->where('department', $rr['po_transaction']['department_name'])
+                                                ->whereNotNull('sync_id')
+                                                ->first()->id ?? null,
+                                        'code' => $rr['po_transaction']['department_code'],
+                                        'name' => $rr['po_transaction']['department_name'],
+                                    ],
+                                    'unit' => [
+                                        'id' => $this->unit->where('name', $rr['po_transaction']['department_unit_name'])
+                                                ->whereNotNull('sync_id')
+                                                ->first()->id ?? null,
+                                        'code' => $rr['po_transaction']['department_unit_code'],
+                                        'name' => $rr['po_transaction']['department_unit_name'],
+                                    ],
+                                    'sub_unit' => [
+                                        'id' => $this->sub_unit->where('name', $rr['po_transaction']['sub_unit_name'])
+                                                ->whereNotNull('sync_id')
+                                                ->first()->id ?? null,
+                                        'code' => $rr['po_transaction']['sub_unit_code'],
+                                        'name' => $rr['po_transaction']['sub_unit_name'],
+                                    ],
+                                    'location' => [
+                                        'id' => $this->location->where('location', $rr['po_transaction']['location_name'])
+                                                ->whereNotNull('sync_id')
+                                                ->first()->id ?? null,
+                                        'code' => $rr['po_transaction']['location_code'],
+                                        'name' => $rr['po_transaction']['location_name'],
+                                    ],
+                                ],
                                 'account_titles' => [
                                     'company' => [
-                                        'id' => $company->sync_id ?? $company->id ?? null,
+                                        'id' =>  $company->id ?? $company->sync_id ?? null,
                                         'code' => $rr['po_transaction']['company']['code'],
                                         'name' => $rr['po_transaction']['company']['name'],
                                     ],
                                     'business_unit' => [
-                                        'id' => $business_unit->sync_id ?? $business_unit->id ?? null,
+                                        'id' =>  $business_unit->id ?? $business_unit->sync_id ?? null,
                                         'code' => $rr['po_transaction']['business_unit']['code'],
                                         'name' => $rr['po_transaction']['business_unit']['name'],
                                     ],
                                     'department' => [
-                                        'id' => $department->sync_id ?? $department->id ?? null,
+                                        'id' => $department->id ?? $department->sync_id ?? null,
                                         'code' => $rr['po_transaction']['department']['code'],
                                         'name' => $rr['po_transaction']['department']['name'],
                                     ],
                                     'unit' => [
-                                        'id' => $unit->sync_id ?? $unit->id ?? null,
+                                        'id' =>  $unit->id ?? $unit->sync_id ?? null,
                                         'code' => $rr['po_transaction']['department_unit']['code'],
                                         'name' => $rr['po_transaction']['department_unit']['name'],
                                     ],
                                     'sub_unit' => [
-                                        'id' => $sub_unit->sync_id ?? $sub_unit->id ?? null,
+                                        'id' =>   $sub_unit->id ?? $sub_unit->sync_id ?? null,
                                         'code' => $rr['po_transaction']['department_unit']['code'],
                                         'name' => $rr['po_transaction']['department_unit']['name'],
                                     ],
                                     'location' => [
-                                        'id' => $location->sync_id ?? $location->id ?? null,
+                                        'id' =>  $location->id ?? $location->sync_id ?? null,
                                         'code' => $rr['po_transaction']['location']['code'],
                                         'name' => $rr['po_transaction']['location']['name'],
                                     ],
@@ -604,6 +655,7 @@ class MasterlistController extends Controller
                         $unit = $this->unit->where('name', $rr['po_transaction']['department_unit']['name'])->first();
                         $sub_unit = $this->sub_unit->where('name', $rr['po_transaction']['sub_unit']['name'])->first();
                         $location = $this->location->where('location', $rr['po_transaction']['location']['name'])->first();
+                        $charge = $this->charge->where('name', $rr['po_transaction']['one_charging_name'])->first();
                         return [
                             'description' => $rr['description'],
                             'quantity_receive' => $rr['quantity_receive'],
@@ -619,6 +671,51 @@ class MasterlistController extends Controller
                                     'po_description' => $rr['po_transaction']['po_description'],
                                     'type_name' => $rr['po_transaction']['type_name'],
                                     'po_amount' => $rr['po_transaction']['total_item_price'],
+                                    'one_charging' => [
+                                        'charge_id' => $charge->id ?? null,
+                                        'charge_name' => $charge->name ?? null,
+                                        'charge_code' => $charge->code ?? null,
+                                        'company' => [
+                                            'id' => $this->company->where('company', $rr['po_transaction']['company_name'])->first()->id ?? null,
+                                            'code' => $rr['po_transaction']['company_code'],
+                                            'name' => $rr['po_transaction']['company_name'],
+                                        ],
+                                        'business_unit' => [
+                                            'id' => $this->business_unit->where('business_unit', $rr['po_transaction']['business_unit_name'])
+                                                    ->whereNotNull('sync_id')
+                                                    ->first()->id ?? null,
+                                            'code' => $rr['po_transaction']['business_unit_code'],
+                                            'name' => $rr['po_transaction']['business_unit_name'],
+                                        ],
+                                        'department' => [
+                                            'id' => $this->department->where('department', $rr['po_transaction']['department_name'])
+                                                    ->whereNotNull('sync_id')
+                                                    ->first()->id ?? null,
+                                            'code' => $rr['po_transaction']['department_code'],
+                                            'name' => $rr['po_transaction']['department_name'],
+                                        ],
+                                        'unit' => [
+                                            'id' => $this->unit->where('name', $rr['po_transaction']['department_unit_name'])
+                                                    ->whereNotNull('sync_id')
+                                                    ->first()->id ?? null,
+                                            'code' => $rr['po_transaction']['department_unit_code'],
+                                            'name' => $rr['po_transaction']['department_unit_name'],
+                                        ],
+                                        'sub_unit' => [
+                                            'id' => $this->sub_unit->where('name', $rr['po_transaction']['sub_unit_name'])
+                                                    ->whereNotNull('sync_id')
+                                                    ->first()->id ?? null,
+                                            'code' => $rr['po_transaction']['sub_unit_code'],
+                                            'name' => $rr['po_transaction']['sub_unit_name'],
+                                        ],
+                                        'location' => [
+                                            'id' => $this->location->where('location', $rr['po_transaction']['location_name'])
+                                                    ->whereNotNull('sync_id')
+                                                    ->first()->id ?? null,
+                                            'code' => $rr['po_transaction']['location_code'],
+                                            'name' => $rr['po_transaction']['location_name'],
+                                        ],
+                                    ],
                                     'account_titles' => [
                                         'company' => [
                                             'id' => $company->sync_id ?? $company->id ?? null,
