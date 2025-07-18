@@ -101,12 +101,12 @@ class JournalServices
 //            })
 //                ->where('user_id', auth()->user()->id)
                 ->where(function ($query) {
-                    $query->where('user_id', auth()->user()->id)
-                        ->orWhere(function ($query) {
-                            if (auth()->user()->position == 'SUPERVISOR' && auth()->user()->role == 'Approver') {
-                                $query->where('user_id', '<>', auth()->user()->id);
-                            }
-                        });
+                    $query->where('user_id', auth()->user()->id);
+                    // ->orWhere(function ($query) {
+                    //     if (auth()->user()->position == 'SUPERVISOR' && auth()->user()->role == 'Approver') {
+                    //         $query->where('user_id', '<>', auth()->user()->id);
+                    //     }
+                    // });
                 })
                 ->groupBy('gj_number', 'journal_name', 'journal_description', 'is_posted', 'adjustment_month', 'is_year_end', 'is_approved', 'reason_id', 'reason')
                 ->orderBy('latest_updated_at', 'desc')
@@ -221,12 +221,12 @@ class JournalServices
                 })
 //                ->where('user_id', auth()->user()->id)
                 ->where(function ($query) {
-                    $query->where('user_id', auth()->user()->id)
-                        ->orWhere(function ($query) {
-                            if (auth()->user()->position == 'SUPERVISOR' && auth()->user()->role == 'Approver') {
-                                $query->where('user_id', '<>', auth()->user()->id);
-                            }
-                        });
+                    $query->where('user_id', auth()->user()->id);
+                    // ->orWhere(function ($query) {
+                    //     if (auth()->user()->position == 'SUPERVISOR' && auth()->user()->role == 'Approver') {
+                    //         $query->where('user_id', '<>', auth()->user()->id);
+                    //     }
+                    // });
                 })
                 ->groupBy('gj_number', 'journal_name', 'journal_description', 'is_posted', 'adjustment_month', 'is_year_end', 'is_approved', 'reason_id', 'reason')
                 ->orderBy('latest_updated_at', 'desc')
@@ -481,6 +481,9 @@ class JournalServices
                 'approver_id' => $approver_id,
                 'tag_no' => data_get($account_title, "tag_no"),
                 'remarks' => data_get($account_title, "remarks"),
+                'item_code' => data_get($account_title, "item_code"),
+                'quantity' => data_get($account_title, "quantity"),
+                'uom' => data_get($account_title, "uom"),
                 'description' => data_get($account_title, "description"),
                 'po_no' => is_array(data_get($account_title, "po_no"))
                     ? implode(', ', data_get($account_title, "po_no", []))
@@ -517,6 +520,37 @@ class JournalServices
                 'sub_unit_code' => data_get($account_title, "sub_unit.code"),
                 'sub_unit_name' => data_get($account_title, "sub_unit.name"),
                 'amount' => data_get($account_title, "amount"),
+                'unit_price' => data_get($account_title, "unit_price"),
+                'asset_code' => data_get($account_title, "asset_code"),
+                'asset_name' => data_get($account_title, "asset"),
+                'service_provider_code' => data_get($account_title, "service_provider_code"),
+                'service_provider_name' => data_get($account_title, "service_provider"),
+                'allocation' => data_get($account_title, "allocation"),
+                'account_type' => data_get($account_title, "account_type"),
+                'account_group' => data_get($account_title, "account_group"),
+                'account_sub_group' => data_get($account_title, "account_sub_group"),
+                'financial_statement' => data_get($account_title, "financial_statement"),
+                'unit_responsible' => data_get($account_title, "unit_responsible"),
+                'batch' => data_get($account_title, "batch"),
+                'mark' => data_get($account_title, "mark"),
+                'mark2' => data_get($account_title, "mark2"),
+                'asset_cip' => data_get($account_title, "asset_cip"),
+                'payroll_period' => data_get($account_title, "payroll_period"),
+                'position' => data_get($account_title, "position"),
+                'payroll_type1' => data_get($account_title, "payroll_type1"),
+                'payroll_type2' => data_get($account_title, "payroll_type2"),
+                'additional_description_for_depr' => data_get($account_title, "additional_description_for_depr"),
+                'useful_life' => data_get($account_title, "useful_life"),
+                'particulars' => data_get($account_title, "particulars"),
+                'farm_type' => data_get($account_title, "farm_type"),
+                'jean_remarks' => data_get($account_title, "jean_remarks"),
+                'from' => data_get($account_title, "from"),
+                'changed_to' => data_get($account_title, "changed_to"),
+                'reason_remarks' => data_get($account_title, "reason_remarks"),
+                'checking_remarks' => data_get($account_title, "checking_remarks"),
+                'bank_name' => data_get($account_title, "bank_name"),
+                'cheque_no' => data_get($account_title, "cheque_no"),
+                'remaining_bv_for_depr' => data_get($account_title, "remaining_bv_for_depr"),
 
                 'boa' => $boa,
                 'user_id' => auth()->id(),
@@ -597,7 +631,9 @@ class JournalServices
                 case 'approve':
                     $this->model::where('gj_number', $generalJournals->gj_number)
                         ->update([
-                            'is_approved' => true
+                            'is_approved' => true,
+                            'is_posted' => true,
+                            'posted_at' => now(),
                         ]);
                     break;
                 case 'reject':
@@ -656,7 +692,7 @@ class JournalServices
 
         $headers = "Account Tag, PO#, RR#, Reference No, Voucher Number, Supplier, DR/CR, Amount, Description, Account Title, Company, Department, Location, BOA";
         $template = ["tag_no", "po_no", "rr_no", "reference_no", "voucher_number", "supplier", "entry", "amount", "remarks", "account_title", "company", "department", "location", "boa"];
-        $required = ["supplier", "entry", "account_title", "company", "department", "location", "boa"];
+        $required = ["supplier", "entry", "account_title", "company", "business_unit", "department", "unit", "sub_unit", "location", "boa"];
         $keys = array_keys(current($journals));
 //        $this->validateHeader($template, $keys, $headers);
 //        $this->controller->validateHeader($template, $keys, $headers);
@@ -673,40 +709,61 @@ class JournalServices
             $sub_unit = $journal['sub_unit'];
             $boa = $journal['boa'];
 
-            if (!in_array($account_title, $account_title_list) && !empty($account_title)) {
-                $error[] = (object)[
-                    "line" => $index,
-                    "description" => $account_title . " is not registered.",
-                ];
-            }
+            // if (!in_array($account_title, $account_title_list) && !empty($account_title)) {
+            //     $error[] = (object)[
+            //         "line" => $index,
+            //         "description" => $account_title . " is not registered.",
+            //     ];
+            // }
 
-            if (!in_array($supplier, $supplier_list) && !empty($supplier)) {
-                $error[] = (object)[
-                    "line" => $index,
-                    "description" => $supplier . " is not registered.",
-                ];
-            }
+            // if (!in_array($supplier, $supplier_list) && !empty($supplier)) {
+            //     $error[] = (object)[
+            //         "line" => $index,
+            //         "description" => $supplier . " is not registered.",
+            //     ];
+            // }
 
-            if (!in_array($department, $department_list) && !empty($department)) {
-                $error[] = (object)[
-                    "line" => $index,
-                    "description" => $department . " is not registered.",
-                ];
-            }
+            // if (!in_array($company, $company_list) && !empty($company)) {
+            //     $error[] = (object)[
+            //         "line" => $index,
+            //         "description" => $company . " is not registered.",
+            //     ];
+            // }
 
-            if (!in_array($location, $location_list) && !empty($location)){
-                $error[] = (object)[
-                    "line" => $index,
-                    "description" => $location . " is not registered.",
-                ];
-            }
+            // if (!in_array($business_unit, $business_unit_list) && !empty($business_unit)) {
+            //     $error[] = (object)[
+            //         "line" => $index,
+            //         "description" => $business_unit . " is not registered.",
+            //     ];
+            // }
 
-            if (!in_array($company, $company_list) && !empty($company)) {
-                $error[] = (object)[
-                    "line" => $index,
-                    "description" => $company . " is not registered.",
-                ];
-            }
+            // if (!in_array($department, $department_list) && !empty($department)) {
+            //     $error[] = (object)[
+            //         "line" => $index,
+            //         "description" => $department . " is not registered.",
+            //     ];
+            // }
+
+            // if (!in_array($unit, $unit_list) && !empty($unit)) {
+            //     $error[] = (object)[
+            //         "line" => $index,
+            //         "description" => $unit . " is not registered.",
+            //     ];
+            // }
+
+            // if (!in_array($sub_unit, $sub_unit_list) && !empty($sub_unit)) {
+            //     $error[] = (object)[
+            //         "line" => $index,
+            //         "description" => $sub_unit . " is not registered.",
+            //     ];
+            // }
+
+            // if (!in_array($location, $location_list) && !empty($location)){
+            //     $error[] = (object)[
+            //         "line" => $index,
+            //         "description" => $location . " is not registered.",
+            //     ];
+            // }
 
 //            if (!$boa || !in_array($boa, $bookOfAccounts)) {
 //                $error[] = (object)[
@@ -751,7 +808,7 @@ class JournalServices
                 $business_unit = $businessUnits[$journal['business_unit']] ?? null;
                 $unit = $units[$journal['unit']] ?? null;
                 $sub_unit = $subUnits[$journal['sub_unit']] ?? null;
-                $transaction_date = $journal['transaction_date'] ?? null;
+                $transaction_date = $journal['transaction_date'];
                 $formattedJournal[] = [
                     'account_tag' => $journal['tag_no'],
                     'po_no' => $journal['po_no'],
@@ -766,44 +823,78 @@ class JournalServices
                     'entry' => $journal['entry'],
                     'amount' => $journal['entry'] == 'Credit' ? abs($journal['amount']) : $journal['amount'],
                     'remarks' => $journal['remarks'],
+                    'item_code' => $journal['item_code'] ?? null,
                     'description' => $journal['description'],
+                    'quantity' => $journal['quantity'] ?? null,
+                    'uom' => $journal['uom'] ?? null,
                     'account_title' => [
                         'id' => $account_title->id ?? null,
-                        'code' => $account_title->code ?? null,
-                        'name' => $account_title->title ?? null
+                        'code' => $journal['account_title_code'] ?? $account_title->code ?? null,
+                        'name' => $journal['account_title']
                     ],
                     'company' => [
                         'id' => $company->id,
-                        'code' => $company->code,
-                        'name' => $company->company
+                        'code' => $journal['company_code'] ?? $company->code ?? null,
+                        'name' => $journal['company']
                     ],
                     'business_unit' => [
                         'id' => $business_unit->id ?? null,
-                        'code' => $business_unit->code ?? null,
-                        'name' => $business_unit->business_unit ?? null
+                        'code' => $journal['business_unit_code'] ?? $business_unit->code ?? null,
+                        'name' => $journal['business_unit']
                     ],
                     'department' => [
                         'id' => $department->id,
-                        'code' => $department->code,
-                        'name' => $department->department
+                        'code' => $journal['department_code'] ?? $department->code ?? null,
+                        'name' => $journal['department']
                     ],
                     'unit' => [
                         'id' => $unit->id ?? null,
-                        'code' => $unit->code ?? null,
-                        'name' => $unit->name ?? null
+                        'code' => $journal['unit_code'] ?? $unit->code ?? null,
+                        'name' => $journal['unit']
                     ],
                     'sub_unit' => [
                         'id' => $sub_unit->id ?? null,
-                        'code' => $sub_unit->code ?? null,
-                        'name' => $sub_unit->name ?? null
+                        'code' => $journal['sub_unit_code'] ?? $sub_unit->code ?? null,
+                        'name' => $journal['sub_unit'],
                     ],
                     'location' => [
                         'id' => $location->id,
-                        'code' => $location->code,
-                        'name' => $location->location
+                        'code' => $journal['location_code'] ?? $location->code ?? null,
+                        'name' => $journal['location']
                     ],
                     'transaction_date' => $transaction_date ? Carbon::parse($transaction_date)->format('Y-m-d') : null,
-                    'boa' => $journal['boa']
+                    'boa' => $journal['boa'],
+                    'unit_price' => $journal['unit_price'] ?? null,
+                    'asset_code' => $journal['asset_code'] ?? null,
+                    'asset' => $journal['asset'] ?? null,
+                    'service_provider_code' => $journal['service_provider_code'] ?? null,
+                    'service_provider' => $journal['service_provider'] ?? null,
+                    'allocation' => $journal['allocation'] ?? null,
+                    'account_type' => $journal['account_type'] ?? null,
+                    'account_group' => $journal['account_group'] ?? null,
+                    'account_sub_group' => $journal['account_sub_group'] ?? null,
+                    'financial_statement' => $journal['financial_statement'] ?? null,
+                    'unit_responsible' => $journal['unit_responsible'] ?? null,
+                    'batch' => $journal['batch'] ?? null,
+                    'mark' => $journal['mark'] ?? null,
+                    'mark2' => $journal['mark2'] ?? null,
+                    'asset_cip' => $journal['asset_cip'] ?? null,
+                    'payroll_period' => $journal['payroll_period'] ?? null,
+                    'position' => $journal['position'] ?? null,
+                    'payroll_type1' => $journal['payroll_type1'] ?? null,
+                    'payroll_type2' => $journal['payroll_type2'] ?? null,
+                    'additional_description_for_depr' => $journal['additional_description_for_depr'] ?? null,
+                    'useful_life' => $journal['useful_life'] ?? null,
+                    'particulars' => $journal['particulars'] ?? null,
+                    'farm_type' => $journal['farm_type'] ?? null,
+                    'jean_remarks' => $journal['jean_remarks'] ?? null,
+                    'from' => $journal['from'] ?? null,
+                    'changed_to' => $journal['changed_to'] ?? null,
+                    'reason_remarks' => $journal['reason_remarks'] ?? null,
+                    'checking_remarks' => $journal['checking_remarks'] ?? null,
+                    'bank_name' => $journal['bank_name'] ?? null,
+                    'cheque_no' => $journal['cheque_no'] ?? null,
+                    'remaining_bv_for_depr' => $journal['remaining_bv_for_depr'] ?? null,
                 ];
             }
 
@@ -866,6 +957,7 @@ class JournalServices
             'General Journal - C&B Broiler Costing',
             'General Journal - C&B Layer Costing',
             'General Journal - C&B MPE',
+            'General Journal - C&B Amortization',
             'General Journal - C&B Delivery Variance',
             'General Journal - C&B Vam Costing',
             'General Journal - C&B Fresh Costing',
@@ -873,6 +965,7 @@ class JournalServices
             'General Journal - C&B Freebies',
             'General Journal - C&B Gen & Admin - General Account',
             'General Journal - C&B Trip Ticket',
+            'General Journal - C&B Accruals',
             'Prepayments - E-Pig Farms',
             'Prepayments - Food & Beverages',
             'Prepayments - Fresh Options',
@@ -924,5 +1017,4 @@ class JournalServices
             'MIR - Lodestar Feedmill and Veterinary Medicines'
         ])->toArray();
     }
-
 }

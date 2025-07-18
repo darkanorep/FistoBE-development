@@ -603,23 +603,23 @@ class DepartmentController extends Controller
             $name = $department['name'];
             $code = $department['code'];
             $deleted_at = $department['deleted_at'];
-            $business_unit_sync_id = $department['business_unit']['id'];
+//            $business_unit_sync_id = $department['business_unit']['id'];
 
-            $businessUnitExist = BusinessUnit::withTrashed()->where('sync_id', $business_unit_sync_id)->exists();
+//            $businessUnitExist = BusinessUnit::withTrashed()->where('sync_id', $business_unit_sync_id)->exists();
 
-            if (!$businessUnitExist) {
-                $errors[] = "Business Unit with ID {$businessUnitExist} does not exist.";
-                return; // Skip this iteration
-            }
+//            if (!$businessUnitExist) {
+//                $errors[] = "Business Unit with ID {$businessUnitExist} does not exist.";
+//                return; // Skip this iteration
+//            }
 
             Department::updateOrCreate([
                 'sync_id' => $sync_id,
-                'business_unit_sync_id' => $business_unit_sync_id,
+//                'business_unit_sync_id' => $business_unit_sync_id,
             ], [
                 'department' => $name,
                 'code' => $code,
                 'deleted_at' => $deleted_at ? now() : null,
-                'business_unit_sync_id' => $business_unit_sync_id,
+//                'business_unit_sync_id' => $business_unit_sync_id,
             ]);
         });
 

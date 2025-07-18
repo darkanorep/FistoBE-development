@@ -38,8 +38,8 @@ class BusinessUnitController extends Controller
                     "sync_id" => $value->sync_id,
                     "code" => $value->code,
                     "company" => [
-                        "id" => $value->company->id,
-                        "name" => $value->company->company,
+                        "id" => $value->company->id ?? null,
+                        "name" => $value->company->company ?? null,
                     ],
                     "business_unit" => $value->business_unit,
                     "associates" => $value->users->map(function ($user) {
@@ -141,23 +141,23 @@ class BusinessUnitController extends Controller
 
         collect($businessUnits)->each(function ($businessUnit) use (&$errors) {
             $sync_id = $businessUnit['id'];
-            $sync_company_id = $businessUnit['company_id'];
+//            $sync_company_id = $businessUnit['company_id'];
             $name = $businessUnit['name'];
             $code = $businessUnit['code'];
             $deleted_at = $businessUnit['deleted_at'];
 
             // Validate if the company_id exists in the database
-            $companyExists = Company::where('sync_id', $sync_company_id)->exists();
-
-            if (!$companyExists) {
-                $errors[] = "Company with ID {$sync_company_id} does not exist.";
-                return; // Skip this iteration
-            }
+//            $companyExists = Company::where('sync_id', $sync_company_id)->exists();
+//
+//            if (!$companyExists) {
+//                $errors[] = "Company with ID {$sync_company_id} does not exist.";
+//                return; // Skip this iteration
+//            }
 
             // Update or create the BusinessUnit
             BusinessUnit::updateOrCreate([
                 'sync_id' => $sync_id,
-                'company_sync_id' => $sync_company_id,
+//                'company_sync_id' => $sync_company_id,
                 'business_unit' => $name,
                 'code' => $code,
             ], [

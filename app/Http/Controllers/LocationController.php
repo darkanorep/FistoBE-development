@@ -594,13 +594,13 @@ class LocationController extends Controller
             $code = $location['code'];
             $locationName = $location['name']; // Use a different variable name
             $deleted_at = $location['deleted_at'];
-            $subUnits = collect($location['sub_units'])->pluck('id')->toArray();
+//            $subUnits = collect($location['sub_units'])->pluck('id')->toArray();
 
-            $subUnitExists = SubUnit::whereIn('id', $subUnits)->exists();
-            if (!$subUnitExists) {
-                $error[] = 'Sub unit not found.';
-                return;
-            }
+//            $subUnitExists = SubUnit::whereIn('id', $subUnits)->exists();
+//            if (!$subUnitExists) {
+//                $error[] = 'Sub unit not found.';
+//                return;
+//            }
 
             $locationModel = Location::updateOrCreate(
                 [
@@ -616,7 +616,7 @@ class LocationController extends Controller
                 ]
             );
 
-            $locationModel->subUnits()->syncWithoutDetaching($subUnits);
+//            $locationModel->subUnits()->syncWithoutDetaching($subUnits);
         });
 
         if (!empty($errors)) {

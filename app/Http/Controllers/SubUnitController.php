@@ -52,9 +52,9 @@ class SubUnitController extends Controller
                     'name' => $value->name,
                     'sync_id' => $value->sync_id,
                     'unit' => [
-                        'id' => $value->unit->id,
-                        'code' => $value->unit->code,
-                        'name' => $value->unit->name,
+                        'id' => $value->unit->id ?? null,
+                        'code' => $value->unit->code ?? null,
+                        'name' => $value->unit->name ?? null,
                     ],
                     'location' => $value->locations,
                     'updated_at' => $value->updated_at,
@@ -322,26 +322,26 @@ class SubUnitController extends Controller
         collect($subUnits)->each(function ($subUnit) use (&$errors) {
 
             $sync_id = $subUnit['id'];
-            $unit_sync_id = $subUnit['department_unit']['id'];
+//            $unit_sync_id = $subUnit['department_unit']['id'];
             $code = $subUnit['code'];
             $name = $subUnit['name'];
             $deleted_at = $subUnit['deleted_at'];
 
-            $existUnit = Unit::where('sync_id', $unit_sync_id)->exists();
-
-            if (!$existUnit) {
-                $errors[] = "Unit with ID {$unit_sync_id} does not exist.";
-                return;
-            }
+//            $existUnit = Unit::where('sync_id', $unit_sync_id)->exists();
+//
+//            if (!$existUnit) {
+//                $errors[] = "Unit with ID {$unit_sync_id} does not exist.";
+//                return;
+//            }
 
             SubUnit::updateOrCreate([
                 'sync_id' => $sync_id,
-                'unit_sync_id' => $unit_sync_id,
+//                'unit_sync_id' => $unit_sync_id,
                 'code' => $code,
                 'name' => $name,
             ], [
                 'sync_id' => $sync_id,
-                'unit_sync_id' => $unit_sync_id,
+//                'unit_sync_id' => $unit_sync_id,
                 'code' => $code,
                 'name' => $name,
                 'deleted_at' => $deleted_at ? now() : null,

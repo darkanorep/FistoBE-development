@@ -243,15 +243,15 @@ class UnitController extends Controller
             $sync_id = $unit['id'];
             $code = $unit['code'];
             $name = $unit['name'];
-            $department_sync_id = $unit['department']['id'];
+//            $department_sync_id = $unit['department']['id'];
             $deleted_at = $unit['deleted_at'];
 
-            $departmentExist = Department::where('sync_id', $department_sync_id)->exists();
+//            $departmentExist = Department::where('sync_id', $department_sync_id)->exists();
 
-            if (!$departmentExist) {
-                $errors[] = "Department with ID {$department_sync_id} does not exist.";
-                return; // Skip this iteration
-            }
+//            if (!$departmentExist) {
+//                $errors[] = "Department with ID {$department_sync_id} does not exist.";
+//                return; // Skip this iteration
+//            }
 
             Unit::updateOrCreate(
                 [
@@ -263,7 +263,7 @@ class UnitController extends Controller
                     'sync_id' => $sync_id,
                     'code' => $code,
                     'name' => $name,
-                    'department_sync_id' => $department_sync_id,
+//                    'department_sync_id' => $department_sync_id,
                     'deleted_at' => $deleted_at ? now() : null,
                 ]
             );
