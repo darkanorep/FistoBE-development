@@ -8,17 +8,33 @@ use Illuminate\Http\Request;
 
 class BookOfAccountController extends Controller
 {
-    public function index() {
+    public function index(Request $request) {
 
-        return BookOfAccount::with('permissions')
-            ->when(request()->input('status'), function ($query) {
-                return $query->whereNull('deleted_at');
+        $status = $request->input('status');
+        $rows = (int)$request->input('rows', 10);
+        $search = $request->input('search', '');
+        $paginate = $request->input('paginate', true);
+
+        $bookOfAccounts = BookOfAccount::with('permissions')
+            ->when(isset($status), function ($query) use ($status) {
+                return $status ? $query->whereNull('deleted_at') : $query->whereNotNull('deleted_at');
             })
-            ->when(request()->input('search'), function ($query) {
-                return $query->where('name', 'like', '%' . request()->input('search') . '%');
+            ->when($search, function ($query) use ($search) {
+                return $query->where('name', 'like', '%' . $search . '%');
             })
-            ->latest()
-            ->paginate(request()->input('rows', 10));
+            ->latest();
+
+        if ($paginate) {
+            $bookOfAccounts = $bookOfAccounts->paginate($rows);
+        } else {
+            $bookOfAccounts = $bookOfAccounts->get();
+        }
+
+        if (count($bookOfAccounts)) {
+            return $this->resultResponse("fetch", "Book of Accounts", $bookOfAccounts);
+        } else {
+            return $this->resultResponse("not-found", "Book of Accounts", []);
+        }
     }
 
     public function store(BookOfAccountRequest $request) {

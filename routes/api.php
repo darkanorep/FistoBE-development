@@ -105,6 +105,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         Route::get('cheque-types', [MasterlistController::class, 'chequeTypesDropdown']);
         Route::get('permissions', [\App\Http\Controllers\PermissionController::class, 'index']);
         Route::get('one-charging', [\App\Http\Controllers\ChargeController::class, 'index']);
+        Route::get(' ', [\App\Http\Controllers\BookOfAccountController::class, 'index']);
     });
 
     Route::group(["prefix" => "admin", "middleware" => ["auth" => "is_admin"]], function () {
@@ -369,11 +370,29 @@ Route::group(["middleware" => "auth:sanctum"], function () {
     Route::resource("cost-and-budget-journals", \App\Http\Controllers\CostAndBudgetJournalController::class);
     Route::post('update/cost-and-budget-journals/{id}', [\App\Http\Controllers\CostAndBudgetJournalController::class, 'updateGeneralJournal']);
 
+    //GENERAL JOURNAL - COST AND BUDGET 22
+    Route::patch('cost-and-budget-22-journals/post/{id}', [\App\Http\Controllers\CostAndBudget22JournalController::class, 'posted']);
+    Route::post("cost-and-budget-22-journals/import", [\App\Http\Controllers\CostAndBudget22JournalController::class, 'import']);
+    Route::resource("cost-and-budget-22-journals", \App\Http\Controllers\CostAndBudget22JournalController::class);
+    Route::post('update/cost-and-budget-22-journals/{id}', [\App\Http\Controllers\CostAndBudget22JournalController::class, 'updateGeneralJournal']);
+
+    //GENERAL JOURNAL - COST AND BUDGET 30
+    Route::patch('cost-and-budget-30-journals/post/{id}', [\App\Http\Controllers\CostAndBudget30JournalController::class, 'posted']);
+    Route::post("cost-and-budget-30-journals/import", [\App\Http\Controllers\CostAndBudget30JournalController::class, 'import']);
+    Route::resource("cost-and-budget-30-journals", \App\Http\Controllers\CostAndBudget30JournalController::class);
+    Route::post('update/cost-and-budget-30-journals/{id}', [\App\Http\Controllers\CostAndBudget30JournalController::class, 'updateGeneralJournal']);
+
     //GENERAL JOURNAL - FIXED ASSET
     Route::patch('fixed-asset-journals/post/{id}', [\App\Http\Controllers\FixedAssetJournalController::class, 'posted']);
     Route::post("fixed-asset-journals/import", [\App\Http\Controllers\FixedAssetJournalController::class, 'import']);
     Route::resource("fixed-asset-journals", \App\Http\Controllers\FixedAssetJournalController::class);
     Route::post('update/fixed-asset-journals/{id}', [\App\Http\Controllers\FixedAssetJournalController::class, 'updateGeneralJournal']);
+
+    //GENERAL JOURNAL - FIXED ASSET 22
+    Route::patch('fixed-asset-22-journals/post/{id}', [\App\Http\Controllers\FixedAsset22JournalController::class, 'posted']);
+    Route::post("fixed-asset-22-journals/import", [\App\Http\Controllers\FixedAsset22JournalController::class, 'import']);
+    Route::resource("fixed-asset-22-journals", \App\Http\Controllers\FixedAsset22JournalController::class);
+    Route::post('update/fixed-asset-22-journals/{id}', [\App\Http\Controllers\FixedAsset22JournalController::class, 'updateGeneralJournal']);
 
     //GENERAL JOURNAL - CONFIDENTIAL
     Route::patch('confidential-journals/post/{id}', [\App\Http\Controllers\ConfidentialJournalController::class, 'posted']);
@@ -442,9 +461,21 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         Route::get('cost-and-budget-journals', [\App\Http\Controllers\CostAndBudgetJournalController::class, 'indexForApproval']);
         Route::patch('cost-and-budget-journals/{id}', [\App\Http\Controllers\CostAndBudgetJournalController::class, 'action']);
 
+        //GENERAL JOURNAL - COST AND BUDGET 22
+        Route::get('cost-and-budget-22-journals', [\App\Http\Controllers\CostAndBudget22JournalController::class, 'indexForApproval']);
+        Route::patch('cost-and-budget-22-journals/{id}', [\App\Http\Controllers\CostAndBudget22JournalController::class, 'action']);
+
+        //GENERAL JOURNAL - COST AND BUDGET 30
+        Route::get('cost-and-budget-30-journals', [\App\Http\Controllers\CostAndBudget30JournalController::class, 'indexForApproval']);
+        Route::patch('cost-and-budget-30-journals/{id}', [\App\Http\Controllers\CostAndBudget30JournalController::class, 'action']);
+
         //GENERAL JOURNAL - FIXED ASSET
         Route::get('fixed-asset-journals', [\App\Http\Controllers\FixedAssetJournalController::class, 'indexForApproval']);
         Route::patch('fixed-asset-journals/{id}', [\App\Http\Controllers\FixedAssetJournalController::class, 'action']);
+
+        //GENERAL JOURNAL - FIXED ASSET 22
+        Route::get('fixed-asset-22-journals', [\App\Http\Controllers\FixedAsset22JournalController::class, 'indexForApproval']);
+        Route::patch('fixed-asset-22-journals/{id}', [\App\Http\Controllers\FixedAsset22JournalController::class, 'action']);
 
         //GENERAL JOURNAL - CONFIDENTIAL
         Route::get('confidential-journals', [\App\Http\Controllers\ConfidentialJournalController::class, 'indexForApproval']);

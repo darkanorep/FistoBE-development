@@ -505,9 +505,6 @@ class MasterlistController extends Controller
 
         $data = json_decode($transaction->body(), true);
 
-//        return $data;
-
-
         if (isset($data['result'])) {
             $data = $data['result'];
         } else {
