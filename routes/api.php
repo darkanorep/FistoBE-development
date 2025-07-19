@@ -105,7 +105,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         Route::get('cheque-types', [MasterlistController::class, 'chequeTypesDropdown']);
         Route::get('permissions', [\App\Http\Controllers\PermissionController::class, 'index']);
         Route::get('one-charging', [\App\Http\Controllers\ChargeController::class, 'index']);
-        Route::get(' ', [\App\Http\Controllers\BookOfAccountController::class, 'index']);
+        Route::get('book-of-accounts', [\App\Http\Controllers\BookOfAccountController::class, 'index']);
     });
 
     Route::group(["prefix" => "admin", "middleware" => ["auth" => "is_admin"]], function () {
