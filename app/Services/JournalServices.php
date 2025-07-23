@@ -833,7 +833,7 @@ class JournalServices
                         'name' => $journal['account_title']
                     ],
                     'company' => [
-                        'id' => $company->id,
+                        'id' => $company->id ?? null,
                         'code' => $journal['company_code'] ?? $company->code ?? null,
                         'name' => $journal['company']
                     ],
@@ -843,7 +843,7 @@ class JournalServices
                         'name' => $journal['business_unit']
                     ],
                     'department' => [
-                        'id' => $department->id,
+                        'id' => $department->id ?? null,
                         'code' => $journal['department_code'] ?? $department->code ?? null,
                         'name' => $journal['department']
                     ],
@@ -858,7 +858,7 @@ class JournalServices
                         'name' => $journal['sub_unit'],
                     ],
                     'location' => [
-                        'id' => $location->id,
+                        'id' => $location->id ?? null,
                         'code' => $journal['location_code'] ?? $location->code ?? null,
                         'name' => $journal['location']
                     ],

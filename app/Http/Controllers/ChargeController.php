@@ -57,6 +57,42 @@ class ChargeController extends Controller
         }
     }
 
+    public function sync_from_one_rdf(Request $request) {
+        $data = $request->all();
+        $errors = [];
+
+        foreach ($data as $item) {
+            Charge::updateOrCreate(
+                ['sync_id' => $item['sync_id']],
+                [
+                    'code' => $item['code'] ?? null,
+                    'name' => $item['name'] ?? null,
+                    'company_id' => $this->companies->where('name', $item['company_name'])->first()->id ?? null,
+                    'company_code' => $item['company_code'] ?? null,
+                    'company_name' => $item['company_name'] ?? null,
+                    'business_unit_id' => $this->businessUnits->where('name', $item['business_unit_name'])->first()->id ?? null,
+                    'business_unit_code' => $item['business_unit_code'] ?? null,
+                    'business_unit_name' => $item['business_unit_name'] ?? null,
+                    'department_id' => $this->departments->where('name', $item['department_name'])->first()->id ?? null,
+                    'department_code' => $item['department_code'] ?? null,
+                    'department_name' => $item['department_name'] ?? null,
+                    'unit_id' => $this->units->where('name', $item['unit_name'])->first()->id ?? null,
+                    'unit_code' => $item['unit_code'] ?? null,
+                    'unit_name' => $item['unit_name'] ?? null,
+                    'sub_unit_id' => $this->subUnits->where('name', $item['sub_unit_name'])->first()->id ?? null,
+                    'sub_unit_code' => $item['sub_unit_code'] ?? null,
+                    'sub_unit_name' => $item['sub_unit_name'] ?? null,
+                    'location_id' => $this->locations->where('name', $item['location_name'])->first()->id ?? null,
+                    'location_code' => $item['location_code'] ?? null,
+                    'location_name' => $item['location_name'] ?? null,
+                ]
+            );
+        }
+
+        return response()->json([
+            'message' => 'Charges successfully saved.'
+        ], 200);
+    }
     public function store(Request $request) {
         $data = $request->all();
         $errors = [];
@@ -106,9 +142,9 @@ class ChargeController extends Controller
             ], 422);
         }
 
-        return response()->json([
-            'message' => 'Charges successfully saved.'
-        ], 200);
+            return response()->json([
+                'message' => 'Charges successfully saved.'
+            ], 200);
     }
 
     public function show($id) {

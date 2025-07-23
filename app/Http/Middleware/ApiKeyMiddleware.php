@@ -18,8 +18,9 @@ class ApiKeyMiddleware
     public function handle(Request $request, Closure $next)
     {
         $apiKey = $request->header('X-API-KEY');
+        $apiKeyv2 = $request->header('api-key');
 
-        if ($apiKey !== Config::get('app.api_key')) {
+        if ($apiKey !== Config::get('app.api_key') && $apiKeyv2 !== Config::get('app.api_key')) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 

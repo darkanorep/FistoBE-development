@@ -53,10 +53,10 @@ Route::get("/genus", [MasterlistController::class, "genus_orders"]);
 Route::get('/ymir', [MasterlistController::class, 'projectYmir']);
 
 
-//Route::middleware('api.key')->group(function () {
+Route::middleware('api.key')->group(function () {
 //    Route::patch('one-charging/{id}', [\App\Http\Controllers\ChargeController::class, 'change_status']);
-//    Route::resource('one-charging', \App\Http\Controllers\ChargeController::class)->only(['index', 'store']);
-//});
+    Route::post('sync_from_one_rdf', [\App\Http\Controllers\ChargeController::class, 'sync_from_one_rdf']);
+});
 
 //Route::get('fix-year', [TransactionController::class, 'fixYearFormat']);
 // Protected Routes
