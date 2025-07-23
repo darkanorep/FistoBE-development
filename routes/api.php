@@ -400,6 +400,12 @@ Route::group(["middleware" => "auth:sanctum"], function () {
     Route::resource("confidential-journals", \App\Http\Controllers\ConfidentialJournalController::class);
     Route::post('update/confidential-journals/{id}', [\App\Http\Controllers\ConfidentialJournalController::class, 'updateGeneralJournal']);
 
+    //GENERAL JOURNAL - CONFIDENTIAL 22
+    Route::patch('confidential-22-journals/post/{id}', [\App\Http\Controllers\Confidential22JournalController::class, 'posted']);
+    Route::post("confidential-22-journals/import", [\App\Http\Controllers\Confidential22JournalController::class, 'import']);
+    Route::resource("confidential-22-journals", \App\Http\Controllers\Confidential22JournalController::class);
+    Route::post('update/confidential-22-journals/{id}', [\App\Http\Controllers\Confidential22JournalController::class, 'updateGeneralJournal']);
+
     //GENERAL JOURNAL - SALES
     Route::patch('sales-journals/post/{id}', [\App\Http\Controllers\SalesJournalController::class, 'posted']);
     Route::post("sales-journals/import", [\App\Http\Controllers\SalesJournalController::class, 'import']);
@@ -480,6 +486,10 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         //GENERAL JOURNAL - CONFIDENTIAL
         Route::get('confidential-journals', [\App\Http\Controllers\ConfidentialJournalController::class, 'indexForApproval']);
         Route::patch('confidential-journals/{id}', [\App\Http\Controllers\ConfidentialJournalController::class, 'action']);
+
+        //GENERAL JOURNAL - CONFIDENTIAL 22
+        Route::get('confidential-22-journals', [\App\Http\Controllers\Confidential22JournalController::class, 'indexForApproval']);
+        Route::patch('confidential-22-journals/{id}', [\App\Http\Controllers\Confidential22JournalController::class, 'action']);
 
         //GENERAL JOURNAL - SALES
         Route::get('sales-journals', [\App\Http\Controllers\SalesJournalController::class, 'indexForApproval']);
