@@ -358,11 +358,18 @@ Route::group(["middleware" => "auth:sanctum"], function () {
     Route::post('update/accruals/{id}', [\App\Http\Controllers\AccrualsController::class, 'updateAccruals']);
 //    Route::patch('accruals/reverse/{id}', [\App\Http\Controllers\AccrualsController::class, 'reverse']);
 
+    //GENERAL JOURNAL - TREASURY 12
+    Route::patch('treasury-12-journals/post/{id}', [\App\Http\Controllers\TreasuryJournalController::class, 'posted']);
+    Route::post("treasury-12-journals/import", [\App\Http\Controllers\TreasuryJournalController::class, 'import']);
+    Route::resource("treasury-12-journals", \App\Http\Controllers\TreasuryJournalController::class);
+    Route::post('update/treasury-12-journals/{id}', [\App\Http\Controllers\TreasuryJournalController::class, 'updateGeneralJournal']);
+
+    //GENERAL JOURNAL - TREASURY 22
+    Route::patch('treasury-22-journals/post/{id}', [\App\Http\Controllers\Treasury22JournalController::class, 'posted']);
+    Route::post("treasury-22-journals/import", [\App\Http\Controllers\Treasury22JournalController::class, 'import']);
+    Route::resource("treasury-22-journals", \App\Http\Controllers\Treasury22JournalController::class);
+
     //GENERAL JOURNAL - TREASURY
-    Route::patch('treasury-journals/post/{id}', [\App\Http\Controllers\TreasuryJournalController::class, 'posted']);
-    Route::post("treasury-journals/import", [\App\Http\Controllers\TreasuryJournalController::class, 'import']);
-    Route::resource("treasury-journals", \App\Http\Controllers\TreasuryJournalController::class);
-    Route::post('update/treasury-journals/{id}', [\App\Http\Controllers\TreasuryJournalController::class, 'updateGeneralJournal']);
 
     //GENERAL JOURNAL - COST AND BUDGET
     Route::patch('cost-and-budget-journals/post/{id}', [\App\Http\Controllers\CostAndBudgetJournalController::class, 'posted']);
@@ -448,6 +455,12 @@ Route::group(["middleware" => "auth:sanctum"], function () {
     Route::resource("pcf-journals", \App\Http\Controllers\PcfJournalController::class);
     Route::post('update/pcf-journals/{id}', [\App\Http\Controllers\PcfJournalController::class, 'updateGeneralJournal']);
 
+    //GENERAL JOURNAL - ACCRUAL REVERSAL
+    Route::patch('accrual-reversal-journals/post/{id}', [\App\Http\Controllers\AccrualReversalJournalsController::class, 'posted']);
+    Route::post("accrual-reversal-journals/import", [\App\Http\Controllers\AccrualReversalJournalsController::class, 'import']);
+    Route::resource("accrual-reversal-journals", \App\Http\Controllers\AccrualReversalJournalsController::class);
+    Route::post('update/accrual-reversal-journals/{id}', [\App\Http\Controllers\AccrualReversalJournalsController::class, 'updateGeneralJournal']);
+
     //JOURNALS FOR APPROVAL
     Route::group(['prefix' => 'journal-books'], function () {
 
@@ -459,9 +472,13 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         Route::get('accruals', [\App\Http\Controllers\AccrualsController::class, 'indexForApproval']);
         Route::patch('accruals/{id}', [\App\Http\Controllers\AccrualsController::class, 'action']);
 
-        //GENERAL JOURNAL - TREASURY
-        Route::get('treasury-journals', [\App\Http\Controllers\TreasuryJournalController::class, 'indexForApproval']);
-        Route::patch('treasury-journals/{id}', [\App\Http\Controllers\TreasuryJournalController::class, 'action']);
+        //GENERAL JOURNAL - TREASURY 12
+        Route::get('treasury-12-journals', [\App\Http\Controllers\TreasuryJournalController::class, 'indexForApproval']);
+        Route::patch('treasury-12-journals/{id}', [\App\Http\Controllers\TreasuryJournalController::class, 'action']);
+
+        //GENERAL JOURNAL - TREASURY 22
+        Route::get('treasury-22-journals', [\App\Http\Controllers\Treasury22JournalController::class, 'indexForApproval']);
+        Route::patch('treasury-22-journals/{id}', [\App\Http\Controllers\Treasury22JournalController::class, 'action']);
 
         //GENERAL JOURNAL - COST AND BUDGET
         Route::get('cost-and-budget-journals', [\App\Http\Controllers\CostAndBudgetJournalController::class, 'indexForApproval']);
@@ -518,6 +535,10 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         //GENERAL JOURNAL - PCF
         Route::get('pcf-journals', [\App\Http\Controllers\PcfJournalController::class, 'indexForApproval']);
         Route::patch('pcf-journals/{id}', [\App\Http\Controllers\PcfJournalController::class, 'action']);
+
+        //GENERAL JOURNAL - ACCRUAL REVERSAL
+        Route::get('accrual-reversal-journals', [\App\Http\Controllers\AccrualReversalJournalsController::class, 'indexForApproval']);
+        Route::patch('accrual-reversal-journals/{id}', [\App\Http\Controllers\AccrualReversalJournalsController::class, 'action']);
     });
 
     Route::resource("transactions", TransactionController::class);

@@ -607,12 +607,12 @@ class JournalServices
 
     }
 
-    public function updateGeneralJournal($id, $request)
+    public function updateGeneralJournal($request, $id)
     {
-        $generalJournal = $this->model::find($id);
+        $generalJournal = $this->model::find($id)->first()->batch_no;
 
         if ($generalJournal) {
-            $this->model::where('batch_no', $generalJournal->batch_no)->forceDelete();
+            $this->model::where('batch_no', $generalJournal)->forceDelete();
 //            $generalJournal->media()->delete();
         }
 
