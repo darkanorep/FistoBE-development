@@ -71,6 +71,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
     Route::post("users/username-validation", [UserController::class, "username_validation"]);
     Route::post("users/id-validation", [UserController::class, "id_validation"]);
     Route::get("/official-transactions", [TransactionController::class, "officialTransactions"]); // GIZMO API
+    Route::get('chatbot/query', [\App\Http\Controllers\ChatBotController::class, 'handleQuery']);
 
     Route::group(["prefix" => "dropdown"], function () {
         Route::get("payroll-categories/", [PayrollCategoryController::class, "index"]);
