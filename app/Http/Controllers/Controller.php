@@ -19,7 +19,12 @@ use App\Methods\GenericMethod;
 class Controller extends BaseController
 {
   use AuthorizesRequests, DispatchesJobs, ValidatesRequests;
-
+    public function getDateEveryStatus($transaction, $status)
+    {
+        return $transaction->filter(function ($item) use ($status) {
+            return $item->status == $status;
+        })->first()->created_at ?? null;
+    }
   public function result($code, $message, $data)
   {
     $arrayResponse = [

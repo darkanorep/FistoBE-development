@@ -586,7 +586,6 @@ Route::group(["middleware" => "auth:sanctum"], function () {
 
             //REPORT
             Route::get('cash-outflow-report', [TransactionController::class, 'cashOutflowReport']);
-            Route::get('report', [TransactionController::class, 'generateAPReport']);
 
             //SPECIAL CASE
             Route::get('search-cheque', [TransactionController::class, 'searchBankCheque']);
@@ -603,6 +602,13 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         Route::post("download", [CounterReceiptController::class, "download"]);
         Route::post("validate", [CounterReceiptController::class, "check"]);
         Route::post("flow/{id}", [CounterReceiptController::class, "flow"]);
+    });
+
+    Route::group(['prefix' => 'report'], function () {
+        Route::get('creation-of-cheque', [\App\Http\Controllers\ReportController::class, 'creationOfCheque']);
+        Route::get('corporate-transmittal', [\App\Http\Controllers\ReportController::class, 'corporateTransmittal']);
+        Route::get('treasury-releasing', [\App\Http\Controllers\ReportController::class, 'treasuryReleasing']);
+        Route::get('cheque-created', [\App\Http\Controllers\ReportController::class, 'chequeCreated']);
     });
 
     //SETTINGS

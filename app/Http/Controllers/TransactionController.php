@@ -5602,6 +5602,7 @@ class TransactionController extends Controller
                     "no" => $transaction->voucher_no,
                     "month" => $transaction->voucher_month,
                 ],
+                "voucher_month" => $transaction->voucher_month,
                 "cheques" => $cheques->load('bank')->map(function ($item) {
                     return [
                         "type" => $item->entry_type,

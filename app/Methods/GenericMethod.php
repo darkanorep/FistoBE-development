@@ -21,7 +21,9 @@ use App\Models\Gas;
 use App\Models\Issue;
 use App\Models\Location;
 use App\Models\POBatch;
+use App\Models\PurchaseOrders;
 use App\Models\Reason;
+use App\Models\ReceivedReceipt;
 use App\Models\ReferrenceBatch;
 use App\Models\RequestorLogs;
 use App\Models\Reverse;
@@ -1007,6 +1009,11 @@ class GenericMethod
                     : null,
                 "is_default" => $specific_account_title["is_default"] ?? null,
             ]);
+
+            if ($purchase_order_id) {
+                $po = PurchaseOrders::where('id', $purchase_order_id)->first();
+                ReceivedReceipt::where('id', $po->received_receipt_id)->delete();
+            }
         }
     }
 
