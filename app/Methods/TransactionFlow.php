@@ -488,6 +488,8 @@ class TransactionFlow
                 $transaction->account_titles()->delete();
                 $transaction->treasuryCheque()->forceDelete();
                 $transaction->treasuryAccountTitle()->delete();
+//
+//                return $transaction->receivedReceipts()->with('purchaseOrders')->get();
 
 //        $voucher_no = $generic->generateVoucherNo($transaction->id);
 

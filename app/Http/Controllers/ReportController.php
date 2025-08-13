@@ -11,8 +11,9 @@ class ReportController extends Controller
 {
   public function creationOfCheque(Request $request)
   {
-    $from = $request->input("from", Carbon::now()->format("Y-m"));
-    $to = $request->input("to", Carbon::now()->format("Y-m"));
+      $from = $request->input("from", Carbon::now()->format("Y-m-d"));
+      $to = $request->input("to", Carbon::now()->format("Y-m-d"));
+
     $page = max(1, (int) $request->input("page", 1));
     $rows = max(1, (int) $request->input("rows", 10));
     $paginate = $request->input("paginate", true);
@@ -21,6 +22,7 @@ class ReportController extends Controller
       DB::raw("
         SELECT
             transactions.voucher_no,
+            transactions.voucher_month,
             transactions.tag_no,
             transactions.receipt_type,
             transactions.deleted_at,
@@ -29,6 +31,7 @@ class ReportController extends Controller
             e.amount AS net_amount,
             transactions.transaction_type,
             b.date_vouchered,
+            f.date_transmitted,
             users.first_name,
             users.last_name
         FROM transactions
@@ -45,14 +48,22 @@ class ReportController extends Controller
             FROM voucher_account_title d
             WHERE d.account_title_name LIKE '%Accounts Payable%'
         ) e ON b.id = e.associate_id
+
+            LEFT JOIN (
+            SELECT MAX(e.id) AS id, e.transaction_id, MAX(e.created_at) AS date_transmitted
+            FROM transmit e
+            WHERE status = 'transmit-transmit'
+            GROUP BY e.transaction_id
+        ) f ON transactions.id = f.transaction_id
+
         LEFT JOIN users ON transactions.assigned_id = users.id
         WHERE transactions.deleted_at IS NULL
           AND transactions.state != 'void'
-          AND (
-                (status IN ('transmit-transmit', 'audit-return', 'release-return', 'file-return') AND transactions.document_id != 8)
-                OR status = 'inspect-inspect'
-            )
-          AND DATE_FORMAT(transactions.voucher_month, '%Y-%m') BETWEEN :from AND :to
+         AND (
+               (status IN ('transmit-transmit', 'audit-return', 'release-return', 'file-return') AND transactions.document_id != 8)
+               OR status = 'inspect-inspect'
+         )
+        AND DATE_FORMAT(transactions.voucher_month, '%Y-%m-%d') BETWEEN :from AND :to
     "),
       [
         "from" => $from,
@@ -81,13 +92,13 @@ class ReportController extends Controller
 
   public function corporateTransmittal(Request $request)
   {
-    $from = $request->input("from", Carbon::now()->format("Y-m"));
-    $to = $request->input("to", Carbon::now()->format("Y-m"));
+    $from = $request->input("from", Carbon::now()->format("Y-m-d"));
+    $to = $request->input("to", Carbon::now()->format("Y-m-d"));
     $page = max(1, (int) $request->input("page", 1));
     $rows = max(1, (int) $request->input("rows", 10));
     $paginate = $request->input("paginate", true);
 
-    $result = DB::select(
+     $result = DB::select(
       DB::raw("
         SELECT
             MAX(a.id) AS id,
@@ -96,12 +107,14 @@ class ReportController extends Controller
             MAX(a.supplier) AS supplier,
             MAX(a.deleted_at) AS deleted_at,
             MAX(a.voucher_no) AS voucher_no,
+            MAX(a.voucher_month) AS voucher_month,
             MAX(a.status) AS status,
             c.bank_name,
             c.cheque_no,
             MAX(c.cheque_amount) AS cheque_amount,
             MAX(c.cheque_date) AS cheque_date,
-            MAX(f.created_at) AS date_vouchered
+            MAX(f.created_at) AS date_vouchered,
+            MAX(h.date_transmitted) as date_transmitted
         FROM transactions a
         LEFT JOIN (
             SELECT
@@ -117,6 +130,15 @@ class ReportController extends Controller
             FROM associates e
             WHERE status = 'voucher-voucher'
         ) f ON a.id = f.transaction_id
+
+
+        LEFT JOIN (
+            SELECT MAX(g.id) as id, g.transaction_id, MAX(g.created_at) AS date_transmitted
+            FROM executives g
+            WHERE status = 'executive-executive'
+            GROUP BY g.transaction_id
+        ) h ON a.id = h.transaction_id
+
         WHERE a.deleted_at IS NULL
           AND (
                 a.status = 'executive-executive'
@@ -125,7 +147,7 @@ class ReportController extends Controller
           AND a.state != 'void'
           AND c.cheque_date IS NULL
           AND a.deleted_at IS NULL
-          AND DATE_FORMAT(a.voucher_month, '%Y-%m') BETWEEN :from AND :to
+          AND DATE_FORMAT(a.voucher_month, '%Y-%m-%d') BETWEEN :from AND :to
         GROUP BY c.cheque_no, c.bank_name
     "),
       [
@@ -155,8 +177,8 @@ class ReportController extends Controller
 
   public function treasuryReleasing(Request $request)
   {
-    $from = $request->input("from", Carbon::now()->format("Y-m"));
-    $to = $request->input("to", Carbon::now()->format("Y-m"));
+    $from = $request->input("from", Carbon::now()->format("Y-m-d"));
+    $to = $request->input("to", Carbon::now()->format("Y-m-d"));
     $page = max(1, (int) $request->input("page", 1));
     $rows = max(1, (int) $request->input("rows", 10));
     $paginate = $request->input("paginate", true);
@@ -170,6 +192,7 @@ class ReportController extends Controller
                     MAX(a.supplier) AS supplier,
                     MAX(a.deleted_at) AS deleted_at,
                     MAX(a.voucher_no) AS voucher_no,
+                    MAX(a.voucher_month) AS voucher_month,
                     MAX(a.status) AS status,
                     c.bank_name,
                     c.cheque_no,
@@ -205,15 +228,15 @@ class ReportController extends Controller
                     WHERE status = 'voucher-voucher'
                 ) f ON a.id = f.transaction_id
                 WHERE a.deleted_at IS NULL
-                  AND (
-                        a.status = 'issue-issue'
-                        OR a.status = 'release-receive'
-                    )
+                AND (
+                       a.status = 'issue-issue'
+                       OR a.status = 'release-receive'
+                  )
                   AND a.state != 'void'
                   AND c.cheque_date IS NOT NULL
                   AND c.deleted_at IS NULL
                   AND a.deleted_at IS NULL
-                  AND DATE_FORMAT(a.voucher_month, '%Y-%m') BETWEEN :from AND :to
+                  AND DATE_FORMAT(a.voucher_month, '%Y-%m-%d') BETWEEN :from AND :to
                 GROUP BY c.cheque_no, c.bank_name
             "),
       [
