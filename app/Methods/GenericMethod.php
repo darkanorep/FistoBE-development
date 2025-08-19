@@ -940,6 +940,7 @@ class GenericMethod
             $bank_id = $specific_account_title['account_title']['bank_id'] ?? null;
             $po_number = $specific_account_title["po_number"] ?? null;
             $jo_number = $specific_account_title["jo_number"] ?? null;
+            $batch_no = $specific_account_title["batch_no"] ?? null;
 
             $entry = $specific_account_title["entry"];
             $account_title_id = isset($specific_account_title["account_title"]["id"])
@@ -959,6 +960,7 @@ class GenericMethod
                 "treasury_id" => $treasury_id,
                 "purchase_order_id" => $purchase_order_id ?? null,
                 "job_order_id" => $job_order_id ?? null,
+                "batch_no" => $batch_no ?? null,
                 "bank_id" => $bank_id,
                 "entry" => $entry,
                 "account_title_id" => $account_title_id,
