@@ -230,7 +230,7 @@ class Transaction extends Model
     public function chequeHistory() {
         return $this->hasMany(Treasury::class, "transaction_id", "id")
             ->where('status', 'cheque-cheque')
-            ->select('transaction_id', 'status', 'created_at')
+            ->select('transaction_id', 'status', 'created_at', 'batch_no')
             ->latest();
     }
 
@@ -696,5 +696,11 @@ class Transaction extends Model
         return $this->belongsTo(UtilityLocation::class, 'utilities_location_id', 'id')
             ->withTrashed()
             ->select('id','location');
+    }
+
+    public function businessUnit()
+    {
+        return $this->belongsTo(BusinessUnit::class, 'business_unit_id', 'id')
+            ->withTrashed();
     }
 }

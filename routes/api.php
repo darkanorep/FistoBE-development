@@ -607,8 +607,12 @@ Route::group(["middleware" => "auth:sanctum"], function () {
     Route::group(['prefix' => 'report'], function () {
         Route::get('creation-of-cheque', [\App\Http\Controllers\ReportController::class, 'creationOfCheque']);
         Route::get('corporate-transmittal', [\App\Http\Controllers\ReportController::class, 'corporateTransmittal']);
+        Route::get('pending-treasury-releasing', [\App\Http\Controllers\ReportController::class, 'pendingReleaseToTagging']);
         Route::get('treasury-releasing', [\App\Http\Controllers\ReportController::class, 'treasuryReleasing']);
+        Route::get('pending-tagging-releasing', [\App\Http\Controllers\ReportController::class, 'pendingReleaseToSupplier']);
+        Route::get('tagging-releasing', [\App\Http\Controllers\ReportController::class, 'taggingReleasing']);
         Route::get('cheque-created', [\App\Http\Controllers\ReportController::class, 'chequeCreated']);
+        Route::get('cheque-cleared', [\App\Http\Controllers\ReportController::class, 'chequeCleared']);
     });
 
     //SETTINGS
