@@ -57,6 +57,7 @@ class MasterlistController extends Controller
     private $unit;
     private $sub_unit;
     private $charge;
+    private $supplier;
 
     public function __construct()
     {
@@ -68,6 +69,7 @@ class MasterlistController extends Controller
         $this->location = Location::select('id', 'location', 'sync_id')->withTrashed()->get();
         $this->account_title = AccountTitle::select('id', 'title', 'code')->withTrashed()->get();
         $this->charge = Charge::withTrashed()->get();
+        $this->supplier = Supplier::withTrashed()->get();
     }
     public function documentDropdown()
     {
@@ -547,6 +549,15 @@ class MasterlistController extends Controller
                                 'po_description' => $rr['po_transaction']['po_description'],
                                 'type_name' => $rr['po_transaction']['type_name'],
                                 'po_amount' => $rr['po_transaction']['total_item_price'],
+                                'supplier' => [
+                                    'id' => $this->supplier->where('name', $rr['po_transaction']['supplier_name'])
+                                            ->first()
+                                            ->id ?? null,
+                                    'references' => $this->supplier->where('name', $rr['po_transaction']['supplier_name'])
+                                        ->load('references')
+                                        ->first()->references ?? null,
+                                    'name' => $rr['po_transaction']['supplier_name'],
+                                ],
                                 'one_charging' => [
                                     'charge_id' => $charge->id ?? null,
                                     'charge_name' => $charge->name ?? null,
@@ -678,6 +689,15 @@ class MasterlistController extends Controller
                                     'po_description' => $rr['po_transaction']['po_description'],
                                     'type_name' => $rr['po_transaction']['type_name'],
                                     'po_amount' => $rr['po_transaction']['total_item_price'],
+                                    'supplier' => [
+                                        'id' => $this->supplier->where('name', $rr['po_transaction']['supplier_name'])
+                                                ->first()
+                                                ->id ?? null,
+                                        'references' => $this->supplier->where('name', $rr['po_transaction']['supplier_name'])
+                                                ->load('references')
+                                                ->first()->references ?? null,
+                                        'name' => $rr['po_transaction']['supplier_name'],
+                                    ],
                                     'one_charging' => [
                                         'charge_id' => $charge->id ?? null,
                                         'charge_name' => $charge->name ?? null,

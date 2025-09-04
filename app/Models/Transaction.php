@@ -688,7 +688,7 @@ class Transaction extends Model
 
     public function receivedReceipts()
     {
-        return $this->hasMany(ReceivedReceipt::class, 'transaction_id', 'id');
+        return $this->hasMany(ReceivedReceipt::class, 'transaction_id', 'id')->withTrashed();
     }
 
     public function utilityLocation()

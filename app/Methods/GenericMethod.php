@@ -1093,10 +1093,10 @@ class GenericMethod
                     ]);
             }
 
-            if ($purchase_order_id) {
-                $po = PurchaseOrders::where('id', $purchase_order_id)->first();
-                ReceivedReceipt::where('id', $po->received_receipt_id)->delete();
-            }
+//            if ($purchase_order_id) {
+//                $po = PurchaseOrders::where('id', $purchase_order_id)->first();
+//                ReceivedReceipt::where('id', $po->received_receipt_id)->delete();
+//            }
         }
     }
 

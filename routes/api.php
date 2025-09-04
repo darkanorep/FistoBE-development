@@ -336,6 +336,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
 
     Route::get('/status-transactions-count', [TransactionController::class, 'statusTransactionCounter']);
     Route::get('/status-cheques-count', [TransactionController::class, 'statusChequeCounter']);
+    Route::get('/status-journals-count', [TransactionController::class, 'statusJournalsCounter']);
     Route::get("transactions-history", [TransactionController::class, "history"]);
     Route::get("transactions-history-export", [TransactionController::class, "exportHistory"]);
     Route::get("cheques-history", [TransactionController::class, "historyChequeIndex"]);

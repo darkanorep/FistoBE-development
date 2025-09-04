@@ -117,6 +117,7 @@ class TransactionVoucherResource extends JsonResource
                             'code' => $item->sub_unit_code,
                             'name' => $item->sub_unit_name,
                         ],
+                        'batch_no' => $item->batch_no,
                         'is_default' => $item->is_default
                     ];
                 });

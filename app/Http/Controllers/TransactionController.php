@@ -1205,7 +1205,7 @@ class TransactionController extends Controller
         $receivedReceiptsCount = $transaction->receivedReceipts()->pluck('rr_id')->unique()->count();
 
         $purchase_order = $receivedReceiptsCount != 1
-            ? $receivedReceipts && !$receivedReceipts->purchaseOrders->isEmpty()
+            ? $receivedReceipts && !$receivedReceipts->purchaseOrders()->withTrashed()->isEmpty()
                 ? $transaction->receivedReceipts->map(function ($item) use ($transaction) {
                     return [
                         'is_new_po' => true,
@@ -1227,7 +1227,7 @@ class TransactionController extends Controller
                                         'code' => $rr->uom_code,
                                         'name' => $rr->uom_name,
                                     ],
-                                    'po_transaction' => $rr->purchaseOrders->map(function ($po) {
+                                    'po_transaction' => $rr->purchaseOrders()->withTrashed()->get()->map(function ($po) {
                                         return [
                                             'purchase_order_id' => $po->id,
                                             'po_year_number_id' => $po->po_number,
@@ -1277,7 +1277,7 @@ class TransactionController extends Controller
                     ];
                 })->values()
                 : []
-            : $receivedReceipts && !$receivedReceipts->purchaseOrders->isEmpty()
+            : $receivedReceipts && !$receivedReceipts->purchaseOrders()->withTrashed()->get()->isEmpty()
                 ? $transaction->receivedReceipts->map(function ($item) use ($transaction) {
                     return [
                         'is_new_po' => true,
@@ -1299,7 +1299,7 @@ class TransactionController extends Controller
                                         'code' => $rr->uom_code,
                                         'name' => $rr->uom_name,
                                     ],
-                                    'po_transaction' => $rr->purchaseOrders->map(function ($po) {
+                                    'po_transaction' => $rr->purchaseOrders()->withTrashed()->get()->map(function ($po) {
                                         return [
                                             'purchase_order_id' => $po->id,
                                             'po_year_number_id' => $po->po_number,
@@ -1419,80 +1419,83 @@ class TransactionController extends Controller
 //                                    })
 //                                ]
 //                            ];
-//                        })->values()
+//                        })
 //                    ];
-//                })
+//                })->values()
 //                : []
 //            : $receivedReceipts && !$receivedReceipts->purchaseOrders->isEmpty()
-//                ? array($transaction->receivedReceipts->map(function ($item) use ($transaction) {
-//                return [
-//                    'is_new_po' => true,
-//                    'id' => $item->rr_id,
-//                    'rr_year_number_id' => $item->rr_number,
-//                    'rr_orders' => $transaction->receivedReceipts->map(function ($rr) use ($item) {
-//                        return [
-//                            'item_code' => $rr->item_code,
-//                            'item_name' => $rr->item_name,
-//                            'quantity_receive' => $rr->quantity,
-//                            'order' => [
+//                ? $transaction->receivedReceipts->map(function ($item) use ($transaction) {
+//                    return [
+//                        'is_new_po' => true,
+//                        'id' => $item->rr_id,
+//                        'rr_year_number_id' => $item->rr_number,
+//                        'rr_orders' => $transaction->receivedReceipts->filter(function ($rr) use ($item) {
+//                            return $rr->rr_id == $item->rr_id;
+//                        })->map(function ($rr) {
+//                            return [
 //                                'item_code' => $rr->item_code,
 //                                'item_name' => $rr->item_name,
-//                                'price' => $rr->price,
-//                                'reference_no' => $rr->reference_no,
-//                                'uom' => [
-//                                    'code' => $rr->uom_code,
-//                                    'name' => $rr->uom_name,
-//                                ],
-//                                'po_transaction' => $rr->purchaseOrders->map(function ($po) {
-//                                    return [
-//                                        'purchase_order_id' => $po->id,
-//                                        'po_year_number_id' => $po->po_number,
-//                                        'po_description' => $po->po_description,
-//                                        'type_name' => $po->type_name,
-//                                        'po_amount' => $po->po_amount,
-//                                        'company' => [
-//                                            'id' => $po->company_id,
-//                                            'code' => $po->company_code,
-//                                            'name' => $po->company_name,
-//                                        ],
-//                                        'business_unit' => [
-//                                            'id' => $po->business_unit_id,
-//                                            'code' => $po->business_unit_code,
-//                                            'name' => $po->business_unit_name,
-//                                        ],
-//                                        'department' => [
-//                                            'id' => $po->department_id,
-//                                            'code' => $po->department_code,
-//                                            'name' => $po->department_name,
-//                                        ],
-//                                        'unit' => [
-//                                            'id' => $po->unit_id,
-//                                            'code' => $po->unit_code,
-//                                            'name' => $po->unit_name,
-//                                        ],
-//                                        'sub_unit' => [
-//                                            'id' => $po->sub_unit_id,
-//                                            'code' => $po->sub_unit_code,
-//                                            'name' => $po->sub_unit_name,
-//                                        ],
-//                                        'location' => [
-//                                            'id' => $po->location_id,
-//                                            'code' => $po->location_code,
-//                                            'name' => $po->location_name,
-//                                        ],
-//                                        'account_title' => [
-//                                            'id' => $po->account_title_id,
-//                                            'code' => $po->account_title_code,
-//                                            'name' => $po->account_title_name,
-//                                        ],
-//                                    ];
-//                                })
-//                            ]
-//                        ];
-//                    })
-//                ];
-//            })->first())
+//                                'quantity_receive' => $rr->quantity,
+//                                'order' => [
+//                                    'item_code' => $rr->item_code,
+//                                    'item_name' => $rr->item_name,
+//                                    'price' => $rr->price,
+//                                    'reference_no' => $rr->reference_no,
+//                                    'uom' => [
+//                                        'code' => $rr->uom_code,
+//                                        'name' => $rr->uom_name,
+//                                    ],
+//                                    'po_transaction' => $rr->purchaseOrders->map(function ($po) {
+//                                        return [
+//                                            'purchase_order_id' => $po->id,
+//                                            'po_year_number_id' => $po->po_number,
+//                                            'po_description' => $po->po_description,
+//                                            'type_name' => $po->type_name,
+//                                            'po_amount' => $po->po_amount,
+//                                            'company' => [
+//                                                'id' => $po->company_id,
+//                                                'code' => $po->company_code,
+//                                                'name' => $po->company_name,
+//                                            ],
+//                                            'business_unit' => [
+//                                                'id' => $po->business_unit_id,
+//                                                'code' => $po->business_unit_code,
+//                                                'name' => $po->business_unit_name,
+//                                            ],
+//                                            'department' => [
+//                                                'id' => $po->department_id,
+//                                                'code' => $po->department_code,
+//                                                'name' => $po->department_name,
+//                                            ],
+//                                            'unit' => [
+//                                                'id' => $po->unit_id,
+//                                                'code' => $po->unit_code,
+//                                                'name' => $po->unit_name,
+//                                            ],
+//                                            'sub_unit' => [
+//                                                'id' => $po->sub_unit_id,
+//                                                'code' => $po->sub_unit_code,
+//                                                'name' => $po->sub_unit_name,
+//                                            ],
+//                                            'location' => [
+//                                                'id' => $po->location_id,
+//                                                'code' => $po->location_code,
+//                                                'name' => $po->location_name,
+//                                            ],
+//                                            'account_title' => [
+//                                                'id' => $po->account_title_id,
+//                                                'code' => $po->account_title_code,
+//                                                'name' => $po->account_title_name,
+//                                            ],
+//                                        ];
+//                                    })
+//                                ]
+//                            ];
+//                        })->values()
+//                    ];
+//                })->unique()->values()
 //                : [];
+
 
         $job_order = $receivedReceiptsCount != 1
             ? $receivedReceipts && !$receivedReceipts->jobOrders->isEmpty()
@@ -6982,6 +6985,79 @@ class TransactionController extends Controller
             }
         }
         return response()->json($response);
+    }
+
+    public function statusJournalsCounter() {
+        $permissions = auth()->user()->permissions;
+
+        $statusMap = [
+            41 => [], //General Journal - AP Approval
+            48, //General Journal - AR Approval
+            49, //General Journal - Treasury Approval - 12
+            50, //General Journal - Cost & Budget 12 Approval
+            51, //General Journal - Fixed Asset 12 Approval
+            52, //General Journal - Confidential Approval - 12
+            54, //General Journal - Sales Approval
+            55, //General Journal - FO Approval
+            56, //General Journal - Live Approval
+            61, //General Journal - Account Receivable Approval
+            68, //General Journal - AP Specialist Approval - 12
+            69, //General Journal - PCF Approval
+            71, //General Journal - AP Specialist Approval - 22
+            75, //General Journal - Fixed Asset Approval - 22
+            76, //General Journal - Cost & Budget Approval - 22
+            77, //General Journal - Cost & Budget Approval - 30
+            79, //General Journal - Confidential Approval - 22
+            85, //General Journal - Accruals & Reversals Approval
+            87, //General Journal - Treasury - Approval - 22
+        ];
+
+        $response = [];
+
+        foreach ($permissions as $permission) {
+            if (isset($statusMap[$permission])) {
+                $permissionName = Permission::where('id', $permission)->first()->name;
+                $approver_id = auth()->user()->id;
+                $count = 0;
+
+                switch($permissionName) {
+                    case 'General Journal - AP Approval':
+                        $db = 'general_journals';
+                        $count = $this->journalCounter($db);
+                        break;
+
+                    case 'General Journal - Treasury Approval - 12':
+                        $db = 'treasury_journals';
+                        $count = $this->journalCounter($db);
+                        break;
+
+                    case 'General Journal - Live Approval':
+                        $db = 'live_journals';
+                        $count = $this->journalCounter($db);
+                        break;
+                }
+
+                $response[] = [
+                    'permission' => $permissionName,
+                    'result' => [
+                        'pending' => $count
+                    ]
+                ];
+            }
+        }
+
+        return response()->json($response);
+    }
+
+    function journalCounter($table) {
+        return DB::table($table)
+            ->where([
+                'deleted_at' => null,
+                'approver_id' => auth()->user()->id,
+                'is_approved' => null
+            ])
+            ->distinct('gj_number')
+            ->count('gj_number');
     }
 
     public function chequeHistory($id)

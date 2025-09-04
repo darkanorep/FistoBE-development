@@ -7,6 +7,7 @@ use App\Exceptions\FistoLaravelException;
 use App\Http\Controllers\Controller;
 use App\Models\AccountTitle;
 use App\Models\BusinessUnit;
+use App\Models\Charge;
 use App\Models\Company;
 use App\Models\Department;
 use App\Models\Location;
@@ -31,6 +32,7 @@ class JournalServices
     private $department;
     private $location;
     private $controller;
+    private $charges;
 
     public function __construct($model)
     {
@@ -44,6 +46,20 @@ class JournalServices
         $this->department = Department::select('id', 'code', 'department')->withTrashed()->get();
         $this->location = Location::select('id', 'code', 'location')->withTrashed()->get();
         $this->supplier = Supplier::select('id', 'code', 'name')->withTrashed()->get();
+        $this->charges = Charge::select(
+            'company_code',
+            'company_name',
+            'business_unit_code',
+            'business_unit_name',
+            'department_code',
+            'department_name',
+            'unit_code',
+            'unit_name',
+            'sub_unit_code',
+            'sub_unit_name',
+            'location_code',
+            'location_name',
+        )->get();
         $this->controller = new Controller();
     }
 
@@ -667,6 +683,7 @@ class JournalServices
 
     }
 
+
     public function import(Request $request) {
 
         $journals = $request->all();
@@ -687,97 +704,125 @@ class JournalServices
         $business_unit_list = $this->businessUnit->pluck('business_unit')->toArray();
         $unit_list = $this->unit->pluck('name')->toArray();
         $sub_unit_list = $this->subUnit->pluck('name')->toArray();
-        $bookOfAccounts = $this->bookOfAccounts();
         $supplier_list = $this->supplier->pluck('name')->toArray();
 
         $headers = "Account Tag, PO#, RR#, Reference No, Voucher Number, Supplier, DR/CR, Amount, Description, Account Title, Company, Department, Location, BOA";
         $template = ["tag_no", "po_no", "rr_no", "reference_no", "voucher_number", "supplier", "entry", "amount", "remarks", "account_title", "company", "department", "location", "boa"];
-        $required = ["supplier", "entry", "account_title", "company", "business_unit", "department", "unit", "sub_unit", "location", "boa"];
+        $required = ["supplier", "entry", "account_title", "company", "business_unit", "department", "unit", "sub_unit", "location", "boa", 'account_type',
+            'account_group',
+            'account_sub_group',
+            'financial_statement',
+            'unit_responsible'
+        ];
         $keys = array_keys(current($journals));
 //        $this->validateHeader($template, $keys, $headers);
 //        $this->controller->validateHeader($template, $keys, $headers);
+
 
         $index = 2;
         foreach ($journals as $journal) {
             $account_title = $journal['account_title'];
             $supplier = $journal['supplier'];
             $company = $journal['company'];
+            $company_code = $journal['company_code'];
             $department = $journal['department'];
+            $department_code = $journal['department_code'];
             $location = $journal['location'];
+            $location_code = $journal['location_code'];
             $unit = $journal['unit'];
+            $unit_code = $journal['unit_code'];
             $business_unit = $journal['business_unit'];
+            $business_unit_code = $journal['business_unit_code'];
             $sub_unit = $journal['sub_unit'];
+            $sub_unit_code = $journal['sub_unit_code'];
             $boa = $journal['boa'];
+            $boaList = array_column($journals, 'boa');
 
-            // if (!in_array($account_title, $account_title_list) && !empty($account_title)) {
-            //     $error[] = (object)[
-            //         "line" => $index,
-            //         "description" => $account_title . " is not registered.",
-            //     ];
-            // }
+            $chargeExist = $this->charges->where('company_name', $company)
+                ->where('business_unit_name', $business_unit)
+                ->where('department_name', $department)
+                ->where('location_name', $location)
+                ->where('unit_name', $unit)
+                ->where('sub_unit_name', $sub_unit)
+                ->first();
 
-            // if (!in_array($supplier, $supplier_list) && !empty($supplier)) {
-            //     $error[] = (object)[
-            //         "line" => $index,
-            //         "description" => $supplier . " is not registered.",
-            //     ];
-            // }
+            $distinctBoa = array_unique($boaList);
 
-            // if (!in_array($company, $company_list) && !empty($company)) {
-            //     $error[] = (object)[
-            //         "line" => $index,
-            //         "description" => $company . " is not registered.",
-            //     ];
-            // }
+            if (count($distinctBoa) > 1) {
+                $error[] = (object)[
+                    "line" => $index,
+                    "description" => "Multiple BOA found in the same journal. Please ensure only one BOA is used per journal. Those BOAs are: " . implode(", ", $distinctBoa),
+                ];
+            }
 
-            // if (!in_array($business_unit, $business_unit_list) && !empty($business_unit)) {
-            //     $error[] = (object)[
-            //         "line" => $index,
-            //         "description" => $business_unit . " is not registered.",
-            //     ];
-            // }
+            if (!$chargeExist) {
+                $error[] = (object)[
+                    "line" => $index,
+                    "description" => "Charge does not exist for
+                    Company: $company,
+                    Business Unit: $business_unit,
+                    Department: $department,
+                    Unit: $unit,
+                    Sub Unit: $sub_unit. ,
+                    Location: $location",
+                ];
+            }
 
-            // if (!in_array($department, $department_list) && !empty($department)) {
-            //     $error[] = (object)[
-            //         "line" => $index,
-            //         "description" => $department . " is not registered.",
-            //     ];
-            // }
+            if (!in_array($account_title, $account_title_list) && !empty($account_title)) {
+                $error[] = (object)[
+                    "line" => $index,
+                    "description" => $account_title . " is not registered.",
+                ];
+            }
 
-            // if (!in_array($unit, $unit_list) && !empty($unit)) {
-            //     $error[] = (object)[
-            //         "line" => $index,
-            //         "description" => $unit . " is not registered.",
-            //     ];
-            // }
+            if (!in_array($supplier, $supplier_list) && !empty($supplier)) {
+                $error[] = (object)[
+                    "line" => $index,
+                    "description" => $supplier . " is not registered.",
+                ];
+            }
 
-            // if (!in_array($sub_unit, $sub_unit_list) && !empty($sub_unit)) {
-            //     $error[] = (object)[
-            //         "line" => $index,
-            //         "description" => $sub_unit . " is not registered.",
-            //     ];
-            // }
+            if (!in_array($company, $company_list) && !empty($company)) {
+                $error[] = (object)[
+                    "line" => $index,
+                    "description" => $company . " is not registered.",
+                ];
+            }
 
-            // if (!in_array($location, $location_list) && !empty($location)){
-            //     $error[] = (object)[
-            //         "line" => $index,
-            //         "description" => $location . " is not registered.",
-            //     ];
-            // }
+            if (!in_array($business_unit, $business_unit_list) && !empty($business_unit)) {
+                $error[] = (object)[
+                    "line" => $index,
+                    "description" => $business_unit . " is not registered.",
+                ];
+            }
 
-//            if (!$boa || !in_array($boa, $bookOfAccounts)) {
-//                $error[] = (object)[
-//                    "line" => $index,
-//                    "description" => $boa . " is invalid.",
-//                ];
-//            }
+            if (!in_array($department, $department_list) && !empty($department)) {
+                $error[] = (object)[
+                    "line" => $index,
+                    "description" => $department . " is not registered.",
+                ];
+            }
 
-//            if ($boa != 'Adjustment') {
-//                $error[] = (object)[
-//                    "line" => $index,
-//                    "description" => "BOA must be Adjustment.",
-//                ];
-//            }
+            if (!in_array($unit, $unit_list) && !empty($unit)) {
+                $error[] = (object)[
+                    "line" => $index,
+                    "description" => $unit . " is not registered.",
+                ];
+            }
+
+            if (!in_array($sub_unit, $sub_unit_list) && !empty($sub_unit)) {
+                $error[] = (object)[
+                    "line" => $index,
+                    "description" => $sub_unit . " is not registered.",
+                ];
+            }
+
+            if (!in_array($location, $location_list) && !empty($location)){
+                $error[] = (object)[
+                    "line" => $index,
+                    "description" => $location . " is not registered.",
+                ];
+            }
 
             foreach ($journal as $key => $value) {
                 if (in_array($key, $required) && empty($value)) {
@@ -904,7 +949,6 @@ class JournalServices
             return response()->json(['error' => $error], 400);
         }
     }
-
     public function posted($id)
     {
         $generalJournal = $this->model::find($id);
