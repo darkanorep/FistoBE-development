@@ -712,7 +712,13 @@ class JournalServices
             'account_group',
             'account_sub_group',
             'financial_statement',
-            'unit_responsible'
+            'unit_responsible',
+            'company_code',
+            'business_unit_code',
+            'department_code',
+            'unit_code',
+            'sub_unit_code',
+            'location_code'
         ];
         $keys = array_keys(current($journals));
 //        $this->validateHeader($template, $keys, $headers);

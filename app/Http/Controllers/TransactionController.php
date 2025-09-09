@@ -6991,25 +6991,25 @@ class TransactionController extends Controller
         $permissions = auth()->user()->permissions;
 
         $statusMap = [
-            41 => [], //General Journal - AP Approval
-            48, //General Journal - AR Approval
-            49, //General Journal - Treasury Approval - 12
-            50, //General Journal - Cost & Budget 12 Approval
-            51, //General Journal - Fixed Asset 12 Approval
-            52, //General Journal - Confidential Approval - 12
-            54, //General Journal - Sales Approval
-            55, //General Journal - FO Approval
-            56, //General Journal - Live Approval
-            61, //General Journal - Account Receivable Approval
-            68, //General Journal - AP Specialist Approval - 12
-            69, //General Journal - PCF Approval
-            71, //General Journal - AP Specialist Approval - 22
-            75, //General Journal - Fixed Asset Approval - 22
-            76, //General Journal - Cost & Budget Approval - 22
-            77, //General Journal - Cost & Budget Approval - 30
-            79, //General Journal - Confidential Approval - 22
-            85, //General Journal - Accruals & Reversals Approval
-            87, //General Journal - Treasury - Approval - 22
+            41 => [], //General Journal - AP Approval *
+            48, //General Journal - AR Approval *
+            49, //General Journal - Treasury Approval - 12 *
+            50, //General Journal - Cost & Budget 12 Approval *
+            51, //General Journal - Fixed Asset 12 Approval *
+            52, //General Journal - Confidential Approval - 12 *
+            54, //General Journal - Sales Approval *
+            55, //General Journal - FO Approval *
+            56, //General Journal - Live Approval *
+            61, //General Journal - Account Receivable Approval *
+            68, //General Journal - AP Specialist Approval - 12 *
+            69, //General Journal - PCF Approval *
+            71, //General Journal - AP Specialist Approval - 22 *
+            75, //General Journal - Fixed Asset Approval - 22 *
+            76, //General Journal - Cost & Budget Approval - 22 *
+            77, //General Journal - Cost & Budget Approval - 30 *
+            79, //General Journal - Confidential Approval - 22 *
+            85, //General Journal - Accruals & Reversals Approval *
+            87, //General Journal - Treasury - Approval - 22 *
         ];
 
         $response = [];
@@ -7025,14 +7025,72 @@ class TransactionController extends Controller
                         $db = 'general_journals';
                         $count = $this->journalCounter($db);
                         break;
-
+                    case 'General Journal - Account Receivable Approval':
+                        $db = 'account_receivable_journals';
+                        $count = $this->journalCounter($db);
+                        break;
                     case 'General Journal - Treasury Approval - 12':
                         $db = 'treasury_journals';
                         $count = $this->journalCounter($db);
                         break;
-
+                    case 'Cost & Budget 12 Approval':
+                        $db = 'cost_budget_journals';
+                        $count = $this->journalCounter($db);
+                        break;
+                    case 'Fixed Asset 12 Approval':
+                        $db = 'fixed_asset_journals';
+                        $count = $this->journalCounter($db);
+                        break;
+                    case 'Confidential Approval - 12':
+                        $db = 'confidential_journals';
+                        $count = $this->journalCounter($db);
+                        break;
+                    case 'General Journal - Sales Approval':
+                        $db = 'sales_journals';
+                        $count = $this->journalCounter($db);
+                        break;
+                    case 'General Journal - FO Approval':
+                        $db = 'fo_journals';
+                        $count = $this->journalCounter($db);
+                        break;
                     case 'General Journal - Live Approval':
                         $db = 'live_journals';
+                        $count = $this->journalCounter($db);
+                        break;
+                    case 'General Journal - AP Specialist Approval - 12':
+                        $db = 'ap_specialist_journals';
+                        $count = $this->journalCounter($db);
+                        break;
+                    case 'General Journal - PCF Approval':
+                        $db = 'pcf_journals';
+                        $count = $this->journalCounter($db);
+                        break;
+                    case 'General Journal - AP Specialist Approval - 22':
+                        $db = 'ap_specialist22_journals';
+                        $count = $this->journalCounter($db);
+                        break;
+                    case 'General Journal - Fixed Asset Approval - 22':
+                        $db = 'fixed_asset22_journals';
+                        $count = $this->journalCounter($db);
+                        break;
+                    case 'General Journal - Cost & Budget Approval - 22':
+                        $db = 'cost_and_budget22_journals';
+                        $count = $this->journalCounter($db);
+                        break;
+                    case 'General Journal - Cost & Budget Approval - 30':
+                        $db = 'cost_and_budget30_journals';
+                        $count = $this->journalCounter($db);
+                        break;
+                    case 'General Journal - Confidential Approval - 22':
+                        $db = 'confidential22_journals';
+                        $count = $this->journalCounter($db);
+                        break;
+                    case 'General Journal - Accruals & Reversals Approval':
+                        $db = 'accrual_reversal_journals';
+                        $count = $this->journalCounter($db);
+                        break;
+                    case 'General Journal - Treasury - Approval - 22':
+                        $db = 'treasury22_journals';
                         $count = $this->journalCounter($db);
                         break;
                 }
