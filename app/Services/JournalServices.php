@@ -727,6 +727,7 @@ class JournalServices
 
         $index = 2;
         foreach ($journals as $journal) {
+            $transaction_date = $journal['transaction_date'];
             $account_title = $journal['account_title'];
             $supplier = $journal['supplier'];
             $company = $journal['company'];
@@ -759,6 +760,28 @@ class JournalServices
                     "line" => $index,
                     "description" => "Multiple BOA found in the same journal. Please ensure only one BOA is used per journal. Those BOAs are: " . implode(", ", $distinctBoa),
                 ];
+            }
+
+            if (!empty($transaction_date)) {
+                try {
+                    // Try to parse as Excel date first
+                    if (is_numeric($transaction_date)) {
+                        $date = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($transaction_date);
+                        $formattedDate = $date->format('Y-m-d');
+                    } else {
+                        // Try to parse as Y-m-d format
+                        $date = DateTime::createFromFormat('Y-m-d', $transaction_date);
+                        if ($date === false) {
+                            throw new \Exception('Invalid date format');
+                        }
+                        $formattedDate = $date->format('Y-m-d');
+                    }
+                } catch (\Exception $e) {
+                    $error[] = (object)[
+                        "line" => $index,
+                        "description" => "Transaction date must be in Y-m-d format (e.g., 2025-06-02).",
+                    ];
+                }
             }
 
             if (!$chargeExist) {

@@ -371,7 +371,6 @@ Route::group(["middleware" => "auth:sanctum"], function () {
     Route::post("treasury-22-journals/import", [\App\Http\Controllers\Treasury22JournalController::class, 'import']);
     Route::resource("treasury-22-journals", \App\Http\Controllers\Treasury22JournalController::class);
 
-    //GENERAL JOURNAL - TREASURY
 
     //GENERAL JOURNAL - COST AND BUDGET
     Route::patch('cost-and-budget-journals/post/{id}', [\App\Http\Controllers\CostAndBudgetJournalController::class, 'posted']);

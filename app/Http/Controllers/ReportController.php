@@ -13,10 +13,24 @@ class ReportController extends Controller
   {
     $from = $request->input("from", Carbon::now()->format("Y-m-d"));
     $to = $request->input("to", Carbon::now()->format("Y-m-d"));
+      $suppliers = $request->input("suppliers", []);
 
     $page = max(1, (int) $request->input("page", 1));
     $rows = max(1, (int) $request->input("rows", 10));
     $paginate = $request->input("paginate", true);
+
+      if (is_string($suppliers)) {
+          $suppliers = json_decode($suppliers, true) ?? [];
+      }
+
+      $supplierFilter = '';
+      foreach ($suppliers as $supplier) {
+          if (!is_numeric($supplier)) {
+              $supplierFilter = '';
+              break;
+          }
+          $supplierFilter = "AND transactions.supplier_id IN (" . implode(',', $suppliers) . ")";
+      }
 
     $result = DB::select(
       DB::raw("
@@ -72,6 +86,7 @@ class ReportController extends Controller
 --               OR status = 'inspect-inspect'
 --         )
         AND DATE_FORMAT(f.date_transmitted, '%Y-%m-%d') BETWEEN :from AND :to
+        $supplierFilter
     "),
       [
         "from" => $from,
@@ -104,6 +119,20 @@ class ReportController extends Controller
     $page = max(1, (int) $request->input("page", 1));
     $rows = max(1, (int) $request->input("rows", 10));
     $paginate = $request->input("paginate", true);
+    $suppliers = $request->input("suppliers", []);
+
+      if (is_string($suppliers)) {
+          $suppliers = json_decode($suppliers, true) ?? [];
+      }
+
+        $supplierFilter = '';
+      foreach ($suppliers as $supplier) {
+            if (!is_numeric($supplier)) {
+                $supplierFilter = '';
+                break;
+            }
+            $supplierFilter = "AND a.supplier_id IN (" . implode(',', $suppliers) . ")";
+      }
 
     $result = DB::select(
       DB::raw("
@@ -159,6 +188,7 @@ class ReportController extends Controller
           AND c.cheque_date IS NULL
           AND a.deleted_at IS NULL
           AND DATE_FORMAT(h.date_transmitted, '%Y-%m-%d') BETWEEN :from AND :to
+            $supplierFilter
         GROUP BY c.cheque_no, c.bank_name
     "),
       [
@@ -189,9 +219,24 @@ class ReportController extends Controller
   {
     $from = $request->input("from", Carbon::now()->format("Y-m-d"));
     $to = $request->input("to", Carbon::now()->format("Y-m-d"));
+    $suppliers = $request->input("suppliers", []);
+
     $page = max(1, (int) $request->input("page", 1));
     $rows = max(1, (int) $request->input("rows", 10));
     $paginate = $request->input("paginate", true);
+
+      if (is_string($suppliers)) {
+          $suppliers = json_decode($suppliers, true) ?? [];
+      }
+
+      $supplierFilter = '';
+      foreach ($suppliers as $supplier) {
+          if (!is_numeric($supplier)) {
+              $supplierFilter = '';
+              break;
+          }
+          $supplierFilter = "AND a.supplier_id IN (" . implode(',', $suppliers) . ")";
+      }
 
     $result = DB::select(
       DB::raw("
@@ -248,6 +293,7 @@ class ReportController extends Controller
           AND c.cheque_date IS NULL
           AND a.deleted_at IS NULL
           AND DATE_FORMAT(a.updated_at, '%Y-%m-%d') BETWEEN :from AND :to
+            $supplierFilter
         GROUP BY c.cheque_no, c.bank_name
     "),
       [
@@ -278,9 +324,24 @@ class ReportController extends Controller
   {
     $from = $request->input("from", Carbon::now()->format("Y-m-d"));
     $to = $request->input("to", Carbon::now()->format("Y-m-d"));
+    $suppliers = $request->input("suppliers", []);
+
     $page = max(1, (int) $request->input("page", 1));
     $rows = max(1, (int) $request->input("rows", 10));
     $paginate = $request->input("paginate", true);
+
+      if (is_string($suppliers)) {
+          $suppliers = json_decode($suppliers, true) ?? [];
+      }
+
+      $supplierFilter = '';
+      foreach ($suppliers as $supplier) {
+          if (!is_numeric($supplier)) {
+              $supplierFilter = '';
+              break;
+          }
+          $supplierFilter = "AND a.supplier_id IN (" . implode(',', $suppliers) . ")";
+      }
 
     $result = DB::select(
       DB::raw("
@@ -342,6 +403,7 @@ class ReportController extends Controller
                   AND c.deleted_at IS NULL
                   AND a.deleted_at IS NULL
                   AND DATE_FORMAT(d.created_at, '%Y-%m-%d') BETWEEN :from AND :to
+                    $supplierFilter
                 GROUP BY c.cheque_no, c.bank_name
             "),
       [
@@ -372,9 +434,24 @@ class ReportController extends Controller
   {
     $from = $request->input("from", Carbon::now()->format("Y-m-d"));
     $to = $request->input("to", Carbon::now()->format("Y-m-d"));
+    $suppliers = $request->input("suppliers", []);
+
     $page = max(1, (int) $request->input("page", 1));
     $rows = max(1, (int) $request->input("rows", 10));
     $paginate = $request->input("paginate", true);
+
+      if (is_string($suppliers)) {
+          $suppliers = json_decode($suppliers, true) ?? [];
+      }
+
+      $supplierFilter = '';
+      foreach ($suppliers as $supplier) {
+          if (!is_numeric($supplier)) {
+              $supplierFilter = '';
+              break;
+          }
+          $supplierFilter = "AND a.supplier_id IN (" . implode(',', $suppliers) . ")";
+      }
 
     $result = DB::select(
       DB::raw("
@@ -437,6 +514,7 @@ class ReportController extends Controller
                   AND c.deleted_at IS NULL
                   AND a.deleted_at IS NULL
                   AND DATE_FORMAT(a.updated_at, '%Y-%m-%d') BETWEEN :from AND :to
+                    $supplierFilter
                 GROUP BY c.cheque_no, c.bank_name
             "),
       [
@@ -467,9 +545,24 @@ class ReportController extends Controller
   {
     $from = $request->input("from", Carbon::now()->format("Y-m-d"));
     $to = $request->input("to", Carbon::now()->format("Y-m-d"));
+    $suppliers = $request->input("suppliers", []);
+
     $page = max(1, (int) $request->input("page", 1));
     $rows = max(1, (int) $request->input("rows", 10));
     $paginate = $request->input("paginate", true);
+
+      if (is_string($suppliers)) {
+          $suppliers = json_decode($suppliers, true) ?? [];
+      }
+
+      $supplierFilter = '';
+      foreach ($suppliers as $supplier) {
+          if (!is_numeric($supplier)) {
+              $supplierFilter = '';
+              break;
+          }
+          $supplierFilter = "AND a.supplier_id IN (" . implode(',', $suppliers) . ")";
+      }
 
     $result = DB::select(
       DB::raw("
@@ -531,6 +624,7 @@ class ReportController extends Controller
                   AND c.deleted_at IS NULL
                   AND a.deleted_at IS NULL
                   AND DATE_FORMAT(d.created_at, '%Y-%m-%d') BETWEEN :from AND :to
+                    $supplierFilter
                 GROUP BY c.cheque_no, c.bank_name
             "),
       [
@@ -561,11 +655,18 @@ class ReportController extends Controller
   {
     $from = date($request->input("from", Carbon::now()->format("Y-m-d")));
     $to = date($request->input("to", Carbon::now()->format("Y-m-d")));
+    $suppliers = $request->input("suppliers");
+
+    if (is_string($suppliers)) {
+        $suppliers = json_decode($suppliers, true) ?? [];
+    }
     $page = max(1, (int) $request->input("page", 1));
     $rows = max(1, (int) $request->input("rows", 10));
     $paginate = $request->input("paginate", true);
 
+
     $transactions = Transaction::with([
+        "transmit",
       "treasuryAssociates",
       "businessUnit",
       "account_titles",
@@ -581,11 +682,15 @@ class ReportController extends Controller
       ->whereHas("chequeHistory", function ($query) use ($from, $to) {
         $query->whereDate("created_at", ">=", $from)->whereDate("created_at", "<=", $to);
       })
+        ->when(!empty($suppliers), function ($query) use ($suppliers) {
+            $query->whereIn('supplier_id', $suppliers);
+        })
       ->select(
         "id",
         "tag_no",
         "company_id",
         "company",
+        "supplier_id",
         "supplier",
         "remarks",
         "voucher_no",
@@ -619,6 +724,7 @@ class ReportController extends Controller
           "transaction_date" => Carbon::parse($group->first()->date_requested)
             ->setTimezone("Asia/Manila")
             ->format("Y-m-d"),
+            "date_transmitted" => Carbon::parse($this->getDateEveryStatus($group->first()->transmit, "transmit-transmit")),
           "business_unit_code" =>
             $group
               ->pluck("businessUnit.code")
@@ -743,11 +849,16 @@ class ReportController extends Controller
   {
     $from = date($request->input("from", Carbon::now()->format("Y-m-d")));
     $to = date($request->input("to", Carbon::now()->format("Y-m-d")));
+    $suppliers = $request->input("suppliers", []);
+
     $page = max(1, (int) $request->input("page", 1));
     $rows = max(1, (int) $request->input("rows", 10));
     $paginate = $request->input("paginate", true);
 
     $clearedCheques = DB::table("transactions")
+        ->when(!empty($suppliers), function ($query) use ($suppliers) {
+            $query->whereIn('supplier_id', $suppliers);
+        })
       ->where("transactions.state", "!=", "void")
       ->leftJoin("cheques", function ($join) {
         $join->on("transactions.id", "=", "cheques.transaction_id")->where("cheques.deleted_at", "=", null);

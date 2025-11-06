@@ -1205,7 +1205,9 @@ class TransactionController extends Controller
         $receivedReceiptsCount = $transaction->receivedReceipts()->pluck('rr_id')->unique()->count();
 
         $purchase_order = $receivedReceiptsCount != 1
-            ? $receivedReceipts && !$receivedReceipts->purchaseOrders()->withTrashed()->isEmpty()
+            ? $receivedReceipts && !$receivedReceipts->purchaseOrders
+//            ()->withTrashed()
+                ->isEmpty()
                 ? $transaction->receivedReceipts->map(function ($item) use ($transaction) {
                     return [
                         'is_new_po' => true,
@@ -1227,7 +1229,9 @@ class TransactionController extends Controller
                                         'code' => $rr->uom_code,
                                         'name' => $rr->uom_name,
                                     ],
-                                    'po_transaction' => $rr->purchaseOrders()->withTrashed()->get()->map(function ($po) {
+                                    'po_transaction' => $rr->purchaseOrders
+//                                    ()->withTrashed()->get()
+                                        ->map(function ($po) {
                                         return [
                                             'purchase_order_id' => $po->id,
                                             'po_year_number_id' => $po->po_number,
@@ -1277,7 +1281,9 @@ class TransactionController extends Controller
                     ];
                 })->values()
                 : []
-            : $receivedReceipts && !$receivedReceipts->purchaseOrders()->withTrashed()->get()->isEmpty()
+            : $receivedReceipts && !$receivedReceipts->purchaseOrders
+//            ()->withTrashed()->get()
+                ->isEmpty()
                 ? $transaction->receivedReceipts->map(function ($item) use ($transaction) {
                     return [
                         'is_new_po' => true,
@@ -1299,7 +1305,9 @@ class TransactionController extends Controller
                                         'code' => $rr->uom_code,
                                         'name' => $rr->uom_name,
                                     ],
-                                    'po_transaction' => $rr->purchaseOrders()->withTrashed()->get()->map(function ($po) {
+                                    'po_transaction' => $rr->purchaseOrders
+//                                    ()->withTrashed()->get()
+                                        ->map(function ($po) {
                                         return [
                                             'purchase_order_id' => $po->id,
                                             'po_year_number_id' => $po->po_number,
@@ -2229,54 +2237,6 @@ class TransactionController extends Controller
             return $item->status == $status;
         })->first()->created_at ?? null;
     }
-
-//    public function store(TransactionRequest $request) {
-//
-//        $transaction_id = GenericMethod::getTransactionID(Auth::user()->department[0]["name"]);
-//
-//        $transaction = Transaction::create([
-//            'users_id' => auth()->user()->id,
-//            'id_prefix' => auth()->user()->id_prefix,
-//            'id_no' => auth()->user()->id_no,
-//            'first_name' => auth()->user()->first_name,
-//            'middle_name' => auth()->user()->middle_name,
-//            'last_name' => auth()->user()->last_name,
-//            'suffix' => auth()->user()->suffix,
-//            'department_details' => auth()->user()->department[0]['name'],
-//            'transaction_id' => $transaction_id,
-////            'request_id'
-//            'date_requested' => date("Y-m-d H:i:s"),
-////            'capex_no'
-//            'document_id' => data_get($request, 'document.id'),
-//            'document_type' => data_get($request, 'document.name'),
-//            'document_no' => data_get($request, 'document.no'),
-//            'document_amount' => data_get($request, 'document.amount'),
-//            'document_date' => data_get($request, 'document.date'),
-//            'payment_type' => data_get($request, 'document.payment_type'),
-//            'category_id' => data_get($request, 'document.category.id'),
-//            'category' => data_get($request, 'document.category.name'),
-//            'company_id' => data_get($request, 'document.company.id'),
-//            'company' => data_get($request, 'document.company.name'),
-//            'department_id' => data_get($request, 'document.department.id'),
-//            'department' => data_get($request, 'document.department.name'),
-//            'location_id' => data_get($request, 'document.location.id'),
-//            'location' => data_get($request, 'document.location.name'),
-//            'supplier_id' => data_get($request, 'document.supplier.id'),
-//            'supplier' => data_get($request, 'document.supplier.name'),
-////            'po_total_amount'
-////            'balance_po_ref_amount'
-//            'referrence_id' => data_get($request, 'document.reference.id'),
-//            'referrence_type' => data_get($request, 'document.reference.type'),
-//            'referrence_no' => data_get($request, 'document.reference.no'),
-//            'referrence_amount' => data_get($request, 'document.reference.amount'),
-////            'referrence_qty',
-////            'referrence_total_amount'
-////            'referrence_total_qty'
-//            'pcf_name' => data_get($request, 'document.pcf_batch.name'),
-//            'pcf_date' => data_get($request, 'document.pcf_batch.date'),
-//            'pcf_letter' => data_get($request, 'document.pcf_batch.letter'),
-//        ]);
-//    }
 
     public function store(TransactionPostRequest $request)
     {

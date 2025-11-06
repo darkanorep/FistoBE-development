@@ -1945,20 +1945,34 @@ class TransactionFlow
         $bankSeriesId = $request->bank_series_id;
         $temporaryUsedCheques = $request->temporary_used_cheques ?? [];
 
+        // Decode JSON string if it's a string
+        if (is_string($temporaryUsedCheques)) {
+            $temporaryUsedCheques = json_decode($temporaryUsedCheques, true) ?? [];
+        }
+
         $chequeSeries = BankSeries::where('id', $bankSeriesId)
             ->where('is_used', false)
-            ->select('bank_id', 'from', 'to')
+            ->select('bank_id', 'from', 'to', 'category')
             ->first();
 
         if (!$chequeSeries) {
             return response()->json(['message' => 'No available cheque series found,'], 404);
         }
 
-        $alreadyUsedChequeNos = Cheque::where('bank_id', $chequeSeries->bank_id)
-            ->whereNull('is_cancelled')
-            ->pluck('cheque_no')
-            ->toArray();
+//        $alreadyUsedChequeNos = Cheque::where('bank_id', $chequeSeries->bank_id)
+//            ->whereNull('is_cancelled')
+//            ->pluck('cheque_no')
+//            ->toArray();
 
+        $query = Cheque::where('bank_id', $chequeSeries->bank_id)
+            ->whereNull('is_cancelled');
+
+
+        if ($chequeSeries->category == 'prenumbered stock') {
+            $query->withTrashed();
+        }
+
+        $alreadyUsedChequeNos = $query->pluck('cheque_no')->toArray();
         // Exclude both already used and temporary used cheques
         $excludeCheques = array_merge($alreadyUsedChequeNos, $temporaryUsedCheques);
         $availableChequeNos = array_diff(range($chequeSeries->from, $chequeSeries->to), $excludeCheques);

@@ -7,6 +7,7 @@ use App\Methods\GenericMethod;
 use App\Models\Approver;
 use App\Models\Associate;
 use App\Models\Audit;
+use App\Models\BankSeries;
 use App\Models\Cheque;
 use App\Models\Executive;
 use App\Models\File;
@@ -372,6 +373,29 @@ class TransactionFlowController extends Controller
                         ->update([
                             'is_mc' => 1
                         ]);
+                }
+
+                $chequeSeries = BankSeries::where('id', data_get($cheque, 'cheque_series_id'))
+                    ->where('is_used', false)
+                    ->select('bank_id', 'from', 'to')
+                    ->first();
+
+                $query = Cheque::where('bank_id', $chequeSeries->bank_id)
+                    ->whereNull('is_cancelled');
+
+                if ($chequeSeries->category == 'prenumbered stock') {
+                    $query->withTrashed();
+                }
+
+                $alreadyUsedChequeNos = $query->pluck('cheque_no')->toArray();
+
+                $excludeCheques = array_merge($alreadyUsedChequeNos, []);
+                $availableChequeNos = array_diff(range($chequeSeries->from, $chequeSeries->to), $excludeCheques);
+                $availableChequeNos = array_filter($availableChequeNos, function($no) { return $no != 0; });
+                $firstAvailable = reset($availableChequeNos);
+
+                if (!$firstAvailable) {
+                    $chequeSeries->update(['is_used' => true]);
                 }
             }
         }

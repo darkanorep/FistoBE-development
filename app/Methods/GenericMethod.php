@@ -9,6 +9,7 @@ use App\Models\AccountTitle;
 use App\Models\Approver;
 use App\Models\Associate;
 use App\Models\Audit;
+use App\Models\BankSeries;
 use App\Models\BusinessUnit;
 use App\Models\Cheque;
 use App\Models\ClearingAccountTitle;
@@ -641,9 +642,6 @@ class GenericMethod
         $account_titles
     )
     {
-//      $model::where('transaction_id', $transaction_id)->where('status', $status)->delete();
-//      $test = new TransactionController();
-//      $batch_no = $test->generateBatchNo();
         $batch_no = (new TransactionController)->generateBatchNo();
         $cheque_transaction = $model::Create([
             "transaction_id" => $transaction_id,
@@ -660,7 +658,7 @@ class GenericMethod
             if (count($cheques) > 0) {
                 $id = $cheque_transaction->id;
 
-                GenericMethod::addCheque($transaction_id, $id, $cheques);
+                return GenericMethod::addCheque($transaction_id, $id, $cheques);
             }
         }
 
@@ -920,6 +918,33 @@ class GenericMethod
                         'is_mc' => 1
                     ]);
             }
+
+            $chequeSeries = BankSeries::where('id', data_get($specific_cheques, 'check_series_id'))
+                ->where('is_used', false)
+//                ->select('bank_id', 'from', 'to', 'category')
+                ->first();
+
+            $query = Cheque::where('bank_id', $chequeSeries->bank_id)
+                ->whereNull('is_cancelled');
+
+            if ($chequeSeries->category == 'prenumbered stock') {
+                $query->withTrashed();
+            }
+
+            $alreadyUsedChequeNos = $query->pluck('cheque_no')->toArray();
+
+            $excludeCheques = array_merge($alreadyUsedChequeNos, []);
+            $availableChequeNos = array_diff(range($chequeSeries->from, $chequeSeries->to), $excludeCheques);
+            $availableChequeNos = array_filter($availableChequeNos, function($no) { return $no != 0; });
+            $firstAvailable = reset($availableChequeNos);
+
+            if ($chequeSeries->category == 'blank stock' && $firstAvailable) {
+                $chequeSeries->update(['is_used' => true]);
+            } else {
+                if (!$firstAvailable) {
+                    $chequeSeries->update(['is_used' => true]);
+                }
+            }
         }
     }
 
@@ -1015,8 +1040,8 @@ class GenericMethod
                 "is_default" => $specific_account_title["is_default"] ?? null,
             ]);
 
-            if ($po_number) {
-                PurchaseOrders::where('po_number', $po_number)
+            if ($po_number && $entry !== 'credit') {
+                PurchaseOrders::withTrashed()->where('po_number', $po_number)
                     ->update([
                         'account_title_id' => $account_title_id,
                         'account_title_code' => $instance->accountTitles->where('title', $specific_account_title["account_title"]["name"])->first()->code ?? null,
@@ -1052,10 +1077,15 @@ class GenericMethod
                             ? $instance->locations->where('location', $specific_account_title["location"]["name"])->first()->code
                             : null,
                     ]);
+
+                $purchaseOrder = PurchaseOrders::withTrashed()->where('po_number', $po_number)->first();
+                ReceivedReceipt::where('id', $purchaseOrder->received_receipt_id)->update([
+                    'reference_no' => $batch_no
+                ]);
             }
 
-            if ($jo_number) {
-                JobOrder::where('jo_number', $po_number)
+            if ($jo_number && $entry !== 'credit') {
+                $jobOrder = JobOrder::withTrashed()->where('jo_number', $jo_number)
                     ->update([
                         'account_title_id' => $account_title_id,
                         'account_title_code' => $instance->accountTitles->where('title', $specific_account_title["account_title"]["name"])->first()->code ?? null,
@@ -1091,7 +1121,14 @@ class GenericMethod
                             ? $instance->locations->where('location', $specific_account_title["location"]["name"])->first()->code
                             : null,
                     ]);
+
+                $jobOrder = JobOrder::withTrashed()->where('jo_number', $jo_number)->first();
+                ReceivedReceipt::where('id', $jobOrder->received_receipt_id)->update([
+                    'reference_no' => $batch_no
+                ]);
             }
+
+
 
 //            if ($purchase_order_id) {
 //                $po = PurchaseOrders::where('id', $purchase_order_id)->first();

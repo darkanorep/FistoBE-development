@@ -83,6 +83,7 @@ class BankController extends Controller
             'account_title_1' => $request->account_title_1,
             'account_title_2' => $request->account_title_2,
             'company_id_1' => $request->company_id_1,
+            'company_id_2' => $request->company_id_2,
             'business_unit_id_1' => $request->business_unit_id_1,
             'business_unit_id_2' => $request->business_unit_id_2,
             'department_id_1' => $request->department_id_1,
