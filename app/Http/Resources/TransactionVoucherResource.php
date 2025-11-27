@@ -80,6 +80,8 @@ class TransactionVoucherResource extends JsonResource
                     return [
                         'id' => $item->id,
                         'entry' => $item->entry,
+                        'purchase_order_id' => $item->purchase_order_id,
+                        'job_order_id' => $item->job_order_id,
                         'account_title' => [
                             'id' => $item->account_title_id,
                             'code' => $item->account_title_code,

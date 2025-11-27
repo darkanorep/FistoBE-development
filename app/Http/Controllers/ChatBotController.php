@@ -120,6 +120,7 @@ class ChatBotController extends Controller
                     ? 'Returned to Creation of Cheque but no Treasurer Assigned'
                     : 'Returned to Creation of Cheque of ' . $item->user_first_name,
                 'file-file' => 'Voucher Filed Successfully',
+                'pass-pass' => 'Pending for Filing of Voucher of ' . $item->distributed_name,
                 'requestor-void' => 'Transaction has been voided',
                 'tag-void' => 'Transaction has been voided.',
                 'voucher-void' => 'Transaction has been voided.',

@@ -1040,6 +1040,45 @@ class GenericMethod
                 "is_default" => $specific_account_title["is_default"] ?? null,
             ]);
 
+            if ($purchase_order_id) {
+                $purchase = PurchaseOrders::withTrashed()->where('id', $purchase_order_id)->first();
+                PurchaseOrders::where('received_receipt_id', $purchase->received_receipt_id)->update([
+                    'account_title_id' => $account_title_id,
+                    'account_title_code' => $instance->accountTitles->where('title', $specific_account_title["account_title"]["name"])->first()->code ?? null,
+                    'account_title_name' => $account_title_name,
+                    'company_id' => $specific_account_title["company"]["id"] ?? null,
+                    'company_code' => $specific_account_title["company"]["code"] ?? null,
+                    'company_name' => isset($specific_account_title["company"]["name"])
+                        ? optional($instance->companies->where('company', $specific_account_title["company"]["name"])->first())->code
+                        : null,
+                    "business_unit_id" => $specific_account_title["business_unit"]["id"] ?? null,
+                    "business_unit_name" => $specific_account_title["business_unit"]["name"] ?? null,
+                    "business_unit_code" => isset($specific_account_title["business_unit"]["name"])
+                        ? $instance->businessUnits->where("business_unit", $specific_account_title["business_unit"]["name"])->first()->code
+                        : null,
+                    "department_id" => $specific_account_title["department"]["id"] ?? null,
+                    "department_name" => $specific_account_title["department"]["name"] ?? null,
+                    "department_code" => isset($specific_account_title["department"]["name"])
+                        ? optional($instance->departments->where("department", $specific_account_title["department"]["name"])->first())->code
+                        : null,
+                    "unit_id" => isset($specific_account_title["unit"]["id"]) ?? null,
+                    "unit_name" => $specific_account_title["unit"]["name"] ?? null,
+                    "unit_code" => isset($specific_account_title["unit"]["name"])
+                        ? optional($instance->units->where("name", $specific_account_title["unit"]["name"])->first())->code
+                        : null,
+                    "sub_unit_id" => $specific_account_title["sub_unit"]["id"] ?? null,
+                    "sub_unit_name" => $specific_account_title["sub_unit"]["name"] ?? null,
+                    "sub_unit_code" => isset($specific_account_title["sub_unit"]["name"])
+                        ? optional($instance->subUnits->where("name", $specific_account_title["sub_unit"]["name"])->first())->code
+                        : null,
+                    "location_id" => $specific_account_title["location"]["id"] ?? null,
+                    "location_name" => $specific_account_title["location"]["name"] ?? null,
+                    "location_code" => isset($specific_account_title["location"]["name"])
+                        ? $instance->locations->where('location', $specific_account_title["location"]["name"])->first()->code
+                        : null,
+                ]);
+            }
+
             if ($po_number && $entry !== 'credit') {
                 PurchaseOrders::withTrashed()->where('po_number', $po_number)
                     ->update([

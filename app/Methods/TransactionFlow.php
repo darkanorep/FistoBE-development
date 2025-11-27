@@ -1905,12 +1905,47 @@ class TransactionFlow
         $cheque_no = $request["cheque_no"];
         $bank_id = $request->bank_id;
         $id = $request["id"];
+        $bankSeriesId = $request->bank_series_id;
+        $temporaryUsedCheques = $request->temporary_used_cheques ?? [];
 
-//        $transaction = Transaction::whereHas("cheques.cheques", function ($query) use ($cheque_no, $bank_id, $id) {
-//            $query->where("cheque_no", $cheque_no)
-//                ->where("bank_id", $bank_id);
-//        })
-//            ->exists();
+//        $bankSeries = BankSeries::where('id', $bankSeriesId)
+//            ->select('from', 'to', 'category')
+//            ->first();
+//
+//        if ($bankSeries) {
+//            $chequeNumber = (int) $cheque_no;
+//            $fromRange = (int) $bankSeries->from;
+//            $toRange = (int) $bankSeries->to;
+//
+//            if ($chequeNumber < $fromRange || $chequeNumber > $toRange) {
+//                $errorMessage = GenericMethod::resultLaravelFormat("cheque_no", ["Cheque number must be between {$fromRange} to {$toRange}."]);
+//                return GenericMethod::resultResponse("invalid", "", $errorMessage);
+//            }
+//        } else {
+//            $errorMessage = GenericMethod::resultLaravelFormat("bank_series_id", ["Invalid bank series."]);
+//            return GenericMethod::resultResponse("invalid", "", $errorMessage);
+//        }
+//
+//
+//        $query = Cheque::where('bank_id', $bank_id)
+//            ->whereNull('is_cancelled');
+//
+//
+//        if ($bankSeries->category == 'prenumbered stock') {
+//            $query->withTrashed();
+//        }
+//
+//        $alreadyUsedChequeNos = $query->pluck('cheque_no')->toArray();
+//        // Exclude both already used and temporary used cheques
+//        $excludeCheques = array_merge($alreadyUsedChequeNos, $temporaryUsedCheques);
+//        $availableChequeNos = array_diff(range($bankSeries->from, $bankSeries->to), $excludeCheques);
+//        $availableChequeNos = array_filter($availableChequeNos, function($no) { return $no != 0; });
+//
+//        if (!in_array($cheque_no, $availableChequeNos)) {
+//            $availableNumbers = implode(', ', array_values($availableChequeNos));
+//            $errorMessage = GenericMethod::resultLaravelFormat("cheque_no", ["Cheque already exists."]);
+//            return GenericMethod::resultResponse("invalid", "", $errorMessage);
+//        }
 
         $cheque_transaction_id = Cheque::withTrashed()
             ->where("cheque_no", $cheque_no)

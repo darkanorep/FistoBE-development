@@ -1893,6 +1893,7 @@ class TransactionController extends Controller
                     return [
                         'id' => $item->id,
                         'entry' => $item->entry,
+                        'purchase_order_id' => $item->purchase_order_id,
                         'account_title' => [
                             'id' => $item->account_title_id,
                             'code' => $item->account_title_code,
@@ -1919,6 +1920,11 @@ class TransactionController extends Controller
                             'id' => $item->business_unit_id,
                             'code' => $item->business_unit_code,
                             'name' => $item->business_unit_name,
+                        ],
+                        'unit' => [
+                            'id' => $item->unit_id,
+                            'code' => $item->unit_code,
+                            'name' => $item->unit_name,
                         ],
                         'sub_unit' => [
                             'id' => $item->sub_unit_id,
