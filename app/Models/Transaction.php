@@ -372,9 +372,7 @@ class Transaction extends Model
     {
 //    return $this->hasMany(File::class, "tag_id", "tag_no")
         return $this->hasMany(File::class, "transaction_id", "id")
-            ->select("transaction_id", "status", "created_at")
             ->latest();
-//            ->limit(1);
     }
 
     public function reverse()

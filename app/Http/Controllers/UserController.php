@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\FistoException;
 
+use App\Models\PendingUser;
 use Spatie\Activitylog\Models\Activity;
 
 use App\Models\User;
@@ -136,6 +137,16 @@ class UserController extends Controller
         $fields['password'] = bcrypt(strtolower($fields['username']));
 
         $new_user = User::create($fields);
+
+        $pendingUser = PendingUser::where([
+            'id_prefix' => $fields['id_prefix'],
+            'id_no' => $fields['id_no']
+        ])->first();
+
+        if ($pendingUser) {
+            $pendingUser->is_created = true;
+            $pendingUser->save();
+        }
 
         foreach ($document_types as $document_type) {
             $document_model = new Document();

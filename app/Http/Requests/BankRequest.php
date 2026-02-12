@@ -58,6 +58,8 @@ class BankRequest extends FormRequest
             'business_unit_id_2' => 'nullable',
             'department_id_1' => 'nullable',
             'department_id_2' => 'nullable',
+            'unit_id_1' => 'nullable',
+            'unit_id_2' => 'nullable',
             'sub_unit_id_1' => 'nullable',
             'sub_unit_id_2' => 'nullable',
             'location_id_1' => 'nullable',

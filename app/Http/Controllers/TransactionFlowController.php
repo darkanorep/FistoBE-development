@@ -184,6 +184,7 @@ class TransactionFlowController extends Controller
         $transactions = $request->input('transactions');
         $receipt_type = $request->input('receipt_type');
         $distributed_to = $request->input('distributed_to');
+        $boxNo = $request->input('box_no', null);
 //        $isConfidential = $request->input('is_confidential', 0);
 
 
@@ -239,27 +240,6 @@ class TransactionFlowController extends Controller
                     break;
 
                 case 'approve':
-//                    $voucherDate = Carbon::parse($trx->voucher_month);
-//                    $cutoffDate = Carbon::parse($voucherDate)->addMonth()->setDay($this->cutoffDate);
-//                    $currentDate = Carbon::now();
-//
-//                    if ($currentDate->greaterThan($cutoffDate)) {
-//                        $trxError[] = $trx->tag_no;
-//                        break;
-//                    } else {
-//                        $trx->approve()->create([
-//                            'status' => $process . '-' . $process,
-//                            'date_status' => date('Y-m-d'),
-//                            'tag_id' => $trx->tag_no,
-//                            'distributed_id' => $trx->distributed_id,
-//                            'distributed_name' => $trx->distributed_name
-//                        ]);
-//                        $trx->update([
-//                            'state' => $process,
-//                            'status' => $process . '-' . $process,
-//                            'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
-//                        ]);
-//                    }
 
                     $trx->approve()->create([
                         'status' => $process . '-'. $process,
@@ -289,6 +269,22 @@ class TransactionFlowController extends Controller
                         'status' => $process . '-' . $process,
                         'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
                         'is_for_voucher_audit' => ($trx->document_id == 8) ? 1 : null
+                    ]);
+                    break;
+
+                case 'file':
+                    $trx->file()->create([
+                        'status' => $process . '-' . $process,
+                        'tag_id' => $trx->tag_no,
+                        'receipt_type' => $trx->receipt_type,
+                        'date_status' => date('Y-m-d')
+                    ]);
+
+                    $trx->update([
+                        'state' => $process,
+                        'status' => $process . '-' . $process,
+                        'box_no' => $boxNo,
+                        'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
                     ]);
                     break;
             }
@@ -379,6 +375,10 @@ class TransactionFlowController extends Controller
                     ->where('is_used', false)
                     ->select('bank_id', 'from', 'to')
                     ->first();
+
+                if (!$chequeSeries) {
+                    return GenericMethod::result(400, "Cheque series not found or already used.", []);
+                }
 
                 $query = Cheque::where('bank_id', $chequeSeries->bank_id)
                     ->whereNull('is_cancelled');

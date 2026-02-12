@@ -2620,10 +2620,14 @@ class TransactionFlow
             'cheque_no' => $cheque
         ])->get();
 
+        $cheques->each(function ($cheque) {
+            $cheque->delete();
+        });
+
         Transaction::whereIn('id', $cheques->pluck('transaction_id')->toArray())
             ->update([
-                'state' => 'void',
-                'status' => 'release' . '-' . 'void',
+                'state' => 'return',
+                'status' => 'release' . '-' . 'return',
             ]);
 
         $cheques->each(function ($cheque) {

@@ -658,7 +658,7 @@ class GenericMethod
             if (count($cheques) > 0) {
                 $id = $cheque_transaction->id;
 
-                return GenericMethod::addCheque($transaction_id, $id, $cheques);
+                GenericMethod::addCheque($transaction_id, $id, $cheques);
             }
         }
 
@@ -919,32 +919,32 @@ class GenericMethod
                     ]);
             }
 
-            $chequeSeries = BankSeries::where('id', data_get($specific_cheques, 'check_series_id'))
-                ->where('is_used', false)
-//                ->select('bank_id', 'from', 'to', 'category')
-                ->first();
-
-            $query = Cheque::where('bank_id', $chequeSeries->bank_id)
-                ->whereNull('is_cancelled');
-
-            if ($chequeSeries->category == 'prenumbered stock') {
-                $query->withTrashed();
-            }
-
-            $alreadyUsedChequeNos = $query->pluck('cheque_no')->toArray();
-
-            $excludeCheques = array_merge($alreadyUsedChequeNos, []);
-            $availableChequeNos = array_diff(range($chequeSeries->from, $chequeSeries->to), $excludeCheques);
-            $availableChequeNos = array_filter($availableChequeNos, function($no) { return $no != 0; });
-            $firstAvailable = reset($availableChequeNos);
-
-            if ($chequeSeries->category == 'blank stock' && $firstAvailable) {
-                $chequeSeries->update(['is_used' => true]);
-            } else {
-                if (!$firstAvailable) {
-                    $chequeSeries->update(['is_used' => true]);
-                }
-            }
+//            $chequeSeries = BankSeries::where('id', data_get($specific_cheques, 'check_series_id'))
+//                ->where('is_used', false)
+////                ->select('bank_id', 'from', 'to', 'category')
+//                ->first();
+//
+//            $query = Cheque::where('bank_id', $chequeSeries->bank_id)
+//                ->whereNull('is_cancelled');
+//
+//            if ($chequeSeries->category == 'prenumbered stock') {
+//                $query->withTrashed();
+//            }
+//
+//            $alreadyUsedChequeNos = $query->pluck('cheque_no')->toArray();
+//
+//            $excludeCheques = array_merge($alreadyUsedChequeNos, []);
+//            $availableChequeNos = array_diff(range($chequeSeries->from, $chequeSeries->to), $excludeCheques);
+//            $availableChequeNos = array_filter($availableChequeNos, function($no) { return $no != 0; });
+//            $firstAvailable = reset($availableChequeNos);
+//
+//            if ($chequeSeries->category == 'blank stock' && $firstAvailable) {
+//                $chequeSeries->update(['is_used' => true]);
+//            } else {
+//                if (!$firstAvailable) {
+//                    $chequeSeries->update(['is_used' => true]);
+//                }
+//            }
         }
     }
 
@@ -988,55 +988,30 @@ class GenericMethod
                 "batch_no" => $batch_no ?? null,
                 "bank_id" => $bank_id,
                 "entry" => $entry,
-                "account_title_id" => $account_title_id,
+                "account_title_id" => $account_title_id ?? null,
                 "account_title_name" => $account_title_name,
-//                "account_title_code" => AccountTitle::where("title", $specific_account_title["account_title"]["name"])->first()->code ?? null,
-                "account_title_code" => $instance->accountTitles->where('title', $specific_account_title["account_title"]["name"])->first()->code ?? null,
+                "account_title_code" => $specific_account_title["account_title"]["code"],
                 "amount" => $amount,
                 "remarks" => $remarks,
                 "transaction_type" => $transaction_type,
                 "company_id" => $specific_account_title["company"]["id"] ?? null,
-                "company_name" => $specific_account_title["company"]["name"] ?? null,
-//                "company_code" => isset($specific_account_title["company"]["name"]) ? Company::where("company", $specific_account_title["company"]["name"])->first()->code : null,
-//                "company_code" => isset($specific_account_title["company"]["name"])
-//                    ? optional(Company::where("company", $specific_account_title["company"]["name"])->first())->code
-//                    : null,
-                "company_code" => isset($specific_account_title["company"]["name"])
-                    ? optional($instance->companies->where('company', $specific_account_title["company"]["name"])->first())->code
-                    : null,
+                "company_name" => $specific_account_title["company"]["name"],
+                "company_code" => $specific_account_title["company"]["code"],
                 "department_id" => $specific_account_title["department"]["id"] ?? null,
-                "department_name" => $specific_account_title["department"]["name"] ?? null,
-//                "department_code" => isset($specific_account_title["department"]["name"]) ? Department::where("department", $specific_account_title["department"]["name"])->first()->code : null,
-                "department_code" => isset($specific_account_title["department"]["name"])
-                    ? optional($instance->departments->where("department", $specific_account_title["department"]["name"])->first())->code
-                    : null,
-                "location_id" => $specific_account_title["location"]["id"] ?? null,
-                "location_name" => $specific_account_title["location"]["name"] ?? null,
-//                "location_code" => isset($specific_account_title["location"]["name"])
-//                    ? Location::where("location", $specific_account_title["location"]["name"])->first()->code
-//                    : null,
-                "location_code" => isset($specific_account_title["location"]["name"])
-                    ? $instance->locations->where('location', $specific_account_title["location"]["name"])->first()->code
-                    : null,
+                "department_name" => $specific_account_title["department"]["name"],
+                "department_code" => $specific_account_title["department"]["code"],
+                "location_id" => $specific_account_title["location"]["id"],
+                "location_name" => $specific_account_title["location"]["name"],
+                "location_code" => $specific_account_title["location"]["code"],
                 "business_unit_id" => $specific_account_title["business_unit"]["id"] ?? null,
-                "business_unit_name" => $specific_account_title["business_unit"]["name"] ?? null,
-//                "business_unit_code" => isset($specific_account_title["business_unit"]["name"])
-//                    ? BusinessUnit::where("business_unit", $specific_account_title["business_unit"]["name"])->first()->code
-//                    : null,
-                "business_unit_code" => isset($specific_account_title["business_unit"]["name"])
-                    ? $instance->businessUnits->where("business_unit", $specific_account_title["business_unit"]["name"])->first()->code
-                    : null,
-                "unit_id" => isset($specific_account_title["unit"]["id"]) ?? null,
-                "unit_name" => $specific_account_title["unit"]["name"] ?? null,
-                "unit_code" => isset($specific_account_title["unit"]["name"])
-                    ? optional($instance->units->where("name", $specific_account_title["unit"]["name"])->first())->code
-                    : null,
+                "business_unit_name" => $specific_account_title["business_unit"]["name"],
+                "business_unit_code" => $specific_account_title["business_unit"]["code"],
+                "unit_id" => $specific_account_title["unit"]["id"] ?? null,
+                "unit_name" => $specific_account_title["unit"]["name"],
+                "unit_code" =>  $specific_account_title["unit"]["code"],
                 "sub_unit_id" => $specific_account_title["sub_unit"]["id"] ?? null,
-                "sub_unit_name" => $specific_account_title["sub_unit"]["name"] ?? null,
-//                "sub_unit_code" => isset($specific_account_title["sub_unit"]["name"]) ? SubUnit::where("name", $specific_account_title["sub_unit"]["name"])->first()->code : null,
-                "sub_unit_code" => isset($specific_account_title["sub_unit"]["name"])
-                    ? optional($instance->subUnits->where("name", $specific_account_title["sub_unit"]["name"])->first())->code
-                    : null,
+                "sub_unit_name" => $specific_account_title["sub_unit"]["name"],
+                "sub_unit_code" => $specific_account_title["sub_unit"]["code"],
                 "is_default" => $specific_account_title["is_default"] ?? null,
             ]);
 
@@ -1044,38 +1019,26 @@ class GenericMethod
                 $purchase = PurchaseOrders::withTrashed()->where('id', $purchase_order_id)->first();
                 PurchaseOrders::where('received_receipt_id', $purchase->received_receipt_id)->update([
                     'account_title_id' => $account_title_id,
-                    'account_title_code' => $instance->accountTitles->where('title', $specific_account_title["account_title"]["name"])->first()->code ?? null,
+                    'account_title_code' => $specific_account_title["account_title"]["code"],
                     'account_title_name' => $account_title_name,
                     'company_id' => $specific_account_title["company"]["id"] ?? null,
-                    'company_code' => $specific_account_title["company"]["code"] ?? null,
-                    'company_name' => isset($specific_account_title["company"]["name"])
-                        ? optional($instance->companies->where('company', $specific_account_title["company"]["name"])->first())->code
-                        : null,
+                    'company_code' => $specific_account_title["company"]["code"],
+                    'company_name' => $specific_account_title["company"]["name"],
                     "business_unit_id" => $specific_account_title["business_unit"]["id"] ?? null,
-                    "business_unit_name" => $specific_account_title["business_unit"]["name"] ?? null,
-                    "business_unit_code" => isset($specific_account_title["business_unit"]["name"])
-                        ? $instance->businessUnits->where("business_unit", $specific_account_title["business_unit"]["name"])->first()->code
-                        : null,
+                    "business_unit_name" => $specific_account_title["business_unit"]["name"],
+                    "business_unit_code" => $specific_account_title["business_unit"]["code"],
                     "department_id" => $specific_account_title["department"]["id"] ?? null,
-                    "department_name" => $specific_account_title["department"]["name"] ?? null,
-                    "department_code" => isset($specific_account_title["department"]["name"])
-                        ? optional($instance->departments->where("department", $specific_account_title["department"]["name"])->first())->code
-                        : null,
-                    "unit_id" => isset($specific_account_title["unit"]["id"]) ?? null,
-                    "unit_name" => $specific_account_title["unit"]["name"] ?? null,
-                    "unit_code" => isset($specific_account_title["unit"]["name"])
-                        ? optional($instance->units->where("name", $specific_account_title["unit"]["name"])->first())->code
-                        : null,
+                    "department_name" => $specific_account_title["department"]["name"],
+                    "department_code" => $specific_account_title["department"]["code"],
+                    "unit_id" => $specific_account_title["unit"]["id"] ?? null,
+                    "unit_name" => $specific_account_title["unit"]["name"],
+                    "unit_code" => $specific_account_title["unit"]["code"],
                     "sub_unit_id" => $specific_account_title["sub_unit"]["id"] ?? null,
-                    "sub_unit_name" => $specific_account_title["sub_unit"]["name"] ?? null,
-                    "sub_unit_code" => isset($specific_account_title["sub_unit"]["name"])
-                        ? optional($instance->subUnits->where("name", $specific_account_title["sub_unit"]["name"])->first())->code
-                        : null,
+                    "sub_unit_name" => $specific_account_title["sub_unit"]["name"],
+                    "sub_unit_code" => $specific_account_title["sub_unit"]["code"],
                     "location_id" => $specific_account_title["location"]["id"] ?? null,
-                    "location_name" => $specific_account_title["location"]["name"] ?? null,
-                    "location_code" => isset($specific_account_title["location"]["name"])
-                        ? $instance->locations->where('location', $specific_account_title["location"]["name"])->first()->code
-                        : null,
+                    "location_name" => $specific_account_title["location"]["name"],
+                    "location_code" => $specific_account_title["location"]["code"]
                 ]);
             }
 
@@ -1083,96 +1046,67 @@ class GenericMethod
                 PurchaseOrders::withTrashed()->where('po_number', $po_number)
                     ->update([
                         'account_title_id' => $account_title_id,
-                        'account_title_code' => $instance->accountTitles->where('title', $specific_account_title["account_title"]["name"])->first()->code ?? null,
+                        'account_title_code' => $specific_account_title["account_title"]["code"],
                         'account_title_name' => $account_title_name,
                         'company_id' => $specific_account_title["company"]["id"] ?? null,
-                        'company_code' => $specific_account_title["company"]["code"] ?? null,
-                        'company_name' => isset($specific_account_title["company"]["name"])
-                            ? optional($instance->companies->where('company', $specific_account_title["company"]["name"])->first())->code
-                            : null,
+                        'company_code' => $specific_account_title["company"]["code"],
+                        'company_name' => $specific_account_title["company"]["name"],
                         "business_unit_id" => $specific_account_title["business_unit"]["id"] ?? null,
-                        "business_unit_name" => $specific_account_title["business_unit"]["name"] ?? null,
-                        "business_unit_code" => isset($specific_account_title["business_unit"]["name"])
-                            ? $instance->businessUnits->where("business_unit", $specific_account_title["business_unit"]["name"])->first()->code
-                            : null,
+                        "business_unit_name" => $specific_account_title["business_unit"]["name"],
+                        "business_unit_code" => $specific_account_title["business_unit"]["code"],
                         "department_id" => $specific_account_title["department"]["id"] ?? null,
-                        "department_name" => $specific_account_title["department"]["name"] ?? null,
-                        "department_code" => isset($specific_account_title["department"]["name"])
-                            ? optional($instance->departments->where("department", $specific_account_title["department"]["name"])->first())->code
-                            : null,
-                        "unit_id" => isset($specific_account_title["unit"]["id"]) ?? null,
-                        "unit_name" => $specific_account_title["unit"]["name"] ?? null,
-                        "unit_code" => isset($specific_account_title["unit"]["name"])
-                            ? optional($instance->units->where("name", $specific_account_title["unit"]["name"])->first())->code
-                            : null,
+                        "department_name" => $specific_account_title["department"]["name"],
+                        "department_code" => $specific_account_title["department"]["code"],
+                        "unit_id" => $specific_account_title["unit"]["id"] ?? null,
+                        "unit_name" => $specific_account_title["unit"]["name"],
+                        "unit_code" => $specific_account_title["unit"]["code"],
                         "sub_unit_id" => $specific_account_title["sub_unit"]["id"] ?? null,
-                        "sub_unit_name" => $specific_account_title["sub_unit"]["name"] ?? null,
-                        "sub_unit_code" => isset($specific_account_title["sub_unit"]["name"])
-                            ? optional($instance->subUnits->where("name", $specific_account_title["sub_unit"]["name"])->first())->code
-                            : null,
+                        "sub_unit_name" => $specific_account_title["sub_unit"]["name"],
+                        "sub_unit_code" => $specific_account_title["sub_unit"]["code"],
                         "location_id" => $specific_account_title["location"]["id"] ?? null,
-                        "location_name" => $specific_account_title["location"]["name"] ?? null,
-                        "location_code" => isset($specific_account_title["location"]["name"])
-                            ? $instance->locations->where('location', $specific_account_title["location"]["name"])->first()->code
-                            : null,
+                        "location_name" => $specific_account_title["location"]["name"],
+                        "location_code" => $specific_account_title["location"]["code"]
                     ]);
-
-                $purchaseOrder = PurchaseOrders::withTrashed()->where('po_number', $po_number)->first();
-                ReceivedReceipt::where('id', $purchaseOrder->received_receipt_id)->update([
-                    'reference_no' => $batch_no
-                ]);
             }
 
             if ($jo_number && $entry !== 'credit') {
-                $jobOrder = JobOrder::withTrashed()->where('jo_number', $jo_number)
+                JobOrder::withTrashed()->where('jo_number', $jo_number)
                     ->update([
                         'account_title_id' => $account_title_id,
-                        'account_title_code' => $instance->accountTitles->where('title', $specific_account_title["account_title"]["name"])->first()->code ?? null,
+                        'account_title_code' => $specific_account_title["account_title"]["code"],
                         'account_title_name' => $account_title_name,
                         'company_id' => $specific_account_title["company"]["id"] ?? null,
-                        'company_code' => $specific_account_title["company"]["code"] ?? null,
-                        'company_name' => isset($specific_account_title["company"]["name"])
-                            ? optional($instance->companies->where('company', $specific_account_title["company"]["name"])->first())->code
-                            : null,
+                        'company_code' => $specific_account_title["company"]["code"],
+                        'company_name' => $specific_account_title["company"]["name"],
                         "business_unit_id" => $specific_account_title["business_unit"]["id"] ?? null,
-                        "business_unit_name" => $specific_account_title["business_unit"]["name"] ?? null,
-                        "business_unit_code" => isset($specific_account_title["business_unit"]["name"])
-                            ? $instance->businessUnits->where("business_unit", $specific_account_title["business_unit"]["name"])->first()->code
-                            : null,
+                        "business_unit_name" => $specific_account_title["business_unit"]["name"],
+                        "business_unit_code" => $specific_account_title["business_unit"]["code"],
                         "department_id" => $specific_account_title["department"]["id"] ?? null,
-                        "department_name" => $specific_account_title["department"]["name"] ?? null,
-                        "department_code" => isset($specific_account_title["department"]["name"])
-                            ? optional($instance->departments->where("department", $specific_account_title["department"]["name"])->first())->code
-                            : null,
-                        "unit_id" => isset($specific_account_title["unit"]["id"]) ?? null,
-                        "unit_name" => $specific_account_title["unit"]["name"] ?? null,
-                        "unit_code" => isset($specific_account_title["unit"]["name"])
-                            ? optional($instance->units->where("name", $specific_account_title["unit"]["name"])->first())->code
-                            : null,
+                        "department_name" => $specific_account_title["department"]["name"],
+                        "department_code" => $specific_account_title["department"]["code"],
+                        "unit_id" => $specific_account_title["unit"]["id"] ?? null,
+                        "unit_name" => $specific_account_title["unit"]["name"],
+                        "unit_code" => $specific_account_title["unit"]["code"],
                         "sub_unit_id" => $specific_account_title["sub_unit"]["id"] ?? null,
-                        "sub_unit_name" => $specific_account_title["sub_unit"]["name"] ?? null,
-                        "sub_unit_code" => isset($specific_account_title["sub_unit"]["name"])
-                            ? optional($instance->subUnits->where("name", $specific_account_title["sub_unit"]["name"])->first())->code
-                            : null,
+                        "sub_unit_name" => $specific_account_title["sub_unit"]["name"],
+                        "sub_unit_code" => $specific_account_title["sub_unit"]["code"],
                         "location_id" => $specific_account_title["location"]["id"] ?? null,
-                        "location_name" => $specific_account_title["location"]["name"] ?? null,
-                        "location_code" => isset($specific_account_title["location"]["name"])
-                            ? $instance->locations->where('location', $specific_account_title["location"]["name"])->first()->code
-                            : null,
+                        "location_name" => $specific_account_title["location"]["name"],
+                        "location_code" => $specific_account_title["location"]["code"]
                     ]);
+            }
 
-                $jobOrder = JobOrder::withTrashed()->where('jo_number', $jo_number)->first();
-                ReceivedReceipt::where('id', $jobOrder->received_receipt_id)->update([
+            if($batch_no) {
+                $purchaseOrder = PurchaseOrders::withTrashed()->where('po_number', $po_number)->get();
+                ReceivedReceipt::whereIn('id', $purchaseOrder->pluck('received_receipt_id'))->update([
+                    'reference_no' => $batch_no
+                ]);
+
+                $jobOrder = JobOrder::withTrashed()->where('jo_number', $jo_number)->get();
+                ReceivedReceipt::whereIn('id', $jobOrder->pluck('received_receipt_id'))->update([
                     'reference_no' => $batch_no
                 ]);
             }
-
-
-
-//            if ($purchase_order_id) {
-//                $po = PurchaseOrders::where('id', $purchase_order_id)->first();
-//                ReceivedReceipt::where('id', $po->received_receipt_id)->delete();
-//            }
         }
     }
 

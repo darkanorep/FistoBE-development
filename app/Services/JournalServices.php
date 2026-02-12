@@ -78,8 +78,6 @@ class JournalServices
         $year = $request->input('year');
         $month = $request->input('month');
 
-        $entryEnabled = DB::table('settings')->where('key', 'entry_enabled')->first();
-
         if (!empty($month) && !empty($year)) {
             $generalJournals = $this->model::select([
                 'gj_number',
@@ -93,7 +91,8 @@ class JournalServices
                 'reason',
                 DB::raw("MAX(updated_at) as latest_updated_at")
             ])
-//            ->whereBetween('created_at', [$transactionFrom, $transactionTo])
+                ->whereMonth('adjustment_month', str_pad($month, 2, '0', STR_PAD_LEFT))
+                ->whereYear('adjustment_month', $year)
                 ->when($status == 'pending', function ($query) {
                     $query->whereNull('is_approved');
                 })
@@ -108,27 +107,13 @@ class JournalServices
                 }, function ($query) {
                     $query->where('is_posted', false);
                 })
-//            ->when(!empty($companies), function ($query) use ($companies) {
-//                $query->whereIn('division_id', $companies);
-//            })
-//            ->when(isset($adjustment_month), function ($query) use ($year, $month) {
-//                $query->whereYear('adjustment_month', $year)
-//                    ->whereMonth('adjustment_month', $month);
-//            })
-//                ->where('user_id', auth()->user()->id)
                 ->where(function ($query) {
                     $query->where('user_id', auth()->user()->id);
-                    // ->orWhere(function ($query) {
-                    //     if (auth()->user()->position == 'SUPERVISOR' && auth()->user()->role == 'Approver') {
-                    //         $query->where('user_id', '<>', auth()->user()->id);
-                    //     }
-                    // });
                 })
                 ->groupBy('gj_number', 'journal_name', 'journal_description', 'is_posted', 'adjustment_month', 'is_year_end', 'is_approved', 'reason_id', 'reason')
                 ->orderBy('latest_updated_at', 'desc')
                 ->whereLike(['gj_number', 'journal_name', 'journal_description'], $search)
                 ->get();
-//                 ->paginate($rows);
 
             $allAccountTitles = $this->model::whereIn('gj_number', $generalJournals->pluck('gj_number')->toArray())
                 ->get()
@@ -251,26 +236,26 @@ class JournalServices
 
         if (empty($year) && empty($month)) {
             $groupedGeneralJournals = $generalJournals->map(function ($item) use ($is_posted){
-                return $is_posted ? Carbon::parse($item->posted_at)->format('Y') : Carbon::parse($item->adjustment_month)->format('Y');
+                return $is_posted ? Carbon::parse($item->adjustment_month)->format('Y') : Carbon::parse($item->adjustment_month)->format('Y');
             })->unique()->values();
         } elseif (!empty($year) && empty($month)) {
             $groupedGeneralJournals = $generalJournals->filter(function ($item) use ($year, $is_posted) {
                 return $is_posted
-                    ? Carbon::parse($item->posted_at)->format('Y') == $year && $item->is_year_end == 0
+                    ? Carbon::parse($item->adjustment_month)->format('Y') == $year && $item->is_year_end == 0
                     : Carbon::parse($item->adjustment_month)->format('Y') == $year && $item->is_year_end == 0;
             })->groupBy(function ($item) use ($is_posted) {
                 return $is_posted
-                    ? Carbon::parse($item->posted_at)->format('F')
+                    ? Carbon::parse($item->adjustment_month)->format('F')
                     : Carbon::parse($item->adjustment_month)->format('F');
             })->toArray();
 
             $groupedGeneralJournalsYearEnd = $generalJournals->filter(function ($item) use ($year, $is_posted) {
                 return $is_posted
-                    ? Carbon::parse($item->posted_at)->format('Y') == $year && $item->is_year_end == 1
+                    ? Carbon::parse($item->adjustment_month)->format('Y') == $year && $item->is_year_end == 1
                     : Carbon::parse($item->adjustment_month)->format('Y') == $year && $item->is_year_end == 1;
             })->groupBy(function ($item) use ($is_posted) {
                 return 'Year End ' . ($is_posted
-                        ? Carbon::parse($item->posted_at)->format('F')
+                        ? Carbon::parse($item->adjustment_month)->format('F')
                         : Carbon::parse($item->adjustment_month)->format('F'));
             })->toArray();
 
@@ -279,30 +264,19 @@ class JournalServices
 
 
         } elseif (!empty($year) && !empty($month)) {
-//            $groupedGeneralJournals = $generalJournals->filter(function ($item) use ($year, $month, $is_posted, $is_year_end) {
-////                return Carbon::parse($item->posted_at)->format('Y') == $year &&
-////                    Carbon::parse($item->posted_at)->format('m') == str_pad($month, 2, '0', STR_PAD_LEFT);
-//
-//                return $is_posted ?
-//                    Carbon::parse($item->posted_at)->format('Y') == $year &&
-//                    Carbon::parse($item->posted_at)->format('m') == str_pad($month, 2, '0', STR_PAD_LEFT)
-//                    :  Carbon::parse($item->adjustment_month)->format('Y') == $year &&
-//                    Carbon::parse($item->adjustment_month)->format('m') == str_pad($month, 2, '0', STR_PAD_LEFT);
-//            });
-
             $groupedGeneralJournals = $generalJournals->filter(function ($item) use ($year, $month, $is_posted, $is_year_end) {
                 if ($is_year_end) {
                     return $is_posted
-                        ? Carbon::parse($item->posted_at)->format('Y') == $year &&
-                        Carbon::parse($item->posted_at)->format('m') == str_pad($month, 2, '0', STR_PAD_LEFT) &&
+                        ? Carbon::parse($item->adjustment_month)->format('Y') == $year &&
+                        Carbon::parse($item->adjustment_month)->format('m') == str_pad($month, 2, '0', STR_PAD_LEFT) &&
                         $item->is_year_end == 1
                         : Carbon::parse($item->adjustment_month)->format('Y') == $year &&
                         Carbon::parse($item->adjustment_month)->format('m') == str_pad($month, 2, '0', STR_PAD_LEFT) &&
                         $item->is_year_end == 1;
                 } else {
                     return $is_posted
-                        ? Carbon::parse($item->posted_at)->format('Y') == $year &&
-                        Carbon::parse($item->posted_at)->format('m') == str_pad($month, 2, '0', STR_PAD_LEFT) &&
+                        ? Carbon::parse($item->adjustment_month)->format('Y') == $year &&
+                        Carbon::parse($item->adjustment_month)->format('m') == str_pad($month, 2, '0', STR_PAD_LEFT) &&
                         $item->is_year_end == 0
                         : Carbon::parse($item->adjustment_month)->format('Y') == $year &&
                         Carbon::parse($item->adjustment_month)->format('m') == str_pad($month, 2, '0', STR_PAD_LEFT) &&
@@ -559,7 +533,7 @@ class JournalServices
                 'useful_life' => data_get($account_title, "useful_life"),
                 'particulars' => data_get($account_title, "particulars"),
                 'farm_type' => data_get($account_title, "farm_type"),
-                'jean_remarks' => data_get($account_title, "jean_remarks"),
+                'jean_remarks' => data_get($account_title, "adjustment"),
                 'from' => data_get($account_title, "from"),
                 'changed_to' => data_get($account_title, "changed_to"),
                 'reason_remarks' => data_get($account_title, "reason_remarks"),
@@ -683,7 +657,6 @@ class JournalServices
 
     }
 
-
     public function import(Request $request) {
 
         $journals = $request->all();
@@ -744,6 +717,9 @@ class JournalServices
             $sub_unit_code = $journal['sub_unit_code'];
             $boa = $journal['boa'];
             $boaList = array_column($journals, 'boa');
+            $amount = $journal['amount'];
+            $is_year_end = $journal['is_year_end'];
+            $entry = $journal['entry'];
 
             $chargeExist = $this->charges->where('company_name', $company)
                 ->where('business_unit_name', $business_unit)
@@ -782,6 +758,73 @@ class JournalServices
                         "description" => "Transaction date must be in Y-m-d format (e.g., 2025-06-02).",
                     ];
                 }
+            }
+
+//            if ($entry === 'Credit' && $amount >= 0) {
+//                $error[] = (object)[
+//                    "line" => $index,
+//                    "description" => "Credit entries must have negative amount.",
+//                ];
+//            }
+//
+//            if ($entry === 'Debit' && $amount < 0) {
+//                $error[] = (object)[
+//                    "line" => $index,
+//                    "description" => "Debit entries must be positive amount.",
+//                ];
+//            }
+
+            if ($is_year_end && empty($journal['adjustment'])) {
+                $error[] = (object)[
+                    "line" => $index,
+                    "description" => "Adjustment is required for year-end journals and must be in YYYYMM format (e.g., 202501).",
+                ];
+            } elseif ($is_year_end && !empty($journal['adjustment'])) {
+                // Validate format is YYYYMM
+                if (!preg_match('/^\d{6}$/', $journal['adjustment'])) {
+                    $error[] = (object)[
+                        "line" => $index,
+                        "description" => "Adjustment must be in YYYYMM format (e.g., 202501) for year-end journals.",
+                    ];
+                } else {
+                    // Validate it's a valid year and month
+                    $year = substr($journal['adjustment'], 0, 4);
+                    $month = substr($journal['adjustment'], 4, 2);
+                    if ($month < 1 || $month > 12) {
+                        $error[] = (object)[
+                            "line" => $index,
+                            "description" => "Invalid month in adjustment. Month must be between 01 and 12.",
+                        ];
+                    }
+                }
+            }
+
+            if ($is_year_end && empty($journal['reason_remarks'])) {
+                $error[] = (object)[
+                    "line" => $index,
+                    "description" => "Reason is required for year-end journals.",
+                ];
+            }
+
+            if (!$is_year_end && !empty($journal['reason'])) {
+                $error[] = (object)[
+                    "line" => $index,
+                    "description" => "Reason should not be set for non-year-end journals.",
+                ];
+            }
+
+            if (!$is_year_end && !empty($journal['adjustment'])) {
+                $error[] = (object)[
+                    "line" => $index,
+                    "description" => "Adjustment should not be set for non-year-end journals.",
+                ];
+            }
+
+            if (isset($amount) && !is_numeric($amount) || $amount === null) {
+                $error[] = (object)[
+                    "line" => $index,
+                    "description" => "Amount must be a numeric value.",
+                ];
             }
 
             if (!$chargeExist) {
@@ -961,7 +1004,7 @@ class JournalServices
                     'useful_life' => $journal['useful_life'] ?? null,
                     'particulars' => $journal['particulars'] ?? null,
                     'farm_type' => $journal['farm_type'] ?? null,
-                    'jean_remarks' => $journal['jean_remarks'] ?? null,
+                    'adjustment' => $journal['adjustment'] ?? null,
                     'from' => $journal['from'] ?? null,
                     'changed_to' => $journal['changed_to'] ?? null,
                     'reason_remarks' => $journal['reason_remarks'] ?? null,
@@ -969,6 +1012,7 @@ class JournalServices
                     'bank_name' => $journal['bank_name'] ?? null,
                     'cheque_no' => $journal['cheque_no'] ?? null,
                     'remaining_bv_for_depr' => $journal['remaining_bv_for_depr'] ?? null,
+                    'is_year_end' => $journal['is_year_end'] ?? false
                 ];
             }
 
@@ -998,96 +1042,5 @@ class JournalServices
         return response()->json(
             ['message' => $generalJournal->gj_number . ' successfully posted.']
             , 200);
-    }
-
-    private function bookOfAccounts() {
-        return collect([
-            '13th month Accrual',
-            '13th month Reversal',
-            'Fuel Register',
-            'Payroll Register',
-            'PCF Payroll - RDF Corporate Services',
-            'VP Confi - RDF Corporate Services',
-            'PCF Depot - Meats Production',
-            'PCF Finance - RDF Corporate Services',
-            'PCF Purchasing - RDF Corporate Services',
-            'Bank Transaction',
-            'Sales Journal - GC',
-            'General Journal - E-Pig Farms',
-            'General Journal - Food & Beverages',
-            'General Journal - Fresh Options',
-            'General Journal - Lodestar Feedmill & Veterinary Products',
-            'General Journal - Lodestar Feedmill and Veterinary Medicines',
-            'General Journal - Meats Production',
-            'General Journal - RDF Corporate Services',
-            'General Journal - Red Dragon Farm',
-            'General Journal Fixed Asset',
-            'General Journal - C&B ADJ',
-            'General Journal - C&B Lab Charges',
-            'General Journal - C&B Service Group',
-            'General Journal - C&B Swine Costing',
-            'General Journal - C&B FM Costing',
-            'General Journal - C&B Broiler Costing',
-            'General Journal - C&B Layer Costing',
-            'General Journal - C&B MPE',
-            'General Journal - C&B Amortization',
-            'General Journal - C&B Delivery Variance',
-            'General Journal - C&B Vam Costing',
-            'General Journal - C&B Fresh Costing',
-            'General Journal - C&B Allocation',
-            'General Journal - C&B Freebies',
-            'General Journal - C&B Gen & Admin - General Account',
-            'General Journal - C&B Trip Ticket',
-            'General Journal - C&B Accruals',
-            'Prepayments - E-Pig Farms',
-            'Prepayments - Food & Beverages',
-            'Prepayments - Fresh Options',
-            'Prepayments - Lodestar Feedmill & Veterinary Products',
-            'Prepayments - Lodestar Feedmill and Veterinary Medicines',
-            'Prepayments - Meats Production',
-            'Prepayments - RDF Corporate Services',
-            'Prepayments - Red Dragon Farm',
-            'Accruals - E-Pig Farms',
-            'Accruals - Food & Beverages',
-            'Accruals - Food & Beverages',
-            'Accruals - Fresh Options',
-            'Accruals - Lodestar Feedmill & Veterinary Products',
-            'Accruals - Lodestar Feedmill and Veterinary Medicines',
-            'Accruals - Meats Production',
-            'Accruals - RDF Corporate Services',
-            'Accruals - Red Dragon Farm',
-            'AR Accruals - Fresh Options',
-            'AR Reversal - Fresh Options',
-            'Reversal - E-Pig Farms',
-            'Reversal - Food & Beverages',
-            'Reversal - Fresh Options',
-            'Reversal - Lodestar Feedmill & Veterinary Products',
-            'Reversal - Lodestar Feedmill and Veterinary Medicines',
-            'Reversal - Meats Production',
-            'Reversal - RDF Corporate Services',
-            'Reversal - Red Dragon Farm',
-            'Sales Journal - Agri-Aquatic',
-            'Sales Journal - E-Pig Farms',
-            'Sales Journal - Red Dragon Farm',
-            'Sales Journal - Fresh Options',
-            'Sales Journal - Meats Production',
-            'Sales Journal - RDF Corporate Services',
-            'Sales Journal RSC - Fresh Options',
-            'Freon',
-            'Input & Output Tax',
-            'MIR - Lodestar Feedmill & Veterinary Products',
-            'Specialist General Journal - E-Pig Farms',
-            'Specialist General Journal - Food & Beverages',
-            'Specialist General Journal - Fresh Options',
-            'Specialist General Journal - Lodestar Feedmill & Veterinary Products',
-            'Specialist General Journal - Meats Production',
-            'Specialist General Journal - RDF Corporate Services',
-            'Specialist General Journal - Red Dragon Farm',
-            'Specialist General Journal - Lodestar Feedmill and Veterinary Medicines',
-            'SSS Register',
-            'Pag-ibig Register',
-            'Philhealth Register',
-            'MIR - Lodestar Feedmill and Veterinary Medicines'
-        ])->toArray();
     }
 }

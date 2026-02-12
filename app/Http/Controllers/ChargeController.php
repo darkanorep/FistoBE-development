@@ -107,7 +107,7 @@ class ChargeController extends Controller
                     ];
                     continue;
                 }
-                Charge::updateOrCreate(
+                Charge::withTrashed()->updateOrCreate(
                     ['sync_id' => $item['id']],
                     [
                         'code' => $item['code'] ?? null,
@@ -132,6 +132,23 @@ class ChargeController extends Controller
                         'location_name' => $item['location_name'] ?? null
                     ]
                 );
+
+
+                if (!empty($item['deleted_at'])) {
+                    $charge = Charge::withTrashed()->where('code', $item['code'])->get();
+                    foreach ($charge as $c) {
+                        if (!$c->trashed()) {
+                            $c->delete();
+                        }
+                    }
+                } else {
+                    $charge = Charge::withTrashed()->where('code', $item['code'])->get();
+                    foreach ($charge as $c) {
+                        if ($c->trashed()) {
+                            $c->restore();
+                        }
+                    }
+                }
             }
         });
 

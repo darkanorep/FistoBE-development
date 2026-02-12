@@ -65,7 +65,6 @@ class TransactionController extends Controller
         }
         return $this->resultResponse("not-found", "Transaction", []);
     }
-
     public function index(Request $request)
     {
         $status = $request->input('state', 'request');

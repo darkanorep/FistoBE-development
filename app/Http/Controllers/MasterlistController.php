@@ -523,12 +523,6 @@ class MasterlistController extends Controller
                     'id' => $item['id'],
                     'rr_year_number_id' => $item['rr_year_number_id'],
                     'rr_orders' => array_map(function ($rr) use ($credit) {
-                        $company = $this->company->where('company', $rr['po_transaction']['company']['name'])->first();
-                        $business_unit = $this->business_unit->where('business_unit', $rr['po_transaction']['business_unit']['name'])->first();
-                        $department = $this->department->where('department', $rr['po_transaction']['department']['name'])->first();
-                        $unit = $this->unit->where('name', $rr['po_transaction']['department_unit']['name'])->first();
-                        $sub_unit = $this->sub_unit->where('name', $rr['po_transaction']['sub_unit']['name'])->first();
-                        $location = $this->location->where('location', $rr['po_transaction']['location']['name'])->first();
                         $charge = $this->charge->where('name', $rr['po_transaction']['one_charging_name'])->first();
                         return [
                             'item_code' => $rr['item_code'],
@@ -538,7 +532,7 @@ class MasterlistController extends Controller
                                 'item_code' => $rr['order']['item_code'],
                                 'item_name' => $rr['order']['item_name'],
                                 'price' => $rr['order']['price'],
-                                'reference_no' => $rr['order']['reference_no'],
+                                'reference_no' => $rr['shipment_no'] ?? null ,
                                 'uom' => [
                                     'code' => $rr['order']['uom']['code'],
                                     'name' => $rr['order']['uom']['name'],
@@ -667,12 +661,6 @@ class MasterlistController extends Controller
                     'id' => $item['id'],
                     'rr_year_number_id' => $item['jo_rr_year_number_id'],
                     'rr_orders' => array_map(function ($rr) {
-                        $company = $this->company->where('company', $rr['po_transaction']['company']['name'])->first();
-                        $business_unit = $this->business_unit->where('business_unit', $rr['po_transaction']['business_unit']['name'])->first();
-                        $department = $this->department->where('department', $rr['po_transaction']['department']['name'])->first();
-                        $unit = $this->unit->where('name', $rr['po_transaction']['department_unit']['name'])->first();
-                        $sub_unit = $this->sub_unit->where('name', $rr['po_transaction']['sub_unit']['name'])->first();
-                        $location = $this->location->where('location', $rr['po_transaction']['location']['name'])->first();
                         $charge = $this->charge->where('name', $rr['po_transaction']['one_charging_name'])->first();
                         return [
                             'description' => $rr['description'],
@@ -684,6 +672,7 @@ class MasterlistController extends Controller
                                     'code' => $rr['order']['uom']['code'],
                                     'name' => $rr['order']['uom']['name'],
                                 ],
+                                'reference_no' => $rr['shipment_no'] ?? null ,
                                 'po_transaction' => [
                                     'po_year_number_id' => $rr['po_transaction']['po_year_number_id'],
                                     'po_description' => $rr['po_transaction']['po_description'],

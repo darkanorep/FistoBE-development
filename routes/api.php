@@ -56,6 +56,9 @@ Route::get('/ymir', [MasterlistController::class, 'projectYmir']);
 Route::middleware('api.key')->group(function () {
 //    Route::patch('one-charging/{id}', [\App\Http\Controllers\ChargeController::class, 'change_status']);
     Route::post('sync_from_one_rdf', [\App\Http\Controllers\ChargeController::class, 'sync_from_one_rdf']);
+    Route::resource('pending-requests', \App\Http\Controllers\PendingUserController::class)->only(['index', 'store']);
+    Route::patch('changepass/{id_prefix_id_no}', [\App\Http\Controllers\PendingUserController::class, 'changePassword']);
+    Route::patch('reset/{id_prefix_id_no}', [\App\Http\Controllers\PendingUserController::class, 'resetPassword']);
 });
 
 //Route::get('fix-year', [TransactionController::class, 'fixYearFormat']);
@@ -414,6 +417,18 @@ Route::group(["middleware" => "auth:sanctum"], function () {
     Route::resource("confidential-22-journals", \App\Http\Controllers\Confidential22JournalController::class);
     Route::post('update/confidential-22-journals/{id}', [\App\Http\Controllers\Confidential22JournalController::class, 'updateGeneralJournal']);
 
+    //GENERAL JOURNAL - CONFIDENTIAL 30
+    Route::patch('confidential-30-journals/post/{id}', [\App\Http\Controllers\Confidential30JournalController::class, 'posted']);
+    Route::post("confidential-30-journals/import", [\App\Http\Controllers\Confidential30JournalController::class, 'import']);
+    Route::resource("confidential-30-journals", \App\Http\Controllers\Confidential30JournalController::class);
+    Route::post('update/confidential-30-journals/{id}', [\App\Http\Controllers\Confidential30JournalController::class, 'updateGeneralJournal']);
+
+    //GENERAL JOURNAL - CONFIDENTIAL YEAR END
+    Route::patch('confidential-year-end-journals/post/{id}', [\App\Http\Controllers\ConfidentialYearEndJournalController::class, 'posted']);
+    Route::post("confidential-year-end-journals/import", [\App\Http\Controllers\ConfidentialYearEndJournalController::class, 'import']);
+    Route::resource("confidential-year-end-journals", \App\Http\Controllers\ConfidentialYearEndJournalController::class);
+    Route::post('update/confidential-year-end-journals/{id}', [\App\Http\Controllers\ConfidentialYearEndJournalController::class, 'updateGeneralJournal']);
+
     //GENERAL JOURNAL - SALES
     Route::patch('sales-journals/post/{id}', [\App\Http\Controllers\SalesJournalController::class, 'posted']);
     Route::post("sales-journals/import", [\App\Http\Controllers\SalesJournalController::class, 'import']);
@@ -462,6 +477,13 @@ Route::group(["middleware" => "auth:sanctum"], function () {
     Route::resource("accrual-reversal-journals", \App\Http\Controllers\AccrualReversalJournalsController::class);
     Route::post('update/accrual-reversal-journals/{id}', [\App\Http\Controllers\AccrualReversalJournalsController::class, 'updateGeneralJournal']);
 
+    //YEAR END JOURNALS
+    Route::patch('year-end-journals/post/{id}', [\App\Http\Controllers\YearEndJournalController::class, 'posted']);
+    Route::post("year-end-journals/import", [\App\Http\Controllers\YearEndJournalController::class, 'import']);
+    Route::resource("year-end-journals", \App\Http\Controllers\YearEndJournalController::class);
+    Route::post('update/year-end-journals/{id}', [\App\Http\Controllers\YearEndJournalController::class, 'updateGeneralJournal']);
+
+
     //JOURNALS FOR APPROVAL
     Route::group(['prefix' => 'journal-books'], function () {
 
@@ -509,6 +531,14 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         Route::get('confidential-22-journals', [\App\Http\Controllers\Confidential22JournalController::class, 'indexForApproval']);
         Route::patch('confidential-22-journals/{id}', [\App\Http\Controllers\Confidential22JournalController::class, 'action']);
 
+        //GENERAL JOURNAL - CONFIDENTIAL 30
+        Route::get('confidential-30-journals', [\App\Http\Controllers\Confidential30JournalController::class, 'indexForApproval']);
+        Route::patch('confidential-30-journals/{id}', [\App\Http\Controllers\Confidential30JournalController::class, 'action']);
+
+        //GENERAL JOURNAL - CONFIDENTIAL YEAR END
+        Route::get('confidential-year-end-journals', [\App\Http\Controllers\ConfidentialYearEndJournalController::class, 'indexForApproval']);
+        Route::patch('confidential-year-end-journals/{id}', [\App\Http\Controllers\ConfidentialYearEndJournalController::class, 'action']);
+
         //GENERAL JOURNAL - SALES
         Route::get('sales-journals', [\App\Http\Controllers\SalesJournalController::class, 'indexForApproval']);
         Route::patch('sales-journals/{id}', [\App\Http\Controllers\SalesJournalController::class, 'action']);
@@ -540,6 +570,10 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         //GENERAL JOURNAL - ACCRUAL REVERSAL
         Route::get('accrual-reversal-journals', [\App\Http\Controllers\AccrualReversalJournalsController::class, 'indexForApproval']);
         Route::patch('accrual-reversal-journals/{id}', [\App\Http\Controllers\AccrualReversalJournalsController::class, 'action']);
+
+        //YEAR END JOURNAL
+        Route::get('year-end-journals', [\App\Http\Controllers\YearEndJournalController::class, 'indexForApproval']);
+        Route::patch('year-end-journals/{id}', [\App\Http\Controllers\YearEndJournalController::class, 'action']);
     });
 
     Route::resource("transactions", TransactionController::class);
