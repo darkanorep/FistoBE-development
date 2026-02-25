@@ -138,6 +138,9 @@ Route::group(["middleware" => "auth:sanctum"], function () {
             Route::get('permissions', [MasterlistController::class, "permissionsDropdown"]);
         });
 
+        //PENDING REQUESTS USER
+        Route::resource('pending-requests', \App\Http\Controllers\PendingUserController::class)->only(['index']);
+
         //ONE CHARGING
         Route::patch('one-charging/{id}', [\App\Http\Controllers\ChargeController::class, 'change_status']);
         Route::resource('one-charging', \App\Http\Controllers\ChargeController::class)->only(['index', 'store']);
@@ -577,12 +580,9 @@ Route::group(["middleware" => "auth:sanctum"], function () {
     });
 
     Route::resource("transactions", TransactionController::class);
-//    Route::post('transactions-test', [TransactionController::class, "store1"]);
 
     Route::group(["prefix" => "transactions"], function () {
         //TRANSACTION
-//        Route::get("logs/request", [TransactionController::class, "viewRequestorLogs"]);
-//        Route::get("status_group/", [TransactionController::class, "status_group"]);
         Route::post("void/{id}", [TransactionController::class, "voidTransaction"]);
         Route::post("validate-po-no", [TransactionController::class, "getPODetails"]);
         Route::post("validate-document-no", [TransactionController::class, "validateDocumentNo"]);
@@ -616,7 +616,6 @@ Route::group(["middleware" => "auth:sanctum"], function () {
             Route::post('cheque-revert/{id}', [TransactionController::class, "chequeRevert"]);
 
             Route::post('cheque-revert', [TransactionController::class, "chequeRevert1"]);
-//            Route::get('multiple-vouchers', [TransactionController::class, 'multipleVouchers']);
 
             //REPORT
             Route::get('cash-outflow-report', [TransactionController::class, 'cashOutflowReport']);
@@ -647,6 +646,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         Route::get('tagging-releasing', [\App\Http\Controllers\ReportController::class, 'taggingReleasing']);
         Route::get('cheque-created', [\App\Http\Controllers\ReportController::class, 'chequeCreated']);
         Route::get('cheque-cleared', [\App\Http\Controllers\ReportController::class, 'chequeCleared']);
+        Route::get('audit-report', [\App\Http\Controllers\ReportController::class, 'auditReport']);
     });
 
     //SETTINGS

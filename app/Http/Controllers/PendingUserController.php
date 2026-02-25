@@ -6,6 +6,7 @@ use App\Models\PendingUser;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class PendingUserController extends Controller
 {
@@ -50,6 +51,8 @@ class PendingUserController extends Controller
             'middle_name' => 'nullable',
             'last_name' => 'required',
             'suffix' => 'nullable',
+            'department' => 'nullable',
+            'position' => 'position',
             'username' => 'required',
             'password' => 'required',
         ]);
@@ -61,14 +64,23 @@ class PendingUserController extends Controller
 
         if (!$user) {
             // User doesn't exist, create pending user
-            PendingUser::create([
-                'id_no' => $validated['id_no'],
-                'id_prefix' => $validated['id_prefix'],
-                'first_name' => $validated['first_name'],
-                'middle_name' => $validated['middle_name'] ?? null,
-                'last_name' => $validated['last_name'],
-                'suffix' => $validated['suffix'] ?? null,
-            ]);
+            PendingUser::withTrashed()->updateOrCreate(
+                [
+                    'id_no' => $validated['id_no'],
+                    'id_prefix' => $validated['id_prefix'],
+                ],
+                [
+                    'first_name' => $validated['first_name'],
+                    'middle_name' => $validated['middle_name'] ?? null,
+                    'last_name' => $validated['last_name'],
+                    'suffix' => $validated['suffix'] ?? null,
+                    'department' => $validated['department'] ?? null,
+                    'position' => $validated['position'] ?? null,
+                    'username' => $validated['username'],
+                    'password' => $validated['password'],
+                    'deleted_at' => null, // Restore if soft-deleted
+                ]
+            );
 
             return response()->json(['message' => 'Pending user created successfully.'], 201);
         }

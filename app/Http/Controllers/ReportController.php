@@ -13,24 +13,24 @@ class ReportController extends Controller
   {
     $from = $request->input("from", Carbon::now()->format("Y-m-d"));
     $to = $request->input("to", Carbon::now()->format("Y-m-d"));
-      $suppliers = $request->input("suppliers", []);
+    $suppliers = $request->input("suppliers", []);
 
     $page = max(1, (int) $request->input("page", 1));
     $rows = max(1, (int) $request->input("rows", 10));
     $paginate = $request->input("paginate", true);
 
-      if (is_string($suppliers)) {
-          $suppliers = json_decode($suppliers, true) ?? [];
-      }
+    if (is_string($suppliers)) {
+      $suppliers = json_decode($suppliers, true) ?? [];
+    }
 
-      $supplierFilter = '';
-      foreach ($suppliers as $supplier) {
-          if (!is_numeric($supplier)) {
-              $supplierFilter = '';
-              break;
-          }
-          $supplierFilter = "AND transactions.supplier_id IN (" . implode(',', $suppliers) . ")";
+    $supplierFilter = "";
+    foreach ($suppliers as $supplier) {
+      if (!is_numeric($supplier)) {
+        $supplierFilter = "";
+        break;
       }
+      $supplierFilter = "AND transactions.supplier_id IN (" . implode(",", $suppliers) . ")";
+    }
 
     $result = DB::select(
       DB::raw("
@@ -121,18 +121,18 @@ class ReportController extends Controller
     $paginate = $request->input("paginate", true);
     $suppliers = $request->input("suppliers", []);
 
-      if (is_string($suppliers)) {
-          $suppliers = json_decode($suppliers, true) ?? [];
-      }
+    if (is_string($suppliers)) {
+      $suppliers = json_decode($suppliers, true) ?? [];
+    }
 
-        $supplierFilter = '';
-      foreach ($suppliers as $supplier) {
-            if (!is_numeric($supplier)) {
-                $supplierFilter = '';
-                break;
-            }
-            $supplierFilter = "AND a.supplier_id IN (" . implode(',', $suppliers) . ")";
+    $supplierFilter = "";
+    foreach ($suppliers as $supplier) {
+      if (!is_numeric($supplier)) {
+        $supplierFilter = "";
+        break;
       }
+      $supplierFilter = "AND a.supplier_id IN (" . implode(",", $suppliers) . ")";
+    }
 
     $result = DB::select(
       DB::raw("
@@ -225,18 +225,18 @@ class ReportController extends Controller
     $rows = max(1, (int) $request->input("rows", 10));
     $paginate = $request->input("paginate", true);
 
-      if (is_string($suppliers)) {
-          $suppliers = json_decode($suppliers, true) ?? [];
-      }
+    if (is_string($suppliers)) {
+      $suppliers = json_decode($suppliers, true) ?? [];
+    }
 
-      $supplierFilter = '';
-      foreach ($suppliers as $supplier) {
-          if (!is_numeric($supplier)) {
-              $supplierFilter = '';
-              break;
-          }
-          $supplierFilter = "AND a.supplier_id IN (" . implode(',', $suppliers) . ")";
+    $supplierFilter = "";
+    foreach ($suppliers as $supplier) {
+      if (!is_numeric($supplier)) {
+        $supplierFilter = "";
+        break;
       }
+      $supplierFilter = "AND a.supplier_id IN (" . implode(",", $suppliers) . ")";
+    }
 
     $result = DB::select(
       DB::raw("
@@ -330,18 +330,18 @@ class ReportController extends Controller
     $rows = max(1, (int) $request->input("rows", 10));
     $paginate = $request->input("paginate", true);
 
-      if (is_string($suppliers)) {
-          $suppliers = json_decode($suppliers, true) ?? [];
-      }
+    if (is_string($suppliers)) {
+      $suppliers = json_decode($suppliers, true) ?? [];
+    }
 
-      $supplierFilter = '';
-      foreach ($suppliers as $supplier) {
-          if (!is_numeric($supplier)) {
-              $supplierFilter = '';
-              break;
-          }
-          $supplierFilter = "AND a.supplier_id IN (" . implode(',', $suppliers) . ")";
+    $supplierFilter = "";
+    foreach ($suppliers as $supplier) {
+      if (!is_numeric($supplier)) {
+        $supplierFilter = "";
+        break;
       }
+      $supplierFilter = "AND a.supplier_id IN (" . implode(",", $suppliers) . ")";
+    }
 
     $result = DB::select(
       DB::raw("
@@ -440,18 +440,18 @@ class ReportController extends Controller
     $rows = max(1, (int) $request->input("rows", 10));
     $paginate = $request->input("paginate", true);
 
-      if (is_string($suppliers)) {
-          $suppliers = json_decode($suppliers, true) ?? [];
-      }
+    if (is_string($suppliers)) {
+      $suppliers = json_decode($suppliers, true) ?? [];
+    }
 
-      $supplierFilter = '';
-      foreach ($suppliers as $supplier) {
-          if (!is_numeric($supplier)) {
-              $supplierFilter = '';
-              break;
-          }
-          $supplierFilter = "AND a.supplier_id IN (" . implode(',', $suppliers) . ")";
+    $supplierFilter = "";
+    foreach ($suppliers as $supplier) {
+      if (!is_numeric($supplier)) {
+        $supplierFilter = "";
+        break;
       }
+      $supplierFilter = "AND a.supplier_id IN (" . implode(",", $suppliers) . ")";
+    }
 
     $result = DB::select(
       DB::raw("
@@ -551,18 +551,18 @@ class ReportController extends Controller
     $rows = max(1, (int) $request->input("rows", 10));
     $paginate = $request->input("paginate", true);
 
-      if (is_string($suppliers)) {
-          $suppliers = json_decode($suppliers, true) ?? [];
-      }
+    if (is_string($suppliers)) {
+      $suppliers = json_decode($suppliers, true) ?? [];
+    }
 
-      $supplierFilter = '';
-      foreach ($suppliers as $supplier) {
-          if (!is_numeric($supplier)) {
-              $supplierFilter = '';
-              break;
-          }
-          $supplierFilter = "AND a.supplier_id IN (" . implode(',', $suppliers) . ")";
+    $supplierFilter = "";
+    foreach ($suppliers as $supplier) {
+      if (!is_numeric($supplier)) {
+        $supplierFilter = "";
+        break;
       }
+      $supplierFilter = "AND a.supplier_id IN (" . implode(",", $suppliers) . ")";
+    }
 
     $result = DB::select(
       DB::raw("
@@ -658,15 +658,14 @@ class ReportController extends Controller
     $suppliers = $request->input("suppliers");
 
     if (is_string($suppliers)) {
-        $suppliers = json_decode($suppliers, true) ?? [];
+      $suppliers = json_decode($suppliers, true) ?? [];
     }
     $page = max(1, (int) $request->input("page", 1));
     $rows = max(1, (int) $request->input("rows", 10));
     $paginate = $request->input("paginate", true);
 
-
     $transactions = Transaction::with([
-        "transmit",
+      "transmit",
       "treasuryAssociates",
       "businessUnit",
       "account_titles",
@@ -682,9 +681,9 @@ class ReportController extends Controller
       ->whereHas("chequeHistory", function ($query) use ($from, $to) {
         $query->whereDate("created_at", ">=", $from)->whereDate("created_at", "<=", $to);
       })
-        ->when(!empty($suppliers), function ($query) use ($suppliers) {
-            $query->whereIn('supplier_id', $suppliers);
-        })
+      ->when(!empty($suppliers), function ($query) use ($suppliers) {
+        $query->whereIn("supplier_id", $suppliers);
+      })
       ->select(
         "id",
         "tag_no",
@@ -724,7 +723,9 @@ class ReportController extends Controller
           "transaction_date" => Carbon::parse($group->first()->date_requested)
             ->setTimezone("Asia/Manila")
             ->format("Y-m-d"),
-            "date_transmitted" => Carbon::parse($this->getDateEveryStatus($group->first()->transmit, "transmit-transmit")),
+          "date_transmitted" => Carbon::parse(
+            $this->getDateEveryStatus($group->first()->transmit, "transmit-transmit")
+          ),
           "business_unit_code" =>
             $group
               ->pluck("businessUnit.code")
@@ -856,9 +857,9 @@ class ReportController extends Controller
     $paginate = $request->input("paginate", true);
 
     $clearedCheques = DB::table("transactions")
-        ->when(!empty($suppliers), function ($query) use ($suppliers) {
-            $query->whereIn('supplier_id', $suppliers);
-        })
+      ->when(!empty($suppliers), function ($query) use ($suppliers) {
+        $query->whereIn("supplier_id", $suppliers);
+      })
       ->where("transactions.state", "!=", "void")
       ->leftJoin("cheques", function ($join) {
         $join->on("transactions.id", "=", "cheques.transaction_id")->where("cheques.deleted_at", "=", null);
@@ -1098,4 +1099,198 @@ class ReportController extends Controller
         : [],
     ];
   }
+    public function auditReport(Request $request) {
+        $transactions = Transaction::withTrashed()
+            ->with([
+                'cheques' => function ($query) {
+                    $query->where('status', 'cheque-cheque')
+                        ->select([
+                            'id',
+                            'transaction_id',
+                            'created_at as cheque_date',
+                            'status'
+                        ]);
+                },
+                'cheques.cheques' => function ($query) {
+                    $query->select([
+                        'treasury_id',
+                        'bank_name',
+                        'cheque_no',
+                        'cheque_amount',
+                        'cheque_date',
+                        'is_received',
+                        'is_audited',
+                        'is_executived',
+                        'is_issued',
+                        'is_cleared',
+                        'is_released',
+                    ]);
+                },
+                'tag' => function ($query) {
+                    $query->where('status', 'tag-tag')
+                    ->select([
+                        'transaction_id',
+                        'status',
+                        'created_at as tagged_date'
+                    ]);
+                },
+                'extract' => function ($query) {
+                    $query->where('status', 'extract-extract')
+                    ->select([
+                        'transaction_id',
+                        'status',
+                        'created_at as transmitted_date'
+                    ]);
+                },
+                'transmit' => function ($query) {
+                    $query->where('status', 'transmit-transmit')
+                    ->select([
+                        'transaction_id',
+                        'status',
+                        'created_at as transmitted_date'
+                    ]);
+                },
+                'voucher' => function ($query) {
+                    $query->where('status', 'voucher-voucher')
+                    ->select([
+                        'transaction_id',
+                        'status',
+                        'created_at as vouchered_date'
+                    ]);
+                },
+                'approve' => function ($query) {
+                    $query->where('status', 'approve-approve')
+                    ->select([
+                        'transaction_id',
+                        'status',
+                        'created_at as approved_date'
+                    ]);
+                },
+                'audit' => function ($query) {
+                    $query
+                        ->where('status', 'audit-audit')
+                        ->select([
+                        'transaction_id',
+                        'status',
+                        'created_at as audited_date'
+                    ]);
+                },
+                'executive' => function ($query) {
+                    $query
+                        ->where('status', 'executive-executive')
+                        ->select([
+                            'transaction_id',
+                            'status',
+                            'created_at as signed_date'
+                        ]);
+                },
+                'release' => function ($query) {
+                    $query
+                        ->where('status', 'release-release')
+                        ->select([
+                            'transaction_id',
+                            'status',
+                            'created_at as released_date'
+                        ]);
+                },
+                'discharge' => function ($query) {
+                    $query
+                        ->where('status', 'discharge-discharge')
+                        ->select([
+                            'transaction_id',
+                            'status',
+                            'created_at as discharged_date'
+                        ]);
+                },
+                'file' => function ($query) {
+                    $query->where('status', 'file-file')
+                        ->select([
+                            'transaction_id',
+                            'status',
+                            'created_at as filed_date'
+                        ]);
+                }
+            ])
+            ->whereBetween('created_at', ['2025-07-01', '2025-12-31'])
+            ->select([
+                'id',
+                'tag_no',
+                'voucher_no',
+                'document_no',
+                'referrence_no',
+                'business_unit',
+                'remarks',
+                'supplier',
+                'document_amount',
+                'referrence_amount',
+                'status'
+            ])
+            ->get();
+
+        // Transform to return latest cheque as object instead of array
+        return $transactions->flatMap(function ($transaction) {
+            $data = $transaction->toArray();
+            $latestCheque = $transaction->cheques->sortByDesc('created_at')->first();
+            $cheques = $latestCheque ? ($latestCheque->cheques ?? collect()) : collect();
+
+            $data['tag'] = $transaction->tag->sortByDesc('tagged_date')->first();
+            $data['extract'] = $transaction->extract->sortByDesc('extracted_date')->first();
+            $data['transmit'] = $transaction->transmit->sortByDesc('transmitted_date')->first();
+            $data['voucher'] = $transaction->voucher->sortByDesc('vouchered_date')->first();
+            $data['approve'] = $transaction->approve->sortByDesc('approved_date')->first();
+            $data['audit'] = $transaction->audit->sortByDesc('audited_date')->first();
+            $data['executive'] = $transaction->executive->sortByDesc('signed_date')->first();
+            $data['release'] = $transaction->release->sortByDesc('released_date')->first();
+            $data['discharge'] = $transaction->discharge->sortByDesc('discharged_date')->first();
+            $data['file'] = $transaction->file->sortByDesc('filed_date')->first();
+            $data['cheque'] = $latestCheque;
+            unset($data['cheques']);
+
+            // If no cheques, return single row with null cheque details
+            if ($cheques->isEmpty()) {
+                $data['single_cheque'] = null;
+                return [$data];
+            }
+
+            // Create one row per cheque
+            return $cheques->map(function ($cheque) use ($data) {
+                $row = $data;
+                $row['single_cheque'] = $cheque;
+                return $row;
+            })->values()->all();
+        })->map(function ($item) {
+            return [
+                'date_transmitted' => !empty($item['transmit']['transmitted_date']) ? Carbon::parse($item['transmit']['transmitted_date'])->format('Y-m-d') : null,
+                'date_received' => null,
+                'date_processed' => !empty($item['approve']['approved_date']) ? Carbon::parse($item['approve']['approved_date'])->format('Y-m-d') : null,
+                'tag_no' => $item['tag_no'] ?? null,
+                'voucher_no' => $item['voucher_no'] ?? null,
+                'invoice_no' => $item['referrence_no'] ?? $item['document_no'] ?? null,
+                'operating_unit' => $item['business_unit'] ?? null,
+                'description' => $item['remarks'] ?? null,
+                'payee' => $item['supplier'] ?? null,
+                'amount' => $item['document_amount'] ?? $item['referrence_amount'] ?? null,
+                'bank_name' => $item['single_cheque']['bank_name'] ?? null,
+                'cheque_no' => $item['single_cheque']['cheque_no'] ?? null,
+//                'cheque_amount' => $item['single_cheque']['cheque_amount'] ?? null,
+                'cheque_date' => !empty($item['single_cheque']['cheque_date']) ? Carbon::parse($item['single_cheque']['cheque_date'])->format('Y-m-d') : null,
+                'no_of_processing_days' => !empty($item['transmit']['transmitted_date']) && !empty($item['approve']['approved_date'])
+                    ? Carbon::parse($item['approve']['approved_date'])->diffInDays(Carbon::parse($item['transmit']['transmitted_date']))
+                    : null,
+                'status' => $item['status'] ?? null,
+                'tagging_of_document_date' => !empty($item['tag']['tagged_date']) ? Carbon::parse($item['tag']['tagged_date'])->format('Y-m-d') : null,
+                'transmittal_of_official_receipt_date' => !empty($item['extract']['extracted_date']) ? Carbon::parse($item['extract']['extracted_date'])->format('Y-m-d') : null,
+                'transmittal_of_gas_receipt_date' => !empty($item['transmit']['transmitted_date']) ? Carbon::parse($item['transmit']['transmitted_date'])->format('Y-m-d') : null,
+                'creation_of_voucher_date' => !empty($item['voucher']['vouchered_date']) ? Carbon::parse($item['voucher']['vouchered_date'])->format('Y-m-d') : null,
+                'approval_of_voucher_date' => !empty($item['approve']['approved_date']) ? Carbon::parse($item['approve']['approved_date'])->format('Y-m-d') : null,
+                'transmittal_of_document_date' => !empty($item['transmit']['transmitted_date']) ? Carbon::parse($item['transmit']['transmitted_date'])->format('Y-m-d') : null,
+                'creation_of_cheque_date' => !empty($item['cheque']['cheque_date']) ? Carbon::parse($item['cheque']['cheque_date'])->format('Y-m-d') : null,
+                'auditing_of_cheque_date' => !empty($item['audit']['audited_date']) ? Carbon::parse($item['audit']['audited_date'])->format('Y-m-d') : null,
+                'signing_of_cheque_date' => !empty($item['executive']['signed_date']) ? Carbon::parse($item['executive']['signed_date'])->format('Y-m-d') : null,
+                'releasing_of_cheque_date' => !empty($item['release']['released_date']) ? Carbon::parse($item['release']['released_date'])->format('Y-m-d') : null,
+                'transmittal_of_official_voucher_date' => !empty($item['discharge']['discharged_date']) ? Carbon::parse($item['discharge']['discharged_date'])->format('Y-m-d') : null,
+                'filing_of_voucher_date' => !empty($item['file']['filed_date']) ? Carbon::parse($item['file']['filed_date'])->format('Y-m-d') : null,
+            ];
+        });
+    }
 }

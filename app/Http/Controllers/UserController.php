@@ -17,13 +17,11 @@ use App\Models\Permission;
 use App\Models\Transaction;
 use App\Models\OrganizationDepartment;
 use App\Http\Requests\UserControllerRequest;
-
 use App\Methods\GenericMethod;
 use App\Methods\UserMethod;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Validation\ValidationException;
-
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -32,6 +30,13 @@ use Illuminate\Support\Arr;
 
 class UserController extends Controller
 {
+    private $pendingUser;
+
+    public function __construct() {
+
+        $this->pendingUser = PendingUser::withTrashed()->get();
+
+    }
     public function departmentValidation(Request $request)
     {
         $department = Auth::user()->department[0]['name'];
@@ -121,6 +126,12 @@ class UserController extends Controller
 
             }
             $user['document_types'] = $new_document_types;
+
+            if ($user['deleted_at'] == null) {
+                $user['status'] = 'Active';
+            } else {
+                $user['status'] = 'Inactive';
+            }
         }
         return $this->resultResponse('fetch', 'User', $users);
     }
@@ -141,12 +152,13 @@ class UserController extends Controller
         $pendingUser = PendingUser::where([
             'id_prefix' => $fields['id_prefix'],
             'id_no' => $fields['id_no']
-        ])->first();
+        ])->get();
 
-        if ($pendingUser) {
+        $pendingUser->each(function ($pendingUser) {
             $pendingUser->is_created = true;
             $pendingUser->save();
-        }
+            $pendingUser->delete();
+        });
 
         foreach ($document_types as $document_type) {
             $document_model = new Document();

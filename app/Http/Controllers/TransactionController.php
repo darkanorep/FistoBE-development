@@ -7863,15 +7863,6 @@ class TransactionController extends Controller
 
     }
 
-    public function multipleVouchers(Request $request)
-    {
-
-        $transactions = $this->getRequestData($request, 'transactions');
-
-        return TransactionResource1::collection(Transaction::whereIn('id', $transactions)
-            ->get());
-    }
-
     public function searchBankCheque(Request $request)
     {
         $bankID = $request->bank_id;
