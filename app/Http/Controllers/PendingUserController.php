@@ -23,9 +23,10 @@ class PendingUserController extends Controller
             return $status ? $query->whereNull('deleted_at') : $query->whereNotNull('deleted_at');
         })
             ->where(function ($query) use ($search) {
-                $query->where('id_no', 'like', '%' . $search . '%')
-                    ->orWhere('first_name', 'like', '%' . $search . '%')
-                    ->orWhere('last_name', 'like', '%' . $search . '%');
+//                $query->where('id_no', 'like', '%' . $search . '%')
+//                    ->orWhere('first_name', 'like', '%' . $search . '%')
+//                    ->orWhere('last_name', 'like', '%' . $search . '%');
+                $query->whereLike(['id_no', 'first_name', 'last_name'], $search);
             })
             ->latest('updated_at');
 
@@ -52,7 +53,7 @@ class PendingUserController extends Controller
             'last_name' => 'required',
             'suffix' => 'nullable',
             'department' => 'nullable',
-            'position' => 'position',
+            'position' => 'nullable',
             'username' => 'required',
             'password' => 'required',
         ]);
@@ -77,7 +78,7 @@ class PendingUserController extends Controller
                     'department' => $validated['department'] ?? null,
                     'position' => $validated['position'] ?? null,
                     'username' => $validated['username'],
-                    'password' => $validated['password'],
+                    'password' => Hash::make($validated['password']),
                     'deleted_at' => null, // Restore if soft-deleted
                 ]
             );

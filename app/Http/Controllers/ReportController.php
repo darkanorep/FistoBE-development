@@ -1100,7 +1100,20 @@ class ReportController extends Controller
     ];
   }
     public function auditReport(Request $request) {
-        $transactions = Transaction::withTrashed()
+
+        $from = date($request->input("from", Carbon::now()->format("Y-m-d")));
+        $to = date($request->input("to", Carbon::now()->format("Y-m-d")));
+        $suppliers = $request->input("suppliers", []);
+
+
+        $page = max(1, (int) $request->input("page", 1));
+        $rows = max(1, (int) $request->input("rows", 10));
+        $paginate = $request->input("paginate", true);
+
+       $transactions = Transaction::withTrashed()
+            ->whereHas('cheques.cheques', function ($query) use ($from, $to) {
+                $query->whereBetween('cheque_date', [$from, $to]);
+            })
             ->with([
                 'cheques' => function ($query) {
                     $query->where('status', 'cheque-cheque')
@@ -1112,7 +1125,7 @@ class ReportController extends Controller
                         ]);
                 },
                 'cheques.cheques' => function ($query) {
-                    $query->select([
+                    $query->withTrashed()->select([
                         'treasury_id',
                         'bank_name',
                         'cheque_no',
@@ -1124,6 +1137,7 @@ class ReportController extends Controller
                         'is_issued',
                         'is_cleared',
                         'is_released',
+                        'reason_id'
                     ]);
                 },
                 'tag' => function ($query) {
@@ -1151,11 +1165,10 @@ class ReportController extends Controller
                     ]);
                 },
                 'voucher' => function ($query) {
-                    $query->where('status', 'voucher-voucher')
-                    ->select([
+                    $query->select([
                         'transaction_id',
                         'status',
-                        'created_at as vouchered_date'
+                        'created_at'
                     ]);
                 },
                 'approve' => function ($query) {
@@ -1211,7 +1224,6 @@ class ReportController extends Controller
                         ]);
                 }
             ])
-            ->whereBetween('created_at', ['2025-07-01', '2025-12-31'])
             ->select([
                 'id',
                 'tag_no',
@@ -1224,19 +1236,22 @@ class ReportController extends Controller
                 'document_amount',
                 'referrence_amount',
                 'status'
-            ])
-            ->get();
+            ])->get();
 
         // Transform to return latest cheque as object instead of array
-        return $transactions->flatMap(function ($transaction) {
+        $finalCollection = $transactions->flatMap(function ($transaction) {
             $data = $transaction->toArray();
             $latestCheque = $transaction->cheques->sortByDesc('created_at')->first();
             $cheques = $latestCheque ? ($latestCheque->cheques ?? collect()) : collect();
 
+            $latestVoucherReceive = $transaction->voucher->where('status', 'voucher-receive')->sortByDesc('created_at')->first();
+            $latestVoucherCreate = $transaction->voucher->where('status', 'voucher-voucher')->sortByDesc('created_at')->first();
+
             $data['tag'] = $transaction->tag->sortByDesc('tagged_date')->first();
             $data['extract'] = $transaction->extract->sortByDesc('extracted_date')->first();
             $data['transmit'] = $transaction->transmit->sortByDesc('transmitted_date')->first();
-            $data['voucher'] = $transaction->voucher->sortByDesc('vouchered_date')->first();
+            $data['voucher'] = $latestVoucherCreate ? $latestVoucherCreate->created_at : null;
+            $data['voucher_receive'] = $latestVoucherReceive ? $latestVoucherReceive->created_at : null;
             $data['approve'] = $transaction->approve->sortByDesc('approved_date')->first();
             $data['audit'] = $transaction->audit->sortByDesc('audited_date')->first();
             $data['executive'] = $transaction->executive->sortByDesc('signed_date')->first();
@@ -1244,24 +1259,36 @@ class ReportController extends Controller
             $data['discharge'] = $transaction->discharge->sortByDesc('discharged_date')->first();
             $data['file'] = $transaction->file->sortByDesc('filed_date')->first();
             $data['cheque'] = $latestCheque;
+            $data['status'] = !empty($latestCheque->reason_id) ? 'cancelled' : $transaction->status;
             unset($data['cheques']);
 
-            // If no cheques, return single row with null cheque details
-            if ($cheques->isEmpty()) {
+            $allCheques = $transaction->cheques->flatMap(function ($chequeRecord) {
+                return $chequeRecord->cheques ?? collect();
+            });
+
+            if ($allCheques->isEmpty()) {
                 $data['single_cheque'] = null;
+                $data['cheque'] = null;
+                $data['status'] = $transaction->status;
                 return [$data];
             }
 
-            // Create one row per cheque
-            return $cheques->map(function ($cheque) use ($data) {
+            return $allCheques->map(function ($cheque) use ($data, $transaction) {
                 $row = $data;
                 $row['single_cheque'] = $cheque;
+                // Find the corresponding cheque record
+                $chequeRecord = $transaction->cheques->find($cheque->treasury_id);
+                $row['cheque'] = $chequeRecord;
+                // Set status per cheque
+                $row['status'] = !empty($cheque->reason_id) ? ($cheque->reason_id == 2 ? 'void' : 'cancelled') : 'pending';
                 return $row;
             })->values()->all();
-        })->map(function ($item) {
+
+        })
+            ->map(function ($item) {
             return [
                 'date_transmitted' => !empty($item['transmit']['transmitted_date']) ? Carbon::parse($item['transmit']['transmitted_date'])->format('Y-m-d') : null,
-                'date_received' => null,
+                'date_received' => $item['voucher_receive'] ? Carbon::parse($item['voucher_receive'])->format('Y-m-d') : null,
                 'date_processed' => !empty($item['approve']['approved_date']) ? Carbon::parse($item['approve']['approved_date'])->format('Y-m-d') : null,
                 'tag_no' => $item['tag_no'] ?? null,
                 'voucher_no' => $item['voucher_no'] ?? null,
@@ -1274,14 +1301,17 @@ class ReportController extends Controller
                 'cheque_no' => $item['single_cheque']['cheque_no'] ?? null,
 //                'cheque_amount' => $item['single_cheque']['cheque_amount'] ?? null,
                 'cheque_date' => !empty($item['single_cheque']['cheque_date']) ? Carbon::parse($item['single_cheque']['cheque_date'])->format('Y-m-d') : null,
-                'no_of_processing_days' => !empty($item['transmit']['transmitted_date']) && !empty($item['approve']['approved_date'])
-                    ? Carbon::parse($item['approve']['approved_date'])->diffInDays(Carbon::parse($item['transmit']['transmitted_date']))
+                'no_of_processing_days' => $item['voucher_receive'] && !empty($item['approve']['approved_date'])
+                    ? Carbon::parse($item['approve']['approved_date'])->diffInDays(Carbon::parse($item['voucher_receive']))
                     : null,
                 'status' => $item['status'] ?? null,
                 'tagging_of_document_date' => !empty($item['tag']['tagged_date']) ? Carbon::parse($item['tag']['tagged_date'])->format('Y-m-d') : null,
                 'transmittal_of_official_receipt_date' => !empty($item['extract']['extracted_date']) ? Carbon::parse($item['extract']['extracted_date'])->format('Y-m-d') : null,
                 'transmittal_of_gas_receipt_date' => !empty($item['transmit']['transmitted_date']) ? Carbon::parse($item['transmit']['transmitted_date'])->format('Y-m-d') : null,
-                'creation_of_voucher_date' => !empty($item['voucher']['vouchered_date']) ? Carbon::parse($item['voucher']['vouchered_date'])->format('Y-m-d') : null,
+
+//                'creation_of_voucher_date' => !empty($item['voucher']['vouchered_date']) ? Carbon::parse($item['voucher']['vouchered_date'])->format('Y-m-d') : null,
+                'creation_of_voucher_date' => $item['voucher'] ? Carbon::parse($item['voucher'])->format('Y-m-d') : null,
+
                 'approval_of_voucher_date' => !empty($item['approve']['approved_date']) ? Carbon::parse($item['approve']['approved_date'])->format('Y-m-d') : null,
                 'transmittal_of_document_date' => !empty($item['transmit']['transmitted_date']) ? Carbon::parse($item['transmit']['transmitted_date'])->format('Y-m-d') : null,
                 'creation_of_cheque_date' => !empty($item['cheque']['cheque_date']) ? Carbon::parse($item['cheque']['cheque_date'])->format('Y-m-d') : null,
@@ -1291,6 +1321,21 @@ class ReportController extends Controller
                 'transmittal_of_official_voucher_date' => !empty($item['discharge']['discharged_date']) ? Carbon::parse($item['discharge']['discharged_date'])->format('Y-m-d') : null,
                 'filing_of_voucher_date' => !empty($item['file']['filed_date']) ? Carbon::parse($item['file']['filed_date'])->format('Y-m-d') : null,
             ];
-        });
+        })->filter(function ($item) use ($from, $to) {
+            $chequeDate = $item['cheque_date'];
+            return $chequeDate !== null && $chequeDate >= $from && $chequeDate <= $to;
+        })->values();
+
+        if (!$paginate) {
+            return $finalCollection;
+        }
+
+        return new \Illuminate\Pagination\LengthAwarePaginator(
+            $finalCollection->forPage($page, $rows)->values(),
+            $finalCollection->count(),
+            $rows,
+            $page,
+            ["path" => $request->url(), "query" => $request->query()]
+        );
     }
 }

@@ -602,7 +602,7 @@ class JournalServices
         $generalJournal = $this->model::find($id)->first()->batch_no;
 
         if ($generalJournal) {
-            $this->model::where('batch_no', $generalJournal)->forceDelete();
+            $this->model::where('batch_no', $generalJournal)->delete();
 //            $generalJournal->media()->delete();
         }
 
@@ -658,7 +658,6 @@ class JournalServices
     }
 
     public function import(Request $request) {
-
         $journals = $request->all();
         $suppliers = $this->supplier->keyBy('name');
         $accountTitles = $this->accountTitle->keyBy('title');
@@ -721,11 +720,18 @@ class JournalServices
             $is_year_end = $journal['is_year_end'];
             $entry = $journal['entry'];
 
-            $chargeExist = $this->charges->where('company_name', $company)
+            $chargeExist = $this->charges
+                ->where('company_code', $company_code)
+                ->where('company_name', $company)
+                ->where('business_unit_code', $business_unit_code)
                 ->where('business_unit_name', $business_unit)
+                ->where('department_code', $department_code)
                 ->where('department_name', $department)
+                ->where('location_code', $location_code)
                 ->where('location_name', $location)
+                ->where('unit_code', $unit_code)
                 ->where('unit_name', $unit)
+                ->where('sub_unit_code', $sub_unit_code)
                 ->where('sub_unit_name', $sub_unit)
                 ->first();
 
@@ -827,16 +833,63 @@ class JournalServices
                 ];
             }
 
+//            if (!$chargeExist) {
+//                $error[] = (object)[
+//                    "line" => $index,
+//                    "description" => "Charge does not exist for
+//                    Company Code: $company_code,
+//                    Company: $company,
+//                    Business Unit Code: $business_unit_code,
+//                    Business Unit: $business_unit,
+//                    Department Code: $department_code,
+//                    Department: $department,
+//                    Location Code: $location_code,
+//                    Unit: $unit,
+//                    Sub Unit Code: $sub_unit_code,
+//                    Sub Unit: $sub_unit. ,
+//                    Location Code: $location_code,
+//                    Location: $location",
+//                ];
+//            }
+
+            $fields = [
+                'company_code' => $company_code,
+                'company_name' => $company,
+                'business_unit_code' => $business_unit_code,
+                'business_unit_name' => $business_unit,
+                'department_code' => $department_code,
+                'department_name' => $department,
+                'unit_code' => $unit_code,
+                'unit_name' => $unit,
+                'sub_unit_code' => $sub_unit_code,
+                'sub_unit_name' => $sub_unit,
+                'location_code' => $location_code,
+                'location_name' => $location,
+            ];
+
+            $matching = $this->charges;
+            $failedField = null;
+            $failedValue = null;
+
+            foreach ($fields as $key => $value) {
+                $filtered = $matching->filter(function ($item) use ($key, $value) {
+                    return strtolower(trim((string) $item->$key)) === strtolower(trim((string) $value));
+                });
+
+                if ($filtered->isEmpty()) {
+                    $failedField = $key;
+                    $failedValue = $value;
+                    break;
+                }
+                $matching = $filtered;
+            }
+
+            $chargeExist = $matching->first();
+
             if (!$chargeExist) {
                 $error[] = (object)[
                     "line" => $index,
-                    "description" => "Charge does not exist for
-                    Company: $company,
-                    Business Unit: $business_unit,
-                    Department: $department,
-                    Unit: $unit,
-                    Sub Unit: $sub_unit. ,
-                    Location: $location",
+                    "description" => "Charge does not exist. The field '$failedField' with value '$failedValue' does not match any record.",
                 ];
             }
 

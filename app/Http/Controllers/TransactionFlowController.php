@@ -371,32 +371,32 @@ class TransactionFlowController extends Controller
                         ]);
                 }
 
-                $chequeSeries = BankSeries::where('id', data_get($cheque, 'cheque_series_id'))
-                    ->where('is_used', false)
-                    ->select('bank_id', 'from', 'to')
-                    ->first();
-
-                if (!$chequeSeries) {
-                    return GenericMethod::result(400, "Cheque series not found or already used.", []);
-                }
-
-                $query = Cheque::where('bank_id', $chequeSeries->bank_id)
-                    ->whereNull('is_cancelled');
-
-                if ($chequeSeries->category == 'prenumbered stock') {
-                    $query->withTrashed();
-                }
-
-                $alreadyUsedChequeNos = $query->pluck('cheque_no')->toArray();
-
-                $excludeCheques = array_merge($alreadyUsedChequeNos, []);
-                $availableChequeNos = array_diff(range($chequeSeries->from, $chequeSeries->to), $excludeCheques);
-                $availableChequeNos = array_filter($availableChequeNos, function($no) { return $no != 0; });
-                $firstAvailable = reset($availableChequeNos);
-
-                if (!$firstAvailable) {
-                    $chequeSeries->update(['is_used' => true]);
-                }
+//                $chequeSeries = BankSeries::where('id', data_get($cheque, 'cheque_series_id'))
+//                    ->where('is_used', false)
+//                    ->select('bank_id', 'from', 'to')
+//                    ->first();
+//
+//                if (!$chequeSeries) {
+//                    return GenericMethod::result(400, "Cheque series not found or already used.", []);
+//                }
+//
+//                $query = Cheque::where('bank_id', $chequeSeries->bank_id)
+//                    ->whereNull('is_cancelled');
+//
+//                if ($chequeSeries->category == 'prenumbered stock') {
+//                    $query->withTrashed();
+//                }
+//
+//                $alreadyUsedChequeNos = $query->pluck('cheque_no')->toArray();
+//
+//                $excludeCheques = array_merge($alreadyUsedChequeNos, []);
+//                $availableChequeNos = array_diff(range($chequeSeries->from, $chequeSeries->to), $excludeCheques);
+//                $availableChequeNos = array_filter($availableChequeNos, function($no) { return $no != 0; });
+//                $firstAvailable = reset($availableChequeNos);
+//
+//                if (!$firstAvailable) {
+//                    $chequeSeries->update(['is_used' => true]);
+//                }
             }
         }
 

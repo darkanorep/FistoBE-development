@@ -72,6 +72,7 @@ class TransactionController extends Controller
         $suppliers = $this->getRequestData($request, 'suppliers');
         $document_ids = $this->getRequestData($request, 'document_ids');
         $companies = $this->getRequestData($request, 'companies');
+        $business_units = $this->getRequestData($request, 'business_units');
         $transaction_from = $this->getTransactionDate($request, 'transaction_from', Carbon::now()->startOfMonth()->format('Y-m-d H:i:s'));
         $transaction_to = $this->getTransactionDate($request, 'transaction_to', Carbon::now()->endOfMonth()->format('Y-m-d H:i:s'));
         $cheque_from = $this->getTransactionDate($request, 'cheque_from', Carbon::now()->startOfMonth()->format('Y-m-d H:i:s'));
@@ -182,8 +183,8 @@ class TransactionController extends Controller
             ->when(!empty($suppliers), function ($query) use ($suppliers) {
                 $query->whereIn("supplier_id", $suppliers);
             })
-            ->when(!empty($companies), function ($query) use ($companies) {
-                $query->whereIn("company_id", $companies);
+            ->when(!empty($business_units), function ($query) use ($business_units) {
+                $query->whereIn("business_unit_id", $business_units);
             })
 //            ->when(!empty($voucher_numbers), function ($query) use ($voucher_numbers) {
 //                $query->whereIn('id', $voucher_numbers);
@@ -5667,6 +5668,8 @@ class TransactionController extends Controller
                             "file-file",
                             "discharge-receive",
                             "discharge-discharge",
+                            "pass-receive",
+                            "pass-pass",
                         ]);
                     })
                     ->whereNull("is_cleared");
@@ -6075,6 +6078,8 @@ class TransactionController extends Controller
                                     "file-file",
                                     "discharge-receive",
                                     "discharge-discharge",
+                                    "pass-receive",
+                                    "pass-pass"
                                 ]);
                             });
                     });

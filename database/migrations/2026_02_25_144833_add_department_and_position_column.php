@@ -14,7 +14,8 @@ class AddDepartmentAndPositionColumn extends Migration
     public function up()
     {
         Schema::table('pending_users', function (Blueprint $table) {
-            //
+            $table->string('department')->after('password')->nullable();
+            $table->string('position')->after('department')->nullable();
         });
     }
 
