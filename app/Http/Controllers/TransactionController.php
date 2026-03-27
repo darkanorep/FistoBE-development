@@ -1358,155 +1358,9 @@ class TransactionController extends Controller
                 })->unique()->values()
                 : [];
 
-//        $purchase_order = $receivedReceiptsCount != 1
-//            ? $receivedReceipts && !$receivedReceipts->purchaseOrders->isEmpty()
-//                ? $transaction->receivedReceipts->map(function ($item) use ($transaction) {
-//                    return [
-//                        'is_new_po' => true,
-//                        'id' => $item->rr_id,
-//                        'rr_year_number_id' => $item->rr_number,
-//                        'rr_orders' => $transaction->receivedReceipts->filter(function ($rr) use ($item) {
-//                            return $rr->rr_id == $item->rr_id;
-//                        })->map(function ($rr) {
-//                            return [
-//                                'item_code' => $rr->item_code,
-//                                'item_name' => $rr->item_name,
-//                                'quantity_receive' => $rr->quantity,
-//                                'order' => [
-//                                    'item_code' => $rr->item_code,
-//                                    'item_name' => $rr->item_name,
-//                                    'price' => $rr->price,
-//                                    'reference_no' => $rr->reference_no,
-//                                    'uom' => [
-//                                        'code' => $rr->uom_code,
-//                                        'name' => $rr->uom_name,
-//                                    ],
-//                                    'po_transaction' => $rr->purchaseOrders->map(function ($po) {
-//                                        return [
-//                                            'purchase_order_id' => $po->id,
-//                                            'po_year_number_id' => $po->po_number,
-//                                            'po_description' => $po->po_description,
-//                                            'type_name' => $po->type_name,
-//                                            'po_amount' => $po->po_amount,
-//                                            'company' => [
-//                                                'id' => $po->company_id,
-//                                                'code' => $po->company_code,
-//                                                'name' => $po->company_name,
-//                                            ],
-//                                            'business_unit' => [
-//                                                'id' => $po->business_unit_id,
-//                                                'code' => $po->business_unit_code,
-//                                                'name' => $po->business_unit_name,
-//                                            ],
-//                                            'department' => [
-//                                                'id' => $po->department_id,
-//                                                'code' => $po->department_code,
-//                                                'name' => $po->department_name,
-//                                            ],
-//                                            'unit' => [
-//                                                'id' => $po->unit_id,
-//                                                'code' => $po->unit_code,
-//                                                'name' => $po->unit_name,
-//                                            ],
-//                                            'sub_unit' => [
-//                                                'id' => $po->sub_unit_id,
-//                                                'code' => $po->sub_unit_code,
-//                                                'name' => $po->sub_unit_name,
-//                                            ],
-//                                            'location' => [
-//                                                'id' => $po->location_id,
-//                                                'code' => $po->location_code,
-//                                                'name' => $po->location_name,
-//                                            ],
-//                                            'account_title' => [
-//                                                'id' => $po->account_title_id,
-//                                                'code' => $po->account_title_code,
-//                                                'name' => $po->account_title_name,
-//                                            ],
-//                                        ];
-//                                    })
-//                                ]
-//                            ];
-//                        })
-//                    ];
-//                })->values()
-//                : []
-//            : $receivedReceipts && !$receivedReceipts->purchaseOrders->isEmpty()
-//                ? $transaction->receivedReceipts->map(function ($item) use ($transaction) {
-//                    return [
-//                        'is_new_po' => true,
-//                        'id' => $item->rr_id,
-//                        'rr_year_number_id' => $item->rr_number,
-//                        'rr_orders' => $transaction->receivedReceipts->filter(function ($rr) use ($item) {
-//                            return $rr->rr_id == $item->rr_id;
-//                        })->map(function ($rr) {
-//                            return [
-//                                'item_code' => $rr->item_code,
-//                                'item_name' => $rr->item_name,
-//                                'quantity_receive' => $rr->quantity,
-//                                'order' => [
-//                                    'item_code' => $rr->item_code,
-//                                    'item_name' => $rr->item_name,
-//                                    'price' => $rr->price,
-//                                    'reference_no' => $rr->reference_no,
-//                                    'uom' => [
-//                                        'code' => $rr->uom_code,
-//                                        'name' => $rr->uom_name,
-//                                    ],
-//                                    'po_transaction' => $rr->purchaseOrders->map(function ($po) {
-//                                        return [
-//                                            'purchase_order_id' => $po->id,
-//                                            'po_year_number_id' => $po->po_number,
-//                                            'po_description' => $po->po_description,
-//                                            'type_name' => $po->type_name,
-//                                            'po_amount' => $po->po_amount,
-//                                            'company' => [
-//                                                'id' => $po->company_id,
-//                                                'code' => $po->company_code,
-//                                                'name' => $po->company_name,
-//                                            ],
-//                                            'business_unit' => [
-//                                                'id' => $po->business_unit_id,
-//                                                'code' => $po->business_unit_code,
-//                                                'name' => $po->business_unit_name,
-//                                            ],
-//                                            'department' => [
-//                                                'id' => $po->department_id,
-//                                                'code' => $po->department_code,
-//                                                'name' => $po->department_name,
-//                                            ],
-//                                            'unit' => [
-//                                                'id' => $po->unit_id,
-//                                                'code' => $po->unit_code,
-//                                                'name' => $po->unit_name,
-//                                            ],
-//                                            'sub_unit' => [
-//                                                'id' => $po->sub_unit_id,
-//                                                'code' => $po->sub_unit_code,
-//                                                'name' => $po->sub_unit_name,
-//                                            ],
-//                                            'location' => [
-//                                                'id' => $po->location_id,
-//                                                'code' => $po->location_code,
-//                                                'name' => $po->location_name,
-//                                            ],
-//                                            'account_title' => [
-//                                                'id' => $po->account_title_id,
-//                                                'code' => $po->account_title_code,
-//                                                'name' => $po->account_title_name,
-//                                            ],
-//                                        ];
-//                                    })
-//                                ]
-//                            ];
-//                        })->values()
-//                    ];
-//                })->unique()->values()
-//                : [];
-
 
         $job_order = $receivedReceiptsCount != 1
-            ? $receivedReceipts && !$receivedReceipts->jobOrders->isEmpty()
+            ? ($receivedReceipts && !$receivedReceipts->jobOrders->isEmpty()
                 ? $transaction->receivedReceipts->map(function ($item) use ($transaction) {
                     return [
                         'is_new_po' => true,
@@ -1575,8 +1429,8 @@ class TransactionController extends Controller
                         })->values()
                     ];
                 })
-                : []
-            : $receivedReceipts && !$receivedReceipts->jobOrders->isEmpty()
+                : [])
+            : ($receivedReceipts && !$receivedReceipts->jobOrders->isEmpty()
                 ? $transaction->receivedReceipts->map(function ($item) use ($transaction) {
                     return [
                         'is_new_po' => true,
@@ -1645,147 +1499,7 @@ class TransactionController extends Controller
                         })->values()
                     ];
                 })->unique()->values()
-                : [];
-
-//        $job_order = $receivedReceiptsCount != 1
-//            ? $receivedReceipts && !$receivedReceipts->jobOrders->isEmpty()
-//                ? $transaction->receivedReceipts->map(function ($item) use ($transaction) {
-//                    return [
-//                        'is_new_po' => true,
-//                        'id' => $item->rr_id,
-//                        'rr_year_number_id' => $item->rr_number,
-//                        'rr_orders' => $transaction->receivedReceipts->filter(function ($rr) use ($item) {
-//                            return $rr->rr_id == $item->rr_id;
-//                        })->map(function ($rr) {
-//                            return [
-//                                'description' => $rr->item_name,
-//                                'quantity_receive' => $rr->quantity,
-//                                'order' => [
-//                                    'description' => $rr->item_name,
-//                                    'price' => $rr->price,
-//                                    'reference_no' => $rr->reference_no,
-//                                    'uom' => [
-//                                        'code' => $rr->uom_code,
-//                                        'name' => $rr->uom_name,
-//                                    ],
-//                                ],
-//                                'jo_transaction' => $rr->jobOrders->map(function ($jo) {
-//                                    return [
-//                                        'job_order_id' => $jo->id,
-//                                        'jo_year_number_id' => $jo->jo_number,
-//                                        'jo_description' => $jo->jo_description,
-//                                        'type_name' => $jo->type_name,
-//                                        'jo_amount' => $jo->jo_amount,
-//                                        'company' => [
-//                                            'id' => $jo->company_id,
-//                                            'code' => $jo->company_code,
-//                                            'name' => $jo->company_name,
-//                                        ],
-//                                        'business_unit' => [
-//                                            'id' => $jo->business_unit_id,
-//                                            'code' => $jo->business_unit_code,
-//                                            'name' => $jo->business_unit_name,
-//                                        ],
-//                                        'department' => [
-//                                            'id' => $jo->department_id,
-//                                            'code' => $jo->department_code,
-//                                            'name' => $jo->department_name,
-//                                        ],
-//                                        'unit' => [
-//                                            'id' => $jo->unit_id,
-//                                            'code' => $jo->unit_code,
-//                                            'name' => $jo->unit_name,
-//                                        ],
-//                                        'sub_unit' => [
-//                                            'id' => $jo->sub_unit_id,
-//                                            'code' => $jo->sub_unit_code,
-//                                            'name' => $jo->sub_unit_name,
-//                                        ],
-//                                        'location' => [
-//                                            'id' => $jo->location_id,
-//                                            'code' => $jo->location_code,
-//                                            'name' => $jo->location_name,
-//                                        ],
-//                                        'account_title' => [
-//                                            'id' => $jo->account_title_id,
-//                                            'code' => $jo->account_title_code,
-//                                            'name' => $jo->account_title_name,
-//                                        ],
-//                                    ];
-//                                })
-//                            ];
-//                        })->values()
-//                    ];
-//                })
-//                : []
-//            : $receivedReceipts && !$receivedReceipts->jobOrders->isEmpty()
-//                ? $transaction->receivedReceipts->map(function ($item) use ($transaction) {
-//                    return [
-//                        'is_new_po' => true,
-//                        'id' => $item->rr_id,
-//                        'rr_year_number_id' => $item->rr_number,
-//                        'rr_orders' => $transaction->receivedReceipts->map(function ($rr) {
-//                            return [
-//                                'description' => $rr->item_name,
-//                                'quantity_receive' => $rr->quantity,
-//                                'order' => [
-//                                    'description' => $rr->item_name,
-//                                    'price' => $rr->price,
-//                                    'reference_no' => $rr->reference_no,
-//                                    'uom' => [
-//                                        'code' => $rr->uom_code,
-//                                        'name' => $rr->uom_name,
-//                                    ],
-//                                ],
-//                                'jo_transaction' => $rr->jobOrders->map(function ($jo) {
-//                                    return [
-//                                        'job_order_id' => $jo->id,
-//                                        'jo_year_number_id' => $jo->jo_number,
-//                                        'jo_description' => $jo->jo_description,
-//                                        'type_name' => $jo->type_name,
-//                                        'jo_amount' => $jo->jo_amount,
-//                                        'company' => [
-//                                            'id' => $jo->company_id,
-//                                            'code' => $jo->company_code,
-//                                            'name' => $jo->company_name,
-//                                        ],
-//                                        'business_unit' => [
-//                                            'id' => $jo->business_unit_id,
-//                                            'code' => $jo->business_unit_code,
-//                                            'name' => $jo->business_unit_name,
-//                                        ],
-//                                        'department' => [
-//                                            'id' => $jo->department_id,
-//                                            'code' => $jo->department_code,
-//                                            'name' => $jo->department_name,
-//                                        ],
-//                                        'unit' => [
-//                                            'id' => $jo->unit_id,
-//                                            'code' => $jo->unit_code,
-//                                            'name' => $jo->unit_name,
-//                                        ],
-//                                        'sub_unit' => [
-//                                            'id' => $jo->sub_unit_id,
-//                                            'code' => $jo->sub_unit_code,
-//                                            'name' => $jo->sub_unit_name,
-//                                        ],
-//                                        'location' => [
-//                                            'id' => $jo->location_id,
-//                                            'code' => $jo->location_code,
-//                                            'name' => $jo->location_name,
-//                                        ],
-//                                        'account_title' => [
-//                                            'id' => $jo->account_title_id,
-//                                            'code' => $jo->account_title_code,
-//                                            'name' => $jo->account_title_name,
-//                                        ],
-//                                    ];
-//                                })
-//                            ];
-//                        })
-//                    ];
-//                })->first()
-//                : [];
+                : []);
 
         $prm_group = $prm_group ?? [];
 
@@ -8299,14 +8013,14 @@ class TransactionController extends Controller
 //        return AccountServicesJob::dispatch($month, $year, $user, $companies, $boa, $paramDate);
 //    }
 
-    public function fixYearFormat() {
-         $records =  Cheque::withTrashed()->whereYear('cheque_date', '<', 100)->get();
+    // public function fixYearFormat() {
+    //      $records =  Cheque::withTrashed()->whereYear('cheque_date', '<', 100)->get();
 
-        foreach ($records as $record) {
-            $record->cheque_date = Carbon::createFromFormat('Y-m-d H:i:s', $record->cheque_date)
-                ->addYears(2000) // Fix the incorrect year
-                ->format('Y-m-d H:i:s');
-            $record->save();
-        }
-    }
+    //     foreach ($records as $record) {
+    //         $record->cheque_date = Carbon::createFromFormat('Y-m-d H:i:s', $record->cheque_date)
+    //             ->addYears(2000) // Fix the incorrect year
+    //             ->format('Y-m-d H:i:s');
+    //         $record->save();
+    //     }
+    // }
 }

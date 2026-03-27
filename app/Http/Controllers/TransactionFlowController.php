@@ -733,6 +733,15 @@ class TransactionFlowController extends Controller
                 'remarks' => 'required'
             ]);
 
+            activity()
+                ->performedOn($transaction)
+                ->causedBy(auth()->user())
+                ->withProperties([
+                    'old_remarks' => $transaction->remarks,
+                    'new_remarks' => $request->remarks
+                ])
+                ->log('Updated transaction remarks');
+
             $transaction->timestamps = false;
             $transaction->remarks = $request->remarks;
             $transaction->save();

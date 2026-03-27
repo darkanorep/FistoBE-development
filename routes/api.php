@@ -139,7 +139,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         });
 
         //PENDING REQUESTS USER
-        Route::resource('pending-requests', \App\Http\Controllers\PendingUserController::class)->only(['index']);
+        Route::resource('pending-requestss', \App\Http\Controllers\PendingUserController::class)->only(['index']);
 
         //ONE CHARGING
         Route::patch('one-charging/{id}', [\App\Http\Controllers\ChargeController::class, 'change_status']);
