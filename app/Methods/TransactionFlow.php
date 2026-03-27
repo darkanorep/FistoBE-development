@@ -15,12 +15,9 @@ use App\Models\Issue;
 use App\Models\VoucherAccountTitle;
 use Carbon\Carbon;
 use App\Models\Gas;
-
-// For Pagination with Collection
 use App\Models\File;
 use App\Models\User;
 use App\Models\Audit;
-
 use App\Models\Clear;
 use App\Models\Match;
 use App\Models\Filing;
@@ -47,7 +44,6 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
-
 use Illuminate\Validation\ValidationException;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -95,7 +91,6 @@ class TransactionFlow
         $instance = new self();
         $isCutOffEnabledApproval = $instance->isCutOffEnabledApproval;
 
-        // return GenericMethod::floatvalue('46,072.50');
         $transaction = Transaction::find($id);
         if (!isset($transaction)) {
             return GenericMethod::resultResponse("not-found", "transaction", []);
@@ -109,7 +104,6 @@ class TransactionFlow
 
         $request_id = $transaction->request_id;
         $transaction_id = $transaction->transaction_id;
-//      $transaction_id = $transaction->id;
         $remarks = $transaction->remarks;
         $users_id = $transaction->users_id;
         $transaction_type = $transaction->transaction_type;
@@ -134,10 +128,6 @@ class TransactionFlow
             ->where("transaction_id", $transaction["transaction_id"])
             ->latest()
             ->first();
-
-        // $previous_percentage_tax = ($previous_voucher_transaction['transaction_voucher']->isEmpty())?NULL:$previous_voucher_transaction['transaction_voucher']->first()['percentage_tax'];
-        // $previous_withholding_tax = ($previous_voucher_transaction['transaction_voucher']->isEmpty())?NULL:$previous_voucher_transaction['transaction_voucher']->first()['witholding_tax'];
-        // $previous_net_amount = ($previous_voucher_transaction['transaction_voucher']->isEmpty())?NULL:$previous_voucher_transaction['transaction_voucher']->first()['net_amount'];
         $previous_receipt_type = $previous_voucher_transaction["transaction_voucher"]->isEmpty()
             ? null
             : $previous_voucher_transaction["transaction_voucher"]->first()["receipt_type"];
@@ -147,10 +137,6 @@ class TransactionFlow
         $previous_voucher_month = $previous_voucher_transaction["transaction_voucher"]->isEmpty()
             ? null
             : $previous_voucher_transaction["voucher_month"];
-        // $previous_approver = [
-        //   "id" => $previous_voucher_transaction["transaction_voucher"]->first()["approver_id"],
-        //   "name" => $previous_voucher_transaction["transaction_voucher"]->first()["approver_name"],
-        // ];
 
         $previous_approver = [];
 
@@ -164,9 +150,6 @@ class TransactionFlow
                 $previous_approver = [
                     "id" => $firstVoucher["approver_id"],
                     "name" => $firstVoucher["approver_name"],
-
-//            "id" => $transaction->approver_id,
-//            "name" => $transaction->approver_name,
                 ];
             }
         }
@@ -174,9 +157,6 @@ class TransactionFlow
         $previous_distributed = [
             "id" => $previous_voucher_transaction["distributed_id"],
             "name" => $previous_voucher_transaction["distributed_name"],
-
-//        "id" => $transaction->distributed_id,
-//        "name" => $transaction->distributed_name,
         ];
 
         $cheque_cheques = $previous_cheque_transaction["transaction_cheque"]->isEmpty()
@@ -185,7 +165,6 @@ class TransactionFlow
         $cheque_account_title = $previous_cheque_transaction["transaction_cheque"]->isEmpty()
             ? null
             : $previous_cheque_transaction["transaction_cheque"]->first()["account_title"];
-        // $voucher_account_title = $previous_voucher_transaction["transaction_voucher"]->first()["account_title"];
 
         $voucher_account_title = null;
 
@@ -210,57 +189,6 @@ class TransactionFlow
         $reason_remarks = $request["reason"]["remarks"] ?? null;
         $distributed_to = $request["distributed_to"] ?? null;
         $accounts = $request["accounts"] ?? null;
-//        $validatedData = $request->validate([
-//            'accounts.*.entry' => 'required',
-//            'accounts.*.account_title.id' => 'required',
-//            'accounts.*.account_title.code' => 'required',
-//            'accounts.*.account_title.name' => 'required',
-//            'accounts.*.department.id' => [
-//                'required'
-//            ],
-//            'accounts.*.department.code' => 'required',
-//            'accounts.*.department.name' => [
-//                'required',
-//                function ($attribute, $value, $fail) {
-//                    $accounts = request()->input('accounts');
-//                    $entries = array_column($accounts, 'entry');
-//                    $account_titles = array_column($accounts, 'account_title.name');
-//                    $departmentIds = array_column($accounts, 'department.name');
-//
-////                    $count = collect($accounts)->filter(function ($item) use ($entries, $departmentIds, $value) {
-////                        return $item['department']['name'] == $value && $item['entry'] == $entries[array_search($value, $departmentIds)] && strtolower($item['entry']) == 'debit';
-////                    })->count();
-//                    $count = collect($accounts)->filter(function ($item) use ($entries, $departmentIds, $account_titles, $value) {
-//                        $departmentIndex = array_search($value, $departmentIds);
-//                        $accountTitleIndex = array_search($value, $account_titles);
-//
-//                        if ($departmentIndex === false || $accountTitleIndex === false) {
-//                            return false;
-//                        }
-//
-//                        return $item['department']['name'] == $value && $item['entry'] == $entries[$departmentIndex] && strtolower($item['entry']) == 'debit' && $item['account_title']['name'] == $account_titles[$accountTitleIndex];
-//                    })->count();
-//
-//                    if ($count > 1) {
-//                        $fail('The department has already been taken.');
-//                    }
-//
-//                }
-//            ],
-//            'accounts.*.business_unit.id' => 'nullable',
-//            'accounts.*.business_unit.code' => 'nullable',
-//            'accounts.*.business_unit.name' => 'nullable',
-//            'accounts.*.sub_unit.id' => 'nullable',
-//            'accounts.*.sub_unit.code' => 'nullable',
-//            'accounts.*.sub_unit.name' => 'nullable',
-//            'accounts.*.location.id' => 'nullable',
-//            'accounts.*.location.code' => 'nullable',
-//            'accounts.*.location.name' => 'nullable',
-//            'accounts.*.amount' => 'nullable',
-//            'accounts.*.remarks' => 'nullable',
-//            'accounts.*.is_default' => 'nullable',
-//        ]);
-//        $accounts = $validatedData['accounts'] ?? null;
         $cheque_cheques = $request["cheques"] ?? null;
         $date_cleared = $request["date_cleared"] ?? null;
 
@@ -270,7 +198,6 @@ class TransactionFlow
         $voucher_account_titles = GenericMethod::with_previous_transaction($accounts, $voucher_account_title);
         $approver = GenericMethod::with_previous_transaction($request["approver"] ?? null, $previous_approver);
         $distributed = GenericMethod::with_previous_transaction($request["distributed_to"] ?? null, $previous_distributed);
-//        $gj_number = $request->input('gj_number', null);
 
         $approver_id = data_get($request, 'approver.id') ?? $transaction->approver_id;
         $approver_name = data_get($request, 'approver.name') ?? $transaction->approver_name;
