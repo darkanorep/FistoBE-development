@@ -296,9 +296,11 @@ class UserController extends Controller
                 "result" => $user,
             ];
 
-            $cookie = cookie('sanctum', $token, 3600);
+            // $cookie = cookie('sanctum', $token, 3600);
 
-            return response($response, 200)->withCookie($cookie);
+            // return response($response, 200)->withCookie($cookie);
+
+            return response($response, 200);
         }
 
         return response([

@@ -45,6 +45,8 @@ use App\Http\Resources\TransactionResource;
 use App\Http\Resources\TransactionIndex;
 use App\Http\Resources\RequestLog;
 use App\Exceptions\FistoException;
+use App\Exports\ChequeExport;
+use App\Exports\TransactionExport;
 use Carbon\Carbon;
 
 use App\Http\Requests\TransactionPostRequest;
@@ -1204,159 +1206,84 @@ class TransactionController extends Controller
         $receivedReceipts = $transaction->receivedReceipts()->first();
         $receivedReceiptsCount = $transaction->receivedReceipts()->pluck('rr_id')->unique()->count();
 
-        $purchase_order = $receivedReceiptsCount != 1
-            ? $receivedReceipts && !$receivedReceipts->purchaseOrders
-//            ()->withTrashed()
-                ->isEmpty()
-                ? $transaction->receivedReceipts->map(function ($item) use ($transaction) {
-                    return [
-                        'is_new_po' => true,
-                        'id' => $item->rr_id,
-                        'rr_year_number_id' => $item->rr_number,
-                        'rr_orders' => $transaction->receivedReceipts->filter(function ($rr) use ($item) {
-                            return $rr->rr_id == $item->rr_id;
-                        })->map(function ($rr) {
-                            return [
+        $purchase_order = [];
+        if ($receivedReceipts && !$receivedReceipts->purchaseOrders->isEmpty()) {
+            $purchase_order = $transaction->receivedReceipts->map(function ($item) use ($transaction) {
+                return [
+                    'is_new_po' => true,
+                    'id' => $item->rr_id,
+                    'rr_year_number_id' => $item->rr_number,
+                    'rr_orders' => $transaction->receivedReceipts->filter(function ($rr) use ($item) {
+                        return $rr->rr_id == $item->rr_id;
+                    })->map(function ($rr) {
+                        return [
+                            'item_code' => $rr->item_code,
+                            'item_name' => $rr->item_name,
+                            'quantity_receive' => $rr->quantity,
+                            'order' => [
                                 'item_code' => $rr->item_code,
                                 'item_name' => $rr->item_name,
-                                'quantity_receive' => $rr->quantity,
-                                'order' => [
-                                    'item_code' => $rr->item_code,
-                                    'item_name' => $rr->item_name,
-                                    'price' => $rr->price,
-                                    'reference_no' => $rr->reference_no,
-                                    'uom' => [
-                                        'code' => $rr->uom_code,
-                                        'name' => $rr->uom_name,
-                                    ],
-                                    'po_transaction' => $rr->purchaseOrders
-//                                    ()->withTrashed()->get()
-                                        ->map(function ($po) {
-                                        return [
-                                            'purchase_order_id' => $po->id,
-                                            'po_year_number_id' => $po->po_number,
-                                            'po_description' => $po->po_description,
-                                            'type_name' => $po->type_name,
-                                            'po_amount' => $po->po_amount,
-                                            'company' => [
-                                                'id' => $po->company_id,
-                                                'code' => $po->company_code,
-                                                'name' => $po->company_name,
-                                            ],
-                                            'business_unit' => [
-                                                'id' => $po->business_unit_id,
-                                                'code' => $po->business_unit_code,
-                                                'name' => $po->business_unit_name,
-                                            ],
-                                            'department' => [
-                                                'id' => $po->department_id,
-                                                'code' => $po->department_code,
-                                                'name' => $po->department_name,
-                                            ],
-                                            'unit' => [
-                                                'id' => $po->unit_id,
-                                                'code' => $po->unit_code,
-                                                'name' => $po->unit_name,
-                                            ],
-                                            'sub_unit' => [
-                                                'id' => $po->sub_unit_id,
-                                                'code' => $po->sub_unit_code,
-                                                'name' => $po->sub_unit_name,
-                                            ],
-                                            'location' => [
-                                                'id' => $po->location_id,
-                                                'code' => $po->location_code,
-                                                'name' => $po->location_name,
-                                            ],
-                                            'account_title' => [
-                                                'id' => $po->account_title_id,
-                                                'code' => $po->account_title_code,
-                                                'name' => $po->account_title_name,
-                                            ],
-                                        ];
-                                    })
-                                ]
-                            ];
-                        })
-                    ];
-                })->values()
-                : []
-            : $receivedReceipts && !$receivedReceipts->purchaseOrders
-//            ()->withTrashed()->get()
-                ->isEmpty()
-                ? $transaction->receivedReceipts->map(function ($item) use ($transaction) {
-                    return [
-                        'is_new_po' => true,
-                        'id' => $item->rr_id,
-                        'rr_year_number_id' => $item->rr_number,
-                        'rr_orders' => $transaction->receivedReceipts->filter(function ($rr) use ($item) {
-                            return $rr->rr_id == $item->rr_id;
-                        })->map(function ($rr) {
-                            return [
-                                'item_code' => $rr->item_code,
-                                'item_name' => $rr->item_name,
-                                'quantity_receive' => $rr->quantity,
-                                'order' => [
-                                    'item_code' => $rr->item_code,
-                                    'item_name' => $rr->item_name,
-                                    'price' => $rr->price,
-                                    'reference_no' => $rr->reference_no,
-                                    'uom' => [
-                                        'code' => $rr->uom_code,
-                                        'name' => $rr->uom_name,
-                                    ],
-                                    'po_transaction' => $rr->purchaseOrders
-//                                    ()->withTrashed()->get()
-                                        ->map(function ($po) {
-                                        return [
-                                            'purchase_order_id' => $po->id,
-                                            'po_year_number_id' => $po->po_number,
-                                            'po_description' => $po->po_description,
-                                            'type_name' => $po->type_name,
-                                            'po_amount' => $po->po_amount,
-                                            'company' => [
-                                                'id' => $po->company_id,
-                                                'code' => $po->company_code,
-                                                'name' => $po->company_name,
-                                            ],
-                                            'business_unit' => [
-                                                'id' => $po->business_unit_id,
-                                                'code' => $po->business_unit_code,
-                                                'name' => $po->business_unit_name,
-                                            ],
-                                            'department' => [
-                                                'id' => $po->department_id,
-                                                'code' => $po->department_code,
-                                                'name' => $po->department_name,
-                                            ],
-                                            'unit' => [
-                                                'id' => $po->unit_id,
-                                                'code' => $po->unit_code,
-                                                'name' => $po->unit_name,
-                                            ],
-                                            'sub_unit' => [
-                                                'id' => $po->sub_unit_id,
-                                                'code' => $po->sub_unit_code,
-                                                'name' => $po->sub_unit_name,
-                                            ],
-                                            'location' => [
-                                                'id' => $po->location_id,
-                                                'code' => $po->location_code,
-                                                'name' => $po->location_name,
-                                            ],
-                                            'account_title' => [
-                                                'id' => $po->account_title_id,
-                                                'code' => $po->account_title_code,
-                                                'name' => $po->account_title_name,
-                                            ],
-                                        ];
-                                    })
-                                ]
-                            ];
-                        })->values()
-                    ];
-                })->unique()->values()
-                : [];
+                                'price' => $rr->price,
+                                'reference_no' => $rr->reference_no,
+                                'uom' => [
+                                    'code' => $rr->uom_code,
+                                    'name' => $rr->uom_name,
+                                ],
+                                'po_transaction' => $rr->purchaseOrders
+                                    ->map(function ($po) {
+                                    return [
+                                        'purchase_order_id' => $po->id,
+                                        'po_year_number_id' => $po->po_number,
+                                        'po_description' => $po->po_description,
+                                        'type_name' => $po->type_name,
+                                        'po_amount' => $po->po_amount,
+                                        'company' => [
+                                            'id' => $po->company_id,
+                                            'code' => $po->company_code,
+                                            'name' => $po->company_name,
+                                        ],
+                                        'business_unit' => [
+                                            'id' => $po->business_unit_id,
+                                            'code' => $po->business_unit_code,
+                                            'name' => $po->business_unit_name,
+                                        ],
+                                        'department' => [
+                                            'id' => $po->department_id,
+                                            'code' => $po->department_code,
+                                            'name' => $po->department_name,
+                                        ],
+                                        'unit' => [
+                                            'id' => $po->unit_id,
+                                            'code' => $po->unit_code,
+                                            'name' => $po->unit_name,
+                                        ],
+                                        'sub_unit' => [
+                                            'id' => $po->sub_unit_id,
+                                            'code' => $po->sub_unit_code,
+                                            'name' => $po->sub_unit_name,
+                                        ],
+                                        'location' => [
+                                            'id' => $po->location_id,
+                                            'code' => $po->location_code,
+                                            'name' => $po->location_name,
+                                        ],
+                                        'account_title' => [
+                                            'id' => $po->account_title_id,
+                                            'code' => $po->account_title_code,
+                                            'name' => $po->account_title_name,
+                                        ],
+                                    ];
+                                })
+                            ]
+                        ];
+                    })->values()
+                ];
+            })->values();
+
+            if ($receivedReceiptsCount == 1) {
+                $purchase_order = $purchase_order->unique()->values();
+            }
+        }
 
 
         $job_order = $receivedReceiptsCount != 1
@@ -7998,29 +7925,9 @@ class TransactionController extends Controller
         ];
     }
 
-//    public function exportAccountServicesReport(Request $request) {
-//        $boa = $request->boa;
-//        $dateToday = Carbon::now()->timezone("Asia/Manila");
-//        $adjustment_month = $request->input('adjustment_month', $dateToday->startOfMonth()->day(15)->format("Y-m-d"));
-////        $adjustment_month = Carbon::parse($this->getTransactionDate($request, "transaction_from", $dateToday->startOfMonth()->format("Y-m-d")))->startOfDay();
-//        $user = $request->user;
-//        $year = date('Y', strtotime($adjustment_month));
-//        $month = date('m', strtotime($adjustment_month));
-//        $companies = $this->getRequestData($request, 'companies');
-//        $paramDate = Carbon::createFromFormat('Y-m-d', "$year-$month-01");
-//
-////        return Excel::download(new AccountServicesExport($month, $year, $user, $companies), 'transactions.xlsx');
-//        return AccountServicesJob::dispatch($month, $year, $user, $companies, $boa, $paramDate);
-//    }
+    public function chequeExport(Request $request) {
+        $voucherMonth = $request->input('voucher_month');
 
-    // public function fixYearFormat() {
-    //      $records =  Cheque::withTrashed()->whereYear('cheque_date', '<', 100)->get();
-
-    //     foreach ($records as $record) {
-    //         $record->cheque_date = Carbon::createFromFormat('Y-m-d H:i:s', $record->cheque_date)
-    //             ->addYears(2000) // Fix the incorrect year
-    //             ->format('Y-m-d H:i:s');
-    //         $record->save();
-    //     }
-    // }
+        return Excel::download(new ChequeExport($voucherMonth), 'cheques.xlsx');
+    }
 }

@@ -720,4 +720,44 @@ class Controller extends BaseController
         return $batch_no;
     }
 
+    public function createReceivedReceiptStatuses($transaction, array $receivedReceipts, $tagNo, $voucherMonth, $voucherNo, $status)
+    {
+        if (empty($receivedReceipts)) {
+            return;
+        }
+
+        $timestampUpdates = [];
+        if ($status === 'TAG') {
+            $timestampUpdates['tagged_at'] = Carbon::now("Asia/Manila");
+        } elseif ($status === 'VOUCHERED') {
+            $timestampUpdates['vouchered_at'] = Carbon::now("Asia/Manila");
+        } elseif ($status === 'VALIDATED') {
+            $timestampUpdates['validated_at'] = Carbon::now("Asia/Manila");
+        }
+
+        foreach ($receivedReceipts as $receivedReceipt) {
+            $rrId = data_get($receivedReceipt, 'rr_id');
+            $rrNumber = data_get($receivedReceipt, 'rr_number');
+
+            $transaction->receivedReceiptsStatus()->updateOrCreate(
+                [
+                    'transaction_id' => $transaction->id,
+                    'rr_id' => $rrId,
+                ],
+                array_merge([
+                    'rr_number' => $rrNumber,
+                    'tag_no' => $tagNo,
+                    'voucher_month' => $voucherMonth,
+                    'voucher_no' => $voucherNo,
+                    'status' => $status,
+                    'company' => $transaction->company,
+                    'business_unit' => $transaction->business_unit ?? null,
+                    'department' => $transaction->department ?? null,
+                    'unit' => $transaction->unit ?? null,
+                    'sub_unit' => $transaction->sub_unit ?? null,
+                    'location' => $transaction->location ?? null,
+                ], $timestampUpdates)
+            );
+        }
+    }
 }

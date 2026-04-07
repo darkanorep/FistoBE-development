@@ -647,6 +647,7 @@ Route::group(["middleware" => "auth:sanctum"], function () {
         Route::get('cheque-created', [\App\Http\Controllers\ReportController::class, 'chequeCreated']);
         Route::get('cheque-cleared', [\App\Http\Controllers\ReportController::class, 'chequeCleared']);
         Route::get('audit-report', [\App\Http\Controllers\ReportController::class, 'auditReport']);
+        Route::get('cheque-export', [TransactionController::class, 'chequeExport']);
     });
 
     //SETTINGS

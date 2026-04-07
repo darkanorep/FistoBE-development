@@ -11,4 +11,9 @@ class ReceivedReceiptStatus extends Model
     use HasFactory, SoftDeletes;
 
     protected $guarded = [];
+
+    public function transactions()
+    {
+        return $this->belongsTo(Transaction::class, 'transaction_id');
+    }
 }

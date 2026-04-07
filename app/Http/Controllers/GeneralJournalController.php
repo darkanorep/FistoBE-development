@@ -49,7 +49,7 @@ class GeneralJournalController extends Controller
 
     public function updateGeneralJournal($id, Request $request)
     {
-        return $this->journalService->updateGeneralJournal($id, $request->all());
+        return $this->journalService->updateGeneralJournal($request->all(), $id);
     }
 
     public function destroy($id)

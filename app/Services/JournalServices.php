@@ -10,6 +10,7 @@ use App\Models\BusinessUnit;
 use App\Models\Charge;
 use App\Models\Company;
 use App\Models\Department;
+use App\Models\GeneralJournal;
 use App\Models\Location;
 use App\Models\SubUnit;
 use App\Models\Supplier;
@@ -599,10 +600,10 @@ class JournalServices
 
     public function updateGeneralJournal($request, $id)
     {
-        $generalJournal = $this->model::find($id)->first()->batch_no;
+        $batchNo = optional($this->model::query()->whereKey($id)->first())->batch_no;
 
-        if ($generalJournal) {
-            $this->model::where('batch_no', $generalJournal)->delete();
+        if ($batchNo) {
+            $this->model::where('batch_no', $batchNo)->delete();
 //            $generalJournal->media()->delete();
         }
 

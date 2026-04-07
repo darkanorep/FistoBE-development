@@ -201,7 +201,29 @@ class TransactionFlowController extends Controller
 
         $second = 1;
         foreach ($transactions as $transaction) {
-            $trx = Transaction::where('id', $transaction)->first();
+            // $trx = Transaction::where('id', $transaction)
+            // ->first();
+            $trx = Transaction::with([
+                "receivedReceipts" => function ($query) {
+                    $query->select('id', 'transaction_id', 'rr_number', 'rr_id');
+                }
+            ])->find($transaction);
+
+            $receivedReceipts = collect();
+
+            if ($trx) {
+                $receivedReceipts = $trx->receivedReceipts
+                    ->pluck('rr_number', 'rr_id')
+                    ->map(function ($rrNumber, $rrId) {
+                        return [
+                            'rr_id' => (int) $rrId,
+                            'rr_number' => $rrNumber,
+                        ];
+                    })
+                    ->values()
+                    ->toArray();
+            }
+
             switch ($process) {
 
                 case 'tag':
@@ -209,16 +231,29 @@ class TransactionFlowController extends Controller
                     Tagging::create(array_merge(['transaction_id' => $transaction], $tagData));
 
                     if ($process == 'tag') {
+                        $generatedTagNo = GenericMethod::generateTagNo($receipt_type, $transaction, $trx->is_confidential);
+
                         Transaction::where('id', $transaction)
                             ->update([
                                 'state' => $process,
                                 'status' => $process . '-' . $process,
-                                'receipt_type' => $receipt_type ?? $transaction->receipt_type ?? null,
+                                'receipt_type' => $receipt_type ?? $trx->receipt_type ?? null,
                                 'distributed_id' => data_get($distributed_to, 'id'),
                                 'distributed_name' => data_get($distributed_to, 'name'),
-                                'tag_no' => GenericMethod::generateTagNo($receipt_type, $transaction, $trx->is_confidential),
+                                'tag_no' => $generatedTagNo,
                                 'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
                             ]);
+
+                            $trx->refresh();
+
+                            $this->createReceivedReceiptStatuses(
+                                $trx,
+                                $receivedReceipts,
+                                $generatedTagNo,
+                                null,
+                                null,
+                                'TAG'
+                            );
                     } else {
                         Transaction::where('id', $transaction)
                             ->update([
@@ -254,6 +289,15 @@ class TransactionFlowController extends Controller
                         'status' => $process . '-'. $process,
                         'updated_at' => now()->addSeconds($second++)->format('Y-m-d H:i:s'),
                     ]);
+
+                    static::createReceivedReceiptStatuses(
+                        $trx,
+                        $receivedReceipts,
+                        $generatedTagNo,
+                        $trx->voucher_month,
+                        $trx->voucher_no,
+                        'VALIDATED'
+                    );
 
                     break;
                 case 'transmit':

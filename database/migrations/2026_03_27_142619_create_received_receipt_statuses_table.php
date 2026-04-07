@@ -19,6 +19,7 @@ class CreateReceivedReceiptStatusesTable extends Migration
             $table->string('rr_id')->nullable();
             $table->string('rr_number')->nullable();
             $table->string('tag_no')->nullable();
+            $table->date('voucher_month')->nullable();
             $table->string('voucher_no')->nullable();
             $table->string('status')->nullable();
             $table->string('company')->nullable();

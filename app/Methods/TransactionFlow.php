@@ -91,7 +91,27 @@ class TransactionFlow
         $instance = new self();
         $isCutOffEnabledApproval = $instance->isCutOffEnabledApproval;
 
-        $transaction = Transaction::find($id);
+        $transaction = Transaction::with([
+            "receivedReceipts" => function ($query) {
+                $query->select('id', 'transaction_id', 'rr_number', 'rr_id');
+            }
+        ])->find($id);
+
+        $receivedReceipts = collect();
+
+        if ($transaction) {
+            $receivedReceipts = $transaction->receivedReceipts
+                ->pluck('rr_number', 'rr_id')
+                ->map(function ($rrNumber, $rrId) {
+                    return [
+                        'rr_id' => (int) $rrId,
+                        'rr_number' => $rrNumber,
+                    ];
+                })
+                ->values()
+                ->toArray();
+        }
+        
         if (!isset($transaction)) {
             return GenericMethod::resultResponse("not-found", "transaction", []);
         }
@@ -291,6 +311,16 @@ class TransactionFlow
                 $status = "tag-tag";
 //        $receipt_type = $request->receipt_type;
 //        $tag_no = GenericMethod::generateTagNo($receipt_type);
+
+                static::createReceivedReceiptStatuses(
+                    $transaction,
+                    $receivedReceipts,
+                    $tag_no ?? null,
+                    $voucher_month ?? null,
+                    $voucher_no ?? null,
+                    'TAG'
+                );
+
             } elseif (in_array($subprocess, ["unhold", "unreturn"])) {
                 $status = GenericMethod::getStatus($process, $transaction);
             }
@@ -415,6 +445,15 @@ class TransactionFlow
                 $transaction->account_titles()->delete();
                 $transaction->treasuryCheque()->forceDelete();
                 $transaction->treasuryAccountTitle()->delete();
+
+                static::createReceivedReceiptStatuses(
+                    $transaction,
+                    $receivedReceipts,
+                    $tag_no ?? null,
+                    $voucher_month ?? null,
+                    $voucher_no ?? null,
+                    'VOUCHERED'
+                );
 //
 //                return $transaction->receivedReceipts()->with('purchaseOrders')->get();
 
@@ -589,6 +628,15 @@ class TransactionFlow
                     return $cutoffValidation;
                 }
                 $status = "approve-approve";
+
+                static::createReceivedReceiptStatuses(
+                    $transaction,
+                    $receivedReceipts,
+                    $tag_no ?? null,
+                    $voucher_month ?? null,
+                    $voucher_no ?? null,
+                    'VALIDATED'
+                );
 
             } elseif (in_array($subprocess, ["unhold", "unreturn"])) {
                 $status = GenericMethod::getStatus($process, $transaction);
@@ -2585,6 +2633,47 @@ class TransactionFlow
             ]);
 
         return GenericMethod::resultResponse($subprocess, "", "");
+    }
+
+    private static function createReceivedReceiptStatuses($transaction, array $receivedReceipts, $tagNo, $voucherMonth, $voucherNo, $status)
+    {
+        if (empty($receivedReceipts)) {
+            return;
+        }
+
+        $timestampUpdates = [];
+        if ($status === 'TAG') {
+            $timestampUpdates['tagged_at'] = Carbon::now("Asia/Manila");
+        } elseif ($status === 'VOUCHERED') {
+            $timestampUpdates['vouchered_at'] = Carbon::now("Asia/Manila");
+        } elseif ($status === 'VALIDATED') {
+            $timestampUpdates['validated_at'] = Carbon::now("Asia/Manila");
+        }
+
+        foreach ($receivedReceipts as $receivedReceipt) {
+            $rrId = data_get($receivedReceipt, 'rr_id');
+            $rrNumber = data_get($receivedReceipt, 'rr_number');
+
+            $transaction->receivedReceiptsStatus()->updateOrCreate(
+                [
+                    'transaction_id' => $transaction->id,
+                    'rr_id' => $rrId,
+                ],
+                array_merge([
+                    'rr_number' => $rrNumber,
+                    'tag_no' => $tagNo,
+                    'voucher_month' => $voucherMonth,
+                    'voucher_no' => $voucherNo,
+                    'status' => $status,
+                    'company' => $transaction->company,
+                    'business_unit' => $transaction->business_unit ?? null,
+                    'department' => $transaction->department ?? null,
+                    'unit' => $transaction->unit ?? null,
+                    'sub_unit' => $transaction->sub_unit ?? null,
+                    'location' => $transaction->location ?? null,
+                ], $timestampUpdates)
+            );
+        }
     }
 
     private function validateCutoffDate($voucherMonth, $subprocess)

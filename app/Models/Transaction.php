@@ -701,4 +701,9 @@ class Transaction extends Model
         return $this->belongsTo(BusinessUnit::class, 'business_unit_id', 'id')
             ->withTrashed();
     }
+
+    public function receivedReceiptsStatus()
+    {
+        return $this->hasMany(ReceivedReceiptStatus::class, 'transaction_id', 'id')->withTrashed();
+    }
 }
