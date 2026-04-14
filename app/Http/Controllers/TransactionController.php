@@ -6602,117 +6602,50 @@ class TransactionController extends Controller
         $permissions = auth()->user()->permissions;
 
         $statusMap = [
-            41 => [], //General Journal - AP Approval *
-            48, //General Journal - AR Approval *
-            49, //General Journal - Treasury Approval - 12 *
-            50, //General Journal - Cost & Budget 12 Approval *
-            51, //General Journal - Fixed Asset 12 Approval *
-            52, //General Journal - Confidential Approval - 12 *
-            54, //General Journal - Sales Approval *
-            55, //General Journal - FO Approval *
-            56, //General Journal - Live Approval *
-            61, //General Journal - Account Receivable Approval *
-            68, //General Journal - AP Specialist Approval - 12 *
-            69, //General Journal - PCF Approval *
-            71, //General Journal - AP Specialist Approval - 22 *
-            75, //General Journal - Fixed Asset Approval - 22 *
-            76, //General Journal - Cost & Budget Approval - 22 *
-            77, //General Journal - Cost & Budget Approval - 30 *
-            79, //General Journal - Confidential Approval - 22 *
-            85, //General Journal - Accruals & Reversals Approval *
-            87, //General Journal - Treasury - Approval - 22 *
+            41 => 'general_journals', //General Journal - AP Approval
+            48 => 'account_receivable_journals', //General Journal - AR Approval
+            49 => 'treasury_journals', //General Journal - Treasury Approval - 12
+            50 => 'cost_and_budget_journals', //General Journal - Cost & Budget 12 Approval
+            51 => 'fixed_asset_journals', //General Journal - Fixed Asset 12 Approval
+            52 => 'confidential_journals', //General Journal - Confidential Approval - 12
+            54 => 'sales_journals', //General Journal - Sales Approval
+            55 => 'fo_journals', //General Journal - FO Approval
+            56 => 'live_journals', //General Journal - Live Approval
+            61 => 'account_receivable_journals', //General Journal - Account Receivable Approval
+            68 => 'ap_specialist_journals', //General Journal - AP Specialist Approval - 12
+            69 => 'pcf_journals', //General Journal - PCF Approval
+            71 => 'ap_specialist22_journals', //General Journal - AP Specialist Approval - 22
+            75 => 'fixed_asset22_journals', //General Journal - Fixed Asset Approval - 22
+            76 => 'cost_and_budget22_journals', //General Journal - Cost & Budget Approval - 22
+            77 => 'cost_and_budget30_journals', //General Journal - Cost & Budget Approval - 30
+            79 => 'confidential22_journals', //General Journal - Confidential Approval - 22
+            85 => 'accrual_reversal_journals', //General Journal - Accruals & Reversals Approval
+            87 => 'treasury22_journals', //General Journal - Treasury - Approval - 22
+            100 => 'year_end_journals', //General Journal - Year End Approval
+            102 => 'confidential_year_end_journals', //General Journal - Confidential Year End Approval
         ];
 
         $response = [];
 
-        foreach ($permissions as $permission) {
-            if (isset($statusMap[$permission])) {
-                $permissionName = Permission::where('id', $permission)->first()->name;
-                $approver_id = auth()->user()->id;
-                $count = 0;
+        $availablePermissions = collect($permissions)
+            ->filter(function ($permission) use ($statusMap) {
+                return isset($statusMap[$permission]);
+            })
+            ->values();
 
-                switch($permissionName) {
-                    case 'General Journal - AP Approval':
-                        $db = 'general_journals';
-                        $count = $this->journalCounter($db);
-                        break;
-                    case 'General Journal - Account Receivable Approval':
-                        $db = 'account_receivable_journals';
-                        $count = $this->journalCounter($db);
-                        break;
-                    case 'General Journal - Treasury Approval - 12':
-                        $db = 'treasury_journals';
-                        $count = $this->journalCounter($db);
-                        break;
-                    case 'Cost & Budget 12 Approval':
-                        $db = 'cost_budget_journals';
-                        $count = $this->journalCounter($db);
-                        break;
-                    case 'Fixed Asset 12 Approval':
-                        $db = 'fixed_asset_journals';
-                        $count = $this->journalCounter($db);
-                        break;
-                    case 'Confidential Approval - 12':
-                        $db = 'confidential_journals';
-                        $count = $this->journalCounter($db);
-                        break;
-                    case 'General Journal - Sales Approval':
-                        $db = 'sales_journals';
-                        $count = $this->journalCounter($db);
-                        break;
-                    case 'General Journal - FO Approval':
-                        $db = 'fo_journals';
-                        $count = $this->journalCounter($db);
-                        break;
-                    case 'General Journal - Live Approval':
-                        $db = 'live_journals';
-                        $count = $this->journalCounter($db);
-                        break;
-                    case 'General Journal - AP Specialist Approval - 12':
-                        $db = 'ap_specialist_journals';
-                        $count = $this->journalCounter($db);
-                        break;
-                    case 'General Journal - PCF Approval':
-                        $db = 'pcf_journals';
-                        $count = $this->journalCounter($db);
-                        break;
-                    case 'General Journal - AP Specialist Approval - 22':
-                        $db = 'ap_specialist22_journals';
-                        $count = $this->journalCounter($db);
-                        break;
-                    case 'General Journal - Fixed Asset Approval - 22':
-                        $db = 'fixed_asset22_journals';
-                        $count = $this->journalCounter($db);
-                        break;
-                    case 'General Journal - Cost & Budget Approval - 22':
-                        $db = 'cost_and_budget22_journals';
-                        $count = $this->journalCounter($db);
-                        break;
-                    case 'General Journal - Cost & Budget Approval - 30':
-                        $db = 'cost_and_budget30_journals';
-                        $count = $this->journalCounter($db);
-                        break;
-                    case 'General Journal - Confidential Approval - 22':
-                        $db = 'confidential22_journals';
-                        $count = $this->journalCounter($db);
-                        break;
-                    case 'General Journal - Accruals & Reversals Approval':
-                        $db = 'accrual_reversal_journals';
-                        $count = $this->journalCounter($db);
-                        break;
-                    case 'General Journal - Treasury - Approval - 22':
-                        $db = 'treasury22_journals';
-                        $count = $this->journalCounter($db);
-                        break;
-                }
+        $permissionNames = Permission::whereIn('id', $availablePermissions)
+            ->pluck('name', 'id');
 
-                $response[] = [
-                    'permission' => $permissionName,
-                    'result' => [
-                        'pending' => $count
-                    ]
-                ];
-            }
+        foreach ($availablePermissions as $permission) {
+            $db = $statusMap[$permission];
+            $count = $this->journalCounter($db);
+
+            $response[] = [
+                'permission' => $permissionNames[$permission] ?? 'Unknown Permission',
+                'result' => [
+                    'pending' => $count
+                ]
+            ];
         }
 
         return response()->json($response);

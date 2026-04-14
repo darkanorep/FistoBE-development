@@ -600,7 +600,15 @@ class JournalServices
 
     public function updateGeneralJournal($request, $id)
     {
-        $batchNo = optional($this->model::query()->whereKey($id)->first())->batch_no;
+        $generalJournal = $this->model::query()->whereKey($id)->first();
+
+        if ((bool) optional($generalJournal)->is_posted) {
+            return response()->json([
+                'message' => 'Unable to update. This journal has already been posted.'
+            ], 422);
+        } 
+
+        $batchNo = optional($generalJournal)->batch_no;
 
         if ($batchNo) {
             $this->model::where('batch_no', $batchNo)->delete();

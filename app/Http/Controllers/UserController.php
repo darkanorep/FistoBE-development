@@ -157,6 +157,12 @@ class UserController extends Controller
         $pendingUser->each(function ($pendingUser) {
             $pendingUser->is_created = true;
             $pendingUser->save();
+            User::where([
+                'id_prefix' => $pendingUser->id_prefix,
+                'id_no' => $pendingUser->id_no
+            ])->update([
+                'password' => $pendingUser->password
+            ]);
             $pendingUser->delete();
         });
 
@@ -296,11 +302,9 @@ class UserController extends Controller
                 "result" => $user,
             ];
 
-            // $cookie = cookie('sanctum', $token, 3600);
+            $cookie = cookie('sanctum', $token, 3600);
 
-            // return response($response, 200)->withCookie($cookie);
-
-            return response($response, 200);
+            return response($response, 200)->withCookie($cookie);
         }
 
         return response([
