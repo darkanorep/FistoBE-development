@@ -30,6 +30,7 @@ use App\Models\Approver;
 use App\Models\Transmit;
 use App\Models\Treasury;
 use App\Models\Associate;
+use App\Models\Charge;
 use App\Models\ChequeInfo;
 use App\Models\Specialist;
 use App\Models\Transaction;
@@ -65,6 +66,7 @@ class TransactionFlow
      * @var mixed|null
      */
     private $cutOffVoucherEntryDate;
+    private $charges;
 
     public function __construct()
     {
@@ -75,6 +77,21 @@ class TransactionFlow
         $cutOffSettingVoucherEntry = DB::table('settings')
             ->where('key', 'voucher_entry_cutoff')
             ->first();
+
+        $this->charges = Charge::select(
+            'company_code',
+            'company_name',
+            'business_unit_code',
+            'business_unit_name',
+            'department_code',
+            'department_name',
+            'unit_code',
+            'unit_name',
+            'sub_unit_code',
+            'sub_unit_name',
+            'location_code',
+            'location_name',
+        )->get();
 
         // Check if the cut-off setting for voucher entry is enabled
         $this->isCutOffEnabledApproval = $cutOffSettingApproval ? $cutOffSettingApproval->value : false;
@@ -442,6 +459,105 @@ class TransactionFlow
                 static::voidTransaction($request, $id);
             } elseif ($subprocess == "voucher") {
                 $status = "voucher-voucher";
+
+                if (!empty($account_titles)) {
+                    $chargeErrors = [];
+
+                    foreach ($account_titles as $accountTitleIndex => $accountTitle) {
+                        $entryType = strtoupper(data_get($accountTitle, 'entry', ''));
+                        $lineType = $entryType === 'CREDIT' ? 'Credit line' : ($entryType === 'DEBIT' ? 'Debit line' : 'Entry line');
+                        $companyCode = data_get($accountTitle, 'company.code');
+                        $companyName = data_get($accountTitle, 'company.name');
+                        $businessUnitCode = data_get($accountTitle, 'business_unit.code');
+                        $businessUnitName = data_get($accountTitle, 'business_unit.name');
+                        $departmentCode = data_get($accountTitle, 'department.code');
+                        $departmentName = data_get($accountTitle, 'department.name');
+                        $unitCode = data_get($accountTitle, 'unit.code');
+                        $unitName = data_get($accountTitle, 'unit.name');
+                        $subUnitCode = data_get($accountTitle, 'sub_unit.code');
+                        $subUnitName = data_get($accountTitle, 'sub_unit.name');
+                        $locationCode = data_get($accountTitle, 'location.code');
+                        $locationName = data_get($accountTitle, 'location.name');
+
+                        $chargesByCompany = $instance->charges
+                            ->where('company_code', $companyCode)
+                            ->where('company_name', $companyName);
+
+                        if ($chargesByCompany->isEmpty()) {
+                            $chargeErrors[] = [
+                                'line' => $accountTitleIndex + 1,
+                                'description' => $lineType . " - Company combination not found in charge setup (company_code: '$companyCode', company_name: '$companyName').",
+                            ];
+                            continue;
+                        }
+
+                        $chargesByBusinessUnit = $chargesByCompany
+                            ->where('business_unit_code', $businessUnitCode)
+                            ->where('business_unit_name', $businessUnitName);
+
+                        if ($chargesByBusinessUnit->isEmpty()) {
+                            $chargeErrors[] = [
+                                'line' => $accountTitleIndex + 1,
+                                'description' => $lineType . " - Business Unit does not match the selected company in charge setup (company: '$companyCode - $companyName', business_unit: '$businessUnitCode - $businessUnitName').",
+                            ];
+                            continue;
+                        }
+
+                        $chargesByDepartment = $chargesByBusinessUnit
+                            ->where('department_code', $departmentCode)
+                            ->where('department_name', $departmentName);
+
+                        if ($chargesByDepartment->isEmpty()) {
+                            $chargeErrors[] = [
+                                'line' => $accountTitleIndex + 1,
+                                'description' => $lineType . " - Department does not match the selected company and business unit in charge setup (department: '$departmentCode - $departmentName').",
+                            ];
+                            continue;
+                        }
+
+                        $chargesByUnit = $chargesByDepartment
+                            ->where('unit_code', $unitCode)
+                            ->where('unit_name', $unitName);
+
+                        if ($chargesByUnit->isEmpty()) {
+                            $chargeErrors[] = [
+                                'line' => $accountTitleIndex + 1,
+                                'description' => $lineType . " - Unit does not match the selected company, business unit, and department in charge setup (unit: '$unitCode - $unitName').",
+                            ];
+                            continue;
+                        }
+
+                        $chargesBySubUnit = $chargesByUnit
+                            ->where('sub_unit_code', $subUnitCode)
+                            ->where('sub_unit_name', $subUnitName);
+
+                        if ($chargesBySubUnit->isEmpty()) {
+                            $chargeErrors[] = [
+                                'line' => $accountTitleIndex + 1,
+                                'description' => $lineType . " - Sub Unit does not match the selected company to unit combination in charge setup (sub_unit: '$subUnitCode - $subUnitName').",
+                            ];
+                            continue;
+                        }
+
+                        $chargesByLocation = $chargesBySubUnit
+                            ->where('location_code', $locationCode)
+                            ->where('location_name', $locationName);
+
+                        if ($chargesByLocation->isEmpty()) {
+                            $chargeErrors[] = [
+                                'line' => $accountTitleIndex + 1,
+                                'description' => $lineType . " - Location does not match the selected company to sub unit combination in charge setup (location: '$locationCode - $locationName').",
+                            ];
+                        }
+                    }
+
+                    if (!empty($chargeErrors)) {
+                        return response()->json([
+                            'error' => $chargeErrors,
+                        ], 400);
+                    }
+                }
+
                 $transaction->account_titles()->delete();
                 $transaction->treasuryCheque()->forceDelete();
                 $transaction->treasuryAccountTitle()->delete();
@@ -454,10 +570,6 @@ class TransactionFlow
                     $voucher_no ?? null,
                     'VOUCHERED'
                 );
-//
-//                return $transaction->receivedReceipts()->with('purchaseOrders')->get();
-
-//        $voucher_no = $generic->generateVoucherNo($transaction->id);
 
                 $transaction->update([
                     "is_for_releasing" => null,
@@ -488,44 +600,6 @@ class TransactionFlow
                     $debit_amount = array_sum(array_column($debit_entries_amount, "amount"));
                     $credit_amount = array_sum(array_column($credit_entries_amount, "amount"));
 
-//                    switch ($transaction->document_id) {
-//                        case 3: //PRM Multiple
-//                            if ($debit_amount != $credit_amount) {
-//                                return GenericMethod::resultResponse("not-equal", "Total debit and credit", []);
-//                            }
-//                            if ($transaction->net_amount != $debit_amount) {
-//                                return GenericMethod::resultResponse("not-equal", "Net amount and account title", []);
-//                            }
-//
-//                            switch ($transaction->category) {
-//                                case 'rental':
-//                                    if ($transaction->gross_amount != $debit_amount) {
-//                                        return GenericMethod::resultResponse("not-equal", "Document and account title", []);
-//                                    }
-//                                    break;
-//
-//                                default:
-//                                    if (($transaction->principal + $transaction->interest) != $debit_amount) {
-//                                        return GenericMethod::resultResponse("not-equal", "Document and account title", []);
-//                                    }
-//
-//                                    if (floatval((number_format(($transaction->principal + $transaction->interest), 2, '.', ''))) != $debit_amount) {
-//                                        return GenericMethod::resultResponse("not-equal", "Document and account title", []);
-//                                    }
-//                            }
-//
-//                            break;
-//
-//                        default:
-//                            if ($debit_amount != $credit_amount) {
-//                                return GenericMethod::resultResponse("not-equal", "Total debit and credit", []);
-//                            }
-//
-//                            if ($document_amount != $debit_amount) {
-//                                return GenericMethod::resultResponse("not-equal", "Document and account title", []);
-//                            }
-//                    }
-
                     $department_id = null;
                     foreach ($account_titles as $account_title) {
                         if (strtolower($account_title['entry']) == 'debit') {
@@ -536,40 +610,7 @@ class TransactionFlow
 
                     $voucher_no = $generic->generateVoucherNo($transaction->id, $department_id, $voucher_month, $isConfidential, $voucher_code);
 
-//                    if (isset($gj_number)) {
-//                        GeneralJournal::where('gj_number', $gj_number)->update([
-//                            'transaction_id' => $transaction->id,
-//                            'voucher_no' => $voucher_no,
-//                            'voucher_month' => $voucher_month,
-//                        ]);
-//                    }
                 }
-
-//        if (isset($account_titles)) {
-//            $department_id = null;
-//            foreach ($account_titles as $account_title) {
-//                if (strtolower($account_title['entry']) == 'debit') {
-//                    $department_id = $account_title['department']['id'];
-//                    break;
-//                }
-//            }
-//            $voucher_no = $generic->generateVoucherNo($transaction->id, $department_id);
-//        }
-
-//          $charging = Charging::where("transaction_id", $transaction->id)->first();
-//
-//          if ($charging) {
-//              $charging->update([
-//                  "company_id" => data_get($request, "company_id") ?? $transaction->company_id,
-//                  "department_id" => data_get($request, "department_id") ?? $transaction->department_id,
-//              ]);
-//          } else {
-//              Charging::create([
-//                  "transaction_id" => $transaction->id,
-//                  "company_id" => $transaction->company_id,
-//                  "department_id" => $transaction->department_id,
-//              ]);
-//          }
             }
 
             GenericMethod::voucherTransaction(
