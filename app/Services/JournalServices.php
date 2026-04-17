@@ -842,63 +842,52 @@ class JournalServices
                 ];
             }
 
-//            if (!$chargeExist) {
-//                $error[] = (object)[
-//                    "line" => $index,
-//                    "description" => "Charge does not exist for
-//                    Company Code: $company_code,
-//                    Company: $company,
-//                    Business Unit Code: $business_unit_code,
-//                    Business Unit: $business_unit,
-//                    Department Code: $department_code,
-//                    Department: $department,
-//                    Location Code: $location_code,
-//                    Unit: $unit,
-//                    Sub Unit Code: $sub_unit_code,
-//                    Sub Unit: $sub_unit. ,
-//                    Location Code: $location_code,
-//                    Location: $location",
-//                ];
-//            }
-
-            $fields = [
-                'company_code' => $company_code,
-                'company_name' => $company,
-                'business_unit_code' => $business_unit_code,
-                'business_unit_name' => $business_unit,
-                'department_code' => $department_code,
-                'department_name' => $department,
-                'unit_code' => $unit_code,
-                'unit_name' => $unit,
-                'sub_unit_code' => $sub_unit_code,
-                'sub_unit_name' => $sub_unit,
-                'location_code' => $location_code,
-                'location_name' => $location,
-            ];
-
-            $matching = $this->charges;
-            $failedField = null;
-            $failedValue = null;
-
-            foreach ($fields as $key => $value) {
-                $filtered = $matching->filter(function ($item) use ($key, $value) {
-                    return strtolower(trim((string) $item->$key)) === strtolower(trim((string) $value));
-                });
-
-                if ($filtered->isEmpty()) {
-                    $failedField = $key;
-                    $failedValue = $value;
-                    break;
-                }
-                $matching = $filtered;
-            }
-
-            $chargeExist = $matching->first();
-
             if (!$chargeExist) {
+                $chargesByCompany = $this->charges
+                    ->where('company_code', $company_code)
+                    ->where('company_name', $company);
+
+                if ($chargesByCompany->isEmpty()) {
+                    $description = "Company combination not found in charge setup (company_code: '$company_code', company_name: '$company').";
+                } else {
+                    $chargesByBusinessUnit = $chargesByCompany
+                        ->where('business_unit_code', $business_unit_code)
+                        ->where('business_unit_name', $business_unit);
+
+                    if ($chargesByBusinessUnit->isEmpty()) {
+                        $description = "Business Unit does not match the selected company in charge setup (company: '$company_code - $company', business_unit: '$business_unit_code - $business_unit').";
+                    } else {
+                        $chargesByDepartment = $chargesByBusinessUnit
+                            ->where('department_code', $department_code)
+                            ->where('department_name', $department);
+
+                        if ($chargesByDepartment->isEmpty()) {
+                            $description = "Department does not match the selected company and business unit in charge setup (department: '$department_code - $department').";
+                        } else {
+                            $chargesByUnit = $chargesByDepartment
+                                ->where('unit_code', $unit_code)
+                                ->where('unit_name', $unit);
+
+                            if ($chargesByUnit->isEmpty()) {
+                                $description = "Unit does not match the selected company, business unit, and department in charge setup (unit: '$unit_code - $unit').";
+                            } else {
+                                $chargesBySubUnit = $chargesByUnit
+                                    ->where('sub_unit_code', $sub_unit_code)
+                                    ->where('sub_unit_name', $sub_unit);
+
+                                if ($chargesBySubUnit->isEmpty()) {
+                                    $description = "Sub Unit does not match the selected company to unit combination in charge setup (sub_unit: '$sub_unit_code - $sub_unit').";
+                                } else {
+                                    $description = "Location does not match the selected company to sub unit combination in charge setup (location: '$location_code - $location').";
+                                }
+                            }
+                        }
+                    }
+                }
+
                 $error[] = (object)[
                     "line" => $index,
-                    "description" => "Charge does not exist. The field '$failedField' with value '$failedValue' does not match any record.",
+                    "description" => $description,
                 ];
             }
 
