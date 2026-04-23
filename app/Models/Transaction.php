@@ -628,7 +628,7 @@ class Transaction extends Model
     }
 
     public function sub_unit_info() {
-        return $this->hasOne(SubUnit::class, 'sync_id', 'sub_unit_id')->withTrashed();
+        return $this->hasOne(SubUnit::class, 'id', 'sub_unit_id')->withTrashed();
     }
 
     public function scopeRental($query, $transaction_id) {

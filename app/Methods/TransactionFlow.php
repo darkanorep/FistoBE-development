@@ -562,14 +562,6 @@ class TransactionFlow
                 $transaction->treasuryCheque()->forceDelete();
                 $transaction->treasuryAccountTitle()->delete();
 
-                static::createReceivedReceiptStatuses(
-                    $transaction,
-                    $receivedReceipts,
-                    $tag_no ?? null,
-                    $voucher_month ?? null,
-                    $voucher_no ?? null,
-                    'VOUCHERED'
-                );
 
                 $transaction->update([
                     "is_for_releasing" => null,
@@ -609,6 +601,15 @@ class TransactionFlow
                     }
 
                     $voucher_no = $generic->generateVoucherNo($transaction->id, $department_id, $voucher_month, $isConfidential, $voucher_code);
+
+                    static::createReceivedReceiptStatuses(
+                        $transaction,
+                        $receivedReceipts,
+                        $tag_no ?? null,
+                        $voucher_month ?? null,
+                        $voucher_no ?? null,
+                        'VOUCHERED'
+                    );
 
                 }
             }
