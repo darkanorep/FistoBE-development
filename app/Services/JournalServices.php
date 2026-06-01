@@ -709,6 +709,7 @@ class JournalServices
         $index = 2;
         foreach ($journals as $journal) {
             $transaction_date = $journal['transaction_date'];
+            $account_title_code = $journal['account_title_code'];
             $account_title = $journal['account_title'];
             $supplier = $journal['supplier'];
             $company = $journal['company'];
@@ -743,6 +744,8 @@ class JournalServices
                 ->whereStrict('sub_unit_code', $sub_unit_code)
                 ->where('sub_unit_name', $sub_unit)
                 ->first();
+
+            $accountTitleExist = $this->accountTitle->whereStrict('account_title_code', $account_title_code)->where('title', $account_title)->first();
 
             $distinctBoa = array_unique($boaList);
 
@@ -839,6 +842,13 @@ class JournalServices
                 $error[] = (object)[
                     "line" => $index,
                     "description" => "Amount must be a numeric value.",
+                ];
+            }
+
+            if(!$accountTitleExist) {
+                $error[] = (object)[
+                    "line" => $index,
+                    "description" => "Account Title combination not found in account title setup (account_title_code: '$account_title_code', account_title: '$account_title').",
                 ];
             }
 
