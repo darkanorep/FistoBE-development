@@ -2399,7 +2399,7 @@ class TransactionFlow
 
         foreach ($transactionIds as $transactionId) {
 
-            $transaction = Transaction::find($transactionId);
+            $transaction = Transaction::withTrashed()->find($transactionId);
 
             switch ($request->process) {
                 case 'audit':
@@ -2413,14 +2413,14 @@ class TransactionFlow
 
                 case 'executive':
                     $transaction->executive()->create([
-                        'transaction_id' => $transaction,
+                        'transaction_id' => $transaction->id,
                         'status' => $request->process . '-receive',
                     ]);
                     break;
 
                 case 'issue':
                     $transaction->issue()->create([
-                        'transaction_id' => $transaction,
+                        'transaction_id' => $transaction->id,
                         'status' => $request->process . '-receive',
                     ]);
                     break;
@@ -2428,7 +2428,7 @@ class TransactionFlow
                 case 'release':
                     $transaction->release()->create([
                         'date_status' => Carbon::now('Asia/Manila')->format('Y-m-d H:i:s'),
-                        'transaction_id' => $transaction,
+                        'transaction_id' => $transaction->id,
                         'status' => $request->process . '-receive',
                     ]);
                     break;

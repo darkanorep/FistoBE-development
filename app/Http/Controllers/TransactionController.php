@@ -6803,7 +6803,8 @@ class TransactionController extends Controller
                 "transactions.distributed_name",
                 'transactions.is_confidential',
                 'transactions.is_mc',
-                'transactions.is_new'
+                'transactions.is_new',
+                'transactions.transaction_type'
             ])
             ->when(isset($statusMapping[$status]['role']), function ($query) use ($statusMapping, $status, $my_approve) {
                 $query->when($my_approve == 1, function ($query) {
@@ -7013,7 +7014,8 @@ class TransactionController extends Controller
                 'is_confidential' => $transaction->is_confidential,
                 'is_mc' => $transaction->is_mc,
                 "is_new" => $transaction->is_new ? 1 : 0,
-                'distributed_name' => $transaction->distributed_name
+                'distributed_name' => $transaction->distributed_name,
+                'transaction_type' => $transaction->transaction_type
             ];
 
         });

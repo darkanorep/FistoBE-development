@@ -139,10 +139,10 @@ class UserController extends Controller
     public function store(UserControllerRequest $request)
     {
         $fields = $request->validated();
-        $existing_user = User::withTrashed()->where('id_prefix', $fields['id_prefix'])->where('id_no', $fields['id_no'])->first();
-        if (!empty($existing_user)) {
-            return $this->resultResponse('registered', 'User', $fields['id_prefix'] . '-' . $fields['id_no']);
-        }
+        // $existing_user = User::withTrashed()->where('id_prefix', $fields['id_prefix'])->where('id_no', $fields['id_no'])->first();
+        // if (!empty($existing_user)) {
+        //     return $this->resultResponse('registered', 'User', $fields['id_prefix'] . '-' . $fields['id_no']);
+        // }
         $document_types = $fields['document_types'];
         $document_ids = array_column($document_types, 'id');
         $fields['password'] = bcrypt(strtolower($fields['username']));
