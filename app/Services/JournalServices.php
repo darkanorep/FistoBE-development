@@ -745,7 +745,10 @@ class JournalServices
                 ->where('sub_unit_name', $sub_unit)
                 ->first();
 
-            $accountTitleExist = $this->accountTitle->whereStrict('account_title_code', $account_title_code)->where('title', $account_title)->first();
+            $accountTitleExist = $this->accountTitle
+                ->whereStrict('code', $account_title_code)
+                ->whereStrict('title', $account_title)
+                ->first();
 
             $distinctBoa = array_unique($boaList);
 
