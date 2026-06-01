@@ -730,17 +730,17 @@ class JournalServices
             $entry = $journal['entry'];
 
             $chargeExist = $this->charges
-                ->where('company_code', $company_code)
+                ->whereStrict('company_code', $company_code)
                 ->where('company_name', $company)
-                ->where('business_unit_code', $business_unit_code)
+                ->whereStrict('business_unit_code', $business_unit_code)
                 ->where('business_unit_name', $business_unit)
-                ->where('department_code', $department_code)
+                ->whereStrict('department_code', $department_code)
                 ->where('department_name', $department)
-                ->where('location_code', $location_code)
+                ->whereStrict('location_code', $location_code)
                 ->where('location_name', $location)
-                ->where('unit_code', $unit_code)
+                ->whereStrict('unit_code', $unit_code)
                 ->where('unit_name', $unit)
-                ->where('sub_unit_code', $sub_unit_code)
+                ->whereStrict('sub_unit_code', $sub_unit_code)
                 ->where('sub_unit_name', $sub_unit)
                 ->first();
 
@@ -844,35 +844,35 @@ class JournalServices
 
             if (!$chargeExist) {
                 $chargesByCompany = $this->charges
-                    ->where('company_code', $company_code)
+                    ->whereStrict('company_code', $company_code)
                     ->where('company_name', $company);
 
                 if ($chargesByCompany->isEmpty()) {
                     $description = "Company combination not found in charge setup (company_code: '$company_code', company_name: '$company').";
                 } else {
                     $chargesByBusinessUnit = $chargesByCompany
-                        ->where('business_unit_code', $business_unit_code)
+                        ->whereStrict('business_unit_code', $business_unit_code)
                         ->where('business_unit_name', $business_unit);
 
                     if ($chargesByBusinessUnit->isEmpty()) {
                         $description = "Business Unit does not match the selected company in charge setup (company: '$company_code - $company', business_unit: '$business_unit_code - $business_unit').";
                     } else {
                         $chargesByDepartment = $chargesByBusinessUnit
-                            ->where('department_code', $department_code)
+                            ->whereStrict('department_code', $department_code)
                             ->where('department_name', $department);
 
                         if ($chargesByDepartment->isEmpty()) {
                             $description = "Department does not match the selected company and business unit in charge setup (department: '$department_code - $department').";
                         } else {
                             $chargesByUnit = $chargesByDepartment
-                                ->where('unit_code', $unit_code)
+                                ->whereStrict('unit_code', $unit_code)
                                 ->where('unit_name', $unit);
 
                             if ($chargesByUnit->isEmpty()) {
                                 $description = "Unit does not match the selected company, business unit, and department in charge setup (unit: '$unit_code - $unit').";
                             } else {
                                 $chargesBySubUnit = $chargesByUnit
-                                    ->where('sub_unit_code', $sub_unit_code)
+                                    ->whereStrict('sub_unit_code', $sub_unit_code)
                                     ->where('sub_unit_name', $sub_unit);
 
                                 if ($chargesBySubUnit->isEmpty()) {
