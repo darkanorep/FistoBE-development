@@ -28,11 +28,12 @@ class  AccountNumberRequest extends FormRequest
             "account_no" => [
                 'required',
                 'string',
-                Rule::unique('account_numbers','account_no')
-                    ->where(function ($query) {
-                        $query->where('account_no', '<>', 'n/a');
-                    })
-                    ->ignore($this->route('account_number'))
+                // Rule::unique('account_numbers','account_no')
+                //     ->where(function ($query) {
+                //         $query->where('account_no', '<>', 'n/a');
+                //     })
+                //     ->ignore($this->route('account_number'))
+                'unique:account_numbers,account_no,' . $this->route('account_number'),
             ],
             "location_id" => [
                 'required',
