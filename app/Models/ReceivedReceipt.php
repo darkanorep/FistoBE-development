@@ -10,18 +10,7 @@ class            ReceivedReceipt extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = [
-        'transaction_id',
-        'rr_id',
-        'rr_number',
-        'item_code',
-        'item_name',
-        'price',
-        'reference_no',
-        'quantity',
-        'uom_code',
-        'uom_name'
-    ];
+    protected $guarded = [];
 
     public function purchaseOrders()
     {

@@ -10,34 +10,5 @@ class PurchaseOrders extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = [
-        'received_receipt_id',
-        'po_number',
-        'po_amount',
-        'consumed_amount',
-        'remaining_amount',
-        'po_description',
-        'type_name',
-        'company_id',
-        'company_code',
-        'company_name',
-        'business_unit_id',
-        'business_unit_code',
-        'business_unit_name',
-        'department_id',
-        'department_code',
-        'department_name',
-        'unit_id',
-        'unit_code',
-        'unit_name',
-        'sub_unit_id',
-        'sub_unit_code',
-        'sub_unit_name',
-        'location_id',
-        'location_code',
-        'location_name',
-        'account_title_id',
-        'account_title_code',
-        'account_title_name',
-    ];
+    protected $guarded = [];
 }

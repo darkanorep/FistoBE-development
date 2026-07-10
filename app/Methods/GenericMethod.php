@@ -46,6 +46,7 @@ use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 // For Pagination with Collection
@@ -1017,6 +1018,10 @@ class GenericMethod
 
             if ($purchase_order_id) {
                 $purchase = PurchaseOrders::withTrashed()->where('id', $purchase_order_id)->first();
+                ReceivedReceipt::withTrashed()->where('id', $purchase->received_receipt_id)->update([
+                    'reference_no' => $batch_no,
+                ]);
+
                 PurchaseOrders::where('received_receipt_id', $purchase->received_receipt_id)->update([
                     'account_title_id' => $account_title_id,
                     'account_title_code' => $specific_account_title["account_title"]["code"],
