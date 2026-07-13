@@ -2206,20 +2206,28 @@ class TransactionFlow
 //        return GenericMethod::resultResponse($request->subprocess, "", "");
 //    }
 
-    function issueCheque($request, $transactionIds)
-    {
-        for ($i = 0; $i < count($transactionIds); $i++) {
+    function issueCheque($request, $transactionIds) {
+        request()->validate([
+            'cheque.date' => ['required', 'date'],
+            'created_date' => ['nullable', 'date'],
+        ]);
 
-            $transaction = Transaction::find($transactionIds[$i]);
+        $chequeDate = Carbon::parse(data_get($request, 'cheque.date'))->format('Y-m-d');
+        $createdAt = $request->input('created_date')
+            ? Carbon::parse($request->input('created_date'))
+            : now();
 
-            $issue = $transaction->issue()->create([
-                'status' => 'issue-issue',
-            ]);
+        $accounts = $request->accounts;
 
-            for ($j = 0; $j < count($request->accounts); $j++) {
-                $account = $request->accounts[$j];
+        DB::transaction(function () use ($transactionIds, $chequeDate, $createdAt, $accounts, $request) {
 
-                $issue->accountTitles()->create([
+            $transactionsById = Transaction::whereIn('id', $transactionIds)->get()->keyBy('id');
+
+            // Same account list is reused for every transaction — build the
+            // row template once outside the loop instead of re-reading
+            // data_get() on every iteration.
+            $accountRowTemplate = collect($accounts)->map(function ($account) {
+                return [
                     'entry' => data_get($account, 'entry'),
                     'bank_id' => data_get($account, 'bank_id'),
                     'account_title_id' => data_get($account, 'account_title.id'),
@@ -2246,47 +2254,133 @@ class TransactionFlow
                     'sub_unit_id' => data_get($account, 'sub_unit.id'),
                     'sub_unit_code' => data_get($account, 'sub_unit.code'),
                     'sub_unit_name' => data_get($account, 'sub_unit.name'),
-                ]);
-            }
+                ];
+            });
 
-            Cheque::where('transaction_id', $transactionIds[$i])
-//                ->where('bank_id', data_get($request, 'cheque.bank.id'))
-//                ->where('cheque_no', data_get($request, 'cheque.no'))
-                ->where([
-                    'bank_id' => data_get($request, 'cheque.bank.id'),
-                    'cheque_no' => data_get($request, 'cheque.no')
-                ])
-                ->update([
-                    'is_received' => null,
-                    'is_issued' => true,
-                    'cheque_date' => date('Y-m-d', strtotime(data_get($request, 'cheque.date'))),
-                    'issue_id' => $issue->id,
-                    'reason_id' => null,
-                    'reason' => null
+            foreach ($transactionIds as $transactionId) {
+                $transactionModel = $transactionsById->get($transactionId);
+
+                if (!$transactionModel) {
+                    continue; // stale/invalid id — change to a throw if this should hard-fail instead
+                }
+
+                $issue = $transactionModel->issue()->create([
+                    'status' => 'issue-issue',
+                    'created_at' => $createdAt,
+                    'updated_at' => now(),
                 ]);
-        }
+
+                $accountRows = $accountRowTemplate->map(function ($row) use ($issue, $createdAt) {
+                    return $row + [
+                        'issue_id' => $issue->id
+                    ];
+                })->all();
+
+                if (!empty($accountRows)) {
+                    $issue->accountTitles()->insert($accountRows);
+                }
+
+                Cheque::where('transaction_id', $transactionId)
+                    ->where([
+                        'bank_id' => data_get($request, 'cheque.bank.id'),
+                        'cheque_no' => data_get($request, 'cheque.no'),
+                    ])
+                    ->update([
+                        'is_received' => null,
+                        'is_issued' => true,
+                        'cheque_date' => $chequeDate,
+                        'issue_id' => $issue->id,
+                        'reason_id' => null,
+                        'reason' => null,
+                    ]);
+            }
+        });
 
         $this->chequeIssueChecker($request, $transactionIds);
 
-//        foreach($transactionIds as $transaction) {
-//            $transaction = Transaction::find($transaction);
-//
-//            if ($transaction->is_mc == 1) {
-//                Cheque::where('transaction_id', $transaction->id)
-//                    ->update([
-//                        'is_released' => true
-//                    ]);
-//
-//                Transaction::where('id', $transaction->id)
-//                    ->update([
-//                        'state' => 'release',
-//                        'status' => 'release-release'
-//                    ]);
-//            }
-//        }
-
         return GenericMethod::resultResponse($request->subprocess, "", "");
     }
+
+//     function issueCheque($request, $transactionIds) {
+//         for ($i = 0; $i < count($transactionIds); $i++) {
+
+//             $transaction = Transaction::find($transactionIds[$i]);
+
+//             $issue = $transaction->issue()->create([
+//                 'status' => 'issue-issue',
+//             ]);
+
+//             for ($j = 0; $j < count($request->accounts); $j++) {
+//                 $account = $request->accounts[$j];
+
+//                 $issue->accountTitles()->create([
+//                     'entry' => data_get($account, 'entry'),
+//                     'bank_id' => data_get($account, 'bank_id'),
+//                     'account_title_id' => data_get($account, 'account_title.id'),
+//                     'account_title_code' => data_get($account, 'account_title.code'),
+//                     'account_title_name' => data_get($account, 'account_title.name'),
+//                     'amount' => data_get($account, 'amount'),
+//                     'remarks' => data_get($account, 'remarks'),
+//                     'transaction_type' => 'new',
+//                     'company_id' => data_get($account, 'company.id'),
+//                     'company_code' => data_get($account, 'company.code'),
+//                     'company_name' => data_get($account, 'company.name'),
+//                     'department_id' => data_get($account, 'department.id'),
+//                     'department_code' => data_get($account, 'department.code'),
+//                     'department_name' => data_get($account, 'department.name'),
+//                     'location_id' => data_get($account, 'location.id'),
+//                     'location_code' => data_get($account, 'location.code'),
+//                     'location_name' => data_get($account, 'location.name'),
+//                     'business_unit_id' => data_get($account, 'business_unit.id'),
+//                     'business_unit_code' => data_get($account, 'business_unit.code'),
+//                     'business_unit_name' => data_get($account, 'business_unit.name'),
+//                     'unit_id' => data_get($account, 'unit.id'),
+//                     'unit_code' => data_get($account, 'unit.code'),
+//                     'unit_name' => data_get($account, 'unit.name'),
+//                     'sub_unit_id' => data_get($account, 'sub_unit.id'),
+//                     'sub_unit_code' => data_get($account, 'sub_unit.code'),
+//                     'sub_unit_name' => data_get($account, 'sub_unit.name'),
+//                 ]);
+//             }
+
+//             Cheque::where('transaction_id', $transactionIds[$i])
+// //                ->where('bank_id', data_get($request, 'cheque.bank.id'))
+// //                ->where('cheque_no', data_get($request, 'cheque.no'))
+//                 ->where([
+//                     'bank_id' => data_get($request, 'cheque.bank.id'),
+//                     'cheque_no' => data_get($request, 'cheque.no')
+//                 ])
+//                 ->update([
+//                     'is_received' => null,
+//                     'is_issued' => true,
+//                     'cheque_date' => date('Y-m-d', strtotime(data_get($request, 'cheque.date'))),
+//                     'issue_id' => $issue->id,
+//                     'reason_id' => null,
+//                     'reason' => null
+//                 ]);
+//         }
+
+//         $this->chequeIssueChecker($request, $transactionIds);
+
+// //        foreach($transactionIds as $transaction) {
+// //            $transaction = Transaction::find($transaction);
+// //
+// //            if ($transaction->is_mc == 1) {
+// //                Cheque::where('transaction_id', $transaction->id)
+// //                    ->update([
+// //                        'is_released' => true
+// //                    ]);
+// //
+// //                Transaction::where('id', $transaction->id)
+// //                    ->update([
+// //                        'state' => 'release',
+// //                        'status' => 'release-release'
+// //                    ]);
+// //            }
+// //        }
+
+//         return GenericMethod::resultResponse($request->subprocess, "", "");
+//     }
 
     //Release Cheque
     function releaseCheque($request, $transactionIds)
