@@ -232,7 +232,7 @@ class TransactionFlowController extends Controller
 
                     if ($process == 'tag') {
                         $generatedTagNo = GenericMethod::generateTagNo($receipt_type, $transaction, $trx->is_confidential);
-
+                        
                         Transaction::where('id', $transaction)
                             ->update([
                                 'state' => $process,
@@ -293,7 +293,7 @@ class TransactionFlowController extends Controller
                     static::createReceivedReceiptStatuses(
                         $trx,
                         $receivedReceipts,
-                        $generatedTagNo,
+                        null,
                         $trx->voucher_month,
                         $trx->voucher_no,
                         'VALIDATED'
