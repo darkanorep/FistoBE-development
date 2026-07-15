@@ -2385,6 +2385,13 @@ class TransactionFlow
     //Release Cheque
     function releaseCheque($request, $transactionIds)
     {
+        request()->validate([
+            'created_date' => ['nullable', 'date'],
+        ]);
+
+        $createdAt = $request->input('created_date')
+            ? Carbon::parse($request->input('created_date'))
+            : now();
 
         $cheques = collect(Cheque::whereIn('transaction_id', $transactionIds)
             ->pluck('is_received')->toArray());
@@ -2406,6 +2413,7 @@ class TransactionFlow
                 'distributed_name' => data_get($request, 'distributed_to.name'),
                 'description' => $transaction->remarks,
                 'date_status' => Carbon::now('Asia/Manila')->format('Y-m-d H:i:s'),
+                'created_at' => $createdAt,
             ]);
         }
 
