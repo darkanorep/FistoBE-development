@@ -274,26 +274,7 @@ class Transaction extends Model
     {
         return $this->hasMany(Associate::class, "transaction_id", "id")
             ->select('id', 'transaction_id', 'status', 'approver_id', 'approver_name', 'created_at')
-//    return $this->hasMany(Associate::class, "tag_id", "tag_no")
-//            ->select(
-//                "transaction_id",
-//                "tag_id",
-//                "id",
-//                "receipt_type",
-//                "percentage_tax",
-//                "witholding_tax",
-//                "net_amount",
-//                "approver_id",
-//                "approver_name",
-//                "date_status as date",
-//                "status",
-//                "reason_id",
-//                "remarks",
-//                "transaction_type_id",
-//                "transaction_type_name"
-//            )
             ->latest();
-//            ->limit(1);
     }
 
     public function voucherHistory() {
@@ -312,7 +293,7 @@ class Transaction extends Model
             'associate_id',
             'id',
             'id'
-        );
+        )->orderBy((new VoucherAccountTitle())->getTable() . '.id', 'asc');
     }
 
     public function approve()

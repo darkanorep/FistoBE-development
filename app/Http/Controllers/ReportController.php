@@ -245,6 +245,7 @@ class ReportController extends Controller
             MAX(a.updated_at) AS updated_at,
             GROUP_CONCAT(DISTINCT a.tag_no) AS tag_no,
             MAX(a.receipt_type) as receipt_type,
+            MAX(a.transaction_type) as transaction_type,
             MAX(a.supplier) AS supplier,
             MAX(a.deleted_at) AS deleted_at,
             MAX(a.company) AS company,
