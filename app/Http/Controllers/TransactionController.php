@@ -1917,12 +1917,6 @@ class TransactionController extends Controller
 
         switch ($fields["document"]["id"]) {
             case 1: //PAD
-//                if (empty($fields["po_group"])) {
-//                    $errorMessage = GenericMethod::resultLaravelFormat("po_group", ["PO group required"]);
-//
-//                    return $this->resultResponse("invalid", "", $errorMessage);
-//                }
-
                 switch ($request->input("document.payment_type")) {
                     case "Partial":
 
@@ -2040,28 +2034,6 @@ class TransactionController extends Controller
                                 strtoupper($fields["document"]["payment_type"])
                             );
 
-                            // POBatch::where('request_id', $request_id)->update([
-                            //   'is_modifiable' => true
-                            // ]);
-
-                            // $currentPO = POBatch::where('po_no', last($fields["po_group"])["no"])->pluck('request_id');
-
-                            // if ($currentPO) {
-                            //   POBatch::where('request_id', reset($currentPO))->update([
-                            //     'is_modifiable' => true
-                            //   ]);
-                            // }
-
-                            // $isAdd = POBatch::where('request_id', $request_id)->get();
-
-                            // foreach ($isAdd as $record) {
-                            //   if ($record->is_add == false && $record->is_editable == true) {
-                            //       $record->update([
-                            //           'is_modifiable' => true
-                            //       ]);
-                            //   }
-                            // }
-
                             POBatch::where("request_id", $request_id)
                                 ->where("is_add", false)
                                 ->where("is_editable", true)
@@ -2135,8 +2107,6 @@ class TransactionController extends Controller
                                         "request_id" => $newTransaction->id,
                                         "po_no" => $po["no"],
                                         "po_amount" => $po["amount"],
-//                                        "is_add" => $po["is_add"],
-//                                        "is_editable" => $po["is_editable"],
                                         "po_total_amount" => $po_total_amount,
                                         "previous_balance" => $request->po_balance,
                                         "rr_group" => $po["rr_no"],
@@ -2426,11 +2396,6 @@ class TransactionController extends Controller
                 break;
 
             case 5: //Contractor's Billing
-//                if (empty($fields["po_group"])) {
-//                    $errorMessage = GenericMethod::resultLaravelFormat("po_group", ["PO group required"]);
-//
-//                    return $this->resultResponse("invalid", "", $errorMessage);
-//                }
 
                 $transaction_id = isset($transaction_id) ? $transaction_id : null;
 
@@ -2451,17 +2416,6 @@ class TransactionController extends Controller
                 }
 
                 $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
-
-//                $errorMessage = GenericMethod::validateWith1PesoDifference(
-//                    "po_group.amount",
-//                    "Document",
-//                    $fields["document"]["amount"],
-//                    $po_total_amount
-//                );
-//
-//                if (!empty($errorMessage)) {
-//                    return GenericMethod::resultResponse("invalid", "", $errorMessage);
-//                }
 
                 $transaction = GenericMethod::insertTransaction(
                     $transaction_id,
@@ -2739,8 +2693,6 @@ class TransactionController extends Controller
                                         "request_id" => $transaction->id,
                                         "po_no" => $po["no"],
                                         "po_amount" => $po["amount"],
-//                                        "is_add" => $po["is_add"],
-//                                        "is_editable" => $po["is_editable"],
                                         "po_total_amount" => $po_total_amount,
                                         "previous_balance" => $request->po_balance,
                                         "rr_group" => $po["rr_no"],
@@ -2904,16 +2856,6 @@ class TransactionController extends Controller
                     data_get($fields, "document.utility.receipt_no")
                 );
 
-                // $request->validate([
-                //   'document.utility.receipt_no' => [
-                //     'required',
-                //     Rule::unique('transactions', 'utilities_receipt_no')->where(function ($query) use ($fields){
-                //       $query->where('supplier_id', $fields["document"]["supplier"]["id"])
-                //       ->where('utilities_receipt_no', data_get($fields, "document.utility.receipt_no")
-                //       );
-                //     })
-                //   ]
-                // ]);
 
                 if (isset($duplicateUtilities)) {
                     return $this->resultResponse("invalid", "", $duplicateUtilities);
