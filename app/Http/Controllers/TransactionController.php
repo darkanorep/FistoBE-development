@@ -7604,6 +7604,57 @@ class TransactionController extends Controller
                 'input_tax' => $transaction->input_tax,
                 'voucher' => [
                     'no' => $transaction->voucher_no,
+                    'month' => $transaction->voucher_month,
+                    'accounts' => $transaction->account_titles->map(function ($item) {
+                        return [
+                            'id' => $item->id,
+                            'entry' => $item->entry,
+                            'account_title' => [
+                                'id' => $item->account_title_id,
+                                'code' => $item->account_title_code,
+                                'name' => $item->account_title_name,
+                            ],
+                            'amount' => $item->amount,
+                            'remarks' => $item->remarks,
+                            'company' => [
+                                'id' => $item->company_id,
+                                'code' => $item->company_code,
+                                'name' => $item->company_name,
+                            ],
+                            'department' => [
+                                'id' => $item->department_id,
+                                'code' => $item->department_code,
+                                'name' => $item->department_name,
+                            ],
+                            'location' => [
+                                'id' => $item->location_id,
+                                'code' => $item->location_code,
+                                'name' => $item->location_name,
+                            ],
+                            'business_unit' => [
+                                'id' => $item->business_unit_id,
+                                'code' => $item->business_unit_code,
+                                'name' => $item->business_unit_name,
+                            ],
+                            'sub_unit' => [
+                                'id' => $item->sub_unit_id,
+                                'code' => $item->sub_unit_code,
+                                'name' => $item->sub_unit_name,
+                            ],
+                            'is_default' => $item->is_default,
+                        ];
+                    }),
+                    'distributed' => [
+                        'id' => $transaction->distributed_id,
+                        'name' => $transaction->distributed_name,
+                    ],
+                    'approved' => [
+                        'id' => $transaction->approver_id,
+                        'name' => $transaction->approver_name,
+                    ],
+                    'dates' => [
+                        'vouchered' => $this->getDateEveryStatus($transaction->voucher, 'voucher-voucher')
+                    ],
                 ],
                 'is_confidential' => $transaction->is_confidential,
                 'is_mc' => $transaction->is_mc,
