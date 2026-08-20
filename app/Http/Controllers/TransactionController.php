@@ -1703,6 +1703,11 @@ class TransactionController extends Controller
                             'code' => $item->business_unit_code,
                             'name' => $item->business_unit_name,
                         ],
+                        'unit' => [
+                            'id' => $item->unit_id,
+                            'code' => $item->unit_code,
+                            'name' => $item->unit_name,
+                        ],
                         'sub_unit' => [
                             'id' => $item->sub_unit_id,
                             'code' => $item->sub_unit_code,
@@ -5662,7 +5667,9 @@ class TransactionController extends Controller
                         'DepartmentOne', 'DepartmentTwo',
                         'LocationOne', 'LocationTwo',
                         'BusinessUnitOne', 'BusinessUnitTwo',
+                        'UnitOne', 'UnitTwo',
                         'SubUnitOne', 'SubUnitTwo',
+                        'LocationOne', 'LocationTwo'
                     ]);
                 },
             ])
@@ -5956,12 +5963,30 @@ class TransactionController extends Controller
                                 ],
                                 'amount' => $item->amount,
                                 'remarks' => $item->remarks,
-                                'company' => ['id' => $item->company_id, 'code' => $item->company_code, 'name' => $item->company_name],
-                                'business_unit' => ['id' => $item->business_unit_id, 'code' => $item->business_unit_code, 'name' => $item->business_unit_name],
-                                'department' => ['id' => $item->department_id, 'code' => $item->department_code, 'name' => $item->department_name],
-                                'unit' => ['id' => $item->unit_id, 'code' => $item->unit_code, 'name' => $item->unit_name],
-                                'sub_unit' => ['id' => $item->sub_unit_id, 'code' => $item->sub_unit_code, 'name' => $item->sub_unit_name],
-                                'location' => ['id' => $item->location_id, 'code' => $item->location_code, 'name' => $item->location_name],
+                                'company' => [
+                                    'id' => $item->company_id, 
+                                    'code' => $item->company_code, 
+                                    'name' => $item->company_name],
+                                'business_unit' => [
+                                    'id' => $item->business_unit_id, 
+                                    'code' => $item->business_unit_code, 
+                                    'name' => $item->business_unit_name],
+                                'department' => [
+                                    'id' => $item->department_id, 
+                                    'code' => $item->department_code, 
+                                    'name' => $item->department_name],
+                                'unit' => [
+                                    'id' => $item->unit_id, 
+                                    'code' => $item->unit_code, 
+                                    'name' => $item->unit_name],
+                                'sub_unit' => [
+                                    'id' => $item->sub_unit_id, 
+                                    'code' => $item->sub_unit_code, 
+                                    'name' => $item->sub_unit_name],
+                                'location' => [
+                                    'id' => $item->location_id, 
+                                    'code' => $item->location_code, 
+                                    'name' => $item->location_name],
                                 'is_default' => $item->is_default,
                             ];
                         }),

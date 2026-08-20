@@ -605,7 +605,7 @@ class Transaction extends Model
     }
 
     public function unit_info() {
-        return $this->hasOne(Unit::class, 'sync_id', 'unit_id')->withTrashed();
+        return $this->hasOne(Unit::class, 'id', 'unit_id')->withTrashed();
     }
 
     public function sub_unit_info() {
