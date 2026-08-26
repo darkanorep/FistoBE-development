@@ -128,7 +128,7 @@ class TransactionFlow
                 ->values()
                 ->toArray();
         }
-        
+
         if (!isset($transaction)) {
             return GenericMethod::resultResponse("not-found", "transaction", []);
         }
@@ -1993,11 +1993,11 @@ class TransactionFlow
             ->get(['id', 'document_name']);
     }
 
-    public function availableChequeNo(Request $request) {
+    public function availableChequeNo(Request $request)
+    {
         $bankSeriesId = $request->bank_series_id;
         $temporaryUsedCheques = $request->temporary_used_cheques ?? [];
 
-        // Decode JSON string if it's a string
         if (is_string($temporaryUsedCheques)) {
             $temporaryUsedCheques = json_decode($temporaryUsedCheques, true) ?? [];
         }
@@ -2008,32 +2008,43 @@ class TransactionFlow
             ->first();
 
         if (!$chequeSeries) {
-            return response()->json(['message' => 'No available cheque series found,'], 404);
+            return response()->json(['message' => 'No available cheque series found.'], 404);
         }
 
-//        $alreadyUsedChequeNos = Cheque::where('bank_id', $chequeSeries->bank_id)
-//            ->whereNull('is_cancelled')
-//            ->pluck('cheque_no')
-//            ->toArray();
+        $query = Cheque::where('bank_id', $chequeSeries->bank_id);
 
-        $query = Cheque::where('bank_id', $chequeSeries->bank_id)
-            ->whereNull('is_cancelled');
-
-
-        if ($chequeSeries->category == 'prenumbered stock') {
+        if ($chequeSeries->category === 'prenumbered stock') {
+            // Physical pre-printed cheque leaves: a cancelled number is burned
+            // permanently — it can never be reissued, so we must NOT exclude
+            // cancelled cheques here. withTrashed() also pulls in soft-deleted
+            // rows, since even a deleted record still represents a physical
+            // leaf that was consumed.
             $query->withTrashed();
+        } else {
+            // Loose / system-generated cheques: a cancelled number can be
+            // recycled, so exclude cancelled cheques from the "used" list.
+            $query->whereNull('is_cancelled');
         }
 
         $alreadyUsedChequeNos = $query->pluck('cheque_no')->toArray();
-        // Exclude both already used and temporary used cheques
-        $excludeCheques = array_merge($alreadyUsedChequeNos, $temporaryUsedCheques);
-        $availableChequeNos = array_diff(range($chequeSeries->from, $chequeSeries->to), $excludeCheques);
-        $availableChequeNos = array_filter($availableChequeNos, function($no) { return $no != 0; });
-        $firstAvailable = reset($availableChequeNos);
 
-        if (!$firstAvailable) {
+        $excludeCheques = array_merge($alreadyUsedChequeNos, $temporaryUsedCheques);
+
+        $availableChequeNos = array_diff(
+            range($chequeSeries->from, $chequeSeries->to),
+            $excludeCheques
+        );
+
+        // Defensive: exclude 0 / falsy noise, then re-index so reset() is reliable
+        $availableChequeNos = array_values(array_filter($availableChequeNos, function($no) {
+            return (int) $no !== 0;
+        }));
+
+        if (empty($availableChequeNos)) {
             return response()->json(['message' => 'No available cheque number found.'], 404);
         }
+
+        $firstAvailable = $availableChequeNos[0];
 
         return response()->json(['available_cheque_no' => $firstAvailable], 200);
     }
@@ -2727,35 +2738,56 @@ class TransactionFlow
         return GenericMethod::resultResponse($subprocess, "", "");
     }
 
-    function abortCheque($request)
+    public function abortCheque(Request $request)
     {
-        $bank = $request->bank_id;
-        $cheque = $request->cheque_no;
-        $process = $request->process;
-        $subprocess = $request->subprocess;
+        $validated = $request->validate([
+            'bank_id'    => ['required', 'integer', 'exists:banks,id'],
+            'cheque_no'  => ['required', 'string'],
+            'subprocess' => ['required'],
+        ]);
 
-        $cheques = Cheque::where([
-            'bank_id' => $bank,
-            'cheque_no' => $cheque
-        ])->get();
+        return DB::transaction(function () use ($validated) {
+            $referenceCheque = Cheque::where('bank_id', $validated['bank_id'])
+                ->where('cheque_no', $validated['cheque_no'])
+                ->first();
 
-        $cheques->each(function ($cheque) {
-            $cheque->delete();
+            if (!$referenceCheque) {
+                return GenericMethod::resultResponse(
+                    $validated['subprocess'],
+                    'Cheque not found.',
+                    'error'
+                );
+            }
+
+            // Lock the batch's rows for the duration of the transaction to
+            // prevent a concurrent abort/issue request from racing on the
+            // same treasury batch.
+            $chequesQuery = Cheque::where('treasury_id', $referenceCheque->treasury_id)
+                ->lockForUpdate();
+
+            $transactionIds = (clone $chequesQuery)
+                ->whereNotNull('transaction_id')
+                ->pluck('transaction_id')
+                ->unique()
+                ->values()
+                ->toArray();
+
+            // 1. Mark cancelled while the rows are still "live" (pre-soft-delete)
+            $chequesQuery->update(['is_cancelled' => 1]);
+
+            // 2. Revert the linked transactions
+            if (!empty($transactionIds)) {
+                Transaction::whereIn('id', $transactionIds)->update([
+                    'state'  => 'return',
+                    'status' => 'release-return',
+                ]);
+            }
+
+            // 3. Archive the cheques (soft delete, single bulk statement)
+            $chequesQuery->delete();
+
+            return GenericMethod::resultResponse($validated['subprocess'], '', '');
         });
-
-        Transaction::whereIn('id', $cheques->pluck('transaction_id')->toArray())
-            ->update([
-                'state' => 'return',
-                'status' => 'release' . '-' . 'return',
-            ]);
-
-        $cheques->each(function ($cheque) {
-            $cheque->update([
-                'is_cancelled' => 1,
-            ]);
-        });
-
-        return GenericMethod::resultResponse($subprocess, "", "");
     }
 
     function declineCheque($request)

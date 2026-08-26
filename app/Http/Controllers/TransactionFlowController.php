@@ -232,7 +232,7 @@ class TransactionFlowController extends Controller
 
                     if ($process == 'tag') {
                         $generatedTagNo = GenericMethod::generateTagNo($receipt_type, $transaction, $trx->is_confidential);
-                        
+
                         Transaction::where('id', $transaction)
                             ->update([
                                 'state' => $process,
@@ -343,224 +343,224 @@ class TransactionFlowController extends Controller
 
     }
 
-    public function multipleCheque(Request $request) {
-        $request->validate([
-            'created_date' => ['nullable', 'date'],
-        ]);
+//    public function multipleCheque(Request $request) {
+//        $request->validate([
+//            'created_date' => ['nullable', 'date'],
+//        ]);
+//
+//        $process = $request->process;
+//        $transactions = $request->input('transactions', []);
+//        $accounts = $request->accounts;
+//        $cheques = $request->cheques;
+//        $createdAt = Carbon::parse($request->input('created_date'));
+//
+//        $batch_no = $this->transactionController->generateBatchNo();
+//
+//        DB::transaction(function () use ($transactions, $accounts, $cheques, $batch_no, $process, $createdAt) {
+//
+//            foreach ($transactions as $transaction) {
+//                $transactionModel = Transaction::find($transaction);
+//
+//                if (!$transactionModel) {
+//                    // Skip or throw — decide based on your business rule;
+//                    // silently continuing would previously have fatal-errored on ->tag_no
+//                    throw new \RuntimeException("Transaction {$transaction} not found.");
+//                }
+//
+//                $treasury = Treasury::create([
+//                    'transaction_id' => $transaction,
+//                    'tag_id' => $transactionModel->tag_no,
+//                    'status' => $process . '-' . $process,
+//                    'date_status' => Carbon::now('Asia/Manila')->format('Y-m-d'),
+//                    'batch_no' => $batch_no,
+//                    'user_id' => auth()->id(),
+//                ]);
+//
+//                $accountRows = [];
+//                foreach ($accounts as $account) {
+//                    $accountRows[] = [
+//                        'treasury_id' => $treasury->id,
+//                        'entry' => $account['entry'],
+//                        'bank_id' => data_get($account, 'account_title.bank_id'),
+//                        'account_title_id' => data_get($account, 'account_title.id'),
+//                        'account_title_code' => data_get($account, 'account_title.code'),
+//                        'account_title_name' => data_get($account, 'account_title.name'),
+//                        'amount' => $account['amount'],
+//                        'remarks' => $account['remarks'],
+//                        'transaction_type' => 'new',
+//                        'company_id' => data_get($account, 'company.id'),
+//                        'company_code' => data_get($account, 'company.code'),
+//                        'company_name' => data_get($account, 'company.name'),
+//                        'department_id' => data_get($account, 'department.id'),
+//                        'department_code' => data_get($account, 'department.code'),
+//                        'department_name' => data_get($account, 'department.name'),
+//                        'business_unit_id' => data_get($account, 'business_unit.id'),
+//                        'business_unit_code' => data_get($account, 'business_unit.code'),
+//                        'business_unit_name' => data_get($account, 'business_unit.name'),
+//                        'unit_id' => data_get($account, 'unit.id'),
+//                        'unit_code' => data_get($account, 'unit.code'),
+//                        'unit_name' => data_get($account, 'unit.name'),
+//                        'sub_unit_id' => data_get($account, 'sub_unit.id'),
+//                        'sub_unit_code' => data_get($account, 'sub_unit.code'),
+//                        'sub_unit_name' => data_get($account, 'sub_unit.name'),
+//                        'location_id' => data_get($account, 'location.id'),
+//                        'location_code' => data_get($account, 'location.code'),
+//                        'location_name' => data_get($account, 'location.name'),
+//                        'created_at' => $createdAt,
+//                        'updated_at' => now(),
+//                    ];
+//                }
+//                if (!empty($accountRows)) {
+//                    $treasury->account_title()->insert($accountRows);
+//                }
+//
+//                $chequeRows = [];
+//                $hasManagersCheque = false;
+//
+//                foreach ($cheques as $cheque) {
+//                    if (data_get($cheque, 'type') === 'Managers Cheque') {
+//                        $hasManagersCheque = true;
+//                    }
+//
+//                    $chequeRows[] = [
+//                        'treasury_id' => $treasury->id,
+//                        'transaction_id' => $transaction,
+//                        'bank_id' => data_get($cheque, 'bank.id'),
+//                        'bank_name' => data_get($cheque, 'bank.name'),
+//                        'cheque_no' => $cheque['no'],
+//                        'cheque_date' => $cheque['date'],
+//                        'cheque_amount' => $cheque['amount'],
+//                        'transaction_type' => 'new',
+//                        'entry_type' => data_get($cheque, 'type'),
+//                        'created_at' => $createdAt,
+//                        'updated_at' => now(),
+//                    ];
+//                }
+//                if (!empty($chequeRows)) {
+//                    $treasury->cheques()->insert($chequeRows);
+//                }
+//
+//                if ($hasManagersCheque) {
+//                    Transaction::where('id', $transaction)->update(['is_mc' => 1]);
+//                }
+//            }
+//
+//            Transaction::whereIn('id', $transactions)
+//                ->update([
+//                    'state' => $process,
+//                    'status' => $process . '-' . $process,
+//                    'is_for_releasing' => false,
+//                ]);
+//        });
+//
+//        return GenericMethod::result(200, "Transaction has been saved.", []);
+//    }
 
-        $process = $request->process;
-        $transactions = $request->input('transactions', []);
-        $accounts = $request->accounts;
-        $cheques = $request->cheques;
-        $createdAt = Carbon::parse($request->input('created_date'));
+     public function multipleCheque(Request $request) {
+         $process = $request->process;
+         $transactions = $request->input('transactions', []);
+         $accounts = $request->accounts;
+         $cheques = $request->cheques;
 
-        $batch_no = $this->transactionController->generateBatchNo();
+         $batch_no = $this->transactionController->generateBatchNo();
 
-        DB::transaction(function () use ($transactions, $accounts, $cheques, $batch_no, $process, $createdAt) {
+         foreach ($transactions as $transaction) {
+             $treasury = Treasury::create([
+                 'transaction_id' => $transaction,
+                 'tag_id' => Transaction::where('id', $transaction)->first()->tag_no,
+                 'status' => $process . '-' . $process,
+                 'date_status' => Carbon::now("Asia/Manila")->format("Y-m-d"),
+                 'batch_no' => $batch_no,
+                 'user_id' => auth()->user()->id
+             ]);
 
-            foreach ($transactions as $transaction) {
-                $transactionModel = Transaction::find($transaction);
+             foreach ($accounts as $account) {
+                 $treasury->account_title()->create([
+                     'entry' => $account['entry'],
+                     'bank_id' => data_get($account, 'account_title.bank_id'),
+                     'account_title_id' => data_get($account, 'account_title.id'),
+                     'account_title_code' => data_get($account, 'account_title.code'),
+                     'account_title_name' => data_get($account, 'account_title.name'),
+                     'amount' => $account['amount'],
+                     'remarks' => $account['remarks'],
+                     'transaction_type' => 'new',
+                     'company_id' => data_get($account, 'company.id'),
+                     'company_code' => data_get($account, 'company.code'),
+                     'company_name' => data_get($account, 'company.name'),
+                     'department_id' => data_get($account, 'department.id'),
+                     'department_code' => data_get($account, 'department.code'),
+                     'department_name' => data_get($account, 'department.name'),
+                     'business_unit_id' => data_get($account, 'business_unit.id'),
+                     'business_unit_code' => data_get($account, 'business_unit.code'),
+                     'business_unit_name' => data_get($account, 'business_unit.name'),
+                     'unit_id' => data_get($account, 'unit.id'),
+                     'unit_code' => data_get($account, 'unit.code'),
+                     'unit_name' => data_get($account, 'unit.name'),
+                     'sub_unit_id' => data_get($account, 'sub_unit.id'),
+                     'sub_unit_code' => data_get($account, 'sub_unit.code'),
+                     'sub_unit_name' => data_get($account, 'sub_unit.name'),
+                     'location_id' => data_get($account, 'location.id'),
+                     'location_code' => data_get($account, 'location.code'),
+                     'location_name' => data_get($account, 'location.name'),
+                 ]);
+             }
 
-                if (!$transactionModel) {
-                    // Skip or throw — decide based on your business rule;
-                    // silently continuing would previously have fatal-errored on ->tag_no
-                    throw new \RuntimeException("Transaction {$transaction} not found.");
+             foreach ($cheques as $cheque) {
+                 $treasury->cheques()->create([
+                     'transaction_id' => $transaction,
+                     'bank_id' => data_get($cheque, 'bank.id'),
+                     'bank_name' => data_get($cheque, 'bank.name'),
+                     'cheque_no' => $cheque['no'],
+                     'cheque_date' => $cheque['date'],
+                     'cheque_amount' => $cheque['amount'],
+                     'transaction_type' => 'new',
+                     'entry_type' => data_get($cheque, 'type')
+                 ]);
+
+                 if (data_get($cheque, 'type') == 'Managers Cheque') {
+                     Transaction::where('id', $transaction)
+                         ->update([
+                             'is_mc' => 1
+                         ]);
+                 }
+
+                $chequeSeries = BankSeries::where('id', data_get($cheque, 'cheque_series_id'))
+                    ->where('is_used', false)
+                    ->select('bank_id', 'from', 'to')
+                    ->first();
+
+                if (!$chequeSeries) {
+                    return GenericMethod::result(400, "Cheque series not found or already used.", []);
                 }
 
-                $treasury = Treasury::create([
-                    'transaction_id' => $transaction,
-                    'tag_id' => $transactionModel->tag_no,
-                    'status' => $process . '-' . $process,
-                    'date_status' => Carbon::now('Asia/Manila')->format('Y-m-d'),
-                    'batch_no' => $batch_no,
-                    'user_id' => auth()->id(),
-                ]);
+                $query = Cheque::where('bank_id', $chequeSeries->bank_id)
+                    ->whereNull('is_cancelled');
 
-                $accountRows = [];
-                foreach ($accounts as $account) {
-                    $accountRows[] = [
-                        'treasury_id' => $treasury->id,
-                        'entry' => $account['entry'],
-                        'bank_id' => data_get($account, 'account_title.bank_id'),
-                        'account_title_id' => data_get($account, 'account_title.id'),
-                        'account_title_code' => data_get($account, 'account_title.code'),
-                        'account_title_name' => data_get($account, 'account_title.name'),
-                        'amount' => $account['amount'],
-                        'remarks' => $account['remarks'],
-                        'transaction_type' => 'new',
-                        'company_id' => data_get($account, 'company.id'),
-                        'company_code' => data_get($account, 'company.code'),
-                        'company_name' => data_get($account, 'company.name'),
-                        'department_id' => data_get($account, 'department.id'),
-                        'department_code' => data_get($account, 'department.code'),
-                        'department_name' => data_get($account, 'department.name'),
-                        'business_unit_id' => data_get($account, 'business_unit.id'),
-                        'business_unit_code' => data_get($account, 'business_unit.code'),
-                        'business_unit_name' => data_get($account, 'business_unit.name'),
-                        'unit_id' => data_get($account, 'unit.id'),
-                        'unit_code' => data_get($account, 'unit.code'),
-                        'unit_name' => data_get($account, 'unit.name'),
-                        'sub_unit_id' => data_get($account, 'sub_unit.id'),
-                        'sub_unit_code' => data_get($account, 'sub_unit.code'),
-                        'sub_unit_name' => data_get($account, 'sub_unit.name'),
-                        'location_id' => data_get($account, 'location.id'),
-                        'location_code' => data_get($account, 'location.code'),
-                        'location_name' => data_get($account, 'location.name'),
-                        'created_at' => $createdAt,
-                        'updated_at' => now(),
-                    ];
-                }
-                if (!empty($accountRows)) {
-                    $treasury->account_title()->insert($accountRows);
+                if ($chequeSeries->category == 'prenumbered stock') {
+                    $query->withTrashed();
                 }
 
-                $chequeRows = [];
-                $hasManagersCheque = false;
+                $alreadyUsedChequeNos = $query->pluck('cheque_no')->toArray();
 
-                foreach ($cheques as $cheque) {
-                    if (data_get($cheque, 'type') === 'Managers Cheque') {
-                        $hasManagersCheque = true;
-                    }
+                $excludeCheques = array_merge($alreadyUsedChequeNos, []);
+                $availableChequeNos = array_diff(range($chequeSeries->from, $chequeSeries->to), $excludeCheques);
+                $availableChequeNos = array_filter($availableChequeNos, function($no) { return $no != 0; });
+                $firstAvailable = reset($availableChequeNos);
 
-                    $chequeRows[] = [
-                        'treasury_id' => $treasury->id,
-                        'transaction_id' => $transaction,
-                        'bank_id' => data_get($cheque, 'bank.id'),
-                        'bank_name' => data_get($cheque, 'bank.name'),
-                        'cheque_no' => $cheque['no'],
-                        'cheque_date' => $cheque['date'],
-                        'cheque_amount' => $cheque['amount'],
-                        'transaction_type' => 'new',
-                        'entry_type' => data_get($cheque, 'type'),
-                        'created_at' => $createdAt,
-                        'updated_at' => now(),
-                    ];
+                if (!$firstAvailable) {
+                    $chequeSeries->update(['is_used' => true]);
                 }
-                if (!empty($chequeRows)) {
-                    $treasury->cheques()->insert($chequeRows);
-                }
+             }
+         }
 
-                if ($hasManagersCheque) {
-                    Transaction::where('id', $transaction)->update(['is_mc' => 1]);
-                }
-            }
-
-            Transaction::whereIn('id', $transactions)
-                ->update([
-                    'state' => $process,
-                    'status' => $process . '-' . $process,
-                    'is_for_releasing' => false,
-                ]);
-        });
-
-        return GenericMethod::result(200, "Transaction has been saved.", []);
-    }
-
-    // public function multipleCheque(Request $request) {
-    //     $process = $request->process;
-    //     $transactions = $request->input('transactions', []);
-    //     $accounts = $request->accounts;
-    //     $cheques = $request->cheques;
-
-    //     $batch_no = $this->transactionController->generateBatchNo();
-
-    //     foreach ($transactions as $transaction) {
-    //         $treasury = Treasury::create([
-    //             'transaction_id' => $transaction,
-    //             'tag_id' => Transaction::where('id', $transaction)->first()->tag_no,
-    //             'status' => $process . '-' . $process,
-    //             'date_status' => Carbon::now("Asia/Manila")->format("Y-m-d"),
-    //             'batch_no' => $batch_no,
-    //             'user_id' => auth()->user()->id
-    //         ]);
-
-    //         foreach ($accounts as $account) {
-    //             $treasury->account_title()->create([
-    //                 'entry' => $account['entry'],
-    //                 'bank_id' => data_get($account, 'account_title.bank_id'),
-    //                 'account_title_id' => data_get($account, 'account_title.id'),
-    //                 'account_title_code' => data_get($account, 'account_title.code'),
-    //                 'account_title_name' => data_get($account, 'account_title.name'),
-    //                 'amount' => $account['amount'],
-    //                 'remarks' => $account['remarks'],
-    //                 'transaction_type' => 'new',
-    //                 'company_id' => data_get($account, 'company.id'),
-    //                 'company_code' => data_get($account, 'company.code'),
-    //                 'company_name' => data_get($account, 'company.name'),
-    //                 'department_id' => data_get($account, 'department.id'),
-    //                 'department_code' => data_get($account, 'department.code'),
-    //                 'department_name' => data_get($account, 'department.name'),
-    //                 'business_unit_id' => data_get($account, 'business_unit.id'),
-    //                 'business_unit_code' => data_get($account, 'business_unit.code'),
-    //                 'business_unit_name' => data_get($account, 'business_unit.name'),
-    //                 'unit_id' => data_get($account, 'unit.id'),
-    //                 'unit_code' => data_get($account, 'unit.code'),
-    //                 'unit_name' => data_get($account, 'unit.name'),
-    //                 'sub_unit_id' => data_get($account, 'sub_unit.id'),
-    //                 'sub_unit_code' => data_get($account, 'sub_unit.code'),
-    //                 'sub_unit_name' => data_get($account, 'sub_unit.name'),
-    //                 'location_id' => data_get($account, 'location.id'),
-    //                 'location_code' => data_get($account, 'location.code'),
-    //                 'location_name' => data_get($account, 'location.name'),
-    //             ]);
-    //         }
-
-    //         foreach ($cheques as $cheque) {
-    //             $treasury->cheques()->create([
-    //                 'transaction_id' => $transaction,
-    //                 'bank_id' => data_get($cheque, 'bank.id'),
-    //                 'bank_name' => data_get($cheque, 'bank.name'),
-    //                 'cheque_no' => $cheque['no'],
-    //                 'cheque_date' => $cheque['date'],
-    //                 'cheque_amount' => $cheque['amount'],
-    //                 'transaction_type' => 'new',
-    //                 'entry_type' => data_get($cheque, 'type')
-    //             ]);
-
-    //             if (data_get($cheque, 'type') == 'Managers Cheque') {
-    //                 Transaction::where('id', $transaction)
-    //                     ->update([
-    //                         'is_mc' => 1
-    //                     ]);
-    //             }
-
-    //            $chequeSeries = BankSeries::where('id', data_get($cheque, 'cheque_series_id'))
-    //                ->where('is_used', false)
-    //                ->select('bank_id', 'from', 'to')
-    //                ->first();
-
-    //            if (!$chequeSeries) {
-    //                return GenericMethod::result(400, "Cheque series not found or already used.", []);
-    //            }
-
-    //            $query = Cheque::where('bank_id', $chequeSeries->bank_id)
-    //                ->whereNull('is_cancelled');
-
-    //            if ($chequeSeries->category == 'prenumbered stock') {
-    //                $query->withTrashed();
-    //            }
-
-    //            $alreadyUsedChequeNos = $query->pluck('cheque_no')->toArray();
-
-    //            $excludeCheques = array_merge($alreadyUsedChequeNos, []);
-    //            $availableChequeNos = array_diff(range($chequeSeries->from, $chequeSeries->to), $excludeCheques);
-    //            $availableChequeNos = array_filter($availableChequeNos, function($no) { return $no != 0; });
-    //            $firstAvailable = reset($availableChequeNos);
-
-    //            if (!$firstAvailable) {
-    //                $chequeSeries->update(['is_used' => true]);
-    //            }
-    //         }
-    //     }
-
-    //     Transaction::whereIn('id', $transactions)
-    //         ->update([
-    //             'state' => $process,
-    //             'status' => $process . '-' . $process,
-    //             'is_for_releasing' => false
-    //         ]);
-    //     return GenericMethod::result(200, "Transaction has been saved.", []);
-    // }
+         Transaction::whereIn('id', $transactions)
+             ->update([
+                 'state' => $process,
+                 'status' => $process . '-' . $process,
+                 'is_for_releasing' => false
+             ]);
+         return GenericMethod::result(200, "Transaction has been saved.", []);
+     }
 
     public function applicationForLoan(Request $request)
     {

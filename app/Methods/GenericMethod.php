@@ -889,111 +889,111 @@ class GenericMethod
         return $duplicate_count;
     }
 
-    public static function addCheque($transaction_id, $id, $cheques) {
-        // Validate once, outside the loop — this is one request-level value,
-        // not per-cheque data.
-        $createdAt = request()->input('created_date'); // <-- match the actual payload key
-        Log::info('Resolved createdAt before calling addCheque', ['value' => $createdAt]);
-       
+//    public static function addCheque($transaction_id, $id, $cheques) {
+//        // Validate once, outside the loop — this is one request-level value,
+//        // not per-cheque data.
+//        $createdAt = request()->input('created_date'); // <-- match the actual payload key
+//        Log::info('Resolved createdAt before calling addCheque', ['value' => $createdAt]);
+//
+//
+//        DB::transaction(function () use ($transaction_id, $id, $cheques, $createdAt) {
+//
+//            // "Replace" pattern: wipe any cheques for this transaction that
+//            // haven't been tied to a reason yet, then recreate from the payload.
+//            Cheque::where('transaction_id', $transaction_id)
+//                ->whereNull('reason_id')
+//                ->delete();
+//
+//            $hasManagersCheque = false;
+//            $rows = [];
+//
+//            foreach ($cheques as $chequeData) {
+//                if ($chequeData['type'] === 'Managers Cheque') {
+//                    $hasManagersCheque = true;
+//                }
+//
+//                $rows[] = [
+//                    'transaction_id'   => $transaction_id,
+//                    'treasury_id'      => $id,
+//                    'entry_type'       => $chequeData['type'],
+//                    'bank_id'          => $chequeData['bank']['id'],
+//                    'bank_name'        => $chequeData['bank']['name'],
+//                    'cheque_no'        => $chequeData['no'],
+//                    'cheque_date'      => $chequeData['date'],
+//                    'cheque_amount'    => $chequeData['amount'],
+//                    'transaction_type' => $chequeData['transaction_type'] ?? 'new',
+//                    'created_at'       => $createdAt,
+//                    'updated_at'       => now(),
+//                ];
+//            }
+//
+//            if (!empty($rows)) {
+//                Cheque::insert($rows); // single bulk INSERT instead of N
+//            }
+//
+//            if ($hasManagersCheque) {
+//                // Query-builder update — no SELECT first, no null-pointer risk,
+//                // and runs once regardless of how many Managers Cheques there are.
+//                Transaction::where('id', $transaction_id)->update(['is_mc' => 1]);
+//            }
+//        });
+//    }
 
-        DB::transaction(function () use ($transaction_id, $id, $cheques, $createdAt) {
+     public static function addCheque($transaction_id, $id, $cheques) {
+         Cheque::where("transaction_id", $transaction_id)->whereNull('reason_id')->delete();
+         foreach ($cheques as $specific_cheques) {
 
-            // "Replace" pattern: wipe any cheques for this transaction that
-            // haven't been tied to a reason yet, then recreate from the payload.
-            Cheque::where('transaction_id', $transaction_id)
-                ->whereNull('reason_id')
-                ->delete();
+             $cheques = Cheque::Create([
+                 "transaction_id" => $transaction_id,
+                 "treasury_id" => $id,
+                 "entry_type" => $specific_cheques['type'],
+                 "bank_id" => $specific_cheques['bank']['id'],
+                 "bank_name" => $specific_cheques['bank']['name'],
+                 "cheque_no" => $specific_cheques['no'],
+                 "cheque_date" => $specific_cheques['date'],
+                 "cheque_amount" => $specific_cheques['amount'],
+                 "transaction_type" => $specific_cheques['transaction_type'] ?? "new",
+             ]);
 
-            $hasManagersCheque = false;
-            $rows = [];
+             DB::table('cheques')->where('id', $cheques->id)
+             ->update([
+                 'created_at' => request()->input('created_at'),
+             ]);
 
-            foreach ($cheques as $chequeData) {
-                if ($chequeData['type'] === 'Managers Cheque') {
-                    $hasManagersCheque = true;
+             if ($specific_cheques['type'] == 'Managers Cheque') {
+                 Transaction::where('id', $transaction_id)->first()
+                     ->update([
+                         'is_mc' => 1
+                     ]);
+             }
+
+            $chequeSeries = BankSeries::where('id', data_get($specific_cheques, 'check_series_id'))
+                ->where('is_used', false)
+                ->first();
+
+            $query = Cheque::where('bank_id', $chequeSeries->bank_id)
+                ->whereNull('is_cancelled');
+
+            if ($chequeSeries->category == 'prenumbered stock') {
+                $query->withTrashed();
+            }
+
+            $alreadyUsedChequeNos = $query->pluck('cheque_no')->toArray();
+
+            $excludeCheques = array_merge($alreadyUsedChequeNos, []);
+            $availableChequeNos = array_diff(range($chequeSeries->from, $chequeSeries->to), $excludeCheques);
+            $availableChequeNos = array_filter($availableChequeNos, function($no) { return $no != 0; });
+            $firstAvailable = reset($availableChequeNos);
+
+            if ($chequeSeries->category == 'blank stock' && $firstAvailable) {
+                $chequeSeries->update(['is_used' => true]);
+            } else {
+                if (!$firstAvailable) {
+                    $chequeSeries->update(['is_used' => true]);
                 }
-
-                $rows[] = [
-                    'transaction_id'   => $transaction_id,
-                    'treasury_id'      => $id,
-                    'entry_type'       => $chequeData['type'],
-                    'bank_id'          => $chequeData['bank']['id'],
-                    'bank_name'        => $chequeData['bank']['name'],
-                    'cheque_no'        => $chequeData['no'],
-                    'cheque_date'      => $chequeData['date'],
-                    'cheque_amount'    => $chequeData['amount'],
-                    'transaction_type' => $chequeData['transaction_type'] ?? 'new',
-                    'created_at'       => $createdAt,
-                    'updated_at'       => now(),
-                ];
             }
-
-            if (!empty($rows)) {
-                Cheque::insert($rows); // single bulk INSERT instead of N
-            }
-
-            if ($hasManagersCheque) {
-                // Query-builder update — no SELECT first, no null-pointer risk,
-                // and runs once regardless of how many Managers Cheques there are.
-                Transaction::where('id', $transaction_id)->update(['is_mc' => 1]);
-            }
-        });
-    }
-
-    // public static function addCheque($transaction_id, $id, $cheques) {
-    //     Cheque::where("transaction_id", $transaction_id)->whereNull('reason_id')->delete();
-    //     foreach ($cheques as $specific_cheques) {
-
-    //         $cheques = Cheque::Create([
-    //             "transaction_id" => $transaction_id,
-    //             "treasury_id" => $id,
-    //             "entry_type" => $specific_cheques['type'],
-    //             "bank_id" => $specific_cheques['bank']['id'],
-    //             "bank_name" => $specific_cheques['bank']['name'],
-    //             "cheque_no" => $specific_cheques['no'],
-    //             "cheque_date" => $specific_cheques['date'],
-    //             "cheque_amount" => $specific_cheques['amount'],
-    //             "transaction_type" => $specific_cheques['transaction_type'] ?? "new",
-    //         ]);
-
-    //         DB::table('cheques')->where('id', $cheques->id)
-    //         ->update([
-    //             'created_at' => request()->input('created_at'),
-    //         ]);
-
-    //         if ($specific_cheques['type'] == 'Managers Cheque') {
-    //             Transaction::where('id', $transaction_id)->first()
-    //                 ->update([
-    //                     'is_mc' => 1
-    //                 ]);
-    //         }
-
-    //        $chequeSeries = BankSeries::where('id', data_get($specific_cheques, 'check_series_id'))
-    //            ->where('is_used', false)
-    //            ->first();
-
-    //        $query = Cheque::where('bank_id', $chequeSeries->bank_id)
-    //            ->whereNull('is_cancelled');
-
-    //        if ($chequeSeries->category == 'prenumbered stock') {
-    //            $query->withTrashed();
-    //        }
-
-    //        $alreadyUsedChequeNos = $query->pluck('cheque_no')->toArray();
-
-    //        $excludeCheques = array_merge($alreadyUsedChequeNos, []);
-    //        $availableChequeNos = array_diff(range($chequeSeries->from, $chequeSeries->to), $excludeCheques);
-    //        $availableChequeNos = array_filter($availableChequeNos, function($no) { return $no != 0; });
-    //        $firstAvailable = reset($availableChequeNos);
-
-    //        if ($chequeSeries->category == 'blank stock' && $firstAvailable) {
-    //            $chequeSeries->update(['is_used' => true]);
-    //        } else {
-    //            if (!$firstAvailable) {
-    //                $chequeSeries->update(['is_used' => true]);
-    //            }
-    //        }
-    //     }
-    // }
+         }
+     }
 
     public static function addAccountTitleEntry($process, $id, $account_titles)
     {
