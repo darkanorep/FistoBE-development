@@ -889,65 +889,111 @@ class GenericMethod
         return $duplicate_count;
     }
 
-    public static function addCheque($transaction_id, $id, $cheques)
-    {
-        Cheque::where("transaction_id", $transaction_id)->whereNull('reason_id')->delete();
-        foreach ($cheques as $specific_cheques) {
-//            $entry_type = $specific_cheques["transaction_type"] ?? $specific_cheques["type"];
-//            $bank_id = $specific_cheques["bank"]["id"];
-//            $bank_name = $specific_cheques["bank"]["name"];
-//            $cheque_no = $specific_cheques["no"];
-//            $cheque_date = $specific_cheques["date"];
-//            $cheque_amount = $specific_cheques["amount"];
-//            $transaction_type = $specific_cheques["transaction_type"] ?? "new";
+//    public static function addCheque($transaction_id, $id, $cheques) {
+//        // Validate once, outside the loop — this is one request-level value,
+//        // not per-cheque data.
+//        $createdAt = request()->input('created_date'); // <-- match the actual payload key
+//        Log::info('Resolved createdAt before calling addCheque', ['value' => $createdAt]);
+//
+//
+//        DB::transaction(function () use ($transaction_id, $id, $cheques, $createdAt) {
+//
+//            // "Replace" pattern: wipe any cheques for this transaction that
+//            // haven't been tied to a reason yet, then recreate from the payload.
+//            Cheque::where('transaction_id', $transaction_id)
+//                ->whereNull('reason_id')
+//                ->delete();
+//
+//            $hasManagersCheque = false;
+//            $rows = [];
+//
+//            foreach ($cheques as $chequeData) {
+//                if ($chequeData['type'] === 'Managers Cheque') {
+//                    $hasManagersCheque = true;
+//                }
+//
+//                $rows[] = [
+//                    'transaction_id'   => $transaction_id,
+//                    'treasury_id'      => $id,
+//                    'entry_type'       => $chequeData['type'],
+//                    'bank_id'          => $chequeData['bank']['id'],
+//                    'bank_name'        => $chequeData['bank']['name'],
+//                    'cheque_no'        => $chequeData['no'],
+//                    'cheque_date'      => $chequeData['date'],
+//                    'cheque_amount'    => $chequeData['amount'],
+//                    'transaction_type' => $chequeData['transaction_type'] ?? 'new',
+//                    'created_at'       => $createdAt,
+//                    'updated_at'       => now(),
+//                ];
+//            }
+//
+//            if (!empty($rows)) {
+//                Cheque::insert($rows); // single bulk INSERT instead of N
+//            }
+//
+//            if ($hasManagersCheque) {
+//                // Query-builder update — no SELECT first, no null-pointer risk,
+//                // and runs once regardless of how many Managers Cheques there are.
+//                Transaction::where('id', $transaction_id)->update(['is_mc' => 1]);
+//            }
+//        });
+//    }
 
-            Cheque::Create([
-                "transaction_id" => $transaction_id,
-                "treasury_id" => $id,
-                "entry_type" => $specific_cheques['type'],
-                "bank_id" => $specific_cheques['bank']['id'],
-                "bank_name" => $specific_cheques['bank']['name'],
-                "cheque_no" => $specific_cheques['no'],
-                "cheque_date" => $specific_cheques['date'],
-                "cheque_amount" => $specific_cheques['amount'],
-                "transaction_type" => $specific_cheques['transaction_type'] ?? "new",
-            ]);
+     public static function addCheque($transaction_id, $id, $cheques) {
+         Cheque::where("transaction_id", $transaction_id)->whereNull('reason_id')->delete();
+         foreach ($cheques as $specific_cheques) {
 
-            if ($specific_cheques['type'] == 'Managers Cheque') {
-                Transaction::where('id', $transaction_id)->first()
-                    ->update([
-                        'is_mc' => 1
-                    ]);
+             $cheques = Cheque::Create([
+                 "transaction_id" => $transaction_id,
+                 "treasury_id" => $id,
+                 "entry_type" => $specific_cheques['type'],
+                 "bank_id" => $specific_cheques['bank']['id'],
+                 "bank_name" => $specific_cheques['bank']['name'],
+                 "cheque_no" => $specific_cheques['no'],
+                 "cheque_date" => $specific_cheques['date'],
+                 "cheque_amount" => $specific_cheques['amount'],
+                 "transaction_type" => $specific_cheques['transaction_type'] ?? "new",
+             ]);
+
+             DB::table('cheques')->where('id', $cheques->id)
+             ->update([
+                 'created_at' => request()->input('created_at'),
+             ]);
+
+             if ($specific_cheques['type'] == 'Managers Cheque') {
+                 Transaction::where('id', $transaction_id)->first()
+                     ->update([
+                         'is_mc' => 1
+                     ]);
+             }
+
+            $chequeSeries = BankSeries::where('id', data_get($specific_cheques, 'check_series_id'))
+                ->where('is_used', false)
+                ->first();
+
+            $query = Cheque::where('bank_id', $chequeSeries->bank_id)
+                ->whereNull('is_cancelled');
+
+            if ($chequeSeries->category == 'prenumbered stock') {
+                $query->withTrashed();
             }
 
-//            $chequeSeries = BankSeries::where('id', data_get($specific_cheques, 'check_series_id'))
-//                ->where('is_used', false)
-////                ->select('bank_id', 'from', 'to', 'category')
-//                ->first();
-//
-//            $query = Cheque::where('bank_id', $chequeSeries->bank_id)
-//                ->whereNull('is_cancelled');
-//
-//            if ($chequeSeries->category == 'prenumbered stock') {
-//                $query->withTrashed();
-//            }
-//
-//            $alreadyUsedChequeNos = $query->pluck('cheque_no')->toArray();
-//
-//            $excludeCheques = array_merge($alreadyUsedChequeNos, []);
-//            $availableChequeNos = array_diff(range($chequeSeries->from, $chequeSeries->to), $excludeCheques);
-//            $availableChequeNos = array_filter($availableChequeNos, function($no) { return $no != 0; });
-//            $firstAvailable = reset($availableChequeNos);
-//
-//            if ($chequeSeries->category == 'blank stock' && $firstAvailable) {
-//                $chequeSeries->update(['is_used' => true]);
-//            } else {
-//                if (!$firstAvailable) {
-//                    $chequeSeries->update(['is_used' => true]);
-//                }
-//            }
-        }
-    }
+            $alreadyUsedChequeNos = $query->pluck('cheque_no')->toArray();
+
+            $excludeCheques = array_merge($alreadyUsedChequeNos, []);
+            $availableChequeNos = array_diff(range($chequeSeries->from, $chequeSeries->to), $excludeCheques);
+            $availableChequeNos = array_filter($availableChequeNos, function($no) { return $no != 0; });
+            $firstAvailable = reset($availableChequeNos);
+
+            if ($chequeSeries->category == 'blank stock' && $firstAvailable) {
+                $chequeSeries->update(['is_used' => true]);
+            } else {
+                if (!$firstAvailable) {
+                    $chequeSeries->update(['is_used' => true]);
+                }
+            }
+         }
+     }
 
     public static function addAccountTitleEntry($process, $id, $account_titles)
     {
@@ -1423,6 +1469,12 @@ class GenericMethod
                     "company" => $fields["document"]["company"]["name"],
                     "department_id" => $fields["document"]["department"]["id"],
                     "department" => $fields["document"]["department"]["name"],
+                    "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
+                    "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+                    "unit_id" => $fields["document"]["unit"]["id"] ?? null,
+                    "unit" => $fields["document"]["unit"]["name"] ?? null,
+                    "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
+                    "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                     "location_id" => $fields["document"]["location"]["id"],
                     "location" => $fields["document"]["location"]["name"],
                     "supplier_id" => $fields["document"]["supplier"]["id"],
@@ -1431,10 +1483,8 @@ class GenericMethod
                     "document_amount" => $fields["document"]["amount"],
                     "remarks" => $fields["document"]["remarks"],
                     "document_type" => $fields["document"]["name"],
-
                     "utilities_from" => $fields["document"]["from"],
                     "utilities_to" => $fields["document"]["to"],
-
                     "utilities_receipt_no" => $fields["document"]["utility"]["receipt_no"],
                     "utilities_consumption" => $fields["document"]["utility"]["consumption"],
                     "utilities_location_id" => $fields["document"]["utility"]["location"]["id"],
@@ -1443,19 +1493,10 @@ class GenericMethod
                     "utilities_category" => $fields["document"]["utility"]["category"]["name"],
                     "utilities_account_no_id" => $fields["document"]["utility"]["account_no"]["id"],
                     "utilities_account_no" => $fields["document"]["utility"]["account_no"]["no"],
-
                     "po_total_amount" => $po_total_amount,
-
                     "request_id" => $request_id,
-
                     "date_requested" => $date_requested,
                     "status" => "Pending",
-                    "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
-                    "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
-                    "unit_id" => $fields["document"]["unit"]["id"] ?? null,
-                    "unit" => $fields["document"]["unit"]["name"] ?? null,
-                    "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
-                    "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                     "is_confidential" => $is_confidential,
                     "is_mc" => $is_mc,
                     "is_new" => $is_new,
@@ -1749,7 +1790,6 @@ class GenericMethod
                         $error_date_format = GenericMethod::validate_prm_date_range_format($prm_group, $errors);
                         $error_period_covered = GenericMethod::validate_period_covered($period_covered_array, $errors);
                         $error_multiple_cheque = GenericMethod::validate_multiple_cheque_dates($cheque_dates_array, $errors);
-                        // $error_amount_per_line = GenericMethod::validate_amount_per_line($prm_group, $errors);
                         $error_duplicate_transaction = GenericMethod::validate_duplicate_prm_multiple_transaction(
                             $prm_group,
                             $fields
@@ -1771,7 +1811,6 @@ class GenericMethod
                                     return $item["line"] . $item["description"];
                                 })
                                 ->values();
-                            // $error_list =  collect($errors)->unique('description')->all();
                             return GenericMethod::resultResponse("upload-error", "", $error_list);
                         }
 
@@ -1816,7 +1855,6 @@ class GenericMethod
                                 "remarks" => $fields["document"]["remarks"],
                                 "document_type" => $fields["document"]["name"],
                                 "po_total_amount" => $po_total_amount,
-                                // "request_id" => $temporary_request_id ? $temporary_request_id : null,
                                 "request_id" => isset($temporary_request_id) ? $temporary_request_id : null,
 
                                 "date_requested" => $date_requested,
@@ -1833,6 +1871,8 @@ class GenericMethod
                                 "total_net" => $total_net ? $total_net : null,
                                 "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
                                 "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+                                "unit_id" => $fields["document"]["unit"]["id"] ?? null,
+                                "unit" => $fields["document"]["unit"]["name"] ?? null,
                                 "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                                 "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                                 "is_confidential" => $is_confidential,
@@ -1889,7 +1929,6 @@ class GenericMethod
                                     return $item["line"] . $item["description"];
                                 })
                                 ->values();
-                            // $error_list =  collect($errors)->unique('description')->all();
                             return GenericMethod::resultResponse("upload-error", "", $error_list);
                         }
                         // PROCEED LEASING
@@ -1931,7 +1970,6 @@ class GenericMethod
                                 "remarks" => $fields["document"]["remarks"],
                                 "document_type" => $fields["document"]["name"],
                                 "po_total_amount" => $po_total_amount,
-//              "request_id" => $temporary_request_id ? $temporary_request_id : null,
                                 "request_id" => isset($temporary_request_id) ? $temporary_request_id : null,
 
                                 "date_requested" => $date_requested,
@@ -1946,6 +1984,8 @@ class GenericMethod
                                 "batch_no" => $fields["document"]["batch_no"],
                                 "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
                                 "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+                                "unit_id" => $fields["document"]["unit"]["id"] ?? null,
+                                "unit" => $fields["document"]["unit"]["name"] ?? null,
                                 "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                                 "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                                 "is_confidential" => $is_confidential,
@@ -2055,6 +2095,8 @@ class GenericMethod
                                 "batch_no" => $fields["document"]["batch_no"],
                                 "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
                                 "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
+                                "unit_id" => $fields["document"]["unit"]["id"] ?? null,
+                                "unit" => $fields["document"]["unit"]["name"] ?? null,
                                 "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
                                 "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
                                 "is_confidential" => $is_confidential,
@@ -2135,104 +2177,11 @@ class GenericMethod
                             'dst' => $autoDebit['dst']
                         ]);
                     }
-//                        GenericMethod::insert_debit_attachment($new_transaction->id, $fields["autoDebit_group"]);
                 }
                 break;
 
             case 1:
             case 2:
-
-//                if ($fields["document"]["payment_type"] == "Partial") {
-//                    $new_transaction = Transaction::create([
-//                        "transaction_id" => $transaction_id,
-//                        "users_id" => $requestor->id,
-//                        "id_prefix" => $requestor->id_prefix,
-//                        "id_no" => $requestor->id_no,
-//                        "first_name" => $requestor->first_name,
-//                        "middle_name" => $requestor->middle_name,
-//                        "last_name" => $requestor->last_name,
-//                        "suffix" => $requestor->suffix,
-//                        "department_details" => $requestor->department[0]["name"],
-//
-//                        "document_id" => $fields["document"]["id"],
-//                        "category_id" => $fields["document"]["category"]["id"],
-//                        "category" => $fields["document"]["category"]["name"],
-//                        "company_id" => $fields["document"]["company"]["id"],
-//                        "company" => $fields["document"]["company"]["name"],
-//                        "department_id" => $fields["document"]["department"]["id"],
-//                        "department" => $fields["document"]["department"]["name"],
-//                        "location_id" => $fields["document"]["location"]["id"],
-//                        "location" => $fields["document"]["location"]["name"],
-//                        "supplier_id" => $fields["document"]["supplier"]["id"],
-//                        "supplier" => $fields["document"]["supplier"]["name"],
-//                        "payment_type" => $fields["document"]["payment_type"],
-//                        "document_no" => $fields["document"]["no"],
-//                        "document_date" => $fields["document"]["date"],
-//                        "document_amount" => $fields["document"]["amount"],
-//                        "remarks" => $fields["document"]["remarks"],
-//                        "document_type" => $fields["document"]["name"],
-//
-//                        "po_total_amount" => $po_total_amount,
-//                        "balance_po_ref_amount" => $balance_po_ref_amount,
-//                        "request_id" => $request_id,
-//
-//                        "date_requested" => $date_requested,
-//                        "status" => "Pending",
-//                        "is_not_editable" => false,
-//                        "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
-//                        "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
-//                        "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
-//                        "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
-//                        "is_confidential" => $is_confidential,
-//                        "is_mc" => $is_mc,
-//                        "is_new" => $is_new,
-//                        "transaction_type" => $fields["type"]
-//                    ]);
-//                } else {
-//                    $new_transaction = Transaction::create([
-//                        "transaction_id" => $transaction_id,
-//                        "users_id" => $requestor->id,
-//                        "id_prefix" => $requestor->id_prefix,
-//                        "id_no" => $requestor->id_no,
-//                        "first_name" => $requestor->first_name,
-//                        "middle_name" => $requestor->middle_name,
-//                        "last_name" => $requestor->last_name,
-//                        "suffix" => $requestor->suffix,
-//                        "department_details" => $requestor->department[0]["name"],
-//
-//                        "document_id" => $fields["document"]["id"],
-//                        "category_id" => $fields["document"]["category"]["id"],
-//                        "category" => $fields["document"]["category"]["name"],
-//                        "company_id" => $fields["document"]["company"]["id"],
-//                        "company" => $fields["document"]["company"]["name"],
-//                        "department_id" => $fields["document"]["department"]["id"],
-//                        "department" => $fields["document"]["department"]["name"],
-//                        "location_id" => $fields["document"]["location"]["id"],
-//                        "location" => $fields["document"]["location"]["name"],
-//                        "supplier_id" => $fields["document"]["supplier"]["id"],
-//                        "supplier" => $fields["document"]["supplier"]["name"],
-//                        "payment_type" => $fields["document"]["payment_type"],
-//                        "document_no" => $fields["document"]["no"],
-//                        "document_date" => $fields["document"]["date"],
-//                        "document_amount" => $fields["document"]["amount"],
-//                        "remarks" => $fields["document"]["remarks"],
-//                        "document_type" => $fields["document"]["name"],
-//                        "po_total_amount" => $po_total_amount,
-//                        "request_id" => $request_id,
-//
-//                        "date_requested" => $date_requested,
-//                        "status" => "Pending",
-//                        "business_unit_id" => $fields["document"]["business_unit"]["id"] ?? null,
-//                        "business_unit" => $fields["document"]["business_unit"]["name"] ?? null,
-//                        "sub_unit_id" => $fields["document"]["sub_unit"]["id"] ?? null,
-//                        "sub_unit" => $fields["document"]["sub_unit"]["name"] ?? null,
-//                        "is_confidential" => $is_confidential,
-//                        "is_mc" => $is_mc,
-//                        "is_new" => $is_new,
-//                        "transaction_type" => $fields["type"]
-//                    ]);
-//                }
-
                 $transactionData = [
                     "transaction_id" => $transaction_id,
                     "users_id" => $requestor->id,
@@ -2371,7 +2320,8 @@ class GenericMethod
                 $fields,
                 $balance_po_ref_amount = 0,
                 data_get($fields, "document.is_confidential", 0),
-                data_get($fields, "docmuent.is_mc", 0)
+                data_get($fields, "docmuent.is_mc", 0),
+                data_get($fields, "document.is_new", 0),
             );
             return $transaction;
         }

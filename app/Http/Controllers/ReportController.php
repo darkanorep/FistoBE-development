@@ -32,7 +32,7 @@ class ReportController extends Controller
       $supplierFilter = "AND transactions.supplier_id IN (" . implode(",", $suppliers) . ")";
     }
 
-    $result = DB::select(
+   $result = DB::select(
       DB::raw("
         SELECT
             transactions.voucher_no,
@@ -71,7 +71,7 @@ class ReportController extends Controller
             WHERE d.account_title_name LIKE '%Accounts Payable%'
         ) e ON b.id = e.associate_id
 
-            LEFT JOIN (
+        LEFT JOIN (
             SELECT MAX(e.id) AS id, e.transaction_id, MAX(e.created_at) AS date_transmitted
             FROM transmit e
             WHERE status = 'transmit-transmit'
@@ -81,16 +81,20 @@ class ReportController extends Controller
         LEFT JOIN users ON transactions.assigned_id = users.id
         WHERE transactions.deleted_at IS NULL
           AND transactions.state != 'void'
---         AND (
---               (status IN ('transmit-transmit', 'audit-return', 'release-return', 'file-return') AND transactions.document_id != 8)
---               OR status = 'inspect-inspect'
---         )
-        AND DATE_FORMAT(f.date_transmitted, '%Y-%m-%d') BETWEEN :from AND :to
+          AND (
+                (status IN ('transmit-transmit', 'audit-return', 'release-return', 'file-return') AND transactions.document_id != 8)
+                OR status = 'inspect-inspect'
+              )
+        AND DATE_FORMAT(transactions.created_at, '%Y-%m-%d') BETWEEN :from_created AND :to_created
+        AND DATE_FORMAT(transactions.updated_at, '%Y-%m-%d') BETWEEN :from_updated AND :to_updated
+        AND f.date_transmitted IS NOT NULL
         $supplierFilter
     "),
       [
-        "from" => $from,
-        "to" => $to,
+        "from_created" => $from,
+        "to_created"   => $to,
+        "from_updated" => $from,
+        "to_updated"   => $to,
       ]
     );
 
@@ -245,6 +249,7 @@ class ReportController extends Controller
             MAX(a.updated_at) AS updated_at,
             GROUP_CONCAT(DISTINCT a.tag_no) AS tag_no,
             MAX(a.receipt_type) as receipt_type,
+            MAX(a.transaction_type) as transaction_type,
             MAX(a.supplier) AS supplier,
             MAX(a.deleted_at) AS deleted_at,
             MAX(a.company) AS company,

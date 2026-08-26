@@ -28,7 +28,7 @@ class Associate extends Model
     ];
 
     public function account_title(){
-        return $this->hasMany(VoucherAccountTitle::class,'associate_id','id');
+        return $this->hasMany(VoucherAccountTitle::class,'associate_id','id')->orderBy('id','asc');
     }
 
 }
