@@ -123,6 +123,8 @@ return [
     'api_key' => env('API_KEY'),
     'master_password' => env('MASTER_PASSWORD'),
     'open_ai' => env('OPEN_AI'),
+    'ymir_url' => env('YMIR_URL'),
+    'ymir_api_key' => env('YMIR_API_KEY'),
 
     'cipher' => 'AES-256-CBC',
 

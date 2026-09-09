@@ -45,6 +45,8 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -67,6 +69,14 @@ class TransactionFlow
      */
     private $cutOffVoucherEntryDate;
     private $charges;
+    /**
+     * @var \Illuminate\Config\Repository|\Illuminate\Contracts\Foundation\Application|mixed
+     */
+    private $ymirApiKey;
+    /**
+     * @var \Illuminate\Config\Repository|\Illuminate\Contracts\Foundation\Application|mixed
+     */
+    private $ymirUrl;
 
     public function __construct()
     {
@@ -101,6 +111,9 @@ class TransactionFlow
         $this->isCutOffEnabledVoucherEntry = $cutOffSettingVoucherEntry ? $cutOffSettingVoucherEntry->value : false;
         // Set the cut-off date for voucher entry if the setting is enabled
         $this->cutOffVoucherEntryDate = $cutOffSettingVoucherEntry ? $cutOffSettingVoucherEntry->value1 : null;
+
+        $this->ymirApiKey = config('app.ymir_api_key');
+        $this->ymirUrl = config('app.ymir_url');
     }
 
     public static function updateInTransactionFlow($request, $id)
@@ -2811,19 +2824,35 @@ class TransactionFlow
         return GenericMethod::resultResponse($subprocess, "", "");
     }
 
-    private static function createReceivedReceiptStatuses($transaction, array $receivedReceipts, $tagNo, $voucherMonth, $voucherNo, $status)
-    {
+    private static function createReceivedReceiptStatuses(
+        $transaction,
+        array $receivedReceipts,
+        $tagNo,
+        $voucherMonth,
+        $voucherNo,
+        $status
+    ) {
         if (empty($receivedReceipts)) {
             return;
         }
 
+        $now = Carbon::now('Asia/Manila');
+
+        // Only update the timestamp for the current status.
         $timestampUpdates = [];
-        if ($status === 'TAG') {
-            $timestampUpdates['tagged_at'] = Carbon::now("Asia/Manila");
-        } elseif ($status === 'VOUCHERED') {
-            $timestampUpdates['vouchered_at'] = Carbon::now("Asia/Manila");
-        } elseif ($status === 'VALIDATED') {
-            $timestampUpdates['validated_at'] = Carbon::now("Asia/Manila");
+
+        switch ($status) {
+            case 'TAG':
+                $timestampUpdates['tagged_at'] = $now;
+                break;
+
+            case 'VOUCHERED':
+                $timestampUpdates['vouchered_at'] = $now;
+                break;
+
+            case 'VALIDATED':
+                $timestampUpdates['validated_at'] = $now;
+                break;
         }
 
         foreach ($receivedReceipts as $receivedReceipt) {
@@ -2835,20 +2864,85 @@ class TransactionFlow
                     'transaction_id' => $transaction->id,
                     'rr_id' => $rrId,
                 ],
-                array_merge([
-                    'rr_number' => $rrNumber,
-                    'tag_no' => $tagNo,
-                    'voucher_month' => $voucherMonth,
-                    'voucher_no' => $voucherNo,
-                    'status' => $status,
-                    'company' => $transaction->company,
-                    'business_unit' => $transaction->business_unit ?? null,
-                    'department' => $transaction->department ?? null,
-                    'unit' => $transaction->unit ?? null,
-                    'sub_unit' => $transaction->sub_unit ?? null,
-                    'location' => $transaction->location ?? null,
-                ], $timestampUpdates)
+                array_merge(
+                    [
+                        'rr_number' => $rrNumber,
+                        'tag_no' => $tagNo,
+                        'voucher_month' => $voucherMonth,
+                        'voucher_no' => $voucherNo,
+                        'status' => $status,
+                        'company' => $transaction->company,
+                        'business_unit' => $transaction->business_unit ?? null,
+                        'department' => $transaction->department ?? null,
+                        'unit' => $transaction->unit ?? null,
+                        'sub_unit' => $transaction->sub_unit ?? null,
+                        'location' => $transaction->location ?? null,
+                    ],
+                    $timestampUpdates
+                )
             );
+
+            try {
+                $queryParameters = [
+                    'id_no' => auth()->user()->id_no,
+                    'tag_number' => $tagNo,
+                    'voucher_no' => $voucherNo,
+                ];
+
+                // Only send the timestamp belonging to the current status.
+                switch ($status) {
+                    case 'TAG':
+                        $queryParameters['tagging_at'] = $now->toDateTimeString();
+                        break;
+
+                    case 'VOUCHERED':
+                        $queryParameters['vouchered_at'] = $now->toDateTimeString();
+                        break;
+
+                    case 'VALIDATED':
+                        $queryParameters['validated_at'] = $now->toDateTimeString();
+                        break;
+                }
+
+                $response = Http::withHeaders([
+                    'API-Key' => config('app.ymir_api_key'),
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json',
+                ])
+//                    ->withQueryParameters($queryParameters)
+                    ->patch('http://10.10.13.6:8080/api/fisto_api/' . $rrId . '/status', $queryParameters);
+
+                Log::info(
+                    'Updated RR status in Ymir API',
+                    [
+                        'rr_id' => $rrId,
+                        'status' => $status,
+                        'response_status' => $response->status(),
+                        'response_body' => $response->body(),
+                    ]
+                );
+
+//                $response->throw();
+
+            } catch (\Illuminate\Http\Client\RequestException $e) {
+                Log::error(
+                    'Failed to update RR status in Ymir API: ' . $e->getMessage(),
+                    [
+                        'rr_id' => $rrId,
+                        'status' => $status,
+                        'response' => $e->response->body(),
+                    ]
+                );
+
+            } catch (\Exception $e) {
+                Log::error(
+                    'Unexpected error occurred: ' . $e->getMessage(),
+                    [
+                        'rr_id' => $rrId,
+                        'status' => $status,
+                    ]
+                );
+            }
         }
     }
 

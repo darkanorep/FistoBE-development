@@ -80,9 +80,9 @@ class TransactionController extends Controller
         $cheque_from = $this->getTransactionDate($request, 'cheque_from', Carbon::now()->startOfMonth()->format('Y-m-d H:i:s'));
         $cheque_to = $this->getTransactionDate($request, 'cheque_to', Carbon::now()->endOfMonth()->format('Y-m-d H:i:s'));
         $search = $request->input('search');
-//        $department = $request->input('department', [auth()->user()->department[0]['name']]);
+        //        $department = $request->input('department', [auth()->user()->department[0]['name']]);
         $user_id = null;
-//        $my_request = $request->input('my_request', 0);
+        //        $my_request = $request->input('my_request', 0);
         $is_confidential = $request->input('is_confidential', 0);
         $is_mc = $request->input('is_mc', 0);
         $is_mcl = $request->input('is_mcl', 1);
@@ -157,11 +157,11 @@ class TransactionController extends Controller
             "treasuryCheque",
             "account_titles",
             "voucher",
-//            "purchaseOrders"
-//            "purchaseOrders.receivedReceipts"
+            //            "purchaseOrders"
+            //            "purchaseOrders.receivedReceipts"
         ])
             //Requesting of Documents
-//
+            //
             //Confidential
             ->when($is_confidential == null, function ($query) {
                 $query->whereIn('is_confidential', [1, 0]);
@@ -188,50 +188,50 @@ class TransactionController extends Controller
             ->when(!empty($business_units), function ($query) use ($business_units) {
                 $query->whereIn("business_unit_id", $business_units);
             })
-//            ->when(!empty($voucher_numbers), function ($query) use ($voucher_numbers) {
-//                $query->whereIn('id', $voucher_numbers);
-//            })
-//            ->when(
-//                isset($request["cheque_from"]) || isset($request["cheque_to"]),
-//                function ($query) use ($cheque_from, $cheque_to) {
-//                    $query->whereHas("cheques.cheques", function ($query) use ($cheque_from, $cheque_to) {
-//                        $query->where("cheque_date", ">=", $cheque_from)->where("cheque_date", "<=", $cheque_to);
-//                    });
-//                },
-//                function ($query) use ($document_ids, $suppliers, $transaction_from, $transaction_to) {
-//                    $query->when(!empty($document_ids) || !empty($suppliers), function ($query) use (
-//                        $transaction_from,
-//                        $transaction_to
-//                    ) {
-//                        $query->where("date_requested", ">=", $transaction_from)->where("date_requested", "<=", $transaction_to);
-//                    });
-//                }
-//            )
+            //            ->when(!empty($voucher_numbers), function ($query) use ($voucher_numbers) {
+            //                $query->whereIn('id', $voucher_numbers);
+            //            })
+            //            ->when(
+            //                isset($request["cheque_from"]) || isset($request["cheque_to"]),
+            //                function ($query) use ($cheque_from, $cheque_to) {
+            //                    $query->whereHas("cheques.cheques", function ($query) use ($cheque_from, $cheque_to) {
+            //                        $query->where("cheque_date", ">=", $cheque_from)->where("cheque_date", "<=", $cheque_to);
+            //                    });
+            //                },
+            //                function ($query) use ($document_ids, $suppliers, $transaction_from, $transaction_to) {
+            //                    $query->when(!empty($document_ids) || !empty($suppliers), function ($query) use (
+            //                        $transaction_from,
+            //                        $transaction_to
+            //                    ) {
+            //                        $query->where("date_requested", ">=", $transaction_from)->where("date_requested", "<=", $transaction_to);
+            //                    });
+            //                }
+            //            )
             ->when($status == 'pending', function ($query) use ($is_mcl) {
                 $query->whereNotIn('status', ['requestor-void', 'tag-return'])
-//                    ->whereIn('department_details', $department)
+                    //                    ->whereIn('department_details', $department)
                     ->where('users_id', auth()->user()->id)
                     ->withTrashed(function ($query) {
                         $query->where('deleted_at', '=', '2024-08-28 00:00:00');
                     });
-//                    ->when($is_mcl == 1, function ($query) {
-//                        $query->orWhere([
-//                            'is_mcl' => 1
-//                        ]);
-//                    }, function ($query) {
-//                        $query->where('is_mc', 1)->where('is_mcl', '!=', 1);
-//                    })
+                //                    ->when($is_mcl == 1, function ($query) {
+                //                        $query->orWhere([
+                //                            'is_mcl' => 1
+                //                        ]);
+                //                    }, function ($query) {
+                //                        $query->where('is_mc', 1)->where('is_mcl', '!=', 1);
+                //                    })
 
             })
             ->when($status == 'return-request', function ($query) {
                 $query->where('status', 'tag-return')
                     ->where('users_id', auth()->user()->id);
-//                    ->whereIn('department_details', $department);
+                //                    ->whereIn('department_details', $department);
             })
             ->when($status == 'requestor-void', function ($query) {
                 $query->where('state', 'void')
                     ->where('users_id', auth()->user()->id);
-//                    ->whereIn('department_details', $department);
+                //                    ->whereIn('department_details', $department);
             })
 
             //Tagging of Documents
@@ -250,8 +250,8 @@ class TransactionController extends Controller
 
             //Transmittal of Official Receipt
             ->when($status == 'pending-gas', function ($query) {
-//                $query->where('status', 'tag-tag')
-//                    ->where('receipt_type', 'official');
+                //                $query->where('status', 'tag-tag')
+                //                    ->where('receipt_type', 'official');
                 $query->where([
                     'status' => 'tag-tag',
                     'receipt_type' => 'official'
@@ -319,8 +319,8 @@ class TransactionController extends Controller
                 });
             })
             ->when($status == 'approve-receive', function ($query) use ($user_id, $position, $userRole) {
-//                $query->where('approver_id', $user_id)
-//                    ->whereIn('status', ['approve-receive']);
+                //                $query->where('approver_id', $user_id)
+                //                    ->whereIn('status', ['approve-receive']);
                 $query->where(function ($query) use ($user_id) {
                     $query->where('approver_id', $user_id)
                         ->whereIn('status', ['approve-receive']);
@@ -333,10 +333,10 @@ class TransactionController extends Controller
                     });
             })
             ->when($status == 'approve-approve', function ($query) use ($user_id, $position, $userRole) {
-//                $query->where([
-//                    'approver_id' => $user_id,
-//                    'status' => 'approve-approve'
-//                ]);
+                //                $query->where([
+                //                    'approver_id' => $user_id,
+                //                    'status' => 'approve-approve'
+                //                ]);
                 $query->where(function ($query) use ($user_id, $position, $userRole) {
                     $query->where([
                         'approver_id' => $user_id,
@@ -349,20 +349,18 @@ class TransactionController extends Controller
                                 ->whereIn('approver_id', User::where('role', 'AP Specialist')->pluck('id')->toArray());
                         }
                     });
-
             })
             ->when($status == 'approve-hold', function ($query) use ($user_id) {
-//                $query->where('approver_id', $user_id)
-//                    ->where('status', 'approve-hold');
+                //                $query->where('approver_id', $user_id)
+                //                    ->where('status', 'approve-hold');
                 $query->where([
                     'approver_id' => $user_id,
                     'status' => 'approve-hold'
                 ]);
-
             })
             ->when($status == 'approve-return', function ($query) use ($user_id) {
-//                $query->where('approver_id', $user_id)
-//                    ->where('status', 'approve-return');
+                //                $query->where('approver_id', $user_id)
+                //                    ->where('status', 'approve-return');
                 $query->where([
                     'approver_id' => $user_id,
                     'status' => 'approve-return'
@@ -374,15 +372,15 @@ class TransactionController extends Controller
                 $query->where('distributed_id', $user_id)
                     ->whereIn('status', ['approve-approve', 'transmit-transfer'])
                     ->whereNull('is_for_releasing')
-                    ->whereIn('is_mc', [0,1]);
+                    ->whereIn('is_mc', [0, 1]);
             })
             ->when($status == 'transmit-receive', function ($query) use ($user_id) {
                 $query->where('distributed_id', $user_id)
                     ->whereIn('status', ['transmit-receive']);
             })
             ->when($status == 'transmit-transmit', function ($query) use ($user_id) {
-//                $query->where('distributed_id', $user_id)
-//                    ->where('status', 'transmit-transmit');
+                //                $query->where('distributed_id', $user_id)
+                //                    ->where('status', 'transmit-transmit');
                 $query->where([
                     'distributed_id' => $user_id,
                     'status' => 'transmit-transmit'
@@ -402,7 +400,7 @@ class TransactionController extends Controller
 
             //Filing of Official Receipt (GAS)
             ->when($status == 'pending-discharge', function ($query) {
-//                $query->whereIn("status", ["release-release"])->where("receipt_type", "official");
+                //                $query->whereIn("status", ["release-release"])->where("receipt_type", "official");
                 $query->whereIn("status", ["pass-pass"])->where("receipt_type", "official");
             })
 
@@ -417,16 +415,16 @@ class TransactionController extends Controller
                             });
                     });
 
-//                ->whereIn("status", ["pass-pass", "discharge-discharge"])
-//                    ->where(function ($query) {
-//                        $query->where(function ($query) {
-//                            $query->whereIn("receipt_type", ["unofficial", "official"])
-//                                ->whereIn("is_mc", [1, 0]);
-//                        });
-//                    })
-//                    ->orWhere(function ($query) {
-//                        $query->whereIn("status", ["release-release"])->whereNull('receipt_type');
-//                    });
+                //                ->whereIn("status", ["pass-pass", "discharge-discharge"])
+                //                    ->where(function ($query) {
+                //                        $query->where(function ($query) {
+                //                            $query->whereIn("receipt_type", ["unofficial", "official"])
+                //                                ->whereIn("is_mc", [1, 0]);
+                //                        });
+                //                    })
+                //                    ->orWhere(function ($query) {
+                //                        $query->whereIn("status", ["release-release"])->whereNull('receipt_type');
+                //                    });
             })
 
             //Application for Loan
@@ -543,7 +541,6 @@ class TransactionController extends Controller
             return $this->resultResponse("fetch", "Transaction", $transactions);
         }
         return $this->resultResponse("not-found", "Transaction", []);
-
     }
 
     private function transactionIndexFormatter($transactions)
@@ -553,11 +550,11 @@ class TransactionController extends Controller
             $rental = $resource->getRental();
             $state = $resource->stateChange($transaction->state);
             $is_editable_prm = 0;
-//            if ($transaction->document_id == 3) {
-//                $is_editable_prm = Tagging::where("transaction_id", $transaction->transaction_id)
-//                    ->whereNotIn("status", ["tag-return", "tag-void"])
-//                    ->exists();
-//            }
+            //            if ($transaction->document_id == 3) {
+            //                $is_editable_prm = Tagging::where("transaction_id", $transaction->transaction_id)
+            //                    ->whereNotIn("status", ["tag-return", "tag-void"])
+            //                    ->exists();
+            //            }
 
             $is_latest_transaction = 0;
             if ($transaction->po_details->isNotEmpty() && strtoupper($transaction->payment_type) === "PARTIAL") {
@@ -580,15 +577,15 @@ class TransactionController extends Controller
             }
 
             $accounts = $transaction->account_titles->filter(function ($item) {
-//                return $item->account_title_name == 'Accounts Payable' || $item->account_title_name == 'Accounts Payable - RHL';
+                //                return $item->account_title_name == 'Accounts Payable' || $item->account_title_name == 'Accounts Payable - RHL';
                 return strpos($item->account_title_name, "Accounts Payable") !== false;
             });
 
-//            $is_cheque = $transaction->treasuryCheque()->exists() ? 1 : 0;
-//            $is_cleared = $transaction->treasuryCheque->pluck('is_cleared')->isEmpty()
-//                ? 0 : ($transaction->treasuryCheque->pluck('is_cleared')->contains(0 || null)
-//                    ? 0
-//                    : 1);
+            //            $is_cheque = $transaction->treasuryCheque()->exists() ? 1 : 0;
+            //            $is_cleared = $transaction->treasuryCheque->pluck('is_cleared')->isEmpty()
+            //                ? 0 : ($transaction->treasuryCheque->pluck('is_cleared')->contains(0 || null)
+            //                    ? 0
+            //                    : 1);
 
             return [
                 "id" => $transaction->id,
@@ -643,17 +640,17 @@ class TransactionController extends Controller
                         ];
                     })
                     : [],
-//                "purchased_orders" => $transaction->purchaseOrders->map(function ($po) {
-//                    return [
-//                        "po_number" => $po->po_number,
-//                        'po_description' => $po->po_description,
-////                        'received_receipts' => $po->receivedReceipts->map(function ($rr) {
-////                            return [
-////                                'rr_no' => $rr->rr_number,
-////                            ];
-////                        })
-//                    ];
-//                }) ?? [],
+                //                "purchased_orders" => $transaction->purchaseOrders->map(function ($po) {
+                //                    return [
+                //                        "po_number" => $po->po_number,
+                //                        'po_description' => $po->po_description,
+                ////                        'received_receipts' => $po->receivedReceipts->map(function ($rr) {
+                ////                            return [
+                ////                                'rr_no' => $rr->rr_number,
+                ////                            ];
+                ////                        })
+                //                    ];
+                //                }) ?? [],
                 'receipt_type' => $transaction->receipt_type,
                 'input_tax' => $transaction->input_tax,
                 'cheques' => $transaction->treasuryCheque->map(function ($item) {
@@ -726,7 +723,7 @@ class TransactionController extends Controller
                         'vouchered' => $this->getDateEveryStatus($transaction->voucher, 'voucher-voucher')
                     ],
                 ],
-//                'is_cheque' => $is_cheque,
+                //                'is_cheque' => $is_cheque,
                 'is_confidential' => $transaction->is_confidential,
                 'is_mc' => $transaction->is_mc,
                 "is_new" => $transaction->is_new ? 1 : 0,
@@ -735,7 +732,6 @@ class TransactionController extends Controller
                 'charge_id' => $transaction->charge_id,
                 'transaction_type' => $transaction->transaction_type,
             ];
-
         });
 
         return $transactions;
@@ -784,7 +780,7 @@ class TransactionController extends Controller
                 "location_id",
                 "location",
                 "supplier_id",
-//               "supplier",
+                //               "supplier",
                 "po_total_amount",
                 "balance_po_ref_amount",
                 "referrence_id",
@@ -945,7 +941,7 @@ class TransactionController extends Controller
                     "is_mc" => $transaction->is_mc,
                     "name" => $transaction->document_type,
                     "no" => $transaction->document_no,
-//                    "date" => $this->document_date ?? $this->date_requested,
+                    //                    "date" => $this->document_date ?? $this->date_requested,
                     "payment_type" => $transaction->payment_type,
                     'amount' => ($transaction->document_id == 3)
                         ? ($transaction->category == in_array($transaction->category, [
@@ -1041,7 +1037,7 @@ class TransactionController extends Controller
             case 6: //Utilities
                 $document = [
                     "id" => $transaction->document_id,
-//                    "date" => $this->document_date ?? $this->date_requested,
+                    //                    "date" => $this->document_date ?? $this->date_requested,
                     "is_confidential" => $transaction->is_confidential,
                     "is_mc" => $transaction->is_mc,
                     "name" => $transaction->document_type,
@@ -1091,7 +1087,7 @@ class TransactionController extends Controller
             case 7: //Payroll
                 $document = [
                     "id" => $transaction->document_id,
-//                    "date" => $this->document_date ?? $this->date_requested,
+                    //                    "date" => $this->document_date ?? $this->date_requested,
                     "is_confidential" => $transaction->is_confidential,
                     "is_mc" => $transaction->is_mc,
                     "name" => $transaction->document_type,
@@ -1195,9 +1191,9 @@ class TransactionController extends Controller
                 'id' => $po->id,
                 'no' => $po->po_no,
                 'amount' => floatVal($po->po_amount),
-//                    'previous_balance' => $index === $transaction->po_details->count() - 1 ? floatval($po->po_total_amount - $totalDeduction) : 0,
+                //                    'previous_balance' => $index === $transaction->po_details->count() - 1 ? floatval($po->po_total_amount - $totalDeduction) : 0,
                 'previous_balance' => $index === $transaction->po_details->count() - 1 ? floatval($po->previous_balance) : 0,
-//                    'balance' => 0,
+                //                    'balance' => 0,
                 'balance' => $index === $transaction->po_details->count() - 1 ? floatval($po->previous_balance) : 0,
                 'rr_no' => $po->rr_group,
             ];
@@ -1207,226 +1203,314 @@ class TransactionController extends Controller
         $receivedReceiptsCount = $transaction->receivedReceipts()->pluck('rr_id')->unique()->count();
 
         $purchase_order = [];
-        if ($receivedReceipts && !$receivedReceipts->purchaseOrders->isEmpty()) {
-            $purchase_order = $transaction->receivedReceipts->map(function ($item) use ($transaction) {
-                return [
-                    'is_new_po' => true,
-                    'id' => $item->rr_id,
-                    'rr_year_number_id' => $item->rr_number,
-                    'rr_orders' => $transaction->receivedReceipts->filter(function ($rr) use ($item) {
-                        return $rr->rr_id == $item->rr_id;
-                    })->map(function ($rr) {
-                        return [
-                            'item_code' => $rr->item_code,
-                            'item_name' => $rr->item_name,
-                            'quantity_receive' => $rr->quantity,
-                            'order' => [
+
+        // Check across the whole collection, not just the first row —
+        // otherwise you can wrongly skip RRs that have PO links but happen
+        // not to be the first record fetched.
+        $hasPurchaseOrders = $transaction->receivedReceipts->isNotEmpty()
+            && $transaction->receivedReceipts->contains(function ($rr) {
+                return $rr->purchaseOrders->isNotEmpty();
+            });
+
+        if ($hasPurchaseOrders) {
+            $purchase_order = $transaction->receivedReceipts
+                ->groupBy('rr_id')
+                ->map(function ($rrGroup) {
+                    $first = $rrGroup->first();
+
+                    return [
+                        'is_new_po' => true,
+                        'id' => $first->rr_id,
+                        'rr_year_number_id' => $first->rr_number,
+                        'rr_orders' => $rrGroup->map(function ($rr) {
+                            return [
                                 'item_code' => $rr->item_code,
                                 'item_name' => $rr->item_name,
-                                'price' => $rr->price,
-                                'reference_no' => $rr->reference_no,
-                                'uom' => [
-                                    'code' => $rr->uom_code,
-                                    'name' => $rr->uom_name,
+                                'quantity_receive' => $rr->quantity,
+                                'order' => [
+                                    'item_code' => $rr->item_code,
+                                    'item_name' => $rr->item_name,
+                                    'price' => $rr->price,
+                                    'reference_no' => $rr->reference_no,
+                                    'uom' => [
+                                        'code' => $rr->uom_code,
+                                        'name' => $rr->uom_name,
+                                    ],
+                                    'po_transaction' => $rr->purchaseOrders->map(function ($po) {
+                                        return [
+                                            'purchase_order_id' => $po->id,
+                                            'po_year_number_id' => $po->po_number,
+                                            'po_description' => $po->po_description,
+                                            'type_name' => $po->type_name,
+                                            'po_amount' => $po->po_amount,
+                                            'company' => [
+                                                'id' => $po->company_id,
+                                                'code' => $po->company_code,
+                                                'name' => $po->company_name,
+                                            ],
+                                            'business_unit' => [
+                                                'id' => $po->business_unit_id,
+                                                'code' => $po->business_unit_code,
+                                                'name' => $po->business_unit_name,
+                                            ],
+                                            'department' => [
+                                                'id' => $po->department_id,
+                                                'code' => $po->department_code,
+                                                'name' => $po->department_name,
+                                            ],
+                                            'unit' => [
+                                                'id' => $po->unit_id,
+                                                'code' => $po->unit_code,
+                                                'name' => $po->unit_name,
+                                            ],
+                                            'sub_unit' => [
+                                                'id' => $po->sub_unit_id,
+                                                'code' => $po->sub_unit_code,
+                                                'name' => $po->sub_unit_name,
+                                            ],
+                                            'location' => [
+                                                'id' => $po->location_id,
+                                                'code' => $po->location_code,
+                                                'name' => $po->location_name,
+                                            ],
+                                            'account_title' => [
+                                                'id' => $po->account_title_id,
+                                                'code' => $po->account_title_code,
+                                                'name' => $po->account_title_name,
+                                            ],
+                                        ];
+                                    })->values(),
                                 ],
-                                'po_transaction' => $rr->purchaseOrders
-                                    ->map(function ($po) {
+                            ];
+                        })->values(),
+                    ];
+                })
+                ->values();
+        }
+
+        $job_order = [];
+
+        $hasJobOrders = $transaction->receivedReceipts->isNotEmpty()
+            && $transaction->receivedReceipts->contains(function ($rr) {
+                return $rr->jobOrders->isNotEmpty();
+            });
+
+        if ($hasJobOrders) {
+            $job_order = $transaction->receivedReceipts
+                ->groupBy('rr_id')
+                ->map(function ($rrGroup) {
+                    $first = $rrGroup->first();
+
+                    return [
+                        'is_new_po' => true,
+                        'id' => $first->rr_id,
+                        'rr_year_number_id' => $first->rr_number,
+                        'rr_orders' => $rrGroup->map(function ($rr) {
+                            return [
+                                'description' => $rr->item_name,
+                                'quantity_receive' => $rr->quantity,
+                                'order' => [
+                                    'description' => $rr->item_name,
+                                    'price' => $rr->price,
+                                    'reference_no' => $rr->reference_no,
+                                    'uom' => [
+                                        'code' => $rr->uom_code,
+                                        'name' => $rr->uom_name,
+                                    ],
+                                ],
+                                'jo_transaction' => $rr->jobOrders->map(function ($jo) {
                                     return [
-                                        'purchase_order_id' => $po->id,
-                                        'po_year_number_id' => $po->po_number,
-                                        'po_description' => $po->po_description,
-                                        'type_name' => $po->type_name,
-                                        'po_amount' => $po->po_amount,
+                                        'job_order_id' => $jo->id,
+                                        'jo_year_number_id' => $jo->jo_number,
+                                        'jo_description' => $jo->jo_description,
+                                        'type_name' => $jo->type_name,
+                                        'jo_amount' => $jo->jo_amount,
                                         'company' => [
-                                            'id' => $po->company_id,
-                                            'code' => $po->company_code,
-                                            'name' => $po->company_name,
+                                            'id' => $jo->company_id,
+                                            'code' => $jo->company_code,
+                                            'name' => $jo->company_name,
                                         ],
                                         'business_unit' => [
-                                            'id' => $po->business_unit_id,
-                                            'code' => $po->business_unit_code,
-                                            'name' => $po->business_unit_name,
+                                            'id' => $jo->business_unit_id,
+                                            'code' => $jo->business_unit_code,
+                                            'name' => $jo->business_unit_name,
                                         ],
                                         'department' => [
-                                            'id' => $po->department_id,
-                                            'code' => $po->department_code,
-                                            'name' => $po->department_name,
+                                            'id' => $jo->department_id,
+                                            'code' => $jo->department_code,
+                                            'name' => $jo->department_name,
                                         ],
                                         'unit' => [
-                                            'id' => $po->unit_id,
-                                            'code' => $po->unit_code,
-                                            'name' => $po->unit_name,
+                                            'id' => $jo->unit_id,
+                                            'code' => $jo->unit_code,
+                                            'name' => $jo->unit_name,
                                         ],
                                         'sub_unit' => [
-                                            'id' => $po->sub_unit_id,
-                                            'code' => $po->sub_unit_code,
-                                            'name' => $po->sub_unit_name,
+                                            'id' => $jo->sub_unit_id,
+                                            'code' => $jo->sub_unit_code,
+                                            'name' => $jo->sub_unit_name,
                                         ],
                                         'location' => [
-                                            'id' => $po->location_id,
-                                            'code' => $po->location_code,
-                                            'name' => $po->location_name,
+                                            'id' => $jo->location_id,
+                                            'code' => $jo->location_code,
+                                            'name' => $jo->location_name,
                                         ],
                                         'account_title' => [
-                                            'id' => $po->account_title_id,
-                                            'code' => $po->account_title_code,
-                                            'name' => $po->account_title_name,
+                                            'id' => $jo->account_title_id,
+                                            'code' => $jo->account_title_code,
+                                            'name' => $jo->account_title_name,
                                         ],
                                     ];
-                                })
-                            ]
-                        ];
-                    })->values()
-                ];
-            })->values();
-
-            if ($receivedReceiptsCount == 1) {
-                $purchase_order = $purchase_order->unique()->values();
-            }
+                                })->values(),
+                            ];
+                        })->values(),
+                    ];
+                })
+                ->values();
         }
 
 
-        $job_order = $receivedReceiptsCount != 1
-            ? ($receivedReceipts && !$receivedReceipts->jobOrders->isEmpty()
-                ? $transaction->receivedReceipts->map(function ($item) use ($transaction) {
-                    return [
-                        'is_new_po' => true,
-                        'id' => $item->rr_id,
-                        'rr_year_number_id' => $item->rr_number,
-                        'rr_orders' => $transaction->receivedReceipts->filter(function ($rr) use ($item) {
-                            return $rr->rr_id == $item->rr_id;
-                        })->map(function ($rr) {
-                            return [
-                                'description' => $rr->item_name,
-                                'quantity_receive' => $rr->quantity,
-                                'order' => [
-                                    'description' => $rr->item_name,
-                                    'price' => $rr->price,
-                                    'reference_no' => $rr->reference_no,
-                                    'uom' => [
-                                        'code' => $rr->uom_code,
-                                        'name' => $rr->uom_name,
-                                    ],
-                                ],
-                                'jo_transaction' => $rr->jobOrders->map(function ($jo) {
-                                    return [
-                                        'job_order_id' => $jo->id,
-                                        'jo_year_number_id' => $jo->jo_number,
-                                        'jo_description' => $jo->jo_description,
-                                        'type_name' => $jo->type_name,
-                                        'jo_amount' => $jo->jo_amount,
-                                        'company' => [
-                                            'id' => $jo->company_id,
-                                            'code' => $jo->company_code,
-                                            'name' => $jo->company_name,
-                                        ],
-                                        'business_unit' => [
-                                            'id' => $jo->business_unit_id,
-                                            'code' => $jo->business_unit_code,
-                                            'name' => $jo->business_unit_name,
-                                        ],
-                                        'department' => [
-                                            'id' => $jo->department_id,
-                                            'code' => $jo->department_code,
-                                            'name' => $jo->department_name,
-                                        ],
-                                        'unit' => [
-                                            'id' => $jo->unit_id,
-                                            'code' => $jo->unit_code,
-                                            'name' => $jo->unit_name,
-                                        ],
-                                        'sub_unit' => [
-                                            'id' => $jo->sub_unit_id,
-                                            'code' => $jo->sub_unit_code,
-                                            'name' => $jo->sub_unit_name,
-                                        ],
-                                        'location' => [
-                                            'id' => $jo->location_id,
-                                            'code' => $jo->location_code,
-                                            'name' => $jo->location_name,
-                                        ],
-                                        'account_title' => [
-                                            'id' => $jo->account_title_id,
-                                            'code' => $jo->account_title_code,
-                                            'name' => $jo->account_title_name,
-                                        ],
-                                    ];
-                                })
-                            ];
-                        })->values()
-                    ];
-                })
-                : [])
-            : ($receivedReceipts && !$receivedReceipts->jobOrders->isEmpty()
-                ? $transaction->receivedReceipts->map(function ($item) use ($transaction) {
-                    return [
-                        'is_new_po' => true,
-                        'id' => $item->rr_id,
-                        'rr_year_number_id' => $item->rr_number,
-                        'rr_orders' => $transaction->receivedReceipts->filter(function ($rr) use ($item) {
-                            return $rr->rr_id == $item->rr_id;
-                        })->map(function ($rr) {
-                            return [
-                                'description' => $rr->item_name,
-                                'quantity_receive' => $rr->quantity,
-                                'order' => [
-                                    'description' => $rr->item_name,
-                                    'price' => $rr->price,
-                                    'reference_no' => $rr->reference_no,
-                                    'uom' => [
-                                        'code' => $rr->uom_code,
-                                        'name' => $rr->uom_name,
-                                    ],
-                                ],
-                                'jo_transaction' => $rr->jobOrders->map(function ($jo) {
-                                    return [
-                                        'job_order_id' => $jo->id,
-                                        'jo_year_number_id' => $jo->jo_number,
-                                        'jo_description' => $jo->jo_description,
-                                        'type_name' => $jo->type_name,
-                                        'jo_amount' => $jo->jo_amount,
-                                        'company' => [
-                                            'id' => $jo->company_id,
-                                            'code' => $jo->company_code,
-                                            'name' => $jo->company_name,
-                                        ],
-                                        'business_unit' => [
-                                            'id' => $jo->business_unit_id,
-                                            'code' => $jo->business_unit_code,
-                                            'name' => $jo->business_unit_name,
-                                        ],
-                                        'department' => [
-                                            'id' => $jo->department_id,
-                                            'code' => $jo->department_code,
-                                            'name' => $jo->department_name,
-                                        ],
-                                        'unit' => [
-                                            'id' => $jo->unit_id,
-                                            'code' => $jo->unit_code,
-                                            'name' => $jo->unit_name,
-                                        ],
-                                        'sub_unit' => [
-                                            'id' => $jo->sub_unit_id,
-                                            'code' => $jo->sub_unit_code,
-                                            'name' => $jo->sub_unit_name,
-                                        ],
-                                        'location' => [
-                                            'id' => $jo->location_id,
-                                            'code' => $jo->location_code,
-                                            'name' => $jo->location_name,
-                                        ],
-                                        'account_title' => [
-                                            'id' => $jo->account_title_id,
-                                            'code' => $jo->account_title_code,
-                                            'name' => $jo->account_title_name,
-                                        ],
-                                    ];
-                                })
-                            ];
-                        })->values()
-                    ];
-                })->unique()->values()
-                : []);
+        // $job_order = $receivedReceiptsCount != 1
+        //     ? ($receivedReceipts && !$receivedReceipts->jobOrders->isEmpty()
+        //         ? $transaction->receivedReceipts->map(function ($item) use ($transaction) {
+        //             return [
+        //                 'is_new_po' => true,
+        //                 'id' => $item->rr_id,
+        //                 'rr_year_number_id' => $item->rr_number,
+        //                 'rr_orders' => $transaction->receivedReceipts->filter(function ($rr) use ($item) {
+        //                     return $rr->rr_id == $item->rr_id;
+        //                 })->map(function ($rr) {
+        //                     return [
+        //                         'description' => $rr->item_name,
+        //                         'quantity_receive' => $rr->quantity,
+        //                         'order' => [
+        //                             'description' => $rr->item_name,
+        //                             'price' => $rr->price,
+        //                             'reference_no' => $rr->reference_no,
+        //                             'uom' => [
+        //                                 'code' => $rr->uom_code,
+        //                                 'name' => $rr->uom_name,
+        //                             ],
+        //                         ],
+        //                         'jo_transaction' => $rr->jobOrders->map(function ($jo) {
+        //                             return [
+        //                                 'job_order_id' => $jo->id,
+        //                                 'jo_year_number_id' => $jo->jo_number,
+        //                                 'jo_description' => $jo->jo_description,
+        //                                 'type_name' => $jo->type_name,
+        //                                 'jo_amount' => $jo->jo_amount,
+        //                                 'company' => [
+        //                                     'id' => $jo->company_id,
+        //                                     'code' => $jo->company_code,
+        //                                     'name' => $jo->company_name,
+        //                                 ],
+        //                                 'business_unit' => [
+        //                                     'id' => $jo->business_unit_id,
+        //                                     'code' => $jo->business_unit_code,
+        //                                     'name' => $jo->business_unit_name,
+        //                                 ],
+        //                                 'department' => [
+        //                                     'id' => $jo->department_id,
+        //                                     'code' => $jo->department_code,
+        //                                     'name' => $jo->department_name,
+        //                                 ],
+        //                                 'unit' => [
+        //                                     'id' => $jo->unit_id,
+        //                                     'code' => $jo->unit_code,
+        //                                     'name' => $jo->unit_name,
+        //                                 ],
+        //                                 'sub_unit' => [
+        //                                     'id' => $jo->sub_unit_id,
+        //                                     'code' => $jo->sub_unit_code,
+        //                                     'name' => $jo->sub_unit_name,
+        //                                 ],
+        //                                 'location' => [
+        //                                     'id' => $jo->location_id,
+        //                                     'code' => $jo->location_code,
+        //                                     'name' => $jo->location_name,
+        //                                 ],
+        //                                 'account_title' => [
+        //                                     'id' => $jo->account_title_id,
+        //                                     'code' => $jo->account_title_code,
+        //                                     'name' => $jo->account_title_name,
+        //                                 ],
+        //                             ];
+        //                         })
+        //                     ];
+        //                 })->values()
+        //             ];
+        //         })
+        //         : [])
+        //     : ($receivedReceipts && !$receivedReceipts->jobOrders->isEmpty()
+        //         ? $transaction->receivedReceipts->map(function ($item) use ($transaction) {
+        //             return [
+        //                 'is_new_po' => true,
+        //                 'id' => $item->rr_id,
+        //                 'rr_year_number_id' => $item->rr_number,
+        //                 'rr_orders' => $transaction->receivedReceipts->filter(function ($rr) use ($item) {
+        //                     return $rr->rr_id == $item->rr_id;
+        //                 })->map(function ($rr) {
+        //                     return [
+        //                         'description' => $rr->item_name,
+        //                         'quantity_receive' => $rr->quantity,
+        //                         'order' => [
+        //                             'description' => $rr->item_name,
+        //                             'price' => $rr->price,
+        //                             'reference_no' => $rr->reference_no,
+        //                             'uom' => [
+        //                                 'code' => $rr->uom_code,
+        //                                 'name' => $rr->uom_name,
+        //                             ],
+        //                         ],
+        //                         'jo_transaction' => $rr->jobOrders->map(function ($jo) {
+        //                             return [
+        //                                 'job_order_id' => $jo->id,
+        //                                 'jo_year_number_id' => $jo->jo_number,
+        //                                 'jo_description' => $jo->jo_description,
+        //                                 'type_name' => $jo->type_name,
+        //                                 'jo_amount' => $jo->jo_amount,
+        //                                 'company' => [
+        //                                     'id' => $jo->company_id,
+        //                                     'code' => $jo->company_code,
+        //                                     'name' => $jo->company_name,
+        //                                 ],
+        //                                 'business_unit' => [
+        //                                     'id' => $jo->business_unit_id,
+        //                                     'code' => $jo->business_unit_code,
+        //                                     'name' => $jo->business_unit_name,
+        //                                 ],
+        //                                 'department' => [
+        //                                     'id' => $jo->department_id,
+        //                                     'code' => $jo->department_code,
+        //                                     'name' => $jo->department_name,
+        //                                 ],
+        //                                 'unit' => [
+        //                                     'id' => $jo->unit_id,
+        //                                     'code' => $jo->unit_code,
+        //                                     'name' => $jo->unit_name,
+        //                                 ],
+        //                                 'sub_unit' => [
+        //                                     'id' => $jo->sub_unit_id,
+        //                                     'code' => $jo->sub_unit_code,
+        //                                     'name' => $jo->sub_unit_name,
+        //                                 ],
+        //                                 'location' => [
+        //                                     'id' => $jo->location_id,
+        //                                     'code' => $jo->location_code,
+        //                                     'name' => $jo->location_name,
+        //                                 ],
+        //                                 'account_title' => [
+        //                                     'id' => $jo->account_title_id,
+        //                                     'code' => $jo->account_title_code,
+        //                                     'name' => $jo->account_title_name,
+        //                                 ],
+        //                             ];
+        //                         })
+        //                     ];
+        //                 })->values()
+        //             ];
+        //         })->unique()->values()
+        //         : []);
 
         $prm_group = $prm_group ?? [];
 
@@ -1585,11 +1669,11 @@ class TransactionController extends Controller
         //APPROVE
         if (isset($transaction->approve->first()->status)) {
             $approve = [
-//                'status' => $transaction->approve->first()->status ?? null,
-//                    'dates' => [
-//                        'received' => $this->getDateEveryStatus($transaction->approve, 'approve-receive'),
-//                        'approved' => $this->getDateEveryStatus($transaction->approve, 'approve-approve')
-//                    ],
+                //                'status' => $transaction->approve->first()->status ?? null,
+                //                    'dates' => [
+                //                        'received' => $this->getDateEveryStatus($transaction->approve, 'approve-receive'),
+                //                        'approved' => $this->getDateEveryStatus($transaction->approve, 'approve-approve')
+                //                    ],
                 'distributed_to' => [
                     'id' => $transaction->distributed_id,
                     'name' => $transaction->distributed_name,
@@ -1776,27 +1860,27 @@ class TransactionController extends Controller
         }
 
         //AUDIT
-//        if (isset($transaction->audit->first()->status)) {
-//            $audit = [
-//                'status' => $transaction->audit->first()->status ?? null,
-//                'dates' => [
-//                    'received' => $this->getDateEveryStatus($transaction->audit, 'audit-receive'),
-//                    'audited' => $this->getDateEveryStatus($transaction->audit, 'audit-audit')
-//                ],
-//                'reason' => null
-//            ];
-//        }
+        //        if (isset($transaction->audit->first()->status)) {
+        //            $audit = [
+        //                'status' => $transaction->audit->first()->status ?? null,
+        //                'dates' => [
+        //                    'received' => $this->getDateEveryStatus($transaction->audit, 'audit-receive'),
+        //                    'audited' => $this->getDateEveryStatus($transaction->audit, 'audit-audit')
+        //                ],
+        //                'reason' => null
+        //            ];
+        //        }
 
         //EXECUTIVE
-//        if (isset($transaction->executive->first()->status)) {
-//            $executive = [
-//                'status' => $transaction->executive->first()->status ?? null,
-//                    'dates' => [
-//                        'received' => $this->getDateEveryStatus($transaction->executive, 'executive-receive'),
-//                        'signed' => $this->getDateEveryStatus($transaction->executive, 'executive-executive')
-//                    ],
-//            ];
-//        }
+        //        if (isset($transaction->executive->first()->status)) {
+        //            $executive = [
+        //                'status' => $transaction->executive->first()->status ?? null,
+        //                    'dates' => [
+        //                        'received' => $this->getDateEveryStatus($transaction->executive, 'executive-receive'),
+        //                        'signed' => $this->getDateEveryStatus($transaction->executive, 'executive-executive')
+        //                    ],
+        //            ];
+        //        }
 
         //DISCHARGE
         if (isset($transaction->discharge->first()->status)) {
@@ -1810,38 +1894,38 @@ class TransactionController extends Controller
         }
 
         //FILE
-//        if (isset($transaction->file->first()->status)) {
-//            $file = [
-//                'status' => $transaction->file->first()->status ?? null,
-//                'dates' => [
-//                    'received' => $this->getDateEveryStatus($transaction->file, 'file-receive'),
-//                    'filed' => $this->getDateEveryStatus($transaction->file, 'file-file')
-//                ],
-//                'box_no' => $transaction->box_no
-//            ];
-//        }
+        //        if (isset($transaction->file->first()->status)) {
+        //            $file = [
+        //                'status' => $transaction->file->first()->status ?? null,
+        //                'dates' => [
+        //                    'received' => $this->getDateEveryStatus($transaction->file, 'file-receive'),
+        //                    'filed' => $this->getDateEveryStatus($transaction->file, 'file-file')
+        //                ],
+        //                'box_no' => $transaction->box_no
+        //            ];
+        //        }
 
         //ISSUE
-//        if (isset($transaction->issue->first()->status)) {
-//            $issue = [
-//                'status' => $transaction->issue->first()->status ?? null,
-//                'dates' => [
-//                    'received' => $this->getDateEveryStatus($transaction->issue, 'issue-receive'),
-//                    'issued' => $this->getDateEveryStatus($transaction->issue, 'issue-issue')
-//                ]
-//            ];
-//        }
+        //        if (isset($transaction->issue->first()->status)) {
+        //            $issue = [
+        //                'status' => $transaction->issue->first()->status ?? null,
+        //                'dates' => [
+        //                    'received' => $this->getDateEveryStatus($transaction->issue, 'issue-receive'),
+        //                    'issued' => $this->getDateEveryStatus($transaction->issue, 'issue-issue')
+        //                ]
+        //            ];
+        //        }
 
         //RELEASE
-//        if (isset($transaction->release->first()->status)) {
-//            $release = [
-//                'status' => $transaction->release->first()->status ?? null,
-//                'dates' => [
-//                    'received' => $this->getDateEveryStatus($transaction->release, 'release-receive'),
-//                    'released' => $this->getDateEveryStatus($transaction->release, 'release-release')
-//                ]
-//            ];
-//        }
+        //        if (isset($transaction->release->first()->status)) {
+        //            $release = [
+        //                'status' => $transaction->release->first()->status ?? null,
+        //                'dates' => [
+        //                    'received' => $this->getDateEveryStatus($transaction->release, 'release-receive'),
+        //                    'released' => $this->getDateEveryStatus($transaction->release, 'release-release')
+        //                ]
+        //            ];
+        //        }
 
         $transaction = [
             'type' => $type,
@@ -1864,13 +1948,13 @@ class TransactionController extends Controller
             'voucher' => $voucher,
             'approve' => $approve,
             'transmit' => $transmit,
-//            'cheque' => $cheque,
-//            'audit' => $audit,
-//            'executive' => $executive,
+            //            'cheque' => $cheque,
+            //            'audit' => $audit,
+            //            'executive' => $executive,
             'discharge' => $discharge,
-//            'file' => $file,
-//            'issue' => $issue,
-//            'release' => $release,
+            //            'file' => $file,
+            //            'issue' => $issue,
+            //            'release' => $release,
         ];
 
         $result = [];
@@ -1901,7 +1985,8 @@ class TransactionController extends Controller
         $isNew = null;
         $po_total_amount = 0;
 
-        if (!empty($fields["po_group"]) ||
+        if (
+            !empty($fields["po_group"]) ||
             !empty($fields['purchase_order']) ||
             !empty($fields['job_order'])
         ) {
@@ -2823,7 +2908,6 @@ class TransactionController extends Controller
                             if (isset($transaction->transaction_id)) {
                                 return $this->resultResponse("save", "Transaction", []);
                             }
-
                         }
 
                         break;
@@ -2914,7 +2998,7 @@ class TransactionController extends Controller
 
                 $request_id = $transaction->id;
 
-//                GenericMethod::insertClient($request_id, $fields["document"]["payroll"]["clients"]);
+                //                GenericMethod::insertClient($request_id, $fields["document"]["payroll"]["clients"]);
 
                 if (isset($transaction->transaction_id)) {
                     return $this->resultResponse("save", "Transaction", []);
@@ -2926,10 +3010,10 @@ class TransactionController extends Controller
                 $isFull = strtoupper($fields["document"]["payment_type"]) === "FULL";
                 $isQty = $fields["document"]["reference"]["type"] === "DR Qty";
 
-//                if (empty($fields["po_group"])) {
-//                    $errorMessage = GenericMethod::resultLaravelFormat("po_group", ["PO group required"]);
-//                    return $this->resultResponse("invalid", "", $errorMessage);
-//                }
+                //                if (empty($fields["po_group"])) {
+                //                    $errorMessage = GenericMethod::resultLaravelFormat("po_group", ["PO group required"]);
+                //                    return $this->resultResponse("invalid", "", $errorMessage);
+                //                }
 
                 if (!$isQty && $isFull) {
                     //Full
@@ -3160,18 +3244,18 @@ class TransactionController extends Controller
                                 strtoupper($fields["document"]["payment_type"])
                             );
 
-//                        POBatch::where("request_id", $request_id)
-//                            ->where("po_no", reset($fields["po_group"])["no"])
-//                            ->update([
-//                                "is_modifiable" => true,
-//                            ]);
-//
-//                        POBatch::where("request_id", $request_id)
-//                            ->where("is_add", true)
-//                            ->where("is_editable", true)
-//                            ->update([
-//                                "is_modifiable" => true,
-//                            ]);
+                            //                        POBatch::where("request_id", $request_id)
+                            //                            ->where("po_no", reset($fields["po_group"])["no"])
+                            //                            ->update([
+                            //                                "is_modifiable" => true,
+                            //                            ]);
+                            //
+                            //                        POBatch::where("request_id", $request_id)
+                            //                            ->where("is_add", true)
+                            //                            ->where("is_editable", true)
+                            //                            ->update([
+                            //                                "is_modifiable" => true,
+                            //                            ]);
 
                             POBatch::where("request_id", $request_id)
                                 ->where(function ($query) use ($fields) {
@@ -3450,12 +3534,12 @@ class TransactionController extends Controller
                 //   "Document amount and net of cwt amount is not equal."
                 // );
 
-//                isset($fields["autoDebit_group"])
-//                    ? GenericMethod::validate_debit_amount(
-//                    $fields["document"]["amount"],
-//                    $fields["autoDebit_group"],
-//                    "Document amount and net of cwt amount is not equal.")
-//                    : null;
+                //                isset($fields["autoDebit_group"])
+                //                    ? GenericMethod::validate_debit_amount(
+                //                    $fields["document"]["amount"],
+                //                    $fields["autoDebit_group"],
+                //                    "Document amount and net of cwt amount is not equal.")
+                //                    : null;
 
                 $transaction = GenericMethod::insertTransaction($transaction_id, null, $request_id, $date_requested, $fields, null, $isConfidential, $isMc, $isNew);
                 if (isset($transaction->transaction_id)) {
@@ -3464,7 +3548,7 @@ class TransactionController extends Controller
                 break;
         }
 
-//        return $this->resultResponse("save", "Transaction", []);
+        //        return $this->resultResponse("save", "Transaction", []);
     }
 
     public function update(TransactionPostRequest $request, $id)
@@ -3482,10 +3566,10 @@ class TransactionController extends Controller
                     case "Partial":
                         GenericMethod::documentNoValidationUpdate($request["document"]["no"], $id);
 
-//                        if (empty($fields["po_group"])) {
-//                            $errorMessage = GenericMethod::resultLaravelFormat("po_group", ["PO group required"]);
-//                            return $this->resultResponse("invalid", "", $errorMessage);
-//                        }
+                        //                        if (empty($fields["po_group"])) {
+                        //                            $errorMessage = GenericMethod::resultLaravelFormat("po_group", ["PO group required"]);
+                        //                            return $this->resultResponse("invalid", "", $errorMessage);
+                        //                        }
 
                         if (!$currentTransaction->is_new) {
                             if ($currentTransaction->is_not_editable == 1 && $currentTransaction->is_new == null) {
@@ -3626,15 +3710,14 @@ class TransactionController extends Controller
                                         "request_id" => $transaction->id,
                                         "po_no" => $po["no"],
                                         "po_amount" => $po["amount"],
-//                                    "is_add" => $po["is_add"],
-//                                    "is_editable" => $po["is_editable"],
+                                        //                                    "is_add" => $po["is_add"],
+                                        //                                    "is_editable" => $po["is_editable"],
                                         "previous_balance" => $request->po_balance,
                                         "po_total_amount" => $po_total_amount,
                                         "rr_group" => $po["rr_no"],
                                     ]);
                                 }
                             }
-
                         }
                         break;
 
@@ -3642,10 +3725,10 @@ class TransactionController extends Controller
                         GenericMethod::documentNoValidationUpdate($request["document"]["no"], $id);
 
                         if (!empty($fields["po_group"])) {
-//                            if (empty($fields["po_group"])) {
-//                                $errorMessage = GenericMethod::resultLaravelFormat("po_group", ["PO group required"]);
-//                                return $this->resultResponse("invalid", "", $errorMessage);
-//                            }
+                            //                            if (empty($fields["po_group"])) {
+                            //                                $errorMessage = GenericMethod::resultLaravelFormat("po_group", ["PO group required"]);
+                            //                                return $this->resultResponse("invalid", "", $errorMessage);
+                            //                            }
 
                             $duplicatePO = GenericMethod::validatePOFullUpdate(
                                 $fields["document"]["company"]["id"],
@@ -3694,18 +3777,18 @@ class TransactionController extends Controller
                         if ($transaction == "Nothing Has Changed") {
                             return $this->resultResponse("nothing-has-changed", "Transaction", []);
                         }
-//                        if (isset($transaction->transaction_id)) {
-//                            return $this->resultResponse("update", "Transaction", []);
-//                        }
+                        //                        if (isset($transaction->transaction_id)) {
+                        //                            return $this->resultResponse("update", "Transaction", []);
+                        //                        }
                         break;
                 }
                 break;
 
             case 5: //Contractor's Billing
-//                if (empty($fields["po_group"])) {
-//                    $errorMessage = GenericMethod::resultLaravelFormat("po_group", ["PO group required"]);
-//                    return $this->resultResponse("invalid", "", $errorMessage);
-//                }
+                //                if (empty($fields["po_group"])) {
+                //                    $errorMessage = GenericMethod::resultLaravelFormat("po_group", ["PO group required"]);
+                //                    return $this->resultResponse("invalid", "", $errorMessage);
+                //                }
 
                 $transaction_id = isset($transaction_id) ? $transaction_id : null;
                 $capex_no = isset($fields["document"]["capex_no"]) ? $fields["document"]["capex_no"] : null;
@@ -3730,34 +3813,34 @@ class TransactionController extends Controller
                 }
 
                 if (!empty($fields['po_group'])) {
-                            $duplicatePO = GenericMethod::validatePOFull($fields["document"]["company"]["id"], $fields["po_group"]);
+                    $duplicatePO = GenericMethod::validatePOFull($fields["document"]["company"]["id"], $fields["po_group"]);
 
-                            if (isset($duplicatePO)) {
-                                return $this->resultResponse("invalid", "", $duplicatePO);
-                            }
+                    if (isset($duplicatePO)) {
+                        return $this->resultResponse("invalid", "", $duplicatePO);
+                    }
 
-                            $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
+                    $po_total_amount = GenericMethod::getPOTotalAmount($request_id, $fields["po_group"]);
 
-                            $errorMessage = GenericMethod::validateWith1PesoDifference(
-                                "po_group.amount",
-                                "Document",
-                                $fields["document"]["amount"],
-                                $po_total_amount
-                            );
+                    $errorMessage = GenericMethod::validateWith1PesoDifference(
+                        "po_group.amount",
+                        "Document",
+                        $fields["document"]["amount"],
+                        $po_total_amount
+                    );
 
-                            if (!empty($errorMessage)) {
-                                return GenericMethod::resultResponse("invalid", "", $errorMessage);
-                            }
-                        }
+                    if (!empty($errorMessage)) {
+                        return GenericMethod::resultResponse("invalid", "", $errorMessage);
+                    }
+                }
 
                 $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
-//                GenericMethod::updatePO(
-//                    $request_id,
-//                    $fields["po_group"],
-//                    $po_total_amount,
-//                    strtoupper($fields["document"]["payment_type"]),
-//                    $id
-//                );
+                //                GenericMethod::updatePO(
+                //                    $request_id,
+                //                    $fields["po_group"],
+                //                    $po_total_amount,
+                //                    strtoupper($fields["document"]["payment_type"]),
+                //                    $id
+                //                );
 
                 if (!$currentTransaction->is_new) {
                     GenericMethod::updatePO(
@@ -3782,9 +3865,9 @@ class TransactionController extends Controller
                 if ($transaction == "Nothing Has Changed") {
                     return $this->resultResponse("nothing-has-changed", "Transaction", []);
                 }
-//                if (isset($transaction->transaction_id)) {
-//                    return $this->resultResponse("update", "Transaction", []);
-//                }
+                //                if (isset($transaction->transaction_id)) {
+                //                    return $this->resultResponse("update", "Transaction", []);
+                //                }
                 break;
 
             case 2: //PRM Common
@@ -3806,9 +3889,9 @@ class TransactionController extends Controller
                 if ($transaction == "Nothing Has Changed") {
                     return $this->resultResponse("nothing-has-changed", "Transaction", []);
                 }
-//                if (isset($transaction->transaction_id)) {
-//                    return $this->resultResponse("update", "Transaction", []);
-//                }
+                //                if (isset($transaction->transaction_id)) {
+                //                    return $this->resultResponse("update", "Transaction", []);
+                //                }
                 break;
 
             case 3: //PRM Multiple
@@ -4041,9 +4124,9 @@ class TransactionController extends Controller
                     }
                 }
 
-//                if (isset($transaction->transaction_id)) {
-//                    return $this->resultResponse("update", "Transaction", []);
-//                }
+                //                if (isset($transaction->transaction_id)) {
+                //                    return $this->resultResponse("update", "Transaction", []);
+                //                }
                 break;
 
             case 7: //Payroll
@@ -4076,9 +4159,9 @@ class TransactionController extends Controller
                     0,
                     $changes
                 );
-//                if (isset($transaction->transaction_id)) {
-//                    return $this->resultResponse("update", "Transaction", []);
-//                }
+                //                if (isset($transaction->transaction_id)) {
+                //                    return $this->resultResponse("update", "Transaction", []);
+                //                }
                 break;
 
             case 8: //PCF
@@ -4107,18 +4190,18 @@ class TransactionController extends Controller
                     0,
                     $changes
                 );
-//                if (isset($transaction->transaction_id)) {
-//                    return $this->resultResponse("update", "Transaction", []);
-//                }
+                //                if (isset($transaction->transaction_id)) {
+                //                    return $this->resultResponse("update", "Transaction", []);
+                //                }
                 break;
 
             case 4: //Receipt
                 $isFull = strtoupper($fields["document"]["payment_type"]) === "FULL";
 
-//                if (empty($fields["po_group"])) {
-//                    $errorMessage = GenericMethod::resultLaravelFormat("po_group", ["PO group required"]);
-//                    return $this->resultResponse("invalid", "", $errorMessage);
-//                }
+                //                if (empty($fields["po_group"])) {
+                //                    $errorMessage = GenericMethod::resultLaravelFormat("po_group", ["PO group required"]);
+                //                    return $this->resultResponse("invalid", "", $errorMessage);
+                //                }
 
                 $duplicateRef = GenericMethod::validateReferenceNo($fields, $id);
                 if (isset($duplicateRef)) {
@@ -4171,9 +4254,9 @@ class TransactionController extends Controller
                         0,
                         $changes
                     );
-//                    if (isset($transaction->transaction_id)) {
-//                        return $this->resultResponse("update", "Transaction", []);
-//                    }
+                    //                    if (isset($transaction->transaction_id)) {
+                    //                        return $this->resultResponse("update", "Transaction", []);
+                    //                    }
                 }
 
                 $currentTransaction = Transaction::findOrFail($id);
@@ -4328,8 +4411,8 @@ class TransactionController extends Controller
                                 "request_id" => $transaction->id,
                                 "po_no" => $po["no"],
                                 "po_amount" => $po["amount"],
-//                            "is_add" => $po["is_add"],
-//                            "is_editable" => $po["is_editable"],
+                                //                            "is_add" => $po["is_add"],
+                                //                            "is_editable" => $po["is_editable"],
                                 "previous_balance" => $request->po_balance,
                                 "po_total_amount" => $po_total_amount,
                                 "rr_group" => $po["rr_no"],
@@ -4337,9 +4420,9 @@ class TransactionController extends Controller
                         }
                     }
 
-//                    if (isset($transaction->transaction_id)) {
-//                        return $this->resultResponse("update", "Transaction", []);
-//                    }
+                    //                    if (isset($transaction->transaction_id)) {
+                    //                        return $this->resultResponse("update", "Transaction", []);
+                    //                    }
                 }
 
                 break;
@@ -4359,7 +4442,7 @@ class TransactionController extends Controller
                 $changes = GenericMethod::getTransactionChanges($request_id, $request, $id);
 
                 if (isset($fields["autoDebit_group"])) {
-//                    GenericMethod::update_debit_attachment($request_id, $fields["autoDebit_group"], $id);
+                    //                    GenericMethod::update_debit_attachment($request_id, $fields["autoDebit_group"], $id);
                     $transaction = Transaction::find($id);
                     $transaction->auto_debit()->delete();
 
@@ -4392,64 +4475,64 @@ class TransactionController extends Controller
                 if ($transaction == "Nothing Has Changed") {
                     return $this->resultResponse("nothing-has-changed", "Transaction", []);
                 }
-//                if (isset($transaction->transaction_id)) {
-//                    return $this->resultResponse("update", "Transaction", []);
-//                }
+                //                if (isset($transaction->transaction_id)) {
+                //                    return $this->resultResponse("update", "Transaction", []);
+                //                }
                 break;
         }
 
-//        if (!empty($fields['purchase_order'])) {
-//            $currentTransaction->receivedReceipts()->each(function ($purchaseOrder) {
-//                $purchaseOrder->purchaseOrders()->forceDelete();
-//            });
-//            $currentTransaction->receivedReceipts()->forceDelete();
-//
-//            foreach ($fields['purchase_order'] as $rr) {
-//                foreach ($rr['rr_orders'] as $order) {
-//                    $rrTransactions = $currentTransaction->receivedReceipts()->create([
-//                        'rr_id' => $rr['rr_id'] ?? null,
-//                        'rr_number' => $rr['rr_number'] ?? null,
-//                        'item_code' => $order['item_code'] ?? null,
-//                        'item_name' => $order['item_name'] ?? null,
-//                        'price' => $order['price'] ?? 0,
-//                        'reference_no' => $order['reference_no'] ?? null,
-//                        'quantity' => $order['quantity_receive'] ?? 0,
-//                        'uom_code' => $order['uom_code'] ?? null,
-//                        'uom_name' => $order['uom_name'] ?? null,
-//                    ]);
-//
-//
-//                    foreach ($rr['purchase_orders'] as $purchaseOrder) {
-//                        $rrTransactions->purchaseOrders()->create([
-//                            'po_number' => $purchaseOrder['po_number'] ?? null,
-//                            'po_description' => $purchaseOrder['po_description'] ?? null,
-//                            'type_name' => $purchaseOrder['type_name'] ?? null,
-//                            'company_id' => $purchaseOrder['company']['id'] ?? null,
-//                            'company_code' => $purchaseOrder['company']['code'] ?? null,
-//                            'company_name' => $purchaseOrder['company']['name'] ?? null,
-//                            'business_unit_id' => $purchaseOrder['business_unit']['id'] ?? null,
-//                            'business_unit_code' => $purchaseOrder['business_unit']['code'] ?? null,
-//                            'business_unit_name' => $purchaseOrder['business_unit']['name'] ?? null,
-//                            'department_id' => $purchaseOrder['department']['id'] ?? null,
-//                            'department_code' => $purchaseOrder['department']['code'] ?? null,
-//                            'department_name' => $purchaseOrder['department']['name'] ?? null,
-//                            'unit_id' => $purchaseOrder['unit']['id'] ?? null,
-//                            'unit_code' => $purchaseOrder['unit']['code'] ?? null,
-//                            'unit_name' => $purchaseOrder['unit']['name'] ?? null,
-//                            'sub_unit_id' => $purchaseOrder['sub_unit']['id'] ?? null,
-//                            'sub_unit_code' => $purchaseOrder['sub_unit']['code'] ?? null,
-//                            'sub_unit_name' => $purchaseOrder['sub_unit']['name'] ?? null,
-//                            'location_id' => $purchaseOrder['location']['id'] ?? null,
-//                            'location_code' => $purchaseOrder['location']['code'] ?? null,
-//                            'location_name' => $purchaseOrder['location']['name'] ?? null,
-//                            'account_title_id' => $purchaseOrder['account_title']['id'] ?? null,
-//                            'account_title_code' => $purchaseOrder['account_title']['code'] ?? null,
-//                            'account_title_name' => $purchaseOrder['account_title']['name'] ?? null,
-//                        ]);
-//                    }
-//                }
-//            }
-//        }
+        //        if (!empty($fields['purchase_order'])) {
+        //            $currentTransaction->receivedReceipts()->each(function ($purchaseOrder) {
+        //                $purchaseOrder->purchaseOrders()->forceDelete();
+        //            });
+        //            $currentTransaction->receivedReceipts()->forceDelete();
+        //
+        //            foreach ($fields['purchase_order'] as $rr) {
+        //                foreach ($rr['rr_orders'] as $order) {
+        //                    $rrTransactions = $currentTransaction->receivedReceipts()->create([
+        //                        'rr_id' => $rr['rr_id'] ?? null,
+        //                        'rr_number' => $rr['rr_number'] ?? null,
+        //                        'item_code' => $order['item_code'] ?? null,
+        //                        'item_name' => $order['item_name'] ?? null,
+        //                        'price' => $order['price'] ?? 0,
+        //                        'reference_no' => $order['reference_no'] ?? null,
+        //                        'quantity' => $order['quantity_receive'] ?? 0,
+        //                        'uom_code' => $order['uom_code'] ?? null,
+        //                        'uom_name' => $order['uom_name'] ?? null,
+        //                    ]);
+        //
+        //
+        //                    foreach ($rr['purchase_orders'] as $purchaseOrder) {
+        //                        $rrTransactions->purchaseOrders()->create([
+        //                            'po_number' => $purchaseOrder['po_number'] ?? null,
+        //                            'po_description' => $purchaseOrder['po_description'] ?? null,
+        //                            'type_name' => $purchaseOrder['type_name'] ?? null,
+        //                            'company_id' => $purchaseOrder['company']['id'] ?? null,
+        //                            'company_code' => $purchaseOrder['company']['code'] ?? null,
+        //                            'company_name' => $purchaseOrder['company']['name'] ?? null,
+        //                            'business_unit_id' => $purchaseOrder['business_unit']['id'] ?? null,
+        //                            'business_unit_code' => $purchaseOrder['business_unit']['code'] ?? null,
+        //                            'business_unit_name' => $purchaseOrder['business_unit']['name'] ?? null,
+        //                            'department_id' => $purchaseOrder['department']['id'] ?? null,
+        //                            'department_code' => $purchaseOrder['department']['code'] ?? null,
+        //                            'department_name' => $purchaseOrder['department']['name'] ?? null,
+        //                            'unit_id' => $purchaseOrder['unit']['id'] ?? null,
+        //                            'unit_code' => $purchaseOrder['unit']['code'] ?? null,
+        //                            'unit_name' => $purchaseOrder['unit']['name'] ?? null,
+        //                            'sub_unit_id' => $purchaseOrder['sub_unit']['id'] ?? null,
+        //                            'sub_unit_code' => $purchaseOrder['sub_unit']['code'] ?? null,
+        //                            'sub_unit_name' => $purchaseOrder['sub_unit']['name'] ?? null,
+        //                            'location_id' => $purchaseOrder['location']['id'] ?? null,
+        //                            'location_code' => $purchaseOrder['location']['code'] ?? null,
+        //                            'location_name' => $purchaseOrder['location']['name'] ?? null,
+        //                            'account_title_id' => $purchaseOrder['account_title']['id'] ?? null,
+        //                            'account_title_code' => $purchaseOrder['account_title']['code'] ?? null,
+        //                            'account_title_name' => $purchaseOrder['account_title']['name'] ?? null,
+        //                        ]);
+        //                    }
+        //                }
+        //            }
+        //        }
 
         return $this->resultResponse("update", "Transaction", []);
         // return $this->resultResponse("not-exist", "Document number", []);
@@ -4481,13 +4564,13 @@ class TransactionController extends Controller
                 $errorMessage = GenericMethod::resultLaravelFormat("po_group.no", ["PO number already exist."]);
                 return $this->resultResponse("invalid", "", $errorMessage);
             } else {
-//                return $this->resultResponse("success-no-content", "", []);
+                //                return $this->resultResponse("success-no-content", "", []);
                 return (new MasterlistController())->projectYmir($request);
             }
         } else {
-            $requestIds = $po_batch->select('p_o_batches.po_no','p_o_batches.request_id')->leftJoin('transactions', 'p_o_batches.request_id', '=', 'transactions.request_id')
+            $requestIds = $po_batch->select('p_o_batches.po_no', 'p_o_batches.request_id')->leftJoin('transactions', 'p_o_batches.request_id', '=', 'transactions.request_id')
                 ->where('transactions.state', '!=', 'void')
-//                ->where('transactions.company_id', $company_id)
+                //                ->where('transactions.company_id', $company_id)
                 ->where(function ($query) use ($company_id, $business_unit_id) {
                     $query->where('transactions.company_id', $company_id)
                         ->orWhere('transactions.business_unit_id', $business_unit_id);
@@ -4507,7 +4590,7 @@ class TransactionController extends Controller
                     $query->where('deleted_at', '=', '2024-08-28 00:00:00');
                 })
                 ->where('state', '!=', 'void')
-//                ->where('company_id', $company_id)
+                //                ->where('company_id', $company_id)
                 ->select(['document_amount', 'referrence_amount'])
                 ->get()
                 ->reduce(function ($carry, $item) {
@@ -4516,7 +4599,7 @@ class TransactionController extends Controller
                     return $carry;
                 }, ['document_amount_sum' => 0, 'referrence_amount_sum' => 0]);
             $totalDeduction = $sums['document_amount_sum'] + $sums['referrence_amount_sum'];
-//            $po_total_amount = POBatch::whereIn('request_id', $requestIds)->pluck('po_total_amount')->collect()->unique()->max();
+            //            $po_total_amount = POBatch::whereIn('request_id', $requestIds)->pluck('po_total_amount')->collect()->unique()->max();
             $po_total_amount = $po_no->pluck('po_total_amount')->unique()->max();
             $transform_po = $po_no->transform(function ($item, $key) {
                 return [
@@ -4566,11 +4649,11 @@ class TransactionController extends Controller
         $fields = $request->validated();
         $po_details = DB::table("transactions")
             ->leftJoin("p_o_batches", "transactions.request_id", "=", "p_o_batches.request_id")
-//            ->where("transactions.company_id", $fields["company_id"])
-                ->where(function ($query) use ($fields) {
-                    $query->where("transactions.company_id", $fields["business_unit_id"])
-                        ->orWhere("transactions.bussiness_unit_id", $fields["business_unit_id"]);
-                })
+            //            ->where("transactions.company_id", $fields["company_id"])
+            ->where(function ($query) use ($fields) {
+                $query->where("transactions.company_id", $fields["business_unit_id"])
+                    ->orWhere("transactions.bussiness_unit_id", $fields["business_unit_id"]);
+            })
             ->where("p_o_batches.po_no", $fields["po_no"])
             ->where("transactions.state", "!=", "void")
             ->when(isset($transaction_id), function ($query) use ($transaction_id) {
@@ -4625,7 +4708,7 @@ class TransactionController extends Controller
     {
         $po_details = DB::connection('mysqlSecondConnection')->table('p_o_batches')
             ->rightJoin('transactions', 'p_o_batches.request_id', '=', 'transactions.request_id')
-//            ->where('transactions.company_id', $request->company_id)
+            //            ->where('transactions.company_id', $request->company_id)
             ->where(function ($query) use ($request) {
                 $query->where('transactions.company_id', $request->company_id)
                     ->orWhere('transactions.business_unit_id', $request->business_unit_id);
@@ -4634,7 +4717,7 @@ class TransactionController extends Controller
             ->where('transactions.state', '!=', 'void')
             ->get();
 
-//        $po_object = null;
+        //        $po_object = null;
 
         if (count($po_details) > 0) {
             if (strtoupper($request->payment_type) == 'FULL') {
@@ -4666,12 +4749,11 @@ class TransactionController extends Controller
             return $this->resultResponse('fetch', 'PO number', $po_object);
         }
 
-//        if (!$po_object) {
-//            $this->getPODetailsv1($request);
-//        }
+        //        if (!$po_object) {
+        //            $this->getPODetailsv1($request);
+        //        }
 
         return $this->resultResponse('success-no-content', '', []);
-
     }
 
     public function validateDocumentNo(Request $request)
@@ -4680,12 +4762,12 @@ class TransactionController extends Controller
 
         if (
             Transaction::where("document_no", $request["document_no"])
-                ->withTrashed()
-                ->when(isset($transaction_id), function ($query) use ($transaction_id) {
-                    $query->where("id", "<>", $transaction_id);
-                })
-                ->where("state", "!=", "void")
-                ->first()
+            ->withTrashed()
+            ->when(isset($transaction_id), function ($query) use ($transaction_id) {
+                $query->where("id", "<>", $transaction_id);
+            })
+            ->where("state", "!=", "void")
+            ->first()
         ) {
             $errorMessage = GenericMethod::resultLaravelFormat("document.no", ["Document number already exist."]);
             return $this->resultResponse("invalid", "", $errorMessage);
@@ -4702,13 +4784,13 @@ class TransactionController extends Controller
                 $query->where("company_id", $request["company_id"])
                     ->orWhere("business_unit_id", $request["business_unit_id"]);
             })
-                ->where("referrence_no", $request["reference_no"])
-                ->where("supplier_id", $request["supplier_id"])
-                ->where("state", "!=", "void")
-                ->when(isset($transaction_id), function ($query) use ($transaction_id) {
-                    $query->where("id", "<>", $transaction_id);
-                })
-                ->first()
+            ->where("referrence_no", $request["reference_no"])
+            ->where("supplier_id", $request["supplier_id"])
+            ->where("state", "!=", "void")
+            ->when(isset($transaction_id), function ($query) use ($transaction_id) {
+                $query->where("id", "<>", $transaction_id);
+            })
+            ->first()
         ) {
             $errorMessage = GenericMethod::resultLaravelFormat("document.reference.no", ["Reference number already exist."]);
             return $this->resultResponse("invalid", "", $errorMessage);
@@ -4737,15 +4819,16 @@ class TransactionController extends Controller
                     });
                 });
         })
-//            ->where("utilities_receipt_no", $request->utilities_receipt_no)
-//            ->where("supplier_id", $request->supplier_id)
-//            ->where("company_id", $request->company_id)
-//            ->where("state", "!=", "void")
+            //            ->where("utilities_receipt_no", $request->utilities_receipt_no)
+            //            ->where("supplier_id", $request->supplier_id)
+            //            ->where("company_id", $request->company_id)
+            //            ->where("state", "!=", "void")
             ->where([
                 "utilities_receipt_no" => $request->utilities_receipt_no,
                 "supplier_id" => $request->supplier_id,
                 "company_id" => $request->company_id,
-                "state" => "!=", "void"
+                "state" => "!=",
+                "void"
             ])
             ->when(isset($transaction_id), function ($query) use ($transaction_id) {
                 $query->where("id", "<>", $transaction_id);
@@ -4766,11 +4849,11 @@ class TransactionController extends Controller
         $transaction_id = $request->transaction_id;
         if (
             Transaction::where("pcf_name", $request["pcf_name"])
-                ->where("state", "!=", "void")
-                ->when(isset($transaction_id), function ($query) use ($transaction_id) {
-                    $query->where("transactions.id", "<>", $transaction_id);
-                })
-                ->exists()
+            ->where("state", "!=", "void")
+            ->when(isset($transaction_id), function ($query) use ($transaction_id) {
+                $query->where("transactions.id", "<>", $transaction_id);
+            })
+            ->exists()
         ) {
             $errorMessage = GenericMethod::resultLaravelFormat("pcf_batch.name", ["PCF name already exist."]);
             return $this->resultResponse("invalid", "", $errorMessage);
@@ -4811,7 +4894,6 @@ class TransactionController extends Controller
                     "is_not_editable" => false,
                 ]);
             }
-
         }
 
         if (!isset($transaction)) {
@@ -4850,7 +4932,8 @@ class TransactionController extends Controller
         return $this->resultResponse("not-found", "Requestor Logs", []);
     }
 
-    public function chequeIndex(Request $request) {
+    public function chequeIndex(Request $request)
+    {
         $request->validate([
             'cheque_from' => ['nullable', 'date_format:Y-m-d'],
             'cheque_to'   => ['nullable', 'date_format:Y-m-d', 'after_or_equal:cheque_from'],
@@ -4875,20 +4958,32 @@ class TransactionController extends Controller
         // at all). Not fixing these here — confirmed with the team to preserve
         // current behavior exactly. See flagged note if/when this gets revisited.
         $statusesExcludedFromFallback = [
-            "pending-cheque", "cheque-receive", "return-cheque", "hold-cheque",
-            "pending-audit", "audit-receive", "pending-executive", "executive-receive",
-            "pending-issue", "issue-receive", "return-issue", "hold-issue",
-            "pending-release", "release-receive", "cheque", "return",
+            "pending-cheque",
+            "cheque-receive",
+            "return-cheque",
+            "hold-cheque",
+            "pending-audit",
+            "audit-receive",
+            "pending-executive",
+            "executive-receive",
+            "pending-issue",
+            "issue-receive",
+            "return-issue",
+            "hold-issue",
+            "pending-release",
+            "release-receive",
+            "cheque",
+            "return",
         ];
 
         $transactions = Transaction::with([
-                "users:id,first_name,middle_name,last_name,department,position",
-                "supplier.supplier_type:id,type as name",
-                "account_titles",
-                "treasuryCheque",
-                "treasuryAccountTitle",
-                "cheques.assignedTreasury",
-            ])
+            "users:id,first_name,middle_name,last_name,department,position",
+            "supplier.supplier_type:id,type as name",
+            "account_titles",
+            "treasuryCheque",
+            "treasuryAccountTitle",
+            "cheques.assignedTreasury",
+        ])
             ->when($status == 'cheque', function ($query) {
                 $query->whereHas('cheques', function ($query) {
                     $query->where('status', 'cheque-cheque');
@@ -4972,14 +5067,38 @@ class TransactionController extends Controller
                 $query->where("status", preg_replace("/\s+/", "", $status));
             })
             ->select([
-                "id", "users_id", "supplier_id", "transaction_id", "category",
-                "tag_no", "document_id", "document_type", "payment_type", "receipt_type",
-                "voucher_no", "voucher_month", "remarks",
-                "company_id", "company", "department_id", "department", "location_id", "location",
-                "document_no", "document_amount", "principal", "interest", "gross_amount",
-                "referrence_no", "referrence_amount", "input_tax",
+                "id",
+                "users_id",
+                "supplier_id",
+                "transaction_id",
+                "category",
+                "tag_no",
+                "document_id",
+                "document_type",
+                "payment_type",
+                "receipt_type",
+                "voucher_no",
+                "voucher_month",
+                "remarks",
+                "company_id",
+                "company",
+                "department_id",
+                "department",
+                "location_id",
+                "location",
+                "document_no",
+                "document_amount",
+                "principal",
+                "interest",
+                "gross_amount",
+                "referrence_no",
+                "referrence_amount",
+                "input_tax",
                 "date_requested",
-                "status", "state", "is_confidential", "is_mc",
+                "status",
+                "state",
+                "is_confidential",
+                "is_mc",
             ])
 
             // Confidential Filter
@@ -5026,8 +5145,16 @@ class TransactionController extends Controller
                 $query->whereIn('id', $voucher_numbers);
             })
             ->whereLike([
-                "remarks", "payment_type", "voucher_no", "tag_no", "company",
-                "department", "location", "supplier", "document_no", "referrence_no",
+                "remarks",
+                "payment_type",
+                "voucher_no",
+                "tag_no",
+                "company",
+                "department",
+                "location",
+                "supplier",
+                "document_no",
+                "referrence_no",
             ], $search)
             ->latest("updated_at")
             ->paginate($rows);
@@ -5041,254 +5168,254 @@ class TransactionController extends Controller
         return $this->resultResponse("not-found", "Transaction", []);
     }
 
-//     public function chequeIndex(Request $request)
-//     {
-//         $status = $request->input("state", "request");
-//         $rows = $request->input("rows", 10);
-//         $search = $request->input("search");
-//         $suppliers = json_decode($request->input("suppliers")) ?? [];
-//         $document_ids = $this->getRequestData($request, "document_ids");
-//         $companies = $this->getRequestData($request, "companies");
-//         $is_confidential = $request->input('is_confidential');
-//         $is_mc = $request->input('is_mc');
-//         $voucher_numbers = $this->getRequestData($request, 'voucher_numbers');
+    //     public function chequeIndex(Request $request)
+    //     {
+    //         $status = $request->input("state", "request");
+    //         $rows = $request->input("rows", 10);
+    //         $search = $request->input("search");
+    //         $suppliers = json_decode($request->input("suppliers")) ?? [];
+    //         $document_ids = $this->getRequestData($request, "document_ids");
+    //         $companies = $this->getRequestData($request, "companies");
+    //         $is_confidential = $request->input('is_confidential');
+    //         $is_mc = $request->input('is_mc');
+    //         $voucher_numbers = $this->getRequestData($request, 'voucher_numbers');
 
-//         $cheque_from = isset($request["cheque_from"])
-//             ? Carbon::createFromFormat("Y-m-d", $request->input("cheque_from"))->format("Y-m-d")
-//             : null;
-//         $cheque_to = isset($request["cheque_to"])
-//             ? Carbon::createFromFormat("Y-m-d", $request->input("cheque_to"))->format("Y-m-d")
-//             : null;
+    //         $cheque_from = isset($request["cheque_from"])
+    //             ? Carbon::createFromFormat("Y-m-d", $request->input("cheque_from"))->format("Y-m-d")
+    //             : null;
+    //         $cheque_to = isset($request["cheque_to"])
+    //             ? Carbon::createFromFormat("Y-m-d", $request->input("cheque_to"))->format("Y-m-d")
+    //             : null;
 
-//         $transactions = Transaction
-//             ::with([
-//                 "users:id,first_name,middle_name,last_name,department,position",
-//                 "supplier.supplier_type:id,type as name",
-//                 "account_titles",
-//                 "treasuryCheque",
-//                 "treasuryAccountTitle",
-//                 "cheques.assignedTreasury"
-//             ])
-//             ->when($status == 'cheque', function ($query) {
-//                 return $query->whereHas('cheques', function ($query) {
-//                     $query->where('status', 'cheque-cheque')
-//                         ->latest('updated_at');
-//                 });
-//             })
-//             ->when($status == 'return', function ($query) {
-//                 return $query->whereHas('cheques', function ($query) {
-//                     $query->where('status', 'cheque-return')
-//                         ->latest('updated_at');
-//                 });
-//             })
+    //         $transactions = Transaction
+    //             ::with([
+    //                 "users:id,first_name,middle_name,last_name,department,position",
+    //                 "supplier.supplier_type:id,type as name",
+    //                 "account_titles",
+    //                 "treasuryCheque",
+    //                 "treasuryAccountTitle",
+    //                 "cheques.assignedTreasury"
+    //             ])
+    //             ->when($status == 'cheque', function ($query) {
+    //                 return $query->whereHas('cheques', function ($query) {
+    //                     $query->where('status', 'cheque-cheque')
+    //                         ->latest('updated_at');
+    //                 });
+    //             })
+    //             ->when($status == 'return', function ($query) {
+    //                 return $query->whereHas('cheques', function ($query) {
+    //                     $query->where('status', 'cheque-return')
+    //                         ->latest('updated_at');
+    //                 });
+    //             })
 
-//             // creation of cheque
-//             ->when($status == "pending-cheque", function ($query) use ($is_confidential) {
-//                 return $query->where(function ($query) use ($is_confidential) {
-//                     $query->where('status', 'inspect-inspect')
-//                         ->orWhere(function ($query) {
-//                             $query->where('status', 'transmit-transmit')
-//                                 ->where('document_id', '!=', 8);
-//                         });
-// //                        ->orWhere(function ($query) use ($is_confidential) {
-// //                            $query->when($is_confidential != 1, function ($query) {
-// //                                $query->where('status', 'approve-approve')
-// //                                    ->where('is_mc', 1);
-// //                            });
-// //                        });
-//                 })->where(function ($query) {
-//                     $query->where('assigned_id', auth()->user()->id)
-//                         ->orWhere('assigned_id', null);
-//                 });
-//             })
-//             ->when($status == "cheque-receive", function ($query) {
-//                 return $query->whereIn("status", ["cheque-receive", "cheque-unhold", "cheque-unreturn"])
-//                     ->where(function ($query) {
-//                         $query->where('assigned_id', auth()->user()->id)
-//                             ->orWhere('assigned_id', null);
-//                     });
-//             })
-//             ->when($status == "cheque-cheque", function ($query) {
-//                 return $query->whereIn("status", ["cheque-cheque", "cheque-unhold", "cheque-unreturn"])
-//                     ->where(function ($query) {
-//                         $query->where('assigned_id', auth()->user()->id)
-//                             ->orWhere('assigned_id', null);
-//                     });
-//             })
-//             ->when($status == "return-cheque", function ($query) {
-//                 return $query->whereIn("status", ["audit-return", "release-return", "issue-return", "file-return"]);
-//             })
-//             ->when($status == "hold-cheque", function ($query) {
-//                 return $query->where("status", "audit-hold");
-//             })
+    //             // creation of cheque
+    //             ->when($status == "pending-cheque", function ($query) use ($is_confidential) {
+    //                 return $query->where(function ($query) use ($is_confidential) {
+    //                     $query->where('status', 'inspect-inspect')
+    //                         ->orWhere(function ($query) {
+    //                             $query->where('status', 'transmit-transmit')
+    //                                 ->where('document_id', '!=', 8);
+    //                         });
+    // //                        ->orWhere(function ($query) use ($is_confidential) {
+    // //                            $query->when($is_confidential != 1, function ($query) {
+    // //                                $query->where('status', 'approve-approve')
+    // //                                    ->where('is_mc', 1);
+    // //                            });
+    // //                        });
+    //                 })->where(function ($query) {
+    //                     $query->where('assigned_id', auth()->user()->id)
+    //                         ->orWhere('assigned_id', null);
+    //                 });
+    //             })
+    //             ->when($status == "cheque-receive", function ($query) {
+    //                 return $query->whereIn("status", ["cheque-receive", "cheque-unhold", "cheque-unreturn"])
+    //                     ->where(function ($query) {
+    //                         $query->where('assigned_id', auth()->user()->id)
+    //                             ->orWhere('assigned_id', null);
+    //                     });
+    //             })
+    //             ->when($status == "cheque-cheque", function ($query) {
+    //                 return $query->whereIn("status", ["cheque-cheque", "cheque-unhold", "cheque-unreturn"])
+    //                     ->where(function ($query) {
+    //                         $query->where('assigned_id', auth()->user()->id)
+    //                             ->orWhere('assigned_id', null);
+    //                     });
+    //             })
+    //             ->when($status == "return-cheque", function ($query) {
+    //                 return $query->whereIn("status", ["audit-return", "release-return", "issue-return", "file-return"]);
+    //             })
+    //             ->when($status == "hold-cheque", function ($query) {
+    //                 return $query->where("status", "audit-hold");
+    //             })
 
-//             // auditing of cheque
-//             ->when($status == "pending-audit", function ($query) {
-//                 return $query->where("status", "cheque-cheque")->where("is_for_releasing", "!=", true);
-//             })
-//             ->when($status == "audit-receive", function ($query) {
-//                 return $query->whereIn("status", ["audit-receive", "audit-unhold", "audit-unreturn"]);
-//             })
+    //             // auditing of cheque
+    //             ->when($status == "pending-audit", function ($query) {
+    //                 return $query->where("status", "cheque-cheque")->where("is_for_releasing", "!=", true);
+    //             })
+    //             ->when($status == "audit-receive", function ($query) {
+    //                 return $query->whereIn("status", ["audit-receive", "audit-unhold", "audit-unreturn"]);
+    //             })
 
-//             // signing of cheque
-//             ->when($status == "pending-executive", function ($query) {
-//                 //                return $query->where("status", "cheque-cheque");
-//                 return $query->where("status", "audit-audit");
-//             })
-//             ->when($status == "executive-receive", function ($query) {
-//                 return $query->whereIn("status", ["executive-receive", "executive-unhold", "executive-unreturn"]);
-//             })
+    //             // signing of cheque
+    //             ->when($status == "pending-executive", function ($query) {
+    //                 //                return $query->where("status", "cheque-cheque");
+    //                 return $query->where("status", "audit-audit");
+    //             })
+    //             ->when($status == "executive-receive", function ($query) {
+    //                 return $query->whereIn("status", ["executive-receive", "executive-unhold", "executive-unreturn"]);
+    //             })
 
-//             // releasing of cheque (internal)
-//             ->when($status == "pending-issue", function ($query) {
-//                 return $query->where("status", "executive-executive");
-//             })
-//             ->when($status == "issue-receive", function ($query) {
-//                 return $query->whereIn("status", ["issue-receive", "issue-unhold", "issue-unreturn"]);
-//             })
-// //            ->when($status == "return-issue", function ($query) {
-// //                return $query->where("status", "release-return");
-// //            })
-//             ->when($status == "hold-issue", function ($query) {
-//                 return $query->where("status", "release-hold");
-//             })
+    //             // releasing of cheque (internal)
+    //             ->when($status == "pending-issue", function ($query) {
+    //                 return $query->where("status", "executive-executive");
+    //             })
+    //             ->when($status == "issue-receive", function ($query) {
+    //                 return $query->whereIn("status", ["issue-receive", "issue-unhold", "issue-unreturn"]);
+    //             })
+    // //            ->when($status == "return-issue", function ($query) {
+    // //                return $query->where("status", "release-return");
+    // //            })
+    //             ->when($status == "hold-issue", function ($query) {
+    //                 return $query->where("status", "release-hold");
+    //             })
 
-//             // releasing of cheque (external)
-//             ->when($status == "pending-release", function ($query) {
-//                 return $query->where("status", "issue-issue")->where("is_for_releasing", true);
-//             })
-//             ->when($status == "release-receive", function ($query) {
-//                 return $query->whereIn("status", ["release-receive", "release-unhold", "release-unreturn"]);
-//             })
-//             ->when(
-//                 !in_array($status, [
-//                     "pending-cheque",
-//                     "cheque-receive",
-//                     "return-cheque",
-//                     "hold-cheque",
-//                     "pending-audit",
-//                     "audit-receive",
-//                     "pending-executive",
-//                     "executive-receive",
-//                     "pending-issue",
-//                     "issue-receive",
-//                     "return-issue",
-//                     "hold-issue",
-//                     "pending-release",
-//                     "release-receive",
-//                     "cheque",
-//                     "return"
-//                 ]),
-//                 function ($query) use ($status) {
-//                     return $query->where("status", preg_replace("/\s+/", "", $status));
-//                 }
-//             )
-//             ->select([
-//                 "id",
-//                 "users_id",
-//                 "supplier_id",
-//                 "transaction_id",
-//                 "category",
+    //             // releasing of cheque (external)
+    //             ->when($status == "pending-release", function ($query) {
+    //                 return $query->where("status", "issue-issue")->where("is_for_releasing", true);
+    //             })
+    //             ->when($status == "release-receive", function ($query) {
+    //                 return $query->whereIn("status", ["release-receive", "release-unhold", "release-unreturn"]);
+    //             })
+    //             ->when(
+    //                 !in_array($status, [
+    //                     "pending-cheque",
+    //                     "cheque-receive",
+    //                     "return-cheque",
+    //                     "hold-cheque",
+    //                     "pending-audit",
+    //                     "audit-receive",
+    //                     "pending-executive",
+    //                     "executive-receive",
+    //                     "pending-issue",
+    //                     "issue-receive",
+    //                     "return-issue",
+    //                     "hold-issue",
+    //                     "pending-release",
+    //                     "release-receive",
+    //                     "cheque",
+    //                     "return"
+    //                 ]),
+    //                 function ($query) use ($status) {
+    //                     return $query->where("status", preg_replace("/\s+/", "", $status));
+    //                 }
+    //             )
+    //             ->select([
+    //                 "id",
+    //                 "users_id",
+    //                 "supplier_id",
+    //                 "transaction_id",
+    //                 "category",
 
-//                 "tag_no",
-//                 "document_id",
-//                 "document_type",
-//                 "payment_type",
-//                 "receipt_type",
-//                 "voucher_no",
-//                 "voucher_month",
-//                 "remarks",
+    //                 "tag_no",
+    //                 "document_id",
+    //                 "document_type",
+    //                 "payment_type",
+    //                 "receipt_type",
+    //                 "voucher_no",
+    //                 "voucher_month",
+    //                 "remarks",
 
-//                 "company_id",
-//                 "company",
-//                 "department_id",
-//                 "department",
-//                 "location_id",
-//                 "location",
+    //                 "company_id",
+    //                 "company",
+    //                 "department_id",
+    //                 "department",
+    //                 "location_id",
+    //                 "location",
 
-//                 "document_no",
-//                 "document_amount",
-//                 "principal",
-//                 "interest",
-//                 "gross_amount",
-//                 "referrence_no",
-//                 "referrence_amount",
-//                 "input_tax",
+    //                 "document_no",
+    //                 "document_amount",
+    //                 "principal",
+    //                 "interest",
+    //                 "gross_amount",
+    //                 "referrence_no",
+    //                 "referrence_amount",
+    //                 "input_tax",
 
-//                 "date_requested",
+    //                 "date_requested",
 
-//                 "status",
-//                 "state",
-//                 "is_confidential",
-//                 "is_mc"
-//             ])
+    //                 "status",
+    //                 "state",
+    //                 "is_confidential",
+    //                 "is_mc"
+    //             ])
 
-//             //Confidential Filter
-//             ->when($is_confidential == null, function ($query) {
-//                 $query->whereIn('is_confidential', [1, 0]);
-//             })
-//             ->when($is_confidential == 1, function ($query) {
-//                 $query->where('is_confidential', 1);
-//             })
+    //             //Confidential Filter
+    //             ->when($is_confidential == null, function ($query) {
+    //                 $query->whereIn('is_confidential', [1, 0]);
+    //             })
+    //             ->when($is_confidential == 1, function ($query) {
+    //                 $query->where('is_confidential', 1);
+    //             })
 
-//             //Managers Cheque Filter
-//             ->when($is_mc == null, function ($query) {
-//                 $query->whereIn('is_mc', [1, 0]);
-//             })
-//             ->when($is_mc == 1, function ($query) {
-//                 $query->whereIn('is_mc', [1]);
-//             })
+    //             //Managers Cheque Filter
+    //             ->when($is_mc == null, function ($query) {
+    //                 $query->whereIn('is_mc', [1, 0]);
+    //             })
+    //             ->when($is_mc == 1, function ($query) {
+    //                 $query->whereIn('is_mc', [1]);
+    //             })
 
-//             // Supplier Filter
-//             ->when(!empty($suppliers), function ($query) use ($suppliers) {
-//                 return $query->whereIn("supplier_id", $suppliers);
-//             })
+    //             // Supplier Filter
+    //             ->when(!empty($suppliers), function ($query) use ($suppliers) {
+    //                 return $query->whereIn("supplier_id", $suppliers);
+    //             })
 
-//             //Company Filter
-//             ->when(!empty($companies), function ($query) use ($companies) {
-//                 return $query->whereIn("company_id", $companies);
-//             })
+    //             //Company Filter
+    //             ->when(!empty($companies), function ($query) use ($companies) {
+    //                 return $query->whereIn("company_id", $companies);
+    //             })
 
-//             //Document Types Filter
-//             ->when(!empty($document_ids), function ($query) use ($document_ids) {
-//                 $query->whereIn("document_id", $document_ids);
-//             })
+    //             //Document Types Filter
+    //             ->when(!empty($document_ids), function ($query) use ($document_ids) {
+    //                 $query->whereIn("document_id", $document_ids);
+    //             })
 
-//             // Cheque Date Filter (Will deprecate)
-//             ->when($cheque_from && $cheque_to, function ($query) use ($cheque_from, $cheque_to) {
-//                 return $query->whereHas("cheques.cheques", function ($query) use ($cheque_from, $cheque_to) {
-//                     return $query->whereDate("cheque_date", ">=", $cheque_from)->whereDate("cheque_date", "<=", $cheque_to);
-//                 });
-//             })
+    //             // Cheque Date Filter (Will deprecate)
+    //             ->when($cheque_from && $cheque_to, function ($query) use ($cheque_from, $cheque_to) {
+    //                 return $query->whereHas("cheques.cheques", function ($query) use ($cheque_from, $cheque_to) {
+    //                     return $query->whereDate("cheque_date", ">=", $cheque_from)->whereDate("cheque_date", "<=", $cheque_to);
+    //                 });
+    //             })
 
-//             //Voucher Number
-//             ->when(!empty($voucher_numbers), function ($query) use ($voucher_numbers) {
-//                 return $query->whereIn('id', $voucher_numbers);
-//             })
-//             ->whereLike([
-//                 "remarks",
-//                 "payment_type",
-//                 "voucher_no",
-//                 "tag_no",
-//                 "company",
-//                 "department",
-//                 "location",
-//                 "supplier",
-//                 "document_no",
-//                 "referrence_no"
-//             ], $search)
-//             ->latest("updated_at")
-//             ->paginate((int)$rows);
+    //             //Voucher Number
+    //             ->when(!empty($voucher_numbers), function ($query) use ($voucher_numbers) {
+    //                 return $query->whereIn('id', $voucher_numbers);
+    //             })
+    //             ->whereLike([
+    //                 "remarks",
+    //                 "payment_type",
+    //                 "voucher_no",
+    //                 "tag_no",
+    //                 "company",
+    //                 "department",
+    //                 "location",
+    //                 "supplier",
+    //                 "document_no",
+    //                 "referrence_no"
+    //             ], $search)
+    //             ->latest("updated_at")
+    //             ->paginate((int)$rows);
 
-// //        ChequeIndex::collection($transactions);
-//         $this->chequeIndexFormatter($transactions);
+    // //        ChequeIndex::collection($transactions);
+    //         $this->chequeIndexFormatter($transactions);
 
-//         if (count($transactions)) {
-//             return $this->resultResponse("fetch", "Transaction", $transactions);
-//         }
+    //         if (count($transactions)) {
+    //             return $this->resultResponse("fetch", "Transaction", $transactions);
+    //         }
 
-//         return $this->resultResponse("not-found", "Transaction", []);
-//     }
+    //         return $this->resultResponse("not-found", "Transaction", []);
+    //     }
 
     private function chequeIndexFormatter($transactions)
     {
@@ -5297,11 +5424,11 @@ class TransactionController extends Controller
             $resource = new TransactionResource1($transaction);
             $rental = $resource->getRental();
 
-//            $cheques = $transaction->cheques->first()
-//                ? $transaction->cheques->first()->chequeViaTransaction
-//                    ? $transaction->cheques->first()->chequeViaTransaction
-//                    : $transaction->cheques
-//                : $transaction->cheques;
+            //            $cheques = $transaction->cheques->first()
+            //                ? $transaction->cheques->first()->chequeViaTransaction
+            //                    ? $transaction->cheques->first()->chequeViaTransaction
+            //                    : $transaction->cheques
+            //                : $transaction->cheques;
             $cheques = $transaction->treasuryCheque;
 
             $netAmount = $transaction->voucher->first()->account_title;
@@ -5540,49 +5667,49 @@ class TransactionController extends Controller
         $maxBatchNo = Treasury::max('batch_no');
         return $maxBatchNo ? $maxBatchNo + 1 : 1;
     }
-//    public function generateBatchNo()
-//    {
-//        $no = 1;
-//        do {
-//            $batch_no = $no;
-//            $no++;
-//        } while ($this->checkBatchNo($batch_no));
-//
-//        return $batch_no;
-//    }
+    //    public function generateBatchNo()
+    //    {
+    //        $no = 1;
+    //        do {
+    //            $batch_no = $no;
+    //            $no++;
+    //        } while ($this->checkBatchNo($batch_no));
+    //
+    //        return $batch_no;
+    //    }
     function checkBatchNo($batch_no)
     {
         return Treasury::where("batch_no", $batch_no)->exists();
     }
-//    public function getAvailableBankSeries($bank_id = null) {
-//        $year = date("Y");
-//
-//        $bank_series = BankSeries::where('bank_id', $bank_id)
-//            ->where('year', $year)
-//            ->select(['from', 'to'])
-//            ->first();
-//
-//        if (!$bank_series) {
-//            return null; // or handle this case as you need
-//        }
-//
-//        $start_bank_series = $bank_series->from;
-//        $end_bank_series = $bank_series->to;
-//
-//        for ($i = $start_bank_series; $i <= $end_bank_series; $i++) {
-//            if (!$this->checkBankSeries($bank_id, $i)) {
-//                return $i;
-//            }
-//        }
-//
-//        return null; // or handle this case as you need, when all bank series numbers are used
-//    }
-//
-//    function checkBankSeries($bank_id, $bank_series) {
-//        return Cheque::where('bank_id', $bank_id)
-//            ->where('cheque_no', $bank_series)
-//            ->exists();
-//    }
+    //    public function getAvailableBankSeries($bank_id = null) {
+    //        $year = date("Y");
+    //
+    //        $bank_series = BankSeries::where('bank_id', $bank_id)
+    //            ->where('year', $year)
+    //            ->select(['from', 'to'])
+    //            ->first();
+    //
+    //        if (!$bank_series) {
+    //            return null; // or handle this case as you need
+    //        }
+    //
+    //        $start_bank_series = $bank_series->from;
+    //        $end_bank_series = $bank_series->to;
+    //
+    //        for ($i = $start_bank_series; $i <= $end_bank_series; $i++) {
+    //            if (!$this->checkBankSeries($bank_id, $i)) {
+    //                return $i;
+    //            }
+    //        }
+    //
+    //        return null; // or handle this case as you need, when all bank series numbers are used
+    //    }
+    //
+    //    function checkBankSeries($bank_id, $bank_series) {
+    //        return Cheque::where('bank_id', $bank_id)
+    //            ->where('cheque_no', $bank_series)
+    //            ->exists();
+    //    }
     public function chequeRevert($id, $request = null)
     {
         $batchNo = Treasury::where("transaction_id", $id)
@@ -5662,14 +5789,22 @@ class TransactionController extends Controller
             ->with([
                 'bank' => function ($query) {
                     $query->with([
-                        'AccountTitleOne', 'AccountTitleTwo',
-                        'CompanyOne', 'CompanyTwo',
-                        'DepartmentOne', 'DepartmentTwo',
-                        'LocationOne', 'LocationTwo',
-                        'BusinessUnitOne', 'BusinessUnitTwo',
-                        'UnitOne', 'UnitTwo',
-                        'SubUnitOne', 'SubUnitTwo',
-                        'LocationOne', 'LocationTwo'
+                        'AccountTitleOne',
+                        'AccountTitleTwo',
+                        'CompanyOne',
+                        'CompanyTwo',
+                        'DepartmentOne',
+                        'DepartmentTwo',
+                        'LocationOne',
+                        'LocationTwo',
+                        'BusinessUnitOne',
+                        'BusinessUnitTwo',
+                        'UnitOne',
+                        'UnitTwo',
+                        'SubUnitOne',
+                        'SubUnitTwo',
+                        'LocationOne',
+                        'LocationTwo'
                     ]);
                 },
             ])
@@ -5786,9 +5921,13 @@ class TransactionController extends Controller
                     $query->whereNull('is_cleared')->whereNotNull('issue_id')
                         ->whereHas('transaction', function ($query) {
                             return $query->whereIn("status", [
-                                "release-release", "file-receive", "file-file",
-                                "discharge-receive", "discharge-discharge",
-                                "pass-receive", "pass-pass",
+                                "release-release",
+                                "file-receive",
+                                "file-file",
+                                "discharge-receive",
+                                "discharge-discharge",
+                                "pass-receive",
+                                "pass-pass",
                             ]);
                         });
                 });
@@ -5800,9 +5939,18 @@ class TransactionController extends Controller
             })
             ->when(
                 !in_array($status, [
-                    "pending-audit", "audit-receive", "pending-executive", "executive-receive",
-                    "issue-receive", "pending-issue", "return-issue", "hold-issue",
-                    "pending-release", "release-receive", "pending-clear", "clear-receive",
+                    "pending-audit",
+                    "audit-receive",
+                    "pending-executive",
+                    "executive-receive",
+                    "issue-receive",
+                    "pending-issue",
+                    "return-issue",
+                    "hold-issue",
+                    "pending-release",
+                    "release-receive",
+                    "pending-clear",
+                    "clear-receive",
                 ]),
                 function ($query) use ($status) {
                     $query
@@ -5861,9 +6009,16 @@ class TransactionController extends Controller
             // comparison that only "worked" because $status is always a non-empty,
             // non-"0" string. This is the explicit, equivalent version.
             ->when(!in_array($status, [
-                'pending-audit', 'audit-receive', 'audit-audit', 'pending-executive',
-                'executive-receive', 'executive-executive', 'pending-issue',
-                'issue-receive', 'issue-issue', 'pending-clear',
+                'pending-audit',
+                'audit-receive',
+                'audit-audit',
+                'pending-executive',
+                'executive-receive',
+                'executive-executive',
+                'pending-issue',
+                'issue-receive',
+                'issue-issue',
+                'pending-clear',
             ]), function ($query) use ($is_confidential) {
                 $query->when($is_confidential == 1, function ($query) {
                     $query->whereHas('transaction', function ($query) {
@@ -5910,10 +6065,18 @@ class TransactionController extends Controller
             ->keyBy('id');
 
         $rental = [
-            'stall a rental', 'stall b rental', 'stall c rental', 'stall d rental',
-            'cusa rental', 'dorm rental', 'additional rental', 'lounge rental',
-            'corporate special program - education', 'official store rental',
-            'unofficial store rental', 'rental',
+            'stall a rental',
+            'stall b rental',
+            'stall c rental',
+            'stall d rental',
+            'cusa rental',
+            'dorm rental',
+            'additional rental',
+            'lounge rental',
+            'corporate special program - education',
+            'official store rental',
+            'unofficial store rental',
+            'rental',
         ];
 
         $transformed = $pageItems->map(function ($item) use ($chequesByPair, $allTransactions, $rental) {
@@ -5964,29 +6127,35 @@ class TransactionController extends Controller
                                 'amount' => $item->amount,
                                 'remarks' => $item->remarks,
                                 'company' => [
-                                    'id' => $item->company_id, 
-                                    'code' => $item->company_code, 
-                                    'name' => $item->company_name],
+                                    'id' => $item->company_id,
+                                    'code' => $item->company_code,
+                                    'name' => $item->company_name
+                                ],
                                 'business_unit' => [
-                                    'id' => $item->business_unit_id, 
-                                    'code' => $item->business_unit_code, 
-                                    'name' => $item->business_unit_name],
+                                    'id' => $item->business_unit_id,
+                                    'code' => $item->business_unit_code,
+                                    'name' => $item->business_unit_name
+                                ],
                                 'department' => [
-                                    'id' => $item->department_id, 
-                                    'code' => $item->department_code, 
-                                    'name' => $item->department_name],
+                                    'id' => $item->department_id,
+                                    'code' => $item->department_code,
+                                    'name' => $item->department_name
+                                ],
                                 'unit' => [
-                                    'id' => $item->unit_id, 
-                                    'code' => $item->unit_code, 
-                                    'name' => $item->unit_name],
+                                    'id' => $item->unit_id,
+                                    'code' => $item->unit_code,
+                                    'name' => $item->unit_name
+                                ],
                                 'sub_unit' => [
-                                    'id' => $item->sub_unit_id, 
-                                    'code' => $item->sub_unit_code, 
-                                    'name' => $item->sub_unit_name],
+                                    'id' => $item->sub_unit_id,
+                                    'code' => $item->sub_unit_code,
+                                    'name' => $item->sub_unit_name
+                                ],
                                 'location' => [
-                                    'id' => $item->location_id, 
-                                    'code' => $item->location_code, 
-                                    'name' => $item->location_name],
+                                    'id' => $item->location_id,
+                                    'code' => $item->location_code,
+                                    'name' => $item->location_name
+                                ],
                                 'is_default' => $item->is_default,
                             ];
                         }),
@@ -5998,16 +6167,16 @@ class TransactionController extends Controller
             });
 
             $supplier = $transactionModels
-            ->map(function ($t) {
-                return $t->getRelation('supplier');
-            })
-            ->filter()
-            ->unique('supplier_id')
-            ->first();
+                ->map(function ($t) {
+                    return $t->getRelation('supplier');
+                })
+                ->filter()
+                ->unique('supplier_id')
+                ->first();
 
-        $supplier = $supplier
-            ? ["id" => $supplier["id"], "name" => $supplier["name"], "type" => $supplier["supplier_type"]["name"] ?? null]
-            : null;
+            $supplier = $supplier
+                ? ["id" => $supplier["id"], "name" => $supplier["name"], "type" => $supplier["supplier_type"]["name"] ?? null]
+                : null;
 
             $firstTransaction = $transactionModels->first();
             $distributed = $firstTransaction
@@ -6065,635 +6234,635 @@ class TransactionController extends Controller
         return $this->resultResponse("not-found", "Transaction", []);
     }
 
-//     public function chequeIndex1(Request $request) {
-//         $status = $request->input("state", "request");
-//         $rows = $request->input("rows", 10);
-//         $search = $request->input("search");
-//         $search = str_replace(',', '', $search);
-//         $tag_search = str_replace("tag#", "", $search);
-//         $suppliers = json_decode($request->input("suppliers")) ?? [];
-//         $companies = $this->getRequestData($request, "companies");
-//         $document_ids = $this->getRequestData($request, "document_ids");
-//         $cheque_from = isset($request["cheque_from"])
-//             ? Carbon::createFromFormat("Y-m-d", $request->input("cheque_from"))->format("Y-m-d")
-//             : null;
-//         $cheque_to = isset($request["cheque_to"])
-//             ? Carbon::createFromFormat("Y-m-d", $request->input("cheque_to"))->format("Y-m-d")
-//             : null;
-//         $is_confidential = $request->input("is_confidential", 0);
+    //     public function chequeIndex1(Request $request) {
+    //         $status = $request->input("state", "request");
+    //         $rows = $request->input("rows", 10);
+    //         $search = $request->input("search");
+    //         $search = str_replace(',', '', $search);
+    //         $tag_search = str_replace("tag#", "", $search);
+    //         $suppliers = json_decode($request->input("suppliers")) ?? [];
+    //         $companies = $this->getRequestData($request, "companies");
+    //         $document_ids = $this->getRequestData($request, "document_ids");
+    //         $cheque_from = isset($request["cheque_from"])
+    //             ? Carbon::createFromFormat("Y-m-d", $request->input("cheque_from"))->format("Y-m-d")
+    //             : null;
+    //         $cheque_to = isset($request["cheque_to"])
+    //             ? Carbon::createFromFormat("Y-m-d", $request->input("cheque_to"))->format("Y-m-d")
+    //             : null;
+    //         $is_confidential = $request->input("is_confidential", 0);
 
-//         $cheques = Cheque::query()->where(function ($query) use ($search) {
-//             $query->whereHas("transaction", function ($query) use ($search) {
-//                 $query->whereLike([
-//                     "remarks",
-//                     "voucher_no",
-//                     "tag_no",
-//                 ], $search);
-//             })
-//                 ->orWhere(function ($query) use ($search) {
-//                     $query->whereLike([
-//                         "bank_name",
-//                         "cheque_no",
-//                         "cheque_amount",
-//                     ], $search);
-//                 });
-//         });
-//         $cheques = $cheques->with([
-//             'bank' => function ($query) {
-//                 $query->with([
-//                     'AccountTitleOne',
-//                     'AccountTitleTwo',
-//                     'CompanyOne',
-//                     'CompanyTwo',
-//                     'DepartmentOne',
-//                     'DepartmentTwo',
-//                     'LocationOne',
-//                     'LocationTwo',
-//                     'BusinessUnitOne',
-//                     'BusinessUnitTwo',
-//                     'SubUnitOne',
-//                     'SubUnitTwo'
-//                 ]);
-//             }
-//         ])
-//             // auditing of cheque
-//             ->when($status == "pending-audit", function ($query) {
-//                 $query
-//                     ->whereHas("transaction", function ($query) {
-//                         return $query->whereIn("status", ["cheque-cheque", "audit-receive"])->where("is_for_releasing", "!=", true);
-//                     })
-//                     ->whereNull("is_received")
-//                     ->whereNull("is_returned")
-//                     ->whereNull("is_audited");
-//             })
-//             ->when($status == "audit-receive", function ($query) {
-//                 $query
-//                     ->whereHas("transaction", function ($query) {
-//                         return $query->whereIn("status", ["cheque-cheque", "audit-receive", "audit-unhold", "audit-unreturn"]);
-//                     })
-//                     ->where("is_received", true);
-//             })
-//             ->when($status == "audit-return", function ($query) {
-//                 $query->whereHas("transaction", function ($query) {
-//                     return $query->where("status", "audit-return");
-//                 });
-//             })
-//             ->when($status == 'return-audit', function ($query) {
-//                 $query->whereHas("transaction", function ($query) {
-//                     return $query->where("status", "executive-return");
-//                 });
-//             })
+    //         $cheques = Cheque::query()->where(function ($query) use ($search) {
+    //             $query->whereHas("transaction", function ($query) use ($search) {
+    //                 $query->whereLike([
+    //                     "remarks",
+    //                     "voucher_no",
+    //                     "tag_no",
+    //                 ], $search);
+    //             })
+    //                 ->orWhere(function ($query) use ($search) {
+    //                     $query->whereLike([
+    //                         "bank_name",
+    //                         "cheque_no",
+    //                         "cheque_amount",
+    //                     ], $search);
+    //                 });
+    //         });
+    //         $cheques = $cheques->with([
+    //             'bank' => function ($query) {
+    //                 $query->with([
+    //                     'AccountTitleOne',
+    //                     'AccountTitleTwo',
+    //                     'CompanyOne',
+    //                     'CompanyTwo',
+    //                     'DepartmentOne',
+    //                     'DepartmentTwo',
+    //                     'LocationOne',
+    //                     'LocationTwo',
+    //                     'BusinessUnitOne',
+    //                     'BusinessUnitTwo',
+    //                     'SubUnitOne',
+    //                     'SubUnitTwo'
+    //                 ]);
+    //             }
+    //         ])
+    //             // auditing of cheque
+    //             ->when($status == "pending-audit", function ($query) {
+    //                 $query
+    //                     ->whereHas("transaction", function ($query) {
+    //                         return $query->whereIn("status", ["cheque-cheque", "audit-receive"])->where("is_for_releasing", "!=", true);
+    //                     })
+    //                     ->whereNull("is_received")
+    //                     ->whereNull("is_returned")
+    //                     ->whereNull("is_audited");
+    //             })
+    //             ->when($status == "audit-receive", function ($query) {
+    //                 $query
+    //                     ->whereHas("transaction", function ($query) {
+    //                         return $query->whereIn("status", ["cheque-cheque", "audit-receive", "audit-unhold", "audit-unreturn"]);
+    //                     })
+    //                     ->where("is_received", true);
+    //             })
+    //             ->when($status == "audit-return", function ($query) {
+    //                 $query->whereHas("transaction", function ($query) {
+    //                     return $query->where("status", "audit-return");
+    //                 });
+    //             })
+    //             ->when($status == 'return-audit', function ($query) {
+    //                 $query->whereHas("transaction", function ($query) {
+    //                     return $query->where("status", "executive-return");
+    //                 });
+    //             })
 
-//             //executive
-//             ->when($status == "pending-executive", function ($query) {
-//                 $query
-//                     ->whereHas("transaction", function ($query) {
-//                         return $query->where("status", "audit-audit");
-//                     })
-//                     ->whereNull("is_received")
-//                     ->whereNull("is_returned")
-//                     ->whereNull("is_executived");
-//             })
-//             ->when($status == "executive-receive", function ($query) {
-//                 $query
-//                     ->whereHas("transaction", function ($query) {
-//                         return $query->whereIn("status", [
-//                             "audit-audit",
-//                             "executive-receive",
-//                             "executive-unhold",
-//                             "executive-unreturn",
-//                         ]);
-//                     })
-//                     ->where("is_received", true);
-//             })
+    //             //executive
+    //             ->when($status == "pending-executive", function ($query) {
+    //                 $query
+    //                     ->whereHas("transaction", function ($query) {
+    //                         return $query->where("status", "audit-audit");
+    //                     })
+    //                     ->whereNull("is_received")
+    //                     ->whereNull("is_returned")
+    //                     ->whereNull("is_executived");
+    //             })
+    //             ->when($status == "executive-receive", function ($query) {
+    //                 $query
+    //                     ->whereHas("transaction", function ($query) {
+    //                         return $query->whereIn("status", [
+    //                             "audit-audit",
+    //                             "executive-receive",
+    //                             "executive-unhold",
+    //                             "executive-unreturn",
+    //                         ]);
+    //                     })
+    //                     ->where("is_received", true);
+    //             })
 
-//             // releasing of cheque (internal)
-//             ->when($status == "pending-issue", function ($query) {
-//                 $query
-//                     ->whereHas("transaction", function ($query) {
-//                         return $query->where("status", "executive-executive")
-//                             ->where(function ($query) {
-//                                 $query->where('assigned_id', auth()->user()->id)
-//                                     ->orWhere('assigned_id', null);
-//                             });
-//                     })
-//                     ->whereNull("is_received")
-//                     ->whereNull("is_returned")
-//                     ->whereNull("is_issued");
-//             })
-//             ->when($status == "issue-receive", function ($query) {
-//                 $query
-//                     ->whereNull("issue_id")
-//                     ->whereNull('is_cancelled')
-//                     ->whereHas("transaction", function ($query) {
-//                         return $query->whereIn("status", [
-//                             "executive-executive",
-//                             "issue-receive",
-//                             "issue-unhold",
-//                             "issue-unreturn",
-//                         ])
-//                             ->where(function ($query) {
-//                                 $query->where('assigned_id', auth()->user()->id)
-//                                     ->orWhere('assigned_id', null);
-//                             });
-//                     })
-//                     ->where("is_received", true);
-//             })
-//             ->when($status == "return-issue", function ($query) {
-//                 $query->whereHas("transaction", function ($query) {
-//                     return $query->where("status", "release-return")
-//                         ->where(function ($query) {
-//                             $query->where('assigned_id', auth()->user()->id)
-//                                 ->orWhere('assigned_id', null);
-//                         });
-//                 });
-//             })
-//             ->when($status == "hold-issue", function ($query) {
-//                 $query->whereHas("transaction", function ($query) {
-//                     return $query->where("status", "release-hold")
-//                         ->where(function ($query) {
-//                             $query->where('assigned_id', auth()->user()->id)
-//                                 ->orWhere('assigned_id', null);
-//                         });
-//                 });
-//             })
+    //             // releasing of cheque (internal)
+    //             ->when($status == "pending-issue", function ($query) {
+    //                 $query
+    //                     ->whereHas("transaction", function ($query) {
+    //                         return $query->where("status", "executive-executive")
+    //                             ->where(function ($query) {
+    //                                 $query->where('assigned_id', auth()->user()->id)
+    //                                     ->orWhere('assigned_id', null);
+    //                             });
+    //                     })
+    //                     ->whereNull("is_received")
+    //                     ->whereNull("is_returned")
+    //                     ->whereNull("is_issued");
+    //             })
+    //             ->when($status == "issue-receive", function ($query) {
+    //                 $query
+    //                     ->whereNull("issue_id")
+    //                     ->whereNull('is_cancelled')
+    //                     ->whereHas("transaction", function ($query) {
+    //                         return $query->whereIn("status", [
+    //                             "executive-executive",
+    //                             "issue-receive",
+    //                             "issue-unhold",
+    //                             "issue-unreturn",
+    //                         ])
+    //                             ->where(function ($query) {
+    //                                 $query->where('assigned_id', auth()->user()->id)
+    //                                     ->orWhere('assigned_id', null);
+    //                             });
+    //                     })
+    //                     ->where("is_received", true);
+    //             })
+    //             ->when($status == "return-issue", function ($query) {
+    //                 $query->whereHas("transaction", function ($query) {
+    //                     return $query->where("status", "release-return")
+    //                         ->where(function ($query) {
+    //                             $query->where('assigned_id', auth()->user()->id)
+    //                                 ->orWhere('assigned_id', null);
+    //                         });
+    //                 });
+    //             })
+    //             ->when($status == "hold-issue", function ($query) {
+    //                 $query->whereHas("transaction", function ($query) {
+    //                     return $query->where("status", "release-hold")
+    //                         ->where(function ($query) {
+    //                             $query->where('assigned_id', auth()->user()->id)
+    //                                 ->orWhere('assigned_id', null);
+    //                         });
+    //                 });
+    //             })
 
-//             // releasing of cheque (external)
-//             ->when($status == "pending-release", function ($query) {
-//                 $query
-//                     ->whereHas("transaction", function ($query) {
-//                         return $query->whereIn("status", ["issue-issue", "release-receive"])
-//                             ->where("is_for_releasing", true);
-// //                            ->where('is_mc', 0);
-//                     })
-//                     ->whereNull("is_received");
-//             })
-//             ->when($status == "release-receive", function ($query) {
-//                 //                $query->whereHas('transaction', function ($query) {
-//                 //                    return $query->whereIn("status", ["release-receive", "release-unhold", "release-unreturn"]);
-//                 //                });
-//                 $query->whereNull("is_released")
-//                     ->whereHas("transaction", function ($query) {
-//                         return $query->whereIn("status", ["issue-issue", "release-receive", "release-unhold", "release-unreturn"]);
-//                     })
-//                     ->where("is_received", true)
-//                     ->where("is_uncollected", false);
-//             })
-//             ->when($status == "release-uncollected", function ($query) {
-//                 $query->whereNull("is_released")
-//                     ->whereHas("transaction", function ($query) {
-//                         return $query->whereIn("status", ["issue-issue", "release-receive", "release-unhold", "release-unreturn"]);
-//                     })
-//                     ->where("is_received", true)
-//                     ->where("is_uncollected", true);
-//             })
-//             ->when($status == "return-release", function ($query) {
-//                 $query
-//                     ->whereNull("issue_id")
-//                     ->whereHas("transaction", function ($query) {
-//                         return $query->where("status", "release-return");
-//                     });
-//             })
+    //             // releasing of cheque (external)
+    //             ->when($status == "pending-release", function ($query) {
+    //                 $query
+    //                     ->whereHas("transaction", function ($query) {
+    //                         return $query->whereIn("status", ["issue-issue", "release-receive"])
+    //                             ->where("is_for_releasing", true);
+    // //                            ->where('is_mc', 0);
+    //                     })
+    //                     ->whereNull("is_received");
+    //             })
+    //             ->when($status == "release-receive", function ($query) {
+    //                 //                $query->whereHas('transaction', function ($query) {
+    //                 //                    return $query->whereIn("status", ["release-receive", "release-unhold", "release-unreturn"]);
+    //                 //                });
+    //                 $query->whereNull("is_released")
+    //                     ->whereHas("transaction", function ($query) {
+    //                         return $query->whereIn("status", ["issue-issue", "release-receive", "release-unhold", "release-unreturn"]);
+    //                     })
+    //                     ->where("is_received", true)
+    //                     ->where("is_uncollected", false);
+    //             })
+    //             ->when($status == "release-uncollected", function ($query) {
+    //                 $query->whereNull("is_released")
+    //                     ->whereHas("transaction", function ($query) {
+    //                         return $query->whereIn("status", ["issue-issue", "release-receive", "release-unhold", "release-unreturn"]);
+    //                     })
+    //                     ->where("is_received", true)
+    //                     ->where("is_uncollected", true);
+    //             })
+    //             ->when($status == "return-release", function ($query) {
+    //                 $query
+    //                     ->whereNull("issue_id")
+    //                     ->whereHas("transaction", function ($query) {
+    //                         return $query->where("status", "release-return");
+    //                     });
+    //             })
 
-//             //approval of cancelled cheque
-//             ->when($status == "pending-abort", function ($query) {
-//                 $query->where([
-//                     'is_cancelled' => false
-//                 ]);
-//             })
-//             ->when($status == 'abort-abort', function ($query) {
-//                 $query->where([
-//                     'is_cancelled' => true
-//                 ]);
-//             })
+    //             //approval of cancelled cheque
+    //             ->when($status == "pending-abort", function ($query) {
+    //                 $query->where([
+    //                     'is_cancelled' => false
+    //                 ]);
+    //             })
+    //             ->when($status == 'abort-abort', function ($query) {
+    //                 $query->where([
+    //                     'is_cancelled' => true
+    //                 ]);
+    //             })
 
-//             //clearing of cheque
-//             ->when($status == "pending-clear", function ($query) {
-//                 return $query
-//                     ->where(function ($query) {
-//                         $query->whereNull('is_cleared')
-//                             ->whereNotNull('issue_id')
-//                             ->whereHas('transaction', function ($query) {
-//                                 return $query->whereIn("status", [
-//                                     "release-release",
-//                                     "file-receive",
-//                                     "file-file",
-//                                     "discharge-receive",
-//                                     "discharge-discharge",
-//                                     "pass-receive",
-//                                     "pass-pass"
-//                                 ]);
-//                             });
-//                     });
-// //                    ->orWhere(function ($query) {
-// //                        $query->whereHas('transaction', function ($query) {
-// //                            return $query->where('is_mc', true)
-// //                                ->whereIn('status', ['issue-issue']);
-// //                        });
-// //                    });
-//             })
-//             ->when($status == "clear-receive", function ($query) {
-//                 $query->whereHas("transaction", function ($query) {
-//                     return $query->whereIn("status", ["clear-receive", "clear-unhold", "clear-unreturn"]);
-//                 });
-//                 //                $query->whereNull('is_cleared')->whereNotNull('issue_id')->whereHas('transaction', function ($query) {
-//                 //                    return $query->whereIn('status', [
-//                 //                        "clear-receive",
-//                 //                        "clear-unhold",
-//                 //                        "clear-unreturn"
-//                 //                    ]);
-//                 //                });
-//             })
-//             ->when(
-//                 !in_array($status, [
-//                     "pending-audit",
-//                     "audit-receive",
-//                     "pending-executive",
-//                     "executive-receive",
-//                     "issue-receive",
-//                     "pending-issue",
-//                     "return-issue",
-//                     "hold-issue",
-//                     "pending-release",
-//                     "release-receive",
-//                     "pending-clear",
-//                     "clear-receive",
-//                 ]),
-//                 function ($query) use ($status) {
-//                     $query
-//                         ->when($status == "issue-issue", function ($query) {
-//                             return $query
-//                                 ->whereHas("transaction", function ($query) {
-// //                                    return $query->whereIn("status", ["issue-issue", "issue-receive", "executive-executive"]);
-//                                     return $query->where(function ($query) {
-//                                         $query->whereIn("status", ["issue-issue", "issue-receive", "executive-executive"]);
-//                                     });
-// //                                        ->orWhere(function ($query) {
-// //                                        $query->where("status", "release-release")->where("is_mc", 1);
-// //                                    });
-//                                 })
-//                                 ->where("is_issued", true)
-//                                 ->whereNull("is_received");
-//                         })
-//                         ->when($status == "audit-audit", function ($query) {
-//                             return $query
-//                                 ->whereHas("transaction", function ($query) {
-//                                     $query->whereIn("status", ["audit-audit", "cheque-cheque", "audit-receive"]);
-//                                 })
-//                                 ->where("is_audited", true)
-//                                 ->whereNull("is_received");
-//                         })
-//                         ->when($status == "release-release", function ($query) {
-//                             $query
-//                                 ->whereNotNull("is_released")
-//                                 ->whereHas("transaction", function ($query) {
-//                                     return $query->whereIn("status", ["release-release", "release-receive"]);
-// //                                        ->where('is_mc', 0);
-//                                 })
-//                                 ->where("is_released", true);
-//                         })
-//                         ->when($status == "clear-clear", function ($query) {
-//                             return $query->whereNotNull("is_cleared");
-//                         })
-//                         ->when(
-//                             $status == "executive-executive",
-//                             function ($query) {
-//                                 return $query
-//                                     ->whereHas("transaction", function ($query) {
-//                                         $query->whereIn("status", ["executive-executive", "executive-receive"]);
-//                                     })
-//                                     ->where("is_executived", true)
-//                                     ->whereNull("is_returned")
-//                                     ->whereNull("is_received");
-//                             }
-//                         )
-//                         ->when(in_array($status, ["audit-hold", "release-return", "hold-release"]), function ($query) use ($status) {
-//                             $query->whereHas("transaction", function ($query) use ($status) {
-//                                 return $query->where("status", preg_replace("/\s+/", "", $status));
-//                             });
-//                         });
-//                 }
-//             )
-//             ->select("bank_id", "bank_name", "cheque_no", DB::raw("MAX(updated_at) as latest_updated_at"))
-//             ->groupBy("bank_name", "cheque_no", "bank_id")
+    //             //clearing of cheque
+    //             ->when($status == "pending-clear", function ($query) {
+    //                 return $query
+    //                     ->where(function ($query) {
+    //                         $query->whereNull('is_cleared')
+    //                             ->whereNotNull('issue_id')
+    //                             ->whereHas('transaction', function ($query) {
+    //                                 return $query->whereIn("status", [
+    //                                     "release-release",
+    //                                     "file-receive",
+    //                                     "file-file",
+    //                                     "discharge-receive",
+    //                                     "discharge-discharge",
+    //                                     "pass-receive",
+    //                                     "pass-pass"
+    //                                 ]);
+    //                             });
+    //                     });
+    // //                    ->orWhere(function ($query) {
+    // //                        $query->whereHas('transaction', function ($query) {
+    // //                            return $query->where('is_mc', true)
+    // //                                ->whereIn('status', ['issue-issue']);
+    // //                        });
+    // //                    });
+    //             })
+    //             ->when($status == "clear-receive", function ($query) {
+    //                 $query->whereHas("transaction", function ($query) {
+    //                     return $query->whereIn("status", ["clear-receive", "clear-unhold", "clear-unreturn"]);
+    //                 });
+    //                 //                $query->whereNull('is_cleared')->whereNotNull('issue_id')->whereHas('transaction', function ($query) {
+    //                 //                    return $query->whereIn('status', [
+    //                 //                        "clear-receive",
+    //                 //                        "clear-unhold",
+    //                 //                        "clear-unreturn"
+    //                 //                    ]);
+    //                 //                });
+    //             })
+    //             ->when(
+    //                 !in_array($status, [
+    //                     "pending-audit",
+    //                     "audit-receive",
+    //                     "pending-executive",
+    //                     "executive-receive",
+    //                     "issue-receive",
+    //                     "pending-issue",
+    //                     "return-issue",
+    //                     "hold-issue",
+    //                     "pending-release",
+    //                     "release-receive",
+    //                     "pending-clear",
+    //                     "clear-receive",
+    //                 ]),
+    //                 function ($query) use ($status) {
+    //                     $query
+    //                         ->when($status == "issue-issue", function ($query) {
+    //                             return $query
+    //                                 ->whereHas("transaction", function ($query) {
+    // //                                    return $query->whereIn("status", ["issue-issue", "issue-receive", "executive-executive"]);
+    //                                     return $query->where(function ($query) {
+    //                                         $query->whereIn("status", ["issue-issue", "issue-receive", "executive-executive"]);
+    //                                     });
+    // //                                        ->orWhere(function ($query) {
+    // //                                        $query->where("status", "release-release")->where("is_mc", 1);
+    // //                                    });
+    //                                 })
+    //                                 ->where("is_issued", true)
+    //                                 ->whereNull("is_received");
+    //                         })
+    //                         ->when($status == "audit-audit", function ($query) {
+    //                             return $query
+    //                                 ->whereHas("transaction", function ($query) {
+    //                                     $query->whereIn("status", ["audit-audit", "cheque-cheque", "audit-receive"]);
+    //                                 })
+    //                                 ->where("is_audited", true)
+    //                                 ->whereNull("is_received");
+    //                         })
+    //                         ->when($status == "release-release", function ($query) {
+    //                             $query
+    //                                 ->whereNotNull("is_released")
+    //                                 ->whereHas("transaction", function ($query) {
+    //                                     return $query->whereIn("status", ["release-release", "release-receive"]);
+    // //                                        ->where('is_mc', 0);
+    //                                 })
+    //                                 ->where("is_released", true);
+    //                         })
+    //                         ->when($status == "clear-clear", function ($query) {
+    //                             return $query->whereNotNull("is_cleared");
+    //                         })
+    //                         ->when(
+    //                             $status == "executive-executive",
+    //                             function ($query) {
+    //                                 return $query
+    //                                     ->whereHas("transaction", function ($query) {
+    //                                         $query->whereIn("status", ["executive-executive", "executive-receive"]);
+    //                                     })
+    //                                     ->where("is_executived", true)
+    //                                     ->whereNull("is_returned")
+    //                                     ->whereNull("is_received");
+    //                             }
+    //                         )
+    //                         ->when(in_array($status, ["audit-hold", "release-return", "hold-release"]), function ($query) use ($status) {
+    //                             $query->whereHas("transaction", function ($query) use ($status) {
+    //                                 return $query->where("status", preg_replace("/\s+/", "", $status));
+    //                             });
+    //                         });
+    //                 }
+    //             )
+    //             ->select("bank_id", "bank_name", "cheque_no", DB::raw("MAX(updated_at) as latest_updated_at"))
+    //             ->groupBy("bank_name", "cheque_no", "bank_id")
 
-//             // Search
-// //            ->where(function ($query) use ($search) {
-// //                $query->whereHas("transaction", function ($query) use ($search) {
-// //                    $query->whereLike([
-// //                        "remarks",
-// //                        "voucher_no",
-// //                        "tag_no",
-// //                    ], $search);
-// //                })
-// //                    ->orWhere(function ($query) use ($search){
-// //                        $query->whereLike([
-// //                            "bank_name",
-// //                            "cheque_no"
-// //                        ], $search);
-// //                    });
-// //            })
-//             ->when(count($suppliers), function ($query) use ($suppliers) {
-//                 $query->whereHas("transaction", function ($query) use ($suppliers) {
-//                     return $query->whereIn("supplier_id", $suppliers);
-//                 });
-//             })
+    //             // Search
+    // //            ->where(function ($query) use ($search) {
+    // //                $query->whereHas("transaction", function ($query) use ($search) {
+    // //                    $query->whereLike([
+    // //                        "remarks",
+    // //                        "voucher_no",
+    // //                        "tag_no",
+    // //                    ], $search);
+    // //                })
+    // //                    ->orWhere(function ($query) use ($search){
+    // //                        $query->whereLike([
+    // //                            "bank_name",
+    // //                            "cheque_no"
+    // //                        ], $search);
+    // //                    });
+    // //            })
+    //             ->when(count($suppliers), function ($query) use ($suppliers) {
+    //                 $query->whereHas("transaction", function ($query) use ($suppliers) {
+    //                     return $query->whereIn("supplier_id", $suppliers);
+    //                 });
+    //             })
 
-//             //Document Types Filter
-//             ->when(count($document_ids), function ($query) use ($document_ids) {
-//                 $query->whereHas("transaction", function ($query) use ($document_ids) {
-//                     return $query->whereIn("document_id", $document_ids);
-//                 });
-//             })
+    //             //Document Types Filter
+    //             ->when(count($document_ids), function ($query) use ($document_ids) {
+    //                 $query->whereHas("transaction", function ($query) use ($document_ids) {
+    //                     return $query->whereIn("document_id", $document_ids);
+    //                 });
+    //             })
 
-//             //Organization Filter
-//             ->when(!empty($companies), function ($query) use ($companies) {
-//                 return $query->whereHas("transaction", function ($query) use ($companies) {
-//                     return $query->whereIn("company_id", $companies);
-//                 });
-//             })
+    //             //Organization Filter
+    //             ->when(!empty($companies), function ($query) use ($companies) {
+    //                 return $query->whereHas("transaction", function ($query) use ($companies) {
+    //                     return $query->whereIn("company_id", $companies);
+    //                 });
+    //             })
 
-//             //Confidential
-//             ->when($status != in_array($status, [
-//                     'pending-audit',
-//                     'audit-receive',
-//                     'audit-audit',
-//                     'pending-executive',
-//                     'executive-receive',
-//                     'executive-executive',
-//                     'pending-issue',
-//                     'issue-receive',
-//                     'issue-issue',
-//                     'pending-clear'
-//                 ]), function ($query) use ($is_confidential) {
-//                 $query->when($is_confidential == 1, function ($query) {
-//                     $query->whereHas('transaction', function ($query) {
-//                         $query->where('is_confidential', 1);
-//                     });
-//                 }, function ($query) {
-//                     $query->whereHas('transaction', function ($query) {
-//                         $query->where('is_confidential', 0);
-//                     });
-//                 });
-//             })
-//             ->orderBy("latest_updated_at", "desc")
-//             ->paginate((int)$rows);
+    //             //Confidential
+    //             ->when($status != in_array($status, [
+    //                     'pending-audit',
+    //                     'audit-receive',
+    //                     'audit-audit',
+    //                     'pending-executive',
+    //                     'executive-receive',
+    //                     'executive-executive',
+    //                     'pending-issue',
+    //                     'issue-receive',
+    //                     'issue-issue',
+    //                     'pending-clear'
+    //                 ]), function ($query) use ($is_confidential) {
+    //                 $query->when($is_confidential == 1, function ($query) {
+    //                     $query->whereHas('transaction', function ($query) {
+    //                         $query->where('is_confidential', 1);
+    //                     });
+    //                 }, function ($query) {
+    //                     $query->whereHas('transaction', function ($query) {
+    //                         $query->where('is_confidential', 0);
+    //                     });
+    //                 });
+    //             })
+    //             ->orderBy("latest_updated_at", "desc")
+    //             ->paginate((int)$rows);
 
-//         $cheques->transform(function ($item) {
-//             $ids = Cheque::where("bank_id", $item->bank_id)
-//                 ->where("cheque_no", $item->cheque_no)
-//                 ->pluck("transaction_id")
-//                 ->unique()
-//                 ->toArray();
+    //         $cheques->transform(function ($item) {
+    //             $ids = Cheque::where("bank_id", $item->bank_id)
+    //                 ->where("cheque_no", $item->cheque_no)
+    //                 ->pluck("transaction_id")
+    //                 ->unique()
+    //                 ->toArray();
 
-//             $cheque_details = Cheque::where("bank_id", $item->bank_id)
-//                 ->where("cheque_no", $item->cheque_no)
-//                 ->first();
+    //             $cheque_details = Cheque::where("bank_id", $item->bank_id)
+    //                 ->where("cheque_no", $item->cheque_no)
+    //                 ->first();
 
-//             $transaction = Transaction::whereIn("id", $ids)
-//                 ->with('account_titles')
-//                 ->get();
-//             $rental = [
-//                 'stall a rental',
-//                 'stall b rental',
-//                 'stall c rental',
-//                 'stall d rental',
-//                 'cusa rental',
-//                 'dorm rental',
-//                 'additional rental',
-//                 'lounge rental',
-//                 'corporate special program - education',
-//                 'official store rental',
-//                 'unofficial store rental',
-//                 'rental'
-//             ];
+    //             $transaction = Transaction::whereIn("id", $ids)
+    //                 ->with('account_titles')
+    //                 ->get();
+    //             $rental = [
+    //                 'stall a rental',
+    //                 'stall b rental',
+    //                 'stall c rental',
+    //                 'stall d rental',
+    //                 'cusa rental',
+    //                 'dorm rental',
+    //                 'additional rental',
+    //                 'lounge rental',
+    //                 'corporate special program - education',
+    //                 'official store rental',
+    //                 'unofficial store rental',
+    //                 'rental'
+    //             ];
 
-//             $transaction = $transaction->map(function ($item) use ($ids, $rental) {
-//                 return [
-//                     "id" => $item->id,
-//                     "tag_no" => $item->tag_no,
-//                     "transaction_no" => $item->transaction_id,
-//                     "input_tax" => $item->input_tax ?? 0,
-//                     "receipt_type" => $item->receipt_type ?? '---',
-//                     "payment_type" => $item->payment_type,
-//                     "document" => [
-//                         "id" => $item->document_id,
-//                         "name" => $item->document_type,
-//                     ],
-//                     "document_date" => $item->document_date ?? $item->date_requested,
-//                     "category" => $item->category ?? "---",
-//                     "document_no" => $item->document_no ?? '---',
-//                     "document_amount" =>
-//                         $item->document_id == 3
-//                             ? (in_array($item->category, $rental)
-//                             ? $item->gross_amount
-//                             : $item->principal + $item->interest)
-//                             : $item->document_amount,
-//                     "referrence_no" => $item->referrence_no,
-//                     "referrence_amount" => $item->referrence_amount,
-//                     "date_requested" => $item->date_requested,
-//                     "company" => [
-//                         "id" => $item->company_id,
-//                         "name" => $item->company,
-//                     ],
-//                     "business_unit" => [
-//                         "id" => $item->business_unit_id,
-//                         "name" => $item->business_unit,
-//                     ],
-//                     "department" => [
-//                         "id" => $item->department_id,
-//                         "name" => $item->department,
-//                     ],
-//                     "unit" => [
-//                         "id" => $item->unit_id,
-//                         "name" => $item->unit,
-//                     ],
-//                     "sub_unit" => [
-//                         "id" => $item->sub_unit_id,
-//                         "name" => $item->sub_unit,
-//                     ],
-//                     "location" => [
-//                         "id" => $item->location_id,
-//                         "name" => $item->location,
-//                     ],
-//                     "voucher" => [
-//                         "no" => $item->voucher_no,
-//                         "month" => $item->voucher_month,
-// //                        "account_titles" => $item->voucher->first()->account_title->map(function ($item) {
-//                         "account_titles" => $item->account_titles->map(function ($item) {
-//                             return [
-//                                 'id' => $item->id,
-//                                 'entry' => $item->entry,
-//                                 'account_title' => [
-//                                     'id' => $item->account_title_id,
-//                                     'code' => $item->account_title_code,
-//                                     'name' => $item->account_title_name,
-//                                 ],
-//                                 'amount' => $item->amount,
-//                                 'remarks' => $item->remarks,
-//                                 'company' => [
-//                                     'id' => $item->company_id,
-//                                     'code' => $item->company_code,
-//                                     'name' => $item->company_name,
-//                                 ],
-//                                 'business_unit' => [
-//                                     'id' => $item->business_unit_id,
-//                                     'code' => $item->business_unit_code,
-//                                     'name' => $item->business_unit_name,
-//                                 ],
-//                                 'department' => [
-//                                     'id' => $item->department_id,
-//                                     'code' => $item->department_code,
-//                                     'name' => $item->department_name,
-//                                 ],
-//                                 'unit' => [
-//                                     'id' => $item->unit_id,
-//                                     'code' => $item->unit_code,
-//                                     'name' => $item->unit_name,
-//                                 ],
-//                                 'sub_unit' => [
-//                                     'id' => $item->sub_unit_id,
-//                                     'code' => $item->sub_unit_code,
-//                                     'name' => $item->sub_unit_name,
-//                                 ],
-//                                 'location' => [
-//                                     'id' => $item->location_id,
-//                                     'code' => $item->location_code,
-//                                     'name' => $item->location_name,
-//                                 ],
-//                                 'is_default' => $item->is_default,
-//                             ];
-//                         }),
-//                     ],
-//                     "remarks" => $item->remarks,
-//                     "status" => $item->status,
-//                     "state" => $this->stateChange($item->state),
-//                 ];
-//             });
-//             $supplier = Transaction::whereIn("id", $ids)
-//                 ->with([
-//                     "supplier.supplier_type" => function ($query) {
-//                         return $query->select(["supplier_types.id", "supplier_types.type as name"]);
-//                     },
-//                 ])
-//                 ->get("supplier_id")
-//                 ->pluck("supplier")
-//                 ->flatten()
-//                 ->unique("supplier_id")
-//                 ->first();
+    //             $transaction = $transaction->map(function ($item) use ($ids, $rental) {
+    //                 return [
+    //                     "id" => $item->id,
+    //                     "tag_no" => $item->tag_no,
+    //                     "transaction_no" => $item->transaction_id,
+    //                     "input_tax" => $item->input_tax ?? 0,
+    //                     "receipt_type" => $item->receipt_type ?? '---',
+    //                     "payment_type" => $item->payment_type,
+    //                     "document" => [
+    //                         "id" => $item->document_id,
+    //                         "name" => $item->document_type,
+    //                     ],
+    //                     "document_date" => $item->document_date ?? $item->date_requested,
+    //                     "category" => $item->category ?? "---",
+    //                     "document_no" => $item->document_no ?? '---',
+    //                     "document_amount" =>
+    //                         $item->document_id == 3
+    //                             ? (in_array($item->category, $rental)
+    //                             ? $item->gross_amount
+    //                             : $item->principal + $item->interest)
+    //                             : $item->document_amount,
+    //                     "referrence_no" => $item->referrence_no,
+    //                     "referrence_amount" => $item->referrence_amount,
+    //                     "date_requested" => $item->date_requested,
+    //                     "company" => [
+    //                         "id" => $item->company_id,
+    //                         "name" => $item->company,
+    //                     ],
+    //                     "business_unit" => [
+    //                         "id" => $item->business_unit_id,
+    //                         "name" => $item->business_unit,
+    //                     ],
+    //                     "department" => [
+    //                         "id" => $item->department_id,
+    //                         "name" => $item->department,
+    //                     ],
+    //                     "unit" => [
+    //                         "id" => $item->unit_id,
+    //                         "name" => $item->unit,
+    //                     ],
+    //                     "sub_unit" => [
+    //                         "id" => $item->sub_unit_id,
+    //                         "name" => $item->sub_unit,
+    //                     ],
+    //                     "location" => [
+    //                         "id" => $item->location_id,
+    //                         "name" => $item->location,
+    //                     ],
+    //                     "voucher" => [
+    //                         "no" => $item->voucher_no,
+    //                         "month" => $item->voucher_month,
+    // //                        "account_titles" => $item->voucher->first()->account_title->map(function ($item) {
+    //                         "account_titles" => $item->account_titles->map(function ($item) {
+    //                             return [
+    //                                 'id' => $item->id,
+    //                                 'entry' => $item->entry,
+    //                                 'account_title' => [
+    //                                     'id' => $item->account_title_id,
+    //                                     'code' => $item->account_title_code,
+    //                                     'name' => $item->account_title_name,
+    //                                 ],
+    //                                 'amount' => $item->amount,
+    //                                 'remarks' => $item->remarks,
+    //                                 'company' => [
+    //                                     'id' => $item->company_id,
+    //                                     'code' => $item->company_code,
+    //                                     'name' => $item->company_name,
+    //                                 ],
+    //                                 'business_unit' => [
+    //                                     'id' => $item->business_unit_id,
+    //                                     'code' => $item->business_unit_code,
+    //                                     'name' => $item->business_unit_name,
+    //                                 ],
+    //                                 'department' => [
+    //                                     'id' => $item->department_id,
+    //                                     'code' => $item->department_code,
+    //                                     'name' => $item->department_name,
+    //                                 ],
+    //                                 'unit' => [
+    //                                     'id' => $item->unit_id,
+    //                                     'code' => $item->unit_code,
+    //                                     'name' => $item->unit_name,
+    //                                 ],
+    //                                 'sub_unit' => [
+    //                                     'id' => $item->sub_unit_id,
+    //                                     'code' => $item->sub_unit_code,
+    //                                     'name' => $item->sub_unit_name,
+    //                                 ],
+    //                                 'location' => [
+    //                                     'id' => $item->location_id,
+    //                                     'code' => $item->location_code,
+    //                                     'name' => $item->location_name,
+    //                                 ],
+    //                                 'is_default' => $item->is_default,
+    //                             ];
+    //                         }),
+    //                     ],
+    //                     "remarks" => $item->remarks,
+    //                     "status" => $item->status,
+    //                     "state" => $this->stateChange($item->state),
+    //                 ];
+    //             });
+    //             $supplier = Transaction::whereIn("id", $ids)
+    //                 ->with([
+    //                     "supplier.supplier_type" => function ($query) {
+    //                         return $query->select(["supplier_types.id", "supplier_types.type as name"]);
+    //                     },
+    //                 ])
+    //                 ->get("supplier_id")
+    //                 ->pluck("supplier")
+    //                 ->flatten()
+    //                 ->unique("supplier_id")
+    //                 ->first();
 
-//             $distributed = Transaction::whereIn("id", $ids)
-//                 ->select("distributed_id", "distributed_name")
-//                 ->distinct("distributed_id")
-//                 ->first();
+    //             $distributed = Transaction::whereIn("id", $ids)
+    //                 ->select("distributed_id", "distributed_name")
+    //                 ->distinct("distributed_id")
+    //                 ->first();
 
-//             $supplier = $supplier
-//                 ? [
-//                     "id" => $supplier["id"],
-//                     "name" => $supplier["name"],
-//                     "type" => $supplier["supplier_type"]["name"] ?? null,
-//                 ]
-//                 : null;
+    //             $supplier = $supplier
+    //                 ? [
+    //                     "id" => $supplier["id"],
+    //                     "name" => $supplier["name"],
+    //                     "type" => $supplier["supplier_type"]["name"] ?? null,
+    //                 ]
+    //                 : null;
 
-//             $distributed = $distributed
-//                 ? [
-//                     "id" => $distributed["distributed_id"],
-//                     "name" => $distributed["distributed_name"],
-//                 ]
-//                 : null;
+    //             $distributed = $distributed
+    //                 ? [
+    //                     "id" => $distributed["distributed_id"],
+    //                     "name" => $distributed["distributed_name"],
+    //                 ]
+    //                 : null;
 
 
-//             $treasury_account_titles = $this->getTreasuryAccountTitles($ids, $cheque_details);
+    //             $treasury_account_titles = $this->getTreasuryAccountTitles($ids, $cheque_details);
 
-//             $account_titles = $treasury_account_titles->map(function ($item) {
-//                 return [
-//                     "entry" => $item->entry,
-//                     "account_title" => [
-//                         "id" => $item->account_title_id,
-//                         "code" => $item->account_title_code,
-//                         "name" => $item->account_title_name,
-//                     ],
-//                     "amount" => $item->amount,
-//                     "remarks" => $item->remarks,
-//                     "company" => [
-//                         "id" => $item->company_id,
-//                         "code" => $item->company_code,
-//                         "name" => $item->company_name,
-//                     ],
-//                     "business_unit" => [
-//                         "id" => $item->business_unit_id,
-//                         "code" => $item->business_unit_code,
-//                         "name" => $item->business_unit_name,
-//                     ],
-//                     "department" => [
-//                         "id" => $item->department_id,
-//                         "code" => $item->department_code,
-//                         "name" => $item->department_name,
-//                     ],
-//                     "unit" => [
-//                         "id" => $item->unit_id,
-//                         "code" => $item->unit_code,
-//                         "name" => $item->unit_name,
-//                     ],
-//                     "sub_unit" => [
-//                         "id" => $item->sub_unit_id,
-//                         "code" => $item->sub_unit_code,
-//                         "name" => $item->sub_unit_name,
-//                     ],
-//                     "location" => [
-//                         "id" => $item->location_id,
-//                         "code" => $item->location_code,
-//                         "name" => $item->location_name,
-//                     ],
-//                     "is_default" => $item->is_default,
-//                 ];
-//             });
+    //             $account_titles = $treasury_account_titles->map(function ($item) {
+    //                 return [
+    //                     "entry" => $item->entry,
+    //                     "account_title" => [
+    //                         "id" => $item->account_title_id,
+    //                         "code" => $item->account_title_code,
+    //                         "name" => $item->account_title_name,
+    //                     ],
+    //                     "amount" => $item->amount,
+    //                     "remarks" => $item->remarks,
+    //                     "company" => [
+    //                         "id" => $item->company_id,
+    //                         "code" => $item->company_code,
+    //                         "name" => $item->company_name,
+    //                     ],
+    //                     "business_unit" => [
+    //                         "id" => $item->business_unit_id,
+    //                         "code" => $item->business_unit_code,
+    //                         "name" => $item->business_unit_name,
+    //                     ],
+    //                     "department" => [
+    //                         "id" => $item->department_id,
+    //                         "code" => $item->department_code,
+    //                         "name" => $item->department_name,
+    //                     ],
+    //                     "unit" => [
+    //                         "id" => $item->unit_id,
+    //                         "code" => $item->unit_code,
+    //                         "name" => $item->unit_name,
+    //                     ],
+    //                     "sub_unit" => [
+    //                         "id" => $item->sub_unit_id,
+    //                         "code" => $item->sub_unit_code,
+    //                         "name" => $item->sub_unit_name,
+    //                     ],
+    //                     "location" => [
+    //                         "id" => $item->location_id,
+    //                         "code" => $item->location_code,
+    //                         "name" => $item->location_name,
+    //                     ],
+    //                     "is_default" => $item->is_default,
+    //                 ];
+    //             });
 
-// //            $bank = $cheque_details->bank;
-// //            $bank_account_title_two = $bank->AccountTitleTwo;
-// //            $bank_company_one = $bank->CompanyOne;
-// //            $bank_company_two = $bank->CompanyTwo;
-// //            $bank_department_one = $bank->DepartmentOne;
-// //            $bank_department_two = $bank->DepartmentTwo;
-// //            $bank_location_one = $bank->LocationOne;
-// //            $bank_location_two = $bank->LocationTwo;
-// //            $bank_business_unit_one = $bank->BusinessUnitOne;
-// //            $bank_business_unit_two = $bank->BusinessUnitTwo;
-// //            $bank_sub_unit_one = $bank->SubUnitOne;
-// //            $bank_sub_unit_two = $bank->SubUnitTwo;
+    // //            $bank = $cheque_details->bank;
+    // //            $bank_account_title_two = $bank->AccountTitleTwo;
+    // //            $bank_company_one = $bank->CompanyOne;
+    // //            $bank_company_two = $bank->CompanyTwo;
+    // //            $bank_department_one = $bank->DepartmentOne;
+    // //            $bank_department_two = $bank->DepartmentTwo;
+    // //            $bank_location_one = $bank->LocationOne;
+    // //            $bank_location_two = $bank->LocationTwo;
+    // //            $bank_business_unit_one = $bank->BusinessUnitOne;
+    // //            $bank_business_unit_two = $bank->BusinessUnitTwo;
+    // //            $bank_sub_unit_one = $bank->SubUnitOne;
+    // //            $bank_sub_unit_two = $bank->SubUnitTwo;
 
-//             $cheques = [
-//                 "type" => $cheque_details->entry_type,
-//                 "bank" => $item->bank,
-//                 "no" => $cheque_details->cheque_no,
-//                 "date" => $cheque_details->cheque_date,
-//                 "amount" => $cheque_details->cheque_amount,
-//                 "date_cleared" => $cheque_details->date_cleared,
-//                 "date_issued" => $cheque_details->issue->created_at ?? null,
-//             ];
+    //             $cheques = [
+    //                 "type" => $cheque_details->entry_type,
+    //                 "bank" => $item->bank,
+    //                 "no" => $cheque_details->cheque_no,
+    //                 "date" => $cheque_details->cheque_date,
+    //                 "amount" => $cheque_details->cheque_amount,
+    //                 "date_cleared" => $cheque_details->date_cleared,
+    //                 "date_issued" => $cheque_details->issue->created_at ?? null,
+    //             ];
 
-//             return [
-//                 "type" => $cheque_details->entry_type,
-//                 "no" => $item->cheque_no,
-//                 "bank" => [
-//                     "id" => $item->bank_id,
-//                     "name" => $item->bank_name,
-//                 ],
-//                 "amount" => $cheque_details->cheque_amount,
-//                 "date" => $cheque_details->cheque_date,
-//                 "supplier" => (object)$supplier,
-//                 "accounts" => $account_titles,
-//                 "transactions" => $transaction,
-//                 "cheque" => $cheques,
-//                 "distributed" => $distributed,
-//             ];
-//         });
+    //             return [
+    //                 "type" => $cheque_details->entry_type,
+    //                 "no" => $item->cheque_no,
+    //                 "bank" => [
+    //                     "id" => $item->bank_id,
+    //                     "name" => $item->bank_name,
+    //                 ],
+    //                 "amount" => $cheque_details->cheque_amount,
+    //                 "date" => $cheque_details->cheque_date,
+    //                 "supplier" => (object)$supplier,
+    //                 "accounts" => $account_titles,
+    //                 "transactions" => $transaction,
+    //                 "cheque" => $cheques,
+    //                 "distributed" => $distributed,
+    //             ];
+    //         });
 
-//         if (count($cheques)) {
-//             return $this->resultResponse("fetch", "Transaction", $cheques);
-//         }
-//         return $this->resultResponse("not-found", "Transaction", []);
-//     }
+    //         if (count($cheques)) {
+    //             return $this->resultResponse("fetch", "Transaction", $cheques);
+    //         }
+    //         return $this->resultResponse("not-found", "Transaction", []);
+    //     }
 
     function getTreasuryAccountTitles($ids, $cheque_details)
     {
@@ -6709,18 +6878,18 @@ class TransactionController extends Controller
             ->pluck("treasuryAccountTitle")
             ->flatten();
 
-//        if (count($ids) <= 1) {
-//            $collection = $collection->unique('account_title_id')->filter(function ($item, $index) use ($cheque_details) {
-//                return $item->account_title_id == $cheque_details->bank->AccountTitleOne->id || $item->entry == 'Debit';
-//            });
-//
-//            if (count($collection) <= 1) {
-//                $collection = $collection->filter(function ($item, $index) use ($cheque_details) {
-//                    return $item->amount == $cheque_details->cheque_amount || $item->entry == 'Debit';
-//                });
-//            }
-//
-//        }
+        //        if (count($ids) <= 1) {
+        //            $collection = $collection->unique('account_title_id')->filter(function ($item, $index) use ($cheque_details) {
+        //                return $item->account_title_id == $cheque_details->bank->AccountTitleOne->id || $item->entry == 'Debit';
+        //            });
+        //
+        //            if (count($collection) <= 1) {
+        //                $collection = $collection->filter(function ($item, $index) use ($cheque_details) {
+        //                    return $item->amount == $cheque_details->cheque_amount || $item->entry == 'Debit';
+        //                });
+        //            }
+        //
+        //        }
 
         if (count($ids) <= 1) {
             $accountTitleOneId = optional(optional($cheque_details->bank)->AccountTitleOne)->id;
@@ -6765,7 +6934,7 @@ class TransactionController extends Controller
             Cheque::whereIn("treasury_id", $treasuryIds)->delete();
             VoucherAccountTitle::whereIn("treasury_id", $treasuryIds)->delete();
             Audit::whereIn("transaction_id", $transactionIds)->where('type', 'cheque')->delete();
-//            Treasury::whereIn("id", $treasuryIds)->delete();
+            //            Treasury::whereIn("id", $treasuryIds)->delete();
 
             $process == "cheque"
                 ?
@@ -6773,8 +6942,7 @@ class TransactionController extends Controller
                     "status" => "cheque-receive",
                     "state" => "receive",
                 ])
-                :
-                ($status[] = [
+                : ($status[] = [
                     "status" => "audit-return",
                     "state" => "return",
                 ]);
@@ -6798,28 +6966,28 @@ class TransactionController extends Controller
             1 => ["tag-return"], //Creation of Request
             2 => ["tag-return"], //Creation of Confidential Request
             3 => ["transmit-transmit"], //Auditing of Voucher
-//            4 => [], //Received Receipt Report
-//            5 => [], //Auditing of Cheque
-//            6 => [], //External Releasing of Cheque
+            //            4 => [], //Received Receipt Report
+            //            5 => [], //Auditing of Cheque
+            //            6 => [], //External Releasing of Cheque
             7 => ["transmit-transmit", "audit-return", "inspect-inspect", "release-return", "approve-approve", "issue-return", "file-return"], //Creation of Cheque
-//            8 => [], //Clearing of Cheque
-//            9 => [], //Creation of Debit Memo
-//            10 => [], //Reversal Request
-//            11 => ["discharge-discharge", "release-release"], //Filing of Voucher
+            //            8 => [], //Clearing of Cheque
+            //            9 => [], //Creation of Debit Memo
+            //            10 => [], //Reversal Request
+            //            11 => ["discharge-discharge", "release-release"], //Filing of Voucher
             11 => ["pass-pass", "discharge-discharge"], //Filing of Voucher
             12 => ["tag-tag", "extract-extract", "approve-return", "cheque-return", "inspect-return"], //Creation of Voucher
             13 => ["approve-approve"], //Transmittal of Confidential Document
             14 => ["release-release"], //Filing of Confidential Voucher
             15 => ['pending', 'voucher-return'], //Tagging of Confidential Document
-//            16 => [], //Releasing of Confidential Cheque
+            //            16 => [], //Releasing of Confidential Cheque
             17 => ["voucher-voucher"], //Approval of Voucher
-//            18 => [], //Approval of Confidential Voucher
+            //            18 => [], //Approval of Confidential Voucher
             19 => ["approve-approve"], //Transmittal of Document
             20 => ["pending", "voucher-return", "gas-return"], //Tagging of Document
-//            21 => [], //Creation of Counter Receipt
-//            22 => [], //Monitoring of Counter Receipt
-//            23 => [],  //Transmittal of Cheque
-//            24 => [], //Internal Releasing of Cheque
+            //            21 => [], //Creation of Counter Receipt
+            //            22 => [], //Monitoring of Counter Receipt
+            //            23 => [],  //Transmittal of Cheque
+            //            24 => [], //Internal Releasing of Cheque
             25 => ["tag-tag"], //Transmittal of Official Receipt
             26 => ["pass-pass"], //Filing of Official Receipt
             27 => ['gas-gas'], //Transmittal of GAS Voucher
@@ -6838,7 +7006,7 @@ class TransactionController extends Controller
                 $permissionName = Permission::where('id', $permission)->first()->name;
 
                 // Initialize all status counts to zero
-//                $result = array_fill_keys($status, 0);
+                //                $result = array_fill_keys($status, 0);
                 $result = [
                     'pending' => 0,
                     'return' => 0,
@@ -6887,22 +7055,22 @@ class TransactionController extends Controller
                 }
 
                 $counts = Transaction::select('status', DB::raw('count(*) as count'))
-//                    ->when($is_confidential == 1 , function ($query) use ($is_confidential) {
-//                        $query->where('is_confidential', 1);
-//                    }, function ($query) use ($is_confidential) {
-//                        $query->where('is_confidential', 0);
-//                    })
+                    //                    ->when($is_confidential == 1 , function ($query) use ($is_confidential) {
+                    //                        $query->where('is_confidential', 1);
+                    //                    }, function ($query) use ($is_confidential) {
+                    //                        $query->where('is_confidential', 0);
+                    //                    })
                     ->when($permissionName != in_array($permissionName, [
-                            'Approval of Voucher',
-                            'Creation of Cheque',
-                            'Tagging of Document',
-                            'Creation of Voucher',
-                            'Transmittal of Official Receipt',
-                            'Transmittal of GAS Voucher',
-                            'Filing of Official Receipt',
-                            'Application of Loan',
-                            'Transmittal for Filing of Voucher'
-                        ]), function ($query) use ($is_confidential, $is_mc) {
+                        'Approval of Voucher',
+                        'Creation of Cheque',
+                        'Tagging of Document',
+                        'Creation of Voucher',
+                        'Transmittal of Official Receipt',
+                        'Transmittal of GAS Voucher',
+                        'Filing of Official Receipt',
+                        'Application of Loan',
+                        'Transmittal for Filing of Voucher'
+                    ]), function ($query) use ($is_confidential, $is_mc) {
                         $query->when($is_confidential == 1, function ($query) use ($is_confidential, $is_mc) {
                             $query->where('is_confidential', 1);
                         }, function ($query) use ($is_confidential) {
@@ -6913,7 +7081,6 @@ class TransactionController extends Controller
                             }, function ($query) {
                                 $query->where('is_mc', 0);
                             });
-
                     })
                     ->when($user_id, function ($query) use ($user_id, $permissionName) {
                         $query->where(function ($query) use ($user_id, $permissionName) {
@@ -6955,10 +7122,10 @@ class TransactionController extends Controller
                             });
                     })
                     ->where(function ($query) use ($permissionName) {
-//                        $query->where('status', '<>', 'release-release')
+                        //                        $query->where('status', '<>', 'release-release')
                         $query->where('status', '<>', 'pass-pass')
                             ->orWhere(function ($query) use ($permissionName) {
-//                                $query->where('status', '=', 'release-release')
+                                //                                $query->where('status', '=', 'release-release')
                                 $query->where('status', '=', 'pass-pass')
                                     ->where('receipt_type', $permissionName == 'Filing of Voucher' ? '=' : '<>', 'Unofficial')
                                     ->orWhere('receipt_type', null)
@@ -7039,7 +7206,7 @@ class TransactionController extends Controller
                 $user_id = null;
 
                 // Initialize all status counts to zero
-//                $result = array_fill_keys($status, 0);
+                //                $result = array_fill_keys($status, 0);
                 $result = [
                     'pending' => 0,
                     'return' => 0,
@@ -7058,11 +7225,11 @@ class TransactionController extends Controller
                 // Count the total number of records for each status
                 foreach ($status as $stat) {
                     $counts = Cheque::select('bank_id', 'cheque_no')
-//                        ->when(isset($statusMap[$stat]), function ($query) use ($statusMap, $stat) {
-//                            $query->whereHas('transaction', function ($query) use ($statusMap, $stat) {
-//                                $query->whereIn('status', $statusMap[$stat]);
-//                            });
-//                        })
+                        //                        ->when(isset($statusMap[$stat]), function ($query) use ($statusMap, $stat) {
+                        //                            $query->whereHas('transaction', function ($query) use ($statusMap, $stat) {
+                        //                                $query->whereIn('status', $statusMap[$stat]);
+                        //                            });
+                        //                        })
 
                         ->when($stat != in_array($stat, ['cheque-cheque', 'audit-audit', 'executive-executive', 'release-release']), function ($query) use ($is_confidential, $is_mc) {
                             $query->when($is_confidential == 1, function ($query) {
@@ -7128,7 +7295,7 @@ class TransactionController extends Controller
 
                     // Only assign the count to the result if the status exists in the database
                     if ($counts > 0) {
-//                        $result[$stat] = $counts;
+                        //                        $result[$stat] = $counts;
 
                         switch ($stat) {
                             case 'audit-audit':
@@ -7159,7 +7326,8 @@ class TransactionController extends Controller
         return response()->json($response);
     }
 
-    public function statusJournalsCounter() {
+    public function statusJournalsCounter()
+    {
         $permissions = auth()->user()->permissions;
 
         $statusMap = [
@@ -7212,7 +7380,8 @@ class TransactionController extends Controller
         return response()->json($response);
     }
 
-    function journalCounter($table) {
+    function journalCounter($table)
+    {
         return DB::table($table)
             ->where([
                 'deleted_at' => null,
@@ -7250,8 +7419,8 @@ class TransactionController extends Controller
 
     public function officialTransactions(Request $request): \Illuminate\Http\Resources\Json\AnonymousResourceCollection
     {
-//        $transaction_from = date_format(date_create($request->input('transaction_from', Carbon::now()->format('Y-m-d'))), "Y-m-d");
-//        $transaction_to = date_format(date_create($request->input('transaction_to', Carbon::now()->format('Y-m-d'))), "Y-m-d");
+        //        $transaction_from = date_format(date_create($request->input('transaction_from', Carbon::now()->format('Y-m-d'))), "Y-m-d");
+        //        $transaction_to = date_format(date_create($request->input('transaction_to', Carbon::now()->format('Y-m-d'))), "Y-m-d");
 
         $dateToday = Carbon::now()->timezone("Asia/Manila");
         $transaction_from = $this->getTransactionDate($request, "transaction_from", $dateToday->startOfMonth()->format("Y-m-d"));
@@ -7281,8 +7450,8 @@ class TransactionController extends Controller
         $suppliers = $this->getRequestData($request, "suppliers");
         $document_ids = $this->getRequestData($request, "document_ids");
         $companies = $this->getRequestData($request, "companies");
-//        $transaction_from = Carbon::parse($this->getTransactionDate($request, "transaction_from", $dateToday->startOfMonth()->format("Y-m-d")))->startOfDay();
-//        $transaction_to = Carbon::parse($this->getTransactionDate($request, "transaction_to", $dateToday->endOfMonth()->format("Y-m-d")))->endOfDay();
+        //        $transaction_from = Carbon::parse($this->getTransactionDate($request, "transaction_from", $dateToday->startOfMonth()->format("Y-m-d")))->startOfDay();
+        //        $transaction_to = Carbon::parse($this->getTransactionDate($request, "transaction_to", $dateToday->endOfMonth()->format("Y-m-d")))->endOfDay();
         $transaction_from = Carbon::parse($this->getTransactionDate($request, "transaction_from", $dateToday->format("Y-m-d")))->startOfDay();
         $transaction_to = Carbon::parse($this->getTransactionDate($request, "transaction_to", $dateToday->format("Y-m-d")))->endOfDay();
         $my_approve = $request->input('my_approve', 0);
@@ -7296,8 +7465,7 @@ class TransactionController extends Controller
             'approve' => ['relation' => 'approveHistory', 'table' => 'approvers', 'user' => 'approver_id', 'role' => 'approver', 'status' => 'approve-approve'],
         ];
 
-        $transactions = Transaction::
-        leftJoin($statusMapping[$status]['table'], 'transactions.id', '=', $statusMapping[$status]['table'] . '.transaction_id')
+        $transactions = Transaction::leftJoin($statusMapping[$status]['table'], 'transactions.id', '=', $statusMapping[$status]['table'] . '.transaction_id')
             ->where($statusMapping[$status]['table'] . '.status', '=', $statusMapping[$status]['status'])
             ->orderBy($statusMapping[$status]['table'] . '.created_at', 'desc')
             ->with([
@@ -7383,16 +7551,16 @@ class TransactionController extends Controller
             ->when($status != 'approve', function ($query) use ($is_confidential) {
                 $query->where('is_confidential', $is_confidential);
             })
-//            ->when($is_mc == 1, function ($query) {
-//                $query->where('is_mc', 1);
-//            })
+            //            ->when($is_mc == 1, function ($query) {
+            //                $query->where('is_mc', 1);
+            //            })
             ->when(!empty($suppliers), function ($query) use ($suppliers) {
                 $query->whereIn("supplier_id", $suppliers);
             })
             ->when(!empty($companies), function ($query) use ($companies) {
                 $query->whereIn("company_id", $companies);
             })
-//            ->orderBy(DB::raw("(SELECT t.created_at FROM " . $statusMapping[$status]['table'] . " as t WHERE t.transaction_id = transactions.id ORDER BY t.created_at DESC LIMIT 1)"), 'desc')
+            //            ->orderBy(DB::raw("(SELECT t.created_at FROM " . $statusMapping[$status]['table'] . " as t WHERE t.transaction_id = transactions.id ORDER BY t.created_at DESC LIMIT 1)"), 'desc')
             ->paginate($rows);
 
         $transactions = $this->historyIndexFormatter($transactions);
@@ -7406,17 +7574,23 @@ class TransactionController extends Controller
     public function exportHistory(Request $request)
     {
         $dateToday = Carbon::now()->timezone("Asia/Manila");
-        $transaction_from = Carbon::parse($this->getTransactionDate($request, "transaction_from", $dateToday->format("Y-m-d")))->startOfDay();
-        $transaction_to = Carbon::parse($this->getTransactionDate($request, "transaction_to", $dateToday->format("Y-m-d")))->endOfDay();
+        $getExportDate = function ($value, $default) {
+            try {
+                return Carbon::createFromFormat('Y-m-d', $value ?: $default)->format('Y-m-d H:i:s');
+            } catch (\Throwable $exception) {
+                return $default . ' 00:00:00';
+            }
+        };
+        $transaction_from = Carbon::parse($getExportDate($request->input("transaction_from"), $dateToday->format("Y-m-d")))->startOfDay();
+        $transaction_to = Carbon::parse($getExportDate($request->input("transaction_to"), $dateToday->format("Y-m-d")))->endOfDay();
         $status = $request->status;
 
-        $transactions = Transaction::
-        leftJoin('taggings', 'transactions.id', '=', 'taggings.transaction_id')
+        $transactions = Transaction::leftJoin('taggings', 'transactions.id', '=', 'taggings.transaction_id')
             ->where('taggings.status', '=', 'tag-tag')
-//            ->whereBetween('taggings.created_at', [$transaction_from, $transaction_to])
-                ->where(function ($query) use ($transaction_from, $transaction_to) {
-                    $query->whereBetween('taggings.created_at', [$transaction_from, $transaction_to])
-                        ->orWhereBetween('transactions.document_date', [$transaction_from, $transaction_to]);
+            //            ->whereBetween('taggings.created_at', [$transaction_from, $transaction_to])
+            ->where(function ($query) use ($transaction_from, $transaction_to) {
+                $query->whereBetween('taggings.created_at', [$transaction_from, $transaction_to])
+                    ->orWhereBetween('transactions.document_date', [$transaction_from, $transaction_to]);
             })
             ->with([
                 'utilityLocation',
@@ -7446,7 +7620,7 @@ class TransactionController extends Controller
                 'transactions.category',
                 'transactions.receipt_type',
                 'transactions.state',
-//                'transactions.status',
+                //                'transactions.status',
                 'transactions.document_no',
                 'transactions.referrence_no',
                 'transactions.remarks',
@@ -7467,7 +7641,19 @@ class TransactionController extends Controller
             ])
             ->get();
 
-        return $transactions->transform(function ($item) use ($status) {
+        $formatExportDate = function ($date) {
+            if (!$date) {
+                return null;
+            }
+
+            try {
+                return Carbon::parse($date)->format('Y-m-d');
+            } catch (\Throwable $exception) {
+                return null;
+            }
+        };
+
+        return $transactions->transform(function ($item) use ($status, $formatExportDate) {
             $stateChange = (new TransactionResource($item))->stateChange('tag');
 
             return [
@@ -7484,8 +7670,10 @@ class TransactionController extends Controller
                     $stateChange => $this->getDateEveryStatus($item->$status, $item->status)
                 ],
                 'accnt_tag' => null,
-                'transaction_date' => Carbon::parse($item->document_date)->format('Y-m-d'),
-                'coverage_date' => $item->utilities_from ? Carbon::parse($item->utilities_from)->format('Y-m-d') . ' - ' . Carbon::parse($item->utilities_to)->format('Y-m-d') : null,
+                'transaction_date' => $formatExportDate($item->document_date),
+                'coverage_date' => $item->utilities_from
+                    ? $formatExportDate($item->utilities_from) . ' - ' . $formatExportDate($item->utilities_to)
+                    : null,
                 'coverage_location' => isset($item->utilities_location_id)
                     ? $item->utilityLocation->location
                     : null,
@@ -7629,7 +7817,6 @@ class TransactionController extends Controller
                 'distributed_name' => $transaction->distributed_name,
                 'transaction_type' => $transaction->transaction_type
             ];
-
         });
 
         return $transactions;
@@ -7746,11 +7933,11 @@ class TransactionController extends Controller
                     "category" => $item->category ?? "-",
                     "document_no" => $item->document_no,
                     "document_amount" =>
-                        $item->document_id == 3
-                            ? (in_array($item->category, $rental)
+                    $item->document_id == 3
+                        ? (in_array($item->category, $rental)
                             ? $item->gross_amount
                             : $item->principal + $item->interest)
-                            : $item->document_amount,
+                        : $item->document_amount,
                     "referrence_no" => $item->referrence_no,
                     "referrence_amount" => $item->referrence_amount,
                     "date_requested" => $item->date_requested,
@@ -7907,7 +8094,7 @@ class TransactionController extends Controller
 
     public function voucherNumberDropdown(Request $request)
     {
-//        return Transaction::vnumbers($request->input('status'))->get();
+        //        return Transaction::vnumbers($request->input('status'))->get();
 
         return Transaction::when($request->input('status') == 'approve-approve', function ($query) {
             $query->whereIn('status', ['approve-approve'])
@@ -7928,19 +8115,19 @@ class TransactionController extends Controller
             ])->get();
     }
 
-    public function cashOutflowReport(Request $request) {
+    public function cashOutflowReport(Request $request)
+    {
         $date = Carbon::parse($request->input('date'))->timezone("Asia/Manila")->day(15)->format('Y-m-d');
         $year = date('Y', strtotime($date));
         $month = date('m', strtotime($date));
 
-        $transactions = Transaction::
-        with([
-            'company_info:id,code',
-            'chequeHistory',
-            'treasuryCheque',
-            'company_info',
-            'cheques'
-        ])
+        $transactions = Transaction::with([
+                'company_info:id,code',
+                'chequeHistory',
+                'treasuryCheque',
+                'company_info',
+                'cheques'
+            ])
             ->whereHas('chequeHistory', function ($query) use ($year, $month) {
                 $query->whereMonth('created_at', $month)
                     ->whereYear('created_at', $year);
@@ -8006,8 +8193,7 @@ class TransactionController extends Controller
         $year = date('Y', strtotime($voucher_month));
         $month = date('m', strtotime($voucher_month));
 
-        $gjNumbers = GeneralJournal::
-        whereMonth('updated_at', $month)
+        $gjNumbers = GeneralJournal::whereMonth('updated_at', $month)
             ->whereYear('updated_at', $year)
             ->where([
                 'type' => 'Accruals',
@@ -8053,7 +8239,6 @@ class TransactionController extends Controller
                     }),
                 ];
             });
-
     }
 
     public function searchBankCheque(Request $request)
@@ -8133,11 +8318,11 @@ class TransactionController extends Controller
                     "category" => $item->category ?? "---",
                     "document_no" => $item->document_no ?? '---',
                     "document_amount" =>
-                        $item->document_id == 3
-                            ? (in_array($item->category, $rental)
+                    $item->document_id == 3
+                        ? (in_array($item->category, $rental)
                             ? $item->gross_amount
                             : $item->principal + $item->interest)
-                            : $item->document_amount,
+                        : $item->document_amount,
                     "referrence_no" => $item->referrence_no,
                     "referrence_amount" => $item->referrence_amount,
                     "date_requested" => $item->date_requested,
@@ -8156,7 +8341,7 @@ class TransactionController extends Controller
                     "voucher" => [
                         "no" => $item->voucher_no,
                         "month" => $item->voucher_month,
-//                        "account_titles" => $item->voucher->first()->account_title->map(function ($item) {
+                        //                        "account_titles" => $item->voucher->first()->account_title->map(function ($item) {
                         "account_titles" => $item->account_titles->map(function ($item) {
                             return [
                                 'id' => $item->id,
@@ -8276,18 +8461,18 @@ class TransactionController extends Controller
                 ];
             });
 
-//            $bank = $cheque_details->bank;
-//            $bank_account_title_two = $bank->AccountTitleTwo;
-//            $bank_company_one = $bank->CompanyOne;
-//            $bank_company_two = $bank->CompanyTwo;
-//            $bank_department_one = $bank->DepartmentOne;
-//            $bank_department_two = $bank->DepartmentTwo;
-//            $bank_location_one = $bank->LocationOne;
-//            $bank_location_two = $bank->LocationTwo;
-//            $bank_business_unit_one = $bank->BusinessUnitOne;
-//            $bank_business_unit_two = $bank->BusinessUnitTwo;
-//            $bank_sub_unit_one = $bank->SubUnitOne;
-//            $bank_sub_unit_two = $bank->SubUnitTwo;
+            //            $bank = $cheque_details->bank;
+            //            $bank_account_title_two = $bank->AccountTitleTwo;
+            //            $bank_company_one = $bank->CompanyOne;
+            //            $bank_company_two = $bank->CompanyTwo;
+            //            $bank_department_one = $bank->DepartmentOne;
+            //            $bank_department_two = $bank->DepartmentTwo;
+            //            $bank_location_one = $bank->LocationOne;
+            //            $bank_location_two = $bank->LocationTwo;
+            //            $bank_business_unit_one = $bank->BusinessUnitOne;
+            //            $bank_business_unit_two = $bank->BusinessUnitTwo;
+            //            $bank_sub_unit_one = $bank->SubUnitOne;
+            //            $bank_sub_unit_two = $bank->SubUnitTwo;
 
             $cheques = [
                 "type" => $cheque_details->entry_type,
@@ -8472,7 +8657,8 @@ class TransactionController extends Controller
         ];
     }
 
-    public function chequeExport(Request $request) {
+    public function chequeExport(Request $request)
+    {
         $voucherMonth = $request->input('voucher_month');
 
         return Excel::download(new ChequeExport($voucherMonth), 'cheques.xlsx');
