@@ -618,7 +618,7 @@ class TransactionFlow
                     static::createReceivedReceiptStatuses(
                         $transaction,
                         $receivedReceipts,
-                        $tag_no ?? null,
+                        null,
                         $voucher_month ?? null,
                         $voucher_no ?? null,
                         'VOUCHERED'
@@ -687,9 +687,9 @@ class TransactionFlow
                 static::createReceivedReceiptStatuses(
                     $transaction,
                     $receivedReceipts,
-                    $tag_no ?? null,
-                    $voucher_month ?? null,
-                    $voucher_no ?? null,
+                    null,
+                    null,
+                    null,
                     'VALIDATED'
                 );
 
@@ -2885,8 +2885,9 @@ class TransactionFlow
             try {
                 $queryParameters = [
                     'id_no' => auth()->user()->id_no,
-                    'tag_number' => $tagNo,
-                    'voucher_no' => $voucherNo,
+                    'tag_number' => strval($tagNo),
+                    'voucher_number' => $voucherNo,
+                    'type' => $rrNumber && stripos($rrNumber, 'JR') !== false ? 'JORR' : 'RR',
                 ];
 
                 // Only send the timestamp belonging to the current status.
@@ -2909,7 +2910,7 @@ class TransactionFlow
                     'Accept' => 'application/json',
                     'Content-Type' => 'application/json',
                 ])
-//                    ->withQueryParameters($queryParameters)
+
                     ->patch('http://10.10.13.6:8080/api/fisto_api/' . $rrId . '/status', $queryParameters);
 
                 Log::info(
@@ -2922,7 +2923,7 @@ class TransactionFlow
                     ]
                 );
 
-//                $response->throw();
+                $response->throw();
 
             } catch (\Illuminate\Http\Client\RequestException $e) {
                 Log::error(
