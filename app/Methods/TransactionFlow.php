@@ -2911,7 +2911,7 @@ class TransactionFlow
                     'Content-Type' => 'application/json',
                 ])
 
-                    ->patch('http://10.10.13.6:8080/api/fisto_api/' . $rrId . '/status', $queryParameters);
+                    ->patch(config('app.ymir_url') . 'fisto_api/' . $rrId . '/status', $queryParameters);
 
                 Log::info(
                     'Updated RR status in Ymir API',
