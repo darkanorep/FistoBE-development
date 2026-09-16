@@ -17,6 +17,7 @@ class CreateBankSeries extends Migration
             $table->id();
             $table->foreignId('bank_id')->constrained('banks');
             $table->string('category')->nullable();
+            $table->string('document_name')->nullable();
             $table->integer('from')->nullable();
             $table->integer('to')->nullable();
             $table->softDeletes();

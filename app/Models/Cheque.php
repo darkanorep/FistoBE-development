@@ -35,6 +35,7 @@ class Cheque extends Model
         "reason_id",
         "reason",
         "is_cancelled",
+        "created_at"
     ];
 
 //    public function setChequeDateAttribute($value)

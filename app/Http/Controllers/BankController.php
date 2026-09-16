@@ -14,12 +14,6 @@ class BankController extends Controller
 {
     public function index(Request $request)
     {
-//    $status =  $request['status'];
-//    $rows =  (empty($request['rows']))?10:(int)$request['rows'];
-//    $search =  $request['search'];
-//    $paginate = (isset($request['paginate']))? $request['paginate']:$paginate = 1;
-//    $account_title_id = (isset($request['account_title_id']))? $request['account_title_id']:NULL;
-
         $status = $request->status;
         $rows = (int)$request->input('rows', 10);
         $search = $request->search;
@@ -27,8 +21,6 @@ class BankController extends Controller
         $account_title_id = $request->input('account_title_id', NULL);
 
         $banks = Bank::withTrashed()
-//    ->with('AccountTitleOne')
-//    ->with('AccountTitleTwo')
             ->with([
                 'AccountTitleOne',
                 'AccountTitleTwo',
@@ -59,9 +51,6 @@ class BankController extends Controller
 
         if ($paginate == 0) {
             $banks = $banks->get();
-                //  ->without('AccountTitleOne')
-                //  ->without('AccountTitleTwo')
-//                ->get(['account_title_1', 'account_title_2', 'id', 'name', 'branch', 'code', 'account_no', 'location', 'account_title_1', 'account_title_2', 'company_id_1', 'company_id_2', 'business_unit_id_1', 'business_unit_id_2', 'department_id_1', 'department_id_2', 'sub_unit_id_1', 'sub_unit_id_2', 'location_id_1', 'location_id_2']);
             $banks = ["banks" => $banks];
         } else {
             $banks = $banks->paginate($rows);
@@ -136,12 +125,7 @@ class BankController extends Controller
 
     public function change_status($id)
     {
-
         return $this->changeStatus($id, Bank::class, 'Bank');
-
-//    $status = $request['status'];
-//    $model = new Bank();
-//    return $this->change_masterlist_status($status,$model,$id,'Bank');
     }
 
     public function import(Request $request)
@@ -191,15 +175,6 @@ class BankController extends Controller
                         "description" => $code . " is already registered."
                     ];
             }
-            // if (!empty($branch)) {
-            //   $duplicateBranch = $this->getDuplicateInputs($bank_masterlist,$branch,'branch');
-            //   if ($duplicateBranch->count() > 0)
-            //     $errorBag[] = (object) [
-            //       "error_type" => "existing",
-            //       "line" => $index,
-            //       "description" => $branch. " is already registered."
-            //     ];
-            // }
             if (!empty($account_no)) {
                 $duplicateAccountNo = $this->getDuplicateInputs($bank_masterlist, $account_no, 'account_no');
                 if ($duplicateAccountNo->count() > 0)
@@ -255,27 +230,6 @@ class BankController extends Controller
                 ];
             }
         }
-
-        // $duplicate_branch = array_values(array_diff($original_lines,array_keys($this->unique_multidim_array($data_validation_fields,'branch'))));
-        // foreach($duplicate_branch as $line){
-        //   $input_branch = $data_validation_fields[$line]['branch'];
-        //   $duplicate_data =  array_filter($data_validation_fields, function ($query) use($input_branch){
-        //     return ($query['branch'] == $input_branch);
-        //   });
-        //   $duplicate_lines =  implode(",",array_map(function($query){
-        //     return $query+2;
-        //   },array_keys($duplicate_data)));
-        //   $firstDuplicateLine =  array_key_first($duplicate_data);
-
-        //   if((empty($data_validation_fields[$line]['branch']))){
-        //   }else{
-        //     $errorBag[] = [
-        //       "error_type" => "duplicate",
-        //       "line" => (string) $duplicate_lines,
-        //       "description" =>  $data_validation_fields[$firstDuplicateLine]['branch'].' Branch has a duplicate in your excel file.'
-        //     ];
-        //   }
-        // }
 
         $errorBag = array_values(array_unique($errorBag, SORT_REGULAR));
 

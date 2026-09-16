@@ -14,7 +14,7 @@ class Issue extends Model
         "status",
         "reason_id",
         "remarks",
-        ""
+        "created_at",
     ];
 
     public function reason()

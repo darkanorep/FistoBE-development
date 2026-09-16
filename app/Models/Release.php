@@ -18,8 +18,8 @@ class Release extends Model
         'remarks',
         'distributed_id',
         'distributed_name',
-        'tag_id'
-
+        'tag_id',
+        'created_at'
     ];
 
 }

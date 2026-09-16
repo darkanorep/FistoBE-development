@@ -45,6 +45,8 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -67,6 +69,14 @@ class TransactionFlow
      */
     private $cutOffVoucherEntryDate;
     private $charges;
+    /**
+     * @var \Illuminate\Config\Repository|\Illuminate\Contracts\Foundation\Application|mixed
+     */
+    private $ymirApiKey;
+    /**
+     * @var \Illuminate\Config\Repository|\Illuminate\Contracts\Foundation\Application|mixed
+     */
+    private $ymirUrl;
 
     public function __construct()
     {
@@ -101,6 +111,9 @@ class TransactionFlow
         $this->isCutOffEnabledVoucherEntry = $cutOffSettingVoucherEntry ? $cutOffSettingVoucherEntry->value : false;
         // Set the cut-off date for voucher entry if the setting is enabled
         $this->cutOffVoucherEntryDate = $cutOffSettingVoucherEntry ? $cutOffSettingVoucherEntry->value1 : null;
+
+        $this->ymirApiKey = config('app.ymir_api_key');
+        $this->ymirUrl = config('app.ymir_url');
     }
 
     public static function updateInTransactionFlow($request, $id)
@@ -128,7 +141,7 @@ class TransactionFlow
                 ->values()
                 ->toArray();
         }
-        
+
         if (!isset($transaction)) {
             return GenericMethod::resultResponse("not-found", "transaction", []);
         }
@@ -605,7 +618,7 @@ class TransactionFlow
                     static::createReceivedReceiptStatuses(
                         $transaction,
                         $receivedReceipts,
-                        $tag_no ?? null,
+                        null,
                         $voucher_month ?? null,
                         $voucher_no ?? null,
                         'VOUCHERED'
@@ -674,9 +687,9 @@ class TransactionFlow
                 static::createReceivedReceiptStatuses(
                     $transaction,
                     $receivedReceipts,
-                    $tag_no ?? null,
-                    $voucher_month ?? null,
-                    $voucher_no ?? null,
+                    null,
+                    null,
+                    null,
                     'VALIDATED'
                 );
 
@@ -1993,11 +2006,11 @@ class TransactionFlow
             ->get(['id', 'document_name']);
     }
 
-    public function availableChequeNo(Request $request) {
+    public function availableChequeNo(Request $request)
+    {
         $bankSeriesId = $request->bank_series_id;
         $temporaryUsedCheques = $request->temporary_used_cheques ?? [];
 
-        // Decode JSON string if it's a string
         if (is_string($temporaryUsedCheques)) {
             $temporaryUsedCheques = json_decode($temporaryUsedCheques, true) ?? [];
         }
@@ -2008,32 +2021,43 @@ class TransactionFlow
             ->first();
 
         if (!$chequeSeries) {
-            return response()->json(['message' => 'No available cheque series found,'], 404);
+            return response()->json(['message' => 'No available cheque series found.'], 404);
         }
 
-//        $alreadyUsedChequeNos = Cheque::where('bank_id', $chequeSeries->bank_id)
-//            ->whereNull('is_cancelled')
-//            ->pluck('cheque_no')
-//            ->toArray();
+        $query = Cheque::where('bank_id', $chequeSeries->bank_id);
 
-        $query = Cheque::where('bank_id', $chequeSeries->bank_id)
-            ->whereNull('is_cancelled');
-
-
-        if ($chequeSeries->category == 'prenumbered stock') {
+        if ($chequeSeries->category === 'prenumbered stock') {
+            // Physical pre-printed cheque leaves: a cancelled number is burned
+            // permanently — it can never be reissued, so we must NOT exclude
+            // cancelled cheques here. withTrashed() also pulls in soft-deleted
+            // rows, since even a deleted record still represents a physical
+            // leaf that was consumed.
             $query->withTrashed();
+        } else {
+            // Loose / system-generated cheques: a cancelled number can be
+            // recycled, so exclude cancelled cheques from the "used" list.
+            $query->whereNull('is_cancelled');
         }
 
         $alreadyUsedChequeNos = $query->pluck('cheque_no')->toArray();
-        // Exclude both already used and temporary used cheques
-        $excludeCheques = array_merge($alreadyUsedChequeNos, $temporaryUsedCheques);
-        $availableChequeNos = array_diff(range($chequeSeries->from, $chequeSeries->to), $excludeCheques);
-        $availableChequeNos = array_filter($availableChequeNos, function($no) { return $no != 0; });
-        $firstAvailable = reset($availableChequeNos);
 
-        if (!$firstAvailable) {
+        $excludeCheques = array_merge($alreadyUsedChequeNos, $temporaryUsedCheques);
+
+        $availableChequeNos = array_diff(
+            range($chequeSeries->from, $chequeSeries->to),
+            $excludeCheques
+        );
+
+        // Defensive: exclude 0 / falsy noise, then re-index so reset() is reliable
+        $availableChequeNos = array_values(array_filter($availableChequeNos, function($no) {
+            return (int) $no !== 0;
+        }));
+
+        if (empty($availableChequeNos)) {
             return response()->json(['message' => 'No available cheque number found.'], 404);
         }
+
+        $firstAvailable = $availableChequeNos[0];
 
         return response()->json(['available_cheque_no' => $firstAvailable], 200);
     }
@@ -2206,20 +2230,28 @@ class TransactionFlow
 //        return GenericMethod::resultResponse($request->subprocess, "", "");
 //    }
 
-    function issueCheque($request, $transactionIds)
-    {
-        for ($i = 0; $i < count($transactionIds); $i++) {
+    function issueCheque($request, $transactionIds) {
+        request()->validate([
+            'cheque.date' => ['required', 'date'],
+            'created_date' => ['nullable', 'date'],
+        ]);
 
-            $transaction = Transaction::find($transactionIds[$i]);
+        $chequeDate = Carbon::parse(data_get($request, 'cheque.date'))->format('Y-m-d');
+        $createdAt = $request->input('created_date')
+            ? Carbon::parse($request->input('created_date'))
+            : now();
 
-            $issue = $transaction->issue()->create([
-                'status' => 'issue-issue',
-            ]);
+        $accounts = $request->accounts;
 
-            for ($j = 0; $j < count($request->accounts); $j++) {
-                $account = $request->accounts[$j];
+        DB::transaction(function () use ($transactionIds, $chequeDate, $createdAt, $accounts, $request) {
 
-                $issue->accountTitles()->create([
+            $transactionsById = Transaction::whereIn('id', $transactionIds)->get()->keyBy('id');
+
+            // Same account list is reused for every transaction — build the
+            // row template once outside the loop instead of re-reading
+            // data_get() on every iteration.
+            $accountRowTemplate = collect($accounts)->map(function ($account) {
+                return [
                     'entry' => data_get($account, 'entry'),
                     'bank_id' => data_get($account, 'bank_id'),
                     'account_title_id' => data_get($account, 'account_title.id'),
@@ -2246,51 +2278,144 @@ class TransactionFlow
                     'sub_unit_id' => data_get($account, 'sub_unit.id'),
                     'sub_unit_code' => data_get($account, 'sub_unit.code'),
                     'sub_unit_name' => data_get($account, 'sub_unit.name'),
-                ]);
-            }
+                ];
+            });
 
-            Cheque::where('transaction_id', $transactionIds[$i])
-//                ->where('bank_id', data_get($request, 'cheque.bank.id'))
-//                ->where('cheque_no', data_get($request, 'cheque.no'))
-                ->where([
-                    'bank_id' => data_get($request, 'cheque.bank.id'),
-                    'cheque_no' => data_get($request, 'cheque.no')
-                ])
-                ->update([
-                    'is_received' => null,
-                    'is_issued' => true,
-                    'cheque_date' => date('Y-m-d', strtotime(data_get($request, 'cheque.date'))),
-                    'issue_id' => $issue->id,
-                    'reason_id' => null,
-                    'reason' => null
+            foreach ($transactionIds as $transactionId) {
+                $transactionModel = $transactionsById->get($transactionId);
+
+                if (!$transactionModel) {
+                    continue; // stale/invalid id — change to a throw if this should hard-fail instead
+                }
+
+                $issue = $transactionModel->issue()->create([
+                    'status' => 'issue-issue',
+                    'created_at' => $createdAt,
+                    'updated_at' => now(),
                 ]);
-        }
+
+                $accountRows = $accountRowTemplate->map(function ($row) use ($issue, $createdAt) {
+                    return $row + [
+                        'issue_id' => $issue->id
+                    ];
+                })->all();
+
+                if (!empty($accountRows)) {
+                    $issue->accountTitles()->insert($accountRows);
+                }
+
+                Cheque::where('transaction_id', $transactionId)
+                    ->where([
+                        'bank_id' => data_get($request, 'cheque.bank.id'),
+                        'cheque_no' => data_get($request, 'cheque.no'),
+                    ])
+                    ->update([
+                        'is_received' => null,
+                        'is_issued' => true,
+                        'cheque_date' => $chequeDate,
+                        'issue_id' => $issue->id,
+                        'reason_id' => null,
+                        'reason' => null,
+                    ]);
+            }
+        });
 
         $this->chequeIssueChecker($request, $transactionIds);
-
-//        foreach($transactionIds as $transaction) {
-//            $transaction = Transaction::find($transaction);
-//
-//            if ($transaction->is_mc == 1) {
-//                Cheque::where('transaction_id', $transaction->id)
-//                    ->update([
-//                        'is_released' => true
-//                    ]);
-//
-//                Transaction::where('id', $transaction->id)
-//                    ->update([
-//                        'state' => 'release',
-//                        'status' => 'release-release'
-//                    ]);
-//            }
-//        }
 
         return GenericMethod::resultResponse($request->subprocess, "", "");
     }
 
+//     function issueCheque($request, $transactionIds) {
+//         for ($i = 0; $i < count($transactionIds); $i++) {
+
+//             $transaction = Transaction::find($transactionIds[$i]);
+
+//             $issue = $transaction->issue()->create([
+//                 'status' => 'issue-issue',
+//             ]);
+
+//             for ($j = 0; $j < count($request->accounts); $j++) {
+//                 $account = $request->accounts[$j];
+
+//                 $issue->accountTitles()->create([
+//                     'entry' => data_get($account, 'entry'),
+//                     'bank_id' => data_get($account, 'bank_id'),
+//                     'account_title_id' => data_get($account, 'account_title.id'),
+//                     'account_title_code' => data_get($account, 'account_title.code'),
+//                     'account_title_name' => data_get($account, 'account_title.name'),
+//                     'amount' => data_get($account, 'amount'),
+//                     'remarks' => data_get($account, 'remarks'),
+//                     'transaction_type' => 'new',
+//                     'company_id' => data_get($account, 'company.id'),
+//                     'company_code' => data_get($account, 'company.code'),
+//                     'company_name' => data_get($account, 'company.name'),
+//                     'department_id' => data_get($account, 'department.id'),
+//                     'department_code' => data_get($account, 'department.code'),
+//                     'department_name' => data_get($account, 'department.name'),
+//                     'location_id' => data_get($account, 'location.id'),
+//                     'location_code' => data_get($account, 'location.code'),
+//                     'location_name' => data_get($account, 'location.name'),
+//                     'business_unit_id' => data_get($account, 'business_unit.id'),
+//                     'business_unit_code' => data_get($account, 'business_unit.code'),
+//                     'business_unit_name' => data_get($account, 'business_unit.name'),
+//                     'unit_id' => data_get($account, 'unit.id'),
+//                     'unit_code' => data_get($account, 'unit.code'),
+//                     'unit_name' => data_get($account, 'unit.name'),
+//                     'sub_unit_id' => data_get($account, 'sub_unit.id'),
+//                     'sub_unit_code' => data_get($account, 'sub_unit.code'),
+//                     'sub_unit_name' => data_get($account, 'sub_unit.name'),
+//                 ]);
+//             }
+
+//             Cheque::where('transaction_id', $transactionIds[$i])
+// //                ->where('bank_id', data_get($request, 'cheque.bank.id'))
+// //                ->where('cheque_no', data_get($request, 'cheque.no'))
+//                 ->where([
+//                     'bank_id' => data_get($request, 'cheque.bank.id'),
+//                     'cheque_no' => data_get($request, 'cheque.no')
+//                 ])
+//                 ->update([
+//                     'is_received' => null,
+//                     'is_issued' => true,
+//                     'cheque_date' => date('Y-m-d', strtotime(data_get($request, 'cheque.date'))),
+//                     'issue_id' => $issue->id,
+//                     'reason_id' => null,
+//                     'reason' => null
+//                 ]);
+//         }
+
+//         $this->chequeIssueChecker($request, $transactionIds);
+
+// //        foreach($transactionIds as $transaction) {
+// //            $transaction = Transaction::find($transaction);
+// //
+// //            if ($transaction->is_mc == 1) {
+// //                Cheque::where('transaction_id', $transaction->id)
+// //                    ->update([
+// //                        'is_released' => true
+// //                    ]);
+// //
+// //                Transaction::where('id', $transaction->id)
+// //                    ->update([
+// //                        'state' => 'release',
+// //                        'status' => 'release-release'
+// //                    ]);
+// //            }
+// //        }
+
+//         return GenericMethod::resultResponse($request->subprocess, "", "");
+//     }
+
     //Release Cheque
     function releaseCheque($request, $transactionIds)
     {
+        request()->validate([
+            'created_date' => ['nullable', 'date'],
+        ]);
+
+        $createdAt = $request->input('created_date')
+            ? Carbon::parse($request->input('created_date'))
+            : now();
 
         $cheques = collect(Cheque::whereIn('transaction_id', $transactionIds)
             ->pluck('is_received')->toArray());
@@ -2312,6 +2437,7 @@ class TransactionFlow
                 'distributed_name' => data_get($request, 'distributed_to.name'),
                 'description' => $transaction->remarks,
                 'date_status' => Carbon::now('Asia/Manila')->format('Y-m-d H:i:s'),
+                'created_at' => $createdAt,
             ]);
         }
 
@@ -2625,35 +2751,56 @@ class TransactionFlow
         return GenericMethod::resultResponse($subprocess, "", "");
     }
 
-    function abortCheque($request)
+    public function abortCheque(Request $request)
     {
-        $bank = $request->bank_id;
-        $cheque = $request->cheque_no;
-        $process = $request->process;
-        $subprocess = $request->subprocess;
+        $validated = $request->validate([
+            'bank_id'    => ['required', 'integer', 'exists:banks,id'],
+            'cheque_no'  => ['required', 'string'],
+            'subprocess' => ['required'],
+        ]);
 
-        $cheques = Cheque::where([
-            'bank_id' => $bank,
-            'cheque_no' => $cheque
-        ])->get();
+        return DB::transaction(function () use ($validated) {
+            $referenceCheque = Cheque::where('bank_id', $validated['bank_id'])
+                ->where('cheque_no', $validated['cheque_no'])
+                ->first();
 
-        $cheques->each(function ($cheque) {
-            $cheque->delete();
+            if (!$referenceCheque) {
+                return GenericMethod::resultResponse(
+                    $validated['subprocess'],
+                    'Cheque not found.',
+                    'error'
+                );
+            }
+
+            // Lock the batch's rows for the duration of the transaction to
+            // prevent a concurrent abort/issue request from racing on the
+            // same treasury batch.
+            $chequesQuery = Cheque::where('treasury_id', $referenceCheque->treasury_id)
+                ->lockForUpdate();
+
+            $transactionIds = (clone $chequesQuery)
+                ->whereNotNull('transaction_id')
+                ->pluck('transaction_id')
+                ->unique()
+                ->values()
+                ->toArray();
+
+            // 1. Mark cancelled while the rows are still "live" (pre-soft-delete)
+            $chequesQuery->update(['is_cancelled' => 1]);
+
+            // 2. Revert the linked transactions
+            if (!empty($transactionIds)) {
+                Transaction::whereIn('id', $transactionIds)->update([
+                    'state'  => 'return',
+                    'status' => 'release-return',
+                ]);
+            }
+
+            // 3. Archive the cheques (soft delete, single bulk statement)
+            $chequesQuery->delete();
+
+            return GenericMethod::resultResponse($validated['subprocess'], '', '');
         });
-
-        Transaction::whereIn('id', $cheques->pluck('transaction_id')->toArray())
-            ->update([
-                'state' => 'return',
-                'status' => 'release' . '-' . 'return',
-            ]);
-
-        $cheques->each(function ($cheque) {
-            $cheque->update([
-                'is_cancelled' => 1,
-            ]);
-        });
-
-        return GenericMethod::resultResponse($subprocess, "", "");
     }
 
     function declineCheque($request)
@@ -2677,19 +2824,35 @@ class TransactionFlow
         return GenericMethod::resultResponse($subprocess, "", "");
     }
 
-    private static function createReceivedReceiptStatuses($transaction, array $receivedReceipts, $tagNo, $voucherMonth, $voucherNo, $status)
-    {
+    private static function createReceivedReceiptStatuses(
+        $transaction,
+        array $receivedReceipts,
+        $tagNo,
+        $voucherMonth,
+        $voucherNo,
+        $status
+    ) {
         if (empty($receivedReceipts)) {
             return;
         }
 
+        $now = Carbon::now('Asia/Manila');
+
+        // Only update the timestamp for the current status.
         $timestampUpdates = [];
-        if ($status === 'TAG') {
-            $timestampUpdates['tagged_at'] = Carbon::now("Asia/Manila");
-        } elseif ($status === 'VOUCHERED') {
-            $timestampUpdates['vouchered_at'] = Carbon::now("Asia/Manila");
-        } elseif ($status === 'VALIDATED') {
-            $timestampUpdates['validated_at'] = Carbon::now("Asia/Manila");
+
+        switch ($status) {
+            case 'TAG':
+                $timestampUpdates['tagged_at'] = $now;
+                break;
+
+            case 'VOUCHERED':
+                $timestampUpdates['vouchered_at'] = $now;
+                break;
+
+            case 'VALIDATED':
+                $timestampUpdates['validated_at'] = $now;
+                break;
         }
 
         foreach ($receivedReceipts as $receivedReceipt) {
@@ -2701,20 +2864,86 @@ class TransactionFlow
                     'transaction_id' => $transaction->id,
                     'rr_id' => $rrId,
                 ],
-                array_merge([
-                    'rr_number' => $rrNumber,
-                    'tag_no' => $tagNo,
-                    'voucher_month' => $voucherMonth,
-                    'voucher_no' => $voucherNo,
-                    'status' => $status,
-                    'company' => $transaction->company,
-                    'business_unit' => $transaction->business_unit ?? null,
-                    'department' => $transaction->department ?? null,
-                    'unit' => $transaction->unit ?? null,
-                    'sub_unit' => $transaction->sub_unit ?? null,
-                    'location' => $transaction->location ?? null,
-                ], $timestampUpdates)
+                array_merge(
+                    [
+                        'rr_number' => $rrNumber,
+                        'tag_no' => $tagNo,
+                        'voucher_month' => $voucherMonth,
+                        'voucher_no' => $voucherNo,
+                        'status' => $status,
+                        'company' => $transaction->company,
+                        'business_unit' => $transaction->business_unit ?? null,
+                        'department' => $transaction->department ?? null,
+                        'unit' => $transaction->unit ?? null,
+                        'sub_unit' => $transaction->sub_unit ?? null,
+                        'location' => $transaction->location ?? null,
+                    ],
+                    $timestampUpdates
+                )
             );
+
+            try {
+                $queryParameters = [
+                    'id_no' => auth()->user()->id_no,
+                    'tag_number' => strval($tagNo),
+                    'voucher_number' => $voucherNo,
+                    'type' => $rrNumber && stripos($rrNumber, 'JR') !== false ? 'JORR' : 'RR',
+                ];
+
+                // Only send the timestamp belonging to the current status.
+                switch ($status) {
+                    case 'TAG':
+                        $queryParameters['tagging_at'] = $now->toDateTimeString();
+                        break;
+
+                    case 'VOUCHERED':
+                        $queryParameters['vouchered_at'] = $now->toDateTimeString();
+                        break;
+
+                    case 'VALIDATED':
+                        $queryParameters['validated_at'] = $now->toDateTimeString();
+                        break;
+                }
+
+                $response = Http::withHeaders([
+                    'API-Key' => config('app.ymir_api_key'),
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json',
+                ])
+
+                    ->patch(config('app.ymir_url') . 'fisto_api/' . $rrId . '/status', $queryParameters);
+
+                Log::info(
+                    'Updated RR status in Ymir API',
+                    [
+                        'rr_id' => $rrId,
+                        'status' => $status,
+                        'response_status' => $response->status(),
+                        'response_body' => $response->body(),
+                    ]
+                );
+
+                $response->throw();
+
+            } catch (\Illuminate\Http\Client\RequestException $e) {
+                Log::error(
+                    'Failed to update RR status in Ymir API: ' . $e->getMessage(),
+                    [
+                        'rr_id' => $rrId,
+                        'status' => $status,
+                        'response' => $e->response->body(),
+                    ]
+                );
+
+            } catch (\Exception $e) {
+                Log::error(
+                    'Unexpected error occurred: ' . $e->getMessage(),
+                    [
+                        'rr_id' => $rrId,
+                        'status' => $status,
+                    ]
+                );
+            }
         }
     }
 
