@@ -42,4 +42,14 @@ class SettingController extends Controller
 
         return response()->json(['message' => 'Status updated']);
     }
+
+    public function backupLogin()
+    {
+        $backupLogin = $this->db
+            ->where('key', 'backup_login')
+            ->first();
+
+        
+        return response()->json(['backup_login' => $backupLogin->value]);
+    }
 }

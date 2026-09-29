@@ -51,6 +51,7 @@ Route::get("/coa", [MasterlistController::class, "coa"]);
 Route::get("/sedar", [MasterlistController::class, "sedar_employees"]);
 Route::get("/genus", [MasterlistController::class, "genus_orders"]);
 Route::get('/ymir', [MasterlistController::class, 'projectYmir']);
+Route::get('backup-login', [\App\Http\Controllers\SettingController::class, 'backupLogin']);
 
 
 Route::middleware('api.key')->group(function () {

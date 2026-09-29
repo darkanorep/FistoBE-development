@@ -967,31 +967,31 @@ class GenericMethod
                      ]);
              }
 
-            $chequeSeries = BankSeries::where('id', data_get($specific_cheques, 'check_series_id'))
-                ->where('is_used', false)
-                ->first();
-
-            $query = Cheque::where('bank_id', $chequeSeries->bank_id)
-                ->whereNull('is_cancelled');
-
-            if ($chequeSeries->category == 'prenumbered stock') {
-                $query->withTrashed();
-            }
-
-            $alreadyUsedChequeNos = $query->pluck('cheque_no')->toArray();
-
-            $excludeCheques = array_merge($alreadyUsedChequeNos, []);
-            $availableChequeNos = array_diff(range($chequeSeries->from, $chequeSeries->to), $excludeCheques);
-            $availableChequeNos = array_filter($availableChequeNos, function($no) { return $no != 0; });
-            $firstAvailable = reset($availableChequeNos);
-
-            if ($chequeSeries->category == 'blank stock' && $firstAvailable) {
-                $chequeSeries->update(['is_used' => true]);
-            } else {
-                if (!$firstAvailable) {
-                    $chequeSeries->update(['is_used' => true]);
-                }
-            }
+//            $chequeSeries = BankSeries::where('id', data_get($specific_cheques, 'check_series_id'))
+//                ->where('is_used', false)
+//                ->first();
+//
+//            $query = Cheque::where('bank_id', $chequeSeries->bank_id)
+//                ->whereNull('is_cancelled');
+//
+//            if ($chequeSeries->category == 'prenumbered stock') {
+//                $query->withTrashed();
+//            }
+//
+//            $alreadyUsedChequeNos = $query->pluck('cheque_no')->toArray();
+//
+//            $excludeCheques = array_merge($alreadyUsedChequeNos, []);
+//            $availableChequeNos = array_diff(range($chequeSeries->from, $chequeSeries->to), $excludeCheques);
+//            $availableChequeNos = array_filter($availableChequeNos, function($no) { return $no != 0; });
+//            $firstAvailable = reset($availableChequeNos);
+//
+//            if ($chequeSeries->category == 'blank stock' && $firstAvailable) {
+//                $chequeSeries->update(['is_used' => true]);
+//            } else {
+//                if (!$firstAvailable) {
+//                    $chequeSeries->update(['is_used' => true]);
+//                }
+//            }
          }
      }
 
