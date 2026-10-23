@@ -883,9 +883,9 @@ class TransactionFlowController extends Controller
                         'unit_id' => $account['unit']['id'] ?? null,
                         'unit_code' => $account['unit']['code'] ?? null,
                         'unit_name' => $account['unit']['name'] ?? null,
-                        'sub_unit_id' => $account['sub_business_unit']['id'] ?? null,
-                        'sub_unit_code' => $account['sub_business_unit']['code'] ?? null,
-                        'sub_unit_name' => $account['sub_business_unit']['name'] ?? null,
+                        'sub_unit_id' => $account['sub_unit']['id'] ?? null,
+                        'sub_unit_code' => $account['sub_unit']['code'] ?? null,
+                        'sub_unit_name' => $account['sub_unit']['name'] ?? null,
                         'amount' => $account['amount'],
                         'transaction_type' => 'new',
                     ]);
