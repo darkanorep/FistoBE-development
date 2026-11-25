@@ -2427,9 +2427,22 @@ class TransactionFlow
             ], 400);
         }
 
-        for ($i = 0; $i < count($transactionIds); $i++) {
+        // for ($i = 0; $i < count($transactionIds); $i++) {
 
-            $transaction = Transaction::find($transactionIds[$i]);
+        //     $transaction = Transaction::find($transactionIds[$i]);
+
+        //     $transaction->release()->create([
+        //         'status' => 'release-release',
+        //         'distributed_id' => data_get($request, 'distributed_to.id'),
+        //         'distributed_name' => data_get($request, 'distributed_to.name'),
+        //         'description' => $transaction->remarks,
+        //         'date_status' => Carbon::now('Asia/Manila')->format('Y-m-d H:i:s'),
+        //         'created_at' => $createdAt,
+        //     ]);
+        // }
+
+        foreach ($transactionIds as $transactionId) {
+            $transaction = Transaction::findOrFail($transactionId);
 
             $transaction->release()->create([
                 'status' => 'release-release',
@@ -2459,65 +2472,60 @@ class TransactionFlow
 
     //Clear Cheque
     function clearCheque($request, $transactionIds)
-    {
-        for ($i = 0; $i < count($transactionIds); $i++) {
+{
+    $cheque = Cheque::where('bank_id', data_get($request, 'bank_id'))
+        ->where('cheque_no', data_get($request, 'cheque_no'))
+        ->firstOrFail();
 
-            $cheque = Cheque::where('bank_id', data_get($request, 'bank_id'))
-                ->where('cheque_no', data_get($request, 'cheque_no'))
-                ->first();
+    $cheque->update([
+        'date_cleared' => Carbon::parse(data_get($request, 'date'))->toDateString(),
+        'is_cleared' => true,
+    ]);
 
-            Cheque::where('bank_id', data_get($request, 'bank_id'))
-                ->where('cheque_no', data_get($request, 'cheque_no'))
-                ->update([
-                    'date_cleared' => date('Y-m-d', strtotime(data_get($request, 'date'))),
-                    'is_cleared' => true,
-                ]);
+    foreach ($transactionIds as $transactionId) {
+        $transaction = Transaction::findOrFail($transactionId);
 
-            $transaction = Transaction::find($transactionIds[$i]);
+        $clear = $transaction->clear()->create([
+            'status' => 'clear-clear',
+            'user_id' => auth()->id(),
+            'tag_id' => $transaction->id,
+            'date_status' => Carbon::now('Asia/Manila')->format('Y-m-d H:i:s'),
+        ]);
 
-            $clear = $transaction->clear()->create([
-                'status' => 'clear-clear',
-                'user_id' => auth()->user()->id,
-                'tag_id' => $transaction->id,
-                'date_status' => Carbon::now('Asia/Manila')->format('Y-m-d H:i:s'),
+        foreach (data_get($request, 'accounts', []) as $account) {
+            $clear->account_title()->create([
+                'entry' => data_get($account, 'entry'),
+                'cheque_id' => $cheque->id,
+                'account_title_id' => data_get($account, 'account_title.id'),
+                'account_title_code' => data_get($account, 'account_title.code'),
+                'account_title_name' => data_get($account, 'account_title.name'),
+                'amount' => data_get($account, 'amount'),
+                'remarks' => data_get($account, 'remarks'),
+                'transaction_type' => 'new',
+                'company_id' => data_get($account, 'company.id'),
+                'company_code' => data_get($account, 'company.code'),
+                'company_name' => data_get($account, 'company.name'),
+                'department_id' => data_get($account, 'department.id'),
+                'department_code' => data_get($account, 'department.code'),
+                'department_name' => data_get($account, 'department.name'),
+                'location_id' => data_get($account, 'location.id'),
+                'location_code' => data_get($account, 'location.code'),
+                'location_name' => data_get($account, 'location.name'),
+                'business_unit_id' => data_get($account, 'business_unit.id'),
+                'business_unit_code' => data_get($account, 'business_unit.code'),
+                'business_unit_name' => data_get($account, 'business_unit.name'),
+                'unit_id' => data_get($account, 'unit.id'),
+                'unit_code' => data_get($account, 'unit.code'),
+                'unit_name' => data_get($account, 'unit.name'),
+                'sub_unit_id' => data_get($account, 'sub_unit.id'),
+                'sub_unit_code' => data_get($account, 'sub_unit.code'),
+                'sub_unit_name' => data_get($account, 'sub_unit.name'),
             ]);
-
-            for ($j = 0; $j < count($request->accounts); $j++) {
-                $account = $request->accounts[$j];
-
-                $clear->account_title()->create([
-                    'entry' => data_get($account, 'entry'),
-                    'cheque_id' => $cheque->id,
-                    'account_title_id' => data_get($account, 'account_title.id'),
-                    'account_title_code' => data_get($account, 'account_title.code'),
-                    'account_title_name' => data_get($account, 'account_title.name'),
-                    'amount' => data_get($account, 'amount'),
-                    'remarks' => data_get($account, 'remarks'),
-                    'transaction_type' => 'new',
-                    'company_id' => data_get($account, 'company.id'),
-                    'company_code' => data_get($account, 'company.code'),
-                    'company_name' => data_get($account, 'company.name'),
-                    'department_id' => data_get($account, 'department.id'),
-                    'department_code' => data_get($account, 'department.code'),
-                    'department_name' => data_get($account, 'department.name'),
-                    'location_id' => data_get($account, 'location.id'),
-                    'location_code' => data_get($account, 'location.code'),
-                    'location_name' => data_get($account, 'location.name'),
-                    'business_unit_id' => data_get($account, 'business_unit.id'),
-                    'business_unit_code' => data_get($account, 'business_unit.code'),
-                    'business_unit_name' => data_get($account, 'business_unit.name'),
-                    'unit_id' => data_get($account, 'unit.id'),
-                    'unit_code' => data_get($account, 'unit.code'),
-                    'unit_name' => data_get($account, 'unit.name'),
-                    'sub_unit_id' => data_get($account, 'sub_unit.id'),
-                    'sub_unit_code' => data_get($account, 'sub_unit.code'),
-                    'sub_unit_name' => data_get($account, 'sub_unit.name'),
-                ]);
-            }
         }
-
-        return GenericMethod::resultResponse($request->subprocess, "", "");
     }
+
+    return GenericMethod::resultResponse($request->subprocess, '', '');
+}
 
 
     function chequeSingleReceive($request, $transactionIds)
