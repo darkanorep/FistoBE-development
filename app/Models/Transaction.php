@@ -186,7 +186,6 @@ class Transaction extends Model
 
     public function cheque()
     {
-//        return $this->hasMany(Cheque::class, "transaction_id", "transaction_id")->latest();
         return $this->hasMany(Cheque::class, "transaction_id", "id")
             ->latest();
     }
@@ -236,9 +235,7 @@ class Transaction extends Model
 
     public function clear()
     {
-//    return $this->hasMany(Clear::class, "tag_id", "tag_no")
         return $this->hasMany(Clear::class, "transaction_id", "id")
-//      ->select("tag_id", "id", "date_status as date", "status", "date_cleared")
             ->select("transaction_id", "id", "date_status as date", "status", "date_cleared", "user_id")
             ->latest();
     }

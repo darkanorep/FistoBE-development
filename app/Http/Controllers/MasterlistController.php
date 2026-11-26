@@ -2,13 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Exceptions\FistoException;
-use App\Http\Requests\DocumentCoaRequest;
 use App\Http\Resources\ChargingResource;
-use App\Http\Resources\DocumentCoaResource;
 use App\Http\Resources\DocumentResource;
-use App\Http\Resources\UserResource;
-
 use App\Models\AccountTitleChild;
 use App\Models\AccountTitleGrandParent;
 use App\Models\AccountTitleGreatGrandParent;
@@ -36,11 +31,8 @@ use App\Models\UtilityCategory;
 use App\Models\Sedar;
 use App\Models\AccountTitle;
 use App\Models\OrganizationDepartment;
-
 use App\Models\VoucherCode;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
@@ -58,6 +50,8 @@ class MasterlistController extends Controller
     private $sub_unit;
     private $charge;
     private $supplier;
+    private $ymirUrl;
+    private $ymirToken;
 
     public function __construct()
     {
@@ -70,6 +64,8 @@ class MasterlistController extends Controller
         $this->account_title = AccountTitle::select('id', 'title', 'code')->withTrashed()->get();
         $this->charge = Charge::withTrashed()->get();
         $this->supplier = Supplier::withTrashed()->get();
+        $this->ymirUrl = config('app.ymir_url');
+        $this->ymirToken = config('app.ymir_token');
     }
     public function documentDropdown()
     {
@@ -136,23 +132,8 @@ class MasterlistController extends Controller
         return $this->resultResponse('fetch', 'Cheque Types', $treasuryCheques);
     }
 
-//    public function accountTitleDocumentDropdown($id){
-//        $data = Document::where('id',$id)
-//            ->with([
-//                "categories:id,name"
-//            ])->first();
-//
-//        if ($data) {
-//            return $this->resultResponse('fetch', 'Account Title', new DocumentResource($data));
-//        } else {
-//            return $this->resultResponse('not-found', 'Account Title', []);
-//        }
-//    }
-
     public function accountTitleTransactionTypeDropdown($id)
     {
-//      $data = TransactionType::with('accounts')->where('id', $id)
-//          ->first();
 
         $data = TransactionType::with('accounts.account_title')->where('id', $id)
             ->first();
@@ -493,14 +474,9 @@ class MasterlistController extends Controller
         $rr_no = $request->rr_no;
 
         $transaction = Http::withHeaders([
-            'Token' => 'Bearer 4488|A6YewQerFIqi5SpgZcG1D1S8LjvSESjCOG9OOUbw' // PROD
-//           'Token' => 'Bearer 3485|tvxj4OUzCp87LXoHmjzYCIDUwdx6Mq7XfuU7DRmn' //LOCAL
-//          'Token' => 'Bearer 2668|BOmpbid4zZyaAoT8caDgMjmv1LVyFxjAFxnEaWF4' //PRETEST
+            'Token' => $this->ymirToken
         ])->get(
-            'https://rdfymir.com/backend/public/api/fisto_api' //PROD
-//            'https://pretestomega.rdfymir.com/backend/public/api/fisto_api' //PRETEST
-//            '10.10.13.6:8080/api/fisto_api' //LOCAL
-            , [
+            $this->ymirUrl, [
             'pagination' => 'none',
             'search' => $rr_no
         ]);
@@ -537,6 +513,7 @@ class MasterlistController extends Controller
                                     'code' => $rr['order']['uom']['code'],
                                     'name' => $rr['order']['uom']['name'],
                                 ],
+                                'remarks' => $rr['order']['remarks'] ?? null,
                             ],
                             'po_transaction' => [
                                 'po_year_number_id' => $rr['po_transaction']['po_year_number_id'],
@@ -672,6 +649,7 @@ class MasterlistController extends Controller
                                     'code' => $rr['order']['uom']['code'],
                                     'name' => $rr['order']['uom']['name'],
                                 ],
+                                'remarks' => $rr['order']['remarks'] ?? null,
                                 'reference_no' => $rr['shipment_no'] ?? null ,
                                 'po_transaction' => [
                                     'po_year_number_id' => $rr['po_transaction']['po_year_number_id'],

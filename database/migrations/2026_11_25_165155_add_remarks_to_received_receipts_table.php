@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateServiceBatchesTable extends Migration
+class AddRemarksToReceivedReceiptsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,11 +13,8 @@ class CreateServiceBatchesTable extends Migration
      */
     public function up()
     {
-        Schema::create('service_batches', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('transaction_id')->nullable()->constrained('transactions');
-            $table->string()
-            $table->timestamps();
+        Schema::table('received_receipts', function (Blueprint $table) {
+            $table->text('remarks')->nullable()->after('uom_name');
         });
     }
 
@@ -28,6 +25,8 @@ class CreateServiceBatchesTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('service_batches');
+        Schema::table('received_receipts', function (Blueprint $table) {
+            $table->dropColumn('remarks');
+        });
     }
 }
